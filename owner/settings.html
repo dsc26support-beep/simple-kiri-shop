@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings — Simple Kiri Shop</title>
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/owner.css">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Settings</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="orders.html">Orders</a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Store Settings</h1>
+
+      <form id="settings-form">
+        <h2>Store Details</h2>
+        <div class="field">
+          <label for="store-name">Store Name</label>
+          <input id="store-name" required>
+        </div>
+        <div class="field">
+          <label for="contact-email">Contact Email</label>
+          <input id="contact-email" type="email">
+        </div>
+        <div class="field">
+          <label for="contact-phone">Contact Phone (used for WhatsApp order sharing)</label>
+          <input id="contact-phone" type="tel">
+        </div>
+
+        <h2>ANZ Bank Transfer Details</h2>
+        <div class="field">
+          <label for="anz-account-name">Account Name</label>
+          <input id="anz-account-name">
+        </div>
+        <div class="field">
+          <label for="anz-account-number">Account Number</label>
+          <input id="anz-account-number">
+        </div>
+        <div class="field">
+          <label for="anz-branch">Branch</label>
+          <input id="anz-branch">
+        </div>
+
+        <h2>Teremo Details</h2>
+        <div class="field">
+          <label for="teremo-number">Teremo Number</label>
+          <input id="teremo-number">
+        </div>
+        <div class="field">
+          <label for="teremo-name">Registered Name</label>
+          <input id="teremo-name">
+        </div>
+
+        <div class="field">
+          <label for="payment-notes">Extra Payment Instructions (shown to customers, optional)</label>
+          <textarea id="payment-notes"></textarea>
+        </div>
+
+        <p id="settings-error" class="form-error" role="alert"></p>
+        <p id="settings-success" class="form-success" role="status"></p>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+      </form>
+
+      <form id="password-form" style="margin-top:2.5rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
+        <h2>Change Password</h2>
+        <div class="field">
+          <label for="new-password">New Password</label>
+          <input id="new-password" type="password" minlength="8" autocomplete="new-password">
+          <p class="helper-text">At least 8 characters. Leave blank to keep your current password.</p>
+        </div>
+        <p id="password-error" class="form-error" role="alert"></p>
+        <p id="password-success" class="form-success" role="status"></p>
+        <button type="submit" class="btn">Update Password</button>
+      </form>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Simple Kiri Shop — Store Owner Portal</p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/owner-nav.js"></script>
+  <script src="../assets/js/owner-settings.js"></script>
+</body>
+</html>

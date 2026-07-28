@@ -1,0 +1,223 @@
+/* Store-owner dashboard — builds on styles.css */
+
+.owner-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.owner-topbar {
+  background: var(--color-blue);
+  color: #fff;
+  padding: var(--space-2) 0;
+}
+
+.owner-topbar .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.owner-topbar a {
+  color: #fff;
+}
+
+.owner-nav ul {
+  list-style: none;
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.owner-nav a {
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.owner-main {
+  flex: 1;
+  padding: var(--space-4) 0 var(--space-5);
+}
+
+.auth-card {
+  max-width: 420px;
+  margin: var(--space-5) auto;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-3);
+}
+
+.auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: var(--space-2);
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  min-height: 44px;
+}
+
+.auth-tab[aria-selected="true"] {
+  border-bottom-color: var(--color-blue);
+  color: var(--color-blue);
+}
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+@media (min-width: 600px) {
+  .dashboard-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dashboard-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.dashboard-card .metric {
+  font-size: 1.75rem;
+  font-weight: 700;
+  display: block;
+}
+
+.owner-product-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.owner-product-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+}
+
+.owner-product-row img,
+.owner-product-row .placeholder-swatch {
+  width: 64px;
+  height: 64px;
+  aspect-ratio: auto;
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.owner-product-row .row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.owner-product-row .row-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--color-bg-alt);
+  color: var(--color-muted);
+}
+
+.status-badge.status-active,
+.status-badge.status-paid,
+.status-badge.status-fulfilled {
+  background: #e3f4e6;
+  color: var(--color-success);
+}
+
+.status-badge.status-pending,
+.status-badge.status-pending-payment {
+  background: #fff4d6;
+  color: #8a6100;
+}
+
+.status-badge.status-cancelled,
+.status-badge.status-archived {
+  background: #fbe4e2;
+  color: var(--color-danger);
+}
+
+.variant-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  margin-bottom: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.variant-row .field {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 120px;
+}
+
+.image-upload-preview {
+  width: 140px;
+  height: 140px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--space-2);
+  background: var(--color-bg-alt);
+}
+
+.order-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.order-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-2) 0;
+  font-size: 0.92rem;
+}
+
+.order-card dt {
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.order-card dd {
+  margin: 0;
+}

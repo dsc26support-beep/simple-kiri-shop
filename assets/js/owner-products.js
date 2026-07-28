@@ -1,0 +1,274 @@
+document.addEventListener('DOMContentLoaded', init);
+
+let ownerProducts = [];
+let selectedImageFile = null;
+let variantRowSeq = 0;
+
+async function init() {
+  const owner = await Auth.guardOwnerAuth();
+  if (!owner) return;
+  document.getElementById('store-name-label').textContent = owner.storeName;
+
+  document.getElementById('add-product-btn').addEventListener('click', () => openForm(null));
+  document.getElementById('cancel-product-btn').addEventListener('click', closeForm);
+  document.getElementById('add-variant-btn').addEventListener('click', () => addVariantRow());
+  document.getElementById('product-form').addEventListener('submit', onSaveProduct);
+  document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
+  document.getElementById('owner-product-list').addEventListener('click', onListClick);
+
+  await loadProducts();
+}
+
+async function loadProducts() {
+  const statusEl = document.getElementById('products-status');
+  statusEl.textContent = 'Loading…';
+  const res = await Api.post('listOwnerProducts', { token: Auth.getToken() });
+  if (!res.ok) {
+    statusEl.textContent = res.error || 'Could not load your products.';
+    return;
+  }
+  ownerProducts = res.products;
+  statusEl.textContent = ownerProducts.length === 0 ? 'You have no products yet — add your first one above.' : '';
+  renderList();
+}
+
+function renderList() {
+  const listEl = document.getElementById('owner-product-list');
+  listEl.innerHTML = ownerProducts
+    .map((p) => {
+      const media = p.imageUrl
+        ? `<img src="${escapeHtml(p.imageUrl)}" alt="">`
+        : `<div class="placeholder-swatch category-${escapeHtml(p.category || 'general')}" aria-hidden="true">${escapeHtml(initials(p.name))}</div>`;
+      const activeVariants = p.variants.filter((v) => v.status === 'active');
+      const priceRange = activeVariants.length
+        ? activeVariants.map((v) => formatMoney(v.price)).join(' / ')
+        : 'No varieties yet';
+      return `
+        <div class="owner-product-row" data-product-id="${escapeHtml(p.productId)}">
+          ${media}
+          <div class="row-info">
+            <strong>${escapeHtml(p.name)}</strong>
+            <span class="status-badge status-${escapeHtml(p.status)}">${escapeHtml(p.status)}</span>
+            <div class="helper-text">${priceRange}</div>
+          </div>
+          <div class="row-actions">
+            <button type="button" class="btn btn-small" data-action="edit">Edit</button>
+            <button type="button" class="btn btn-small btn-danger" data-action="archive">Archive</button>
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function onListClick(e) {
+  const row = e.target.closest('.owner-product-row');
+  if (!row) return;
+  const productId = row.dataset.productId;
+  const product = ownerProducts.find((p) => p.productId === productId);
+
+  if (e.target.closest('[data-action="edit"]')) {
+    openForm(product);
+  } else if (e.target.closest('[data-action="archive"]')) {
+    onArchive(product);
+  }
+}
+
+async function onArchive(product) {
+  if (!confirm(`Archive "${product.name}"? It will no longer be visible to customers.`)) return;
+  const res = await Api.post('deleteProduct', { token: Auth.getToken(), productId: product.productId });
+  if (!res.ok) {
+    alert(res.error || 'Could not archive this product.');
+    return;
+  }
+  await loadProducts();
+}
+
+function openForm(product) {
+  const section = document.getElementById('product-form-section');
+  const heading = document.getElementById('product-form-heading');
+  section.classList.remove('hidden');
+  selectedImageFile = null;
+  document.getElementById('product-image-input').value = '';
+  document.getElementById('product-form-error').textContent = '';
+
+  const preview = document.getElementById('image-preview');
+  document.getElementById('variant-rows').innerHTML = '';
+
+  if (product) {
+    heading.textContent = `Edit: ${product.name}`;
+    document.getElementById('product-id').value = product.productId;
+    document.getElementById('product-name').value = product.name;
+    document.getElementById('product-description').value = product.description || '';
+    document.getElementById('product-category').value = product.category || 'general';
+    document.getElementById('product-status').value = product.status || 'active';
+    if (product.imageUrl) {
+      preview.src = product.imageUrl;
+      preview.classList.remove('hidden');
+    } else {
+      preview.classList.add('hidden');
+    }
+    const activeVariants = product.variants.filter((v) => v.status === 'active');
+    if (activeVariants.length === 0) addVariantRow();
+    else activeVariants.forEach((v) => addVariantRow(v));
+  } else {
+    heading.textContent = 'Add Product';
+    document.getElementById('product-id').value = '';
+    document.getElementById('product-name').value = '';
+    document.getElementById('product-description').value = '';
+    document.getElementById('product-category').value = 'general';
+    document.getElementById('product-status').value = 'active';
+    preview.classList.add('hidden');
+    addVariantRow();
+  }
+
+  section.scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeForm() {
+  document.getElementById('product-form-section').classList.add('hidden');
+}
+
+function addVariantRow(variant) {
+  variantRowSeq++;
+  const rowId = `variant-row-${variantRowSeq}`;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'variant-row';
+  wrapper.dataset.variantId = variant ? variant.variantId : '';
+  wrapper.innerHTML = `
+    <div class="field">
+      <label for="${rowId}-label">Label (e.g. 500g, Large)</label>
+      <input id="${rowId}-label" class="variant-label" value="${variant ? escapeHtml(variant.label) : ''}" required>
+    </div>
+    <div class="field">
+      <label for="${rowId}-price">Price</label>
+      <input id="${rowId}-price" class="variant-price" type="number" min="0" step="0.01" value="${variant ? variant.price : ''}" required>
+    </div>
+    <button type="button" class="btn btn-small btn-danger remove-variant-btn">Remove</button>
+  `;
+  wrapper.querySelector('.remove-variant-btn').addEventListener('click', () => wrapper.remove());
+  document.getElementById('variant-rows').appendChild(wrapper);
+}
+
+function onImageFileChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedImageFile = file;
+  const preview = document.getElementById('image-preview');
+  const reader = new FileReader();
+  reader.onload = () => {
+    preview.src = reader.result;
+    preview.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+// Downscale/compress the photo client-side before upload - mobile camera
+// photos can be 5-10MB, which is both slow on Kiribati mobile data and
+// close to the Apps Script POST size limit once base64-encoded (~33% larger).
+function compressImage(file, maxDimension = 1280, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          const scale = maxDimension / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            const outReader = new FileReader();
+            outReader.onload = () => {
+              const base64 = outReader.result.split(',')[1];
+              resolve({ base64, mimeType: 'image/jpeg' });
+            };
+            outReader.onerror = reject;
+            outReader.readAsDataURL(blob);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onSaveProduct(e) {
+  e.preventDefault();
+  const errorEl = document.getElementById('product-form-error');
+  errorEl.textContent = '';
+
+  const variants = Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((row) => ({
+    variantId: row.dataset.variantId || undefined,
+    label: row.querySelector('.variant-label').value.trim(),
+    price: parseFloat(row.querySelector('.variant-price').value)
+  }));
+
+  if (variants.some((v) => !v.label || isNaN(v.price) || v.price < 0)) {
+    errorEl.textContent = 'Please fill in a label and a valid price for every variety.';
+    return;
+  }
+  if (variants.length === 0) {
+    errorEl.textContent = 'Add at least one variety (e.g. a size or pack) with a price.';
+    return;
+  }
+
+  const productId = document.getElementById('product-id').value || undefined;
+  const payload = {
+    token: Auth.getToken(),
+    productId,
+    name: document.getElementById('product-name').value.trim(),
+    description: document.getElementById('product-description').value.trim(),
+    category: document.getElementById('product-category').value,
+    status: document.getElementById('product-status').value,
+    variants
+  };
+
+  const saveBtn = document.getElementById('save-product-btn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+
+  const action = productId ? 'updateProduct' : 'createProduct';
+  const res = await Api.post(action, payload);
+
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not save this product.';
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Product';
+    return;
+  }
+
+  if (selectedImageFile) {
+    saveBtn.textContent = 'Uploading photo…';
+    try {
+      const { base64, mimeType } = await compressImage(selectedImageFile);
+      const uploadRes = await Api.post('uploadProductImage', {
+        token: Auth.getToken(),
+        productId: res.productId,
+        imageBase64: base64,
+        mimeType
+      });
+      if (!uploadRes.ok) {
+        errorEl.textContent = `Product saved, but the photo upload failed: ${uploadRes.error || 'unknown error'}`;
+      }
+    } catch (err) {
+      errorEl.textContent = 'Product saved, but the photo could not be processed.';
+    }
+  }
+
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'Save Product';
+  closeForm();
+  await loadProducts();
+}

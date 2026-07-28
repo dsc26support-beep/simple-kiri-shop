@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simple Kiri Shop — Browse Stores</title>
+  <meta name="description" content="Shop from local Kiribati stores online. Pay by ANZ bank transfer or Teremo.">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container">
+      <div>
+        <p class="site-title">Simple Kiri Shop</p>
+        <p class="site-tagline">Shop local. Pay with ANZ or Teremo.</p>
+      </div>
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="index.html">Browse Stores</a></li>
+          <li><a href="owner/login.html">Store Owner Login</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="container">
+        <h1>Find a store near you</h1>
+        <p>Browse local Kiribati shops, pick your items, and pay easily by ANZ bank transfer or Teremo.</p>
+      </div>
+    </section>
+
+    <section id="stores" aria-labelledby="stores-heading">
+      <div class="container">
+        <h2 id="stores-heading">Stores</h2>
+        <p id="stores-status" class="helper-text" role="status">Loading stores…</p>
+        <div id="store-list" class="store-grid"></div>
+        <noscript><p>Please enable JavaScript in your browser to browse stores.</p></noscript>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Simple Kiri Shop — a directory of local stores.</p>
+      <p>Payments are made directly to each store by ANZ bank transfer or Teremo. No online payment is processed on this site.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/helpers.js"></script>
+  <script src="assets/js/directory.js"></script>
+</body>
+</html>
