@@ -117,6 +117,13 @@ header.site-header .container.header-top-row {
   padding-bottom: var(--space-1);
 }
 
+.header-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
 header.site-header .container.site-branding {
   display: block;
   text-align: center;
