@@ -150,10 +150,14 @@ function wireLocationFields() {
   });
 }
 
+const SAVE_SETTINGS_IDLE_HTML = 'Save Settings';
+const SAVE_SETTINGS_BUSY_HTML = 'Saving<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+
 async function onSaveSettings(e) {
   e.preventDefault();
   const errorEl = document.getElementById('settings-error');
   const successEl = document.getElementById('settings-success');
+  const saveBtn = document.getElementById('save-settings-btn');
   errorEl.textContent = '';
   successEl.textContent = '';
 
@@ -182,7 +186,14 @@ async function onSaveSettings(e) {
     }
   });
 
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = SAVE_SETTINGS_BUSY_HTML;
+
   const res = await Api.post('updateOwnerProfile', payload);
+
+  saveBtn.disabled = false;
+  saveBtn.innerHTML = SAVE_SETTINGS_IDLE_HTML;
+
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not save your settings.';
     return;
