@@ -22,7 +22,8 @@ async function init() {
   }
 
   document.title = res.storeName + ' — Mwakete';
-  document.getElementById('store-name-tagline').textContent = res.storeName;
+  const location = storeLocationLabel(res.storeIsland, res.storeVillage);
+  document.getElementById('store-name-tagline').textContent = location ? `${res.storeName} | ${location}` : res.storeName;
 
   if (res.storeLogoUrl) {
     const logoImg = document.getElementById('store-logo-img');

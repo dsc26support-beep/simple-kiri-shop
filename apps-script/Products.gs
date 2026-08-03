@@ -21,7 +21,7 @@ function actionListStores() {
   var stores = sheetToObjects(getSheet('Owners'))
     .filter(function (o) { return o.Status === 'active'; })
     .map(function (o) {
-      var store = { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone, island: o.Island, logoUrl: o.LogoUrl };
+      var store = { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone, island: o.Island, village: o.Village, logoUrl: o.LogoUrl };
       Object.assign(store, deliveryFlagsOf(o));
       return store;
     });
@@ -119,7 +119,14 @@ function actionListProducts(params) {
     })
     .filter(function (p) { return p.variants.length > 0; });
 
-  var response = { storeName: owner.StoreName, storePhone: owner.Phone, storeLogoUrl: owner.LogoUrl, products: result };
+  var response = {
+    storeName: owner.StoreName,
+    storePhone: owner.Phone,
+    storeLogoUrl: owner.LogoUrl,
+    storeIsland: owner.Island,
+    storeVillage: owner.Village,
+    products: result
+  };
   response.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
   response.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
   response.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';

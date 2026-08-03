@@ -54,6 +54,15 @@ function compressImage(file, maxDimension = 1280, quality = 0.8) {
   });
 }
 
+// South Tarawa villages are specific enough to show on their own; every
+// other island is spread out enough that the island name is more useful
+// than a single village. Falls back to whichever of the two is set.
+function storeLocationLabel(island, village) {
+  if (!island) return village || '';
+  if (island === 'South Tarawa' && village) return village;
+  return island;
+}
+
 function initials(name) {
   return String(name || '?')
     .trim()
