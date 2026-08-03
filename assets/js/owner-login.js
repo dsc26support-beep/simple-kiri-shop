@@ -28,6 +28,7 @@ function init() {
 
   loginForm.addEventListener('submit', onLogin);
   registerForm.addEventListener('submit', onRegister);
+  document.getElementById('twofa-form').addEventListener('submit', onVerifyTwoFA);
 
   if (getQueryParam('tab') === 'register') {
     switchTab('register');
@@ -45,6 +46,32 @@ async function onLogin(e) {
   const res = await Api.post('loginOwner', { username, password });
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not log in.';
+    return;
+  }
+
+  if (res.twoFactorRequired) {
+    document.getElementById('twofa-pending-token').value = res.pendingToken;
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('twofa-form').classList.remove('hidden');
+    document.getElementById('twofa-code').focus();
+    return;
+  }
+
+  Auth.saveSession(res.token, res.owner);
+  window.location.href = 'dashboard.html';
+}
+
+async function onVerifyTwoFA(e) {
+  e.preventDefault();
+  const errorEl = document.getElementById('twofa-error');
+  errorEl.textContent = '';
+
+  const pendingToken = document.getElementById('twofa-pending-token').value;
+  const code = document.getElementById('twofa-code').value.trim();
+
+  const res = await Api.post('verifyLoginCode', { pendingToken, code });
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not verify that code.';
     return;
   }
 

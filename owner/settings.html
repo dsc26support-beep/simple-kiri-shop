@@ -89,6 +89,29 @@
         <p id="password-success" class="form-success" role="status"></p>
         <button type="submit" class="btn">Update Password</button>
       </form>
+
+      <div id="twofa-section" style="margin-top:2.5rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
+        <h2>Two-Factor Authentication</h2>
+        <p id="twofa-status" class="helper-text">Checking status…</p>
+
+        <button type="button" id="twofa-enable-btn" class="btn hidden">Enable 2FA</button>
+        <button type="button" id="twofa-disable-btn" class="btn btn-danger hidden">Disable 2FA</button>
+
+        <form id="twofa-confirm-form" class="hidden" style="margin-top:1rem;">
+          <input type="hidden" id="twofa-verify-token">
+          <p class="helper-text">We emailed you a 6-digit code. Enter it below to turn on 2FA.</p>
+          <div class="field">
+            <label for="twofa-confirm-code">Verification Code</label>
+            <input id="twofa-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+          </div>
+          <p id="twofa-confirm-error" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary">Confirm &amp; Enable</button>
+          <button type="button" id="twofa-cancel-btn" class="btn">Cancel</button>
+        </form>
+
+        <p id="twofa-action-error" class="form-error" role="alert"></p>
+        <p id="twofa-action-success" class="form-success" role="status"></p>
+      </div>
     </div>
   </main>
 

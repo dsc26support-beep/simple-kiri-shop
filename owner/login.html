@@ -45,6 +45,18 @@
           </div>
           <p id="login-error" class="form-error" role="alert"></p>
           <button type="submit" class="btn btn-primary btn-block">Log In</button>
+          <p class="helper-text" style="text-align:center; margin-top:0.75rem;"><a href="forgot-password.html">Forgot your password?</a></p>
+        </form>
+
+        <form id="twofa-form" class="hidden" role="tabpanel">
+          <input type="hidden" id="twofa-pending-token">
+          <p class="helper-text">We emailed you a 6-digit code. Enter it below to finish logging in.</p>
+          <div class="field">
+            <label for="twofa-code">Verification Code</label>
+            <input id="twofa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+          </div>
+          <p id="twofa-error" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary btn-block">Verify &amp; Log In</button>
         </form>
 
         <form id="register-form" class="hidden" role="tabpanel">

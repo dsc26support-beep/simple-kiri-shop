@@ -49,3 +49,25 @@ function parsePostBody(e) {
     return {};
   }
 }
+
+function generateToken() {
+  return Utilities.getUuid() + Utilities.getUuid();
+}
+
+function generate6DigitCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+/**
+ * Sends mail via the script owner's Google account (MailApp) and swallows
+ * failures (e.g. daily send quota exceeded) - callers already return a
+ * generic success response regardless, so a delivery failure shouldn't leak
+ * account existence or surface a confusing error to the caller.
+ */
+function sendAppEmail(to, subject, body) {
+  try {
+    MailApp.sendEmail(to, subject, body);
+  } catch (e) {
+    // best effort only
+  }
+}

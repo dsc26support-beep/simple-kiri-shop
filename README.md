@@ -26,11 +26,12 @@ store.html               One store's product catalog (?store=slug)
 cart.html                 Shopping cart for the active store
 checkout.html              Customer details, ANZ/Teremo instructions, places the order
 
-owner/login.html         Store owner login + registration
+owner/login.html         Store owner login + registration (+ 2FA code step)
+owner/forgot-password.html Email-code password reset
 owner/dashboard.html      Store owner summary
 owner/products.html       Product + variety management, phone photo upload
 owner/orders.html          Order list and status updates
-owner/settings.html        Store details, payment info, password change
+owner/settings.html        Store details, payment info, password change, 2FA on/off
 
 assets/js/config.js       The one line every deployment edits: APPS_SCRIPT_URL
 assets/js/api.js          fetch() wrapper for the Apps Script API
@@ -52,7 +53,7 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled`
 
    **Products**
    `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | Status | SortOrder | CreatedAt | UpdatedAt`
@@ -65,6 +66,13 @@ Sheet and deploy the Apps Script backend under your own Google account first.
 
    **Sessions**
    `Token | OwnerId | CreatedAt | ExpiresAt`
+
+   **TwoFACodes** (one-time email codes — shared by login 2FA, 2FA setup, and password reset)
+   `Token | OwnerId | Code | Purpose | CreatedAt | ExpiresAt | Attempts`
+
+   If you already have this Sheet set up from an earlier version, just add the
+   `TwoFAEnabled` column to the end of `Owners`, and add the new `TwoFACodes`
+   tab — everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
@@ -101,6 +109,11 @@ Sheet and deploy the Apps Script backend under your own Google account first.
 version (Manage deployments → Edit → New version) — saving the script alone
 does not update the live `/exec` URL.
 
+**The first time you deploy after adding the 2FA/password-reset code**, Apps
+Script will prompt you to re-authorize an additional permission (sending
+email as you, via `MailApp`) — this is expected, since login codes and reset
+codes are emailed from the script owner's own Google account.
+
 ## Security & operational notes
 
 - **Password hashing** is salted SHA-256 plus a server-side pepper, since Apps
@@ -125,3 +138,15 @@ does not update the live `/exec` URL.
 - Product photo uploads are capped at 4MB and compressed client-side before
   upload; the upload endpoint requires a valid store-owner token so it can't
   be used as open anonymous file hosting.
+- **2FA is an emailed 6-digit code**, not an authenticator app (TOTP) — simpler
+  to run reliably on Apps Script, but it means login security is only as
+  strong as the owner's email account, and depends on `MailApp` actually
+  delivering. Codes expire after 10 minutes and lock out after 5 wrong
+  attempts. It's opt-in per store owner (toggle in Settings), and requires a
+  contact email on file.
+- **Password reset** works the same way (an emailed 6-digit code, not a
+  clickable link), and resetting a password revokes all of that owner's
+  existing login sessions.
+- **Email sending quota**: `MailApp` on a free/consumer Google account is
+  capped around 100 emails/day. Fine at small scale (login codes + resets);
+  worth knowing if the marketplace grows a lot of daily 2FA logins.
