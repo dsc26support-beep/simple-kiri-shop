@@ -96,6 +96,16 @@ function renderSimilarProductCard(product) {
 
 function wireProductEvents() {
   document.getElementById('product-list').addEventListener('click', (e) => {
+    const thumbBtn = e.target.closest('.product-gallery-thumb');
+    if (thumbBtn) {
+      const card = thumbBtn.closest('.product-card');
+      const mainImg = card.querySelector('.product-image');
+      if (mainImg) mainImg.src = thumbBtn.dataset.imageUrl;
+      card.querySelectorAll('.product-gallery-thumb').forEach((b) => b.classList.remove('active'));
+      thumbBtn.classList.add('active');
+      return;
+    }
+
     const btn = e.target.closest('.add-to-cart-btn');
     if (!btn) return;
 

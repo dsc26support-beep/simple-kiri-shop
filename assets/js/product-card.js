@@ -8,9 +8,18 @@ function renderProductCard(product) {
     ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
     : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
+  const thumbs =
+    product.imageUrl && product.imageUrl2
+      ? `<div class="product-gallery-thumbs">
+          <button type="button" class="product-gallery-thumb active" data-image-url="${escapeHtml(product.imageUrl)}"><img src="${escapeHtml(product.imageUrl)}" alt="Photo 1 of ${escapeHtml(product.name)}"></button>
+          <button type="button" class="product-gallery-thumb" data-image-url="${escapeHtml(product.imageUrl2)}"><img src="${escapeHtml(product.imageUrl2)}" alt="Photo 2 of ${escapeHtml(product.name)}"></button>
+        </div>`
+      : '';
+
   return `
     <article class="product-card" data-product-id="${escapeHtml(product.productId)}">
       ${media}
+      ${thumbs}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}

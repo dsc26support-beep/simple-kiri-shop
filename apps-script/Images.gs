@@ -4,7 +4,7 @@
  * finds the exec URL.
  */
 
-var MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4MB decoded
+var MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB decoded
 
 function getImageFolder() {
   var props = PropertiesService.getScriptProperties();
@@ -25,6 +25,7 @@ function actionUploadProductImage(owner, body) {
   var productId = body.productId;
   var mimeType = body.mimeType;
   var imageBase64 = body.imageBase64;
+  var slot = Number(body.slot) === 2 ? 2 : 1; // up to 2 photos per product
 
   if (!productId) return fail('productId is required');
   if (!mimeType || mimeType.indexOf('image/') !== 0) return fail('Only image uploads are allowed');
@@ -39,10 +40,10 @@ function actionUploadProductImage(owner, body) {
   } catch (e) {
     return fail('Invalid image data');
   }
-  if (bytes.length > MAX_IMAGE_BYTES) return fail('Image is too large (max 4MB) - please choose a smaller photo');
+  if (bytes.length > MAX_IMAGE_BYTES) return fail('Image is too large (max 5MB) - please choose a smaller photo');
 
   var folder = getImageFolder();
-  var blob = Utilities.newBlob(bytes, mimeType, productId + '_' + Date.now());
+  var blob = Utilities.newBlob(bytes, mimeType, productId + '_' + slot + '_' + Date.now());
   var file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
@@ -50,19 +51,20 @@ function actionUploadProductImage(owner, body) {
   // (Google frequently blocks the hotlink and shows a broken image icon) -
   // the googleusercontent.com CDN form embeds reliably instead.
   var url = 'https://lh3.googleusercontent.com/d/' + file.getId();
-  var oldFileId = product.ImageFileId;
+  var urlField = slot === 2 ? 'ImageUrl2' : 'ImageUrl';
+  var fileIdField = slot === 2 ? 'ImageFileId2' : 'ImageFileId';
+  var oldFileId = product[fileIdField];
 
-  updateRowFromObject(getSheet('Products'), product.__row, {
-    ImageUrl: url,
-    ImageFileId: file.getId(),
-    UpdatedAt: nowIso()
-  });
+  var update = { UpdatedAt: nowIso() };
+  update[urlField] = url;
+  update[fileIdField] = file.getId();
+  updateRowFromObject(getSheet('Products'), product.__row, update);
 
   if (oldFileId) {
     try { DriveApp.getFileById(oldFileId).setTrashed(true); } catch (e) { /* already gone, ignore */ }
   }
 
-  return ok({ imageUrl: url });
+  return ok({ imageUrl: url, slot: slot });
 }
 
 function actionUploadStoreLogo(owner, body) {
@@ -78,7 +80,7 @@ function actionUploadStoreLogo(owner, body) {
   } catch (e) {
     return fail('Invalid image data');
   }
-  if (bytes.length > MAX_IMAGE_BYTES) return fail('Image is too large (max 4MB) - please choose a smaller photo');
+  if (bytes.length > MAX_IMAGE_BYTES) return fail('Image is too large (max 5MB) - please choose a smaller photo');
 
   var ownersSheet = getSheet('Owners');
   var ownerRow = findRowById(ownersSheet, 'OwnerId', owner.OwnerId);

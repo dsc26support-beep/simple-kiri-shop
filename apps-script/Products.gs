@@ -65,6 +65,7 @@ function actionSearchProducts(params) {
         description: p.Description,
         category: p.Category,
         imageUrl: p.ImageUrl,
+        imageUrl2: p.ImageUrl2,
         storeSlug: owner.StoreSlug,
         storeName: owner.StoreName,
         storePhone: owner.Phone,
@@ -114,6 +115,7 @@ function actionListProducts(params) {
         description: p.Description,
         category: p.Category,
         imageUrl: p.ImageUrl,
+        imageUrl2: p.ImageUrl2,
         variants: productVariants
       };
     })
@@ -149,6 +151,7 @@ function actionListOwnerProducts(owner) {
       description: p.Description,
       category: p.Category,
       imageUrl: p.ImageUrl,
+      imageUrl2: p.ImageUrl2,
       status: p.Status,
       sortOrder: p.SortOrder,
       variants: productVariants
@@ -181,6 +184,8 @@ function actionCreateOrUpdateProduct(owner, body) {
         Category: body.category || '',
         ImageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.ImageUrl,
         ImageFileId: body.imageFileId !== undefined ? body.imageFileId : existing.ImageFileId,
+        ImageUrl2: body.imageUrl2 !== undefined ? body.imageUrl2 : existing.ImageUrl2,
+        ImageFileId2: body.imageFileId2 !== undefined ? body.imageFileId2 : existing.ImageFileId2,
         Status: body.status || existing.Status || 'active',
         SortOrder: body.sortOrder !== undefined ? body.sortOrder : existing.SortOrder,
         UpdatedAt: now
@@ -196,6 +201,8 @@ function actionCreateOrUpdateProduct(owner, body) {
         Category: body.category || '',
         ImageUrl: body.imageUrl || '',
         ImageFileId: body.imageFileId || '',
+        ImageUrl2: body.imageUrl2 || '',
+        ImageFileId2: body.imageFileId2 || '',
         Status: 'active',
         SortOrder: body.sortOrder || 0,
         CreatedAt: now,

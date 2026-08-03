@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 let ownerProducts = [];
 let selectedImageFile = null;
+let selectedImageFile2 = null;
 let variantRowSeq = 0;
 
 async function init() {
@@ -14,6 +15,7 @@ async function init() {
   document.getElementById('add-variant-btn').addEventListener('click', () => addVariantRow());
   document.getElementById('product-form').addEventListener('submit', onSaveProduct);
   document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
+  document.getElementById('product-image-input-2').addEventListener('change', onImageFileChange2);
   document.getElementById('owner-product-list').addEventListener('click', onListClick);
 
   await loadProducts();
@@ -89,10 +91,13 @@ function openForm(product) {
   const heading = document.getElementById('product-form-heading');
   section.classList.remove('hidden');
   selectedImageFile = null;
+  selectedImageFile2 = null;
   document.getElementById('product-image-input').value = '';
+  document.getElementById('product-image-input-2').value = '';
   document.getElementById('product-form-error').textContent = '';
 
   const preview = document.getElementById('image-preview');
+  const preview2 = document.getElementById('image-preview-2');
   document.getElementById('variant-rows').innerHTML = '';
 
   if (product) {
@@ -108,6 +113,12 @@ function openForm(product) {
     } else {
       preview.classList.add('hidden');
     }
+    if (product.imageUrl2) {
+      preview2.src = product.imageUrl2;
+      preview2.classList.remove('hidden');
+    } else {
+      preview2.classList.add('hidden');
+    }
     const activeVariants = product.variants.filter((v) => v.status === 'active');
     if (activeVariants.length === 0) addVariantRow();
     else activeVariants.forEach((v) => addVariantRow(v));
@@ -119,6 +130,7 @@ function openForm(product) {
     document.getElementById('product-category').value = 'general';
     document.getElementById('product-status').value = 'active';
     preview.classList.add('hidden');
+    preview2.classList.add('hidden');
     addVariantRow();
   }
 
@@ -155,6 +167,19 @@ function onImageFileChange(e) {
   if (!file) return;
   selectedImageFile = file;
   const preview = document.getElementById('image-preview');
+  const reader = new FileReader();
+  reader.onload = () => {
+    preview.src = reader.result;
+    preview.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function onImageFileChange2(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedImageFile2 = file;
+  const preview = document.getElementById('image-preview-2');
   const reader = new FileReader();
   reader.onload = () => {
     preview.src = reader.result;
@@ -209,20 +234,40 @@ async function onSaveProduct(e) {
   }
 
   if (selectedImageFile) {
-    saveBtn.textContent = 'Uploading photo…';
+    saveBtn.textContent = 'Uploading photo 1…';
     try {
       const { base64, mimeType } = await compressImage(selectedImageFile);
       const uploadRes = await Api.post('uploadProductImage', {
         token: Auth.getToken(),
         productId: res.productId,
         imageBase64: base64,
-        mimeType
+        mimeType,
+        slot: 1
       });
       if (!uploadRes.ok) {
-        errorEl.textContent = `Product saved, but the photo upload failed: ${uploadRes.error || 'unknown error'}`;
+        errorEl.textContent = `Product saved, but photo 1 upload failed: ${uploadRes.error || 'unknown error'}`;
       }
     } catch (err) {
-      errorEl.textContent = 'Product saved, but the photo could not be processed.';
+      errorEl.textContent = 'Product saved, but photo 1 could not be processed.';
+    }
+  }
+
+  if (selectedImageFile2) {
+    saveBtn.textContent = 'Uploading photo 2…';
+    try {
+      const { base64, mimeType } = await compressImage(selectedImageFile2);
+      const uploadRes = await Api.post('uploadProductImage', {
+        token: Auth.getToken(),
+        productId: res.productId,
+        imageBase64: base64,
+        mimeType,
+        slot: 2
+      });
+      if (!uploadRes.ok) {
+        errorEl.textContent = `Product saved, but photo 2 upload failed: ${uploadRes.error || 'unknown error'}`;
+      }
+    } catch (err) {
+      errorEl.textContent = 'Product saved, but photo 2 could not be processed.';
     }
   }
 

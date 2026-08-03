@@ -66,7 +66,11 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    have this sheet set up.)
 
    **Products**
-   `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | Status | SortOrder | CreatedAt | UpdatedAt`
+   `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt`
+
+   (`ImageUrl2`/`ImageFileId2` hold an optional second product photo — each
+   product supports up to 2 photos, shown as swappable thumbnails on the
+   storefront.)
 
    **Variants**
    `VariantId | ProductId | OwnerId | Label | Price | SKU | StockQty | Status`
@@ -83,7 +87,8 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
    `Island`, `Village`, `LogoUrl`, and `LogoFileId` columns to the end of
-   `Owners`, and add the new `TwoFACodes` tab — everything else stays the same.
+   `Owners`, add `ImageUrl2` and `ImageFileId2` to the end of `Products`, and
+   add the new `TwoFACodes` tab — everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
@@ -146,9 +151,10 @@ codes are emailed from the script owner's own Google account.
   payment details.
 - **Back up the Sheet periodically** (File → Download) — it's the sole system
   of record, with no other backup layer.
-- Product photo and store logo uploads are capped at 4MB and compressed
-  client-side before upload; both endpoints require a valid store-owner
-  token so they can't be used as open anonymous file hosting.
+- Product photo (up to 2 per product) and store logo uploads are capped at
+  5MB and compressed client-side before upload; both endpoints require a
+  valid store-owner token so they can't be used as open anonymous file
+  hosting.
 - **2FA is an emailed 6-digit code**, not an authenticator app (TOTP) — simpler
   to run reliably on Apps Script, but it means login security is only as
   strong as the owner's email account, and depends on `MailApp` actually
