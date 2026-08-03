@@ -58,6 +58,7 @@ async function init() {
 
   updateCartCount();
   wireProductEvents();
+  wireGalleryScrollSync();
   loadSimilarProducts();
 }
 
@@ -131,8 +132,8 @@ function wireProductEvents() {
     const thumbBtn = e.target.closest('.product-gallery-thumb');
     if (thumbBtn) {
       const card = thumbBtn.closest('.product-card');
-      const mainImg = card.querySelector('.product-image');
-      if (mainImg) mainImg.src = thumbBtn.dataset.imageUrl;
+      const track = card.querySelector('.product-gallery-track');
+      if (track) track.scrollTo({ left: track.clientWidth * Number(thumbBtn.dataset.index), behavior: 'smooth' });
       card.querySelectorAll('.product-gallery-thumb').forEach((b) => b.classList.remove('active'));
       thumbBtn.classList.add('active');
       return;
@@ -166,6 +167,24 @@ function wireProductEvents() {
     setTimeout(() => {
       feedback.textContent = '';
     }, 4000);
+  });
+}
+
+// Scroll doesn't bubble, so each gallery track needs its own listener rather
+// than the single delegated click listener used for the rest of the grid.
+// Keeps the thumb dots in sync when the customer swipes the image directly
+// instead of tapping a thumb.
+function wireGalleryScrollSync() {
+  document.querySelectorAll('.product-gallery-track').forEach((track) => {
+    track.addEventListener(
+      'scroll',
+      () => {
+        const index = Math.round(track.scrollLeft / track.clientWidth);
+        const card = track.closest('.product-card');
+        card.querySelectorAll('.product-gallery-thumb').forEach((b, i) => b.classList.toggle('active', i === index));
+      },
+      { passive: true }
+    );
   });
 }
 

@@ -4,15 +4,21 @@ function renderProductCard(product) {
     .map((v) => `<option value="${v.variantId}" data-price="${v.price}">${escapeHtml(v.label)} — ${formatMoney(v.price)}</option>`)
     .join('');
 
-  const media = product.imageUrl
-    ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
-    : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
+  const media =
+    product.imageUrl && product.imageUrl2
+      ? `<div class="product-gallery-track">
+          <img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy">
+          <img class="product-image" src="${escapeHtml(product.imageUrl2)}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy">
+        </div>`
+      : product.imageUrl
+      ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
+      : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   const thumbs =
     product.imageUrl && product.imageUrl2
       ? `<div class="product-gallery-thumbs">
-          <button type="button" class="product-gallery-thumb active" data-image-url="${escapeHtml(product.imageUrl)}"><img src="${escapeHtml(product.imageUrl)}" alt="Photo 1 of ${escapeHtml(product.name)}"></button>
-          <button type="button" class="product-gallery-thumb" data-image-url="${escapeHtml(product.imageUrl2)}"><img src="${escapeHtml(product.imageUrl2)}" alt="Photo 2 of ${escapeHtml(product.name)}"></button>
+          <button type="button" class="product-gallery-thumb active" data-index="0"><img src="${escapeHtml(product.imageUrl)}" alt="Photo 1 of ${escapeHtml(product.name)}"></button>
+          <button type="button" class="product-gallery-thumb" data-index="1"><img src="${escapeHtml(product.imageUrl2)}" alt="Photo 2 of ${escapeHtml(product.name)}"></button>
         </div>`
       : '';
 

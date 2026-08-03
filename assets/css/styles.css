@@ -554,6 +554,22 @@ legend {
   font-size: 0.9rem;
 }
 
+.product-gallery-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.product-gallery-track::-webkit-scrollbar {
+  display: none;
+}
+
+.product-gallery-track .product-image {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+}
+
 .product-gallery-thumbs {
   display: flex;
   gap: var(--space-1);
