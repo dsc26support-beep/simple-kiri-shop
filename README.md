@@ -80,11 +80,17 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `VariantId | ProductId | OwnerId | Label | Price | SKU | StockQty | Status`
 
    **Orders**
-   `OrderId | OwnerId | StoreSlug | CustomerName | CustomerPhone | CustomerEmail | DeliveryAddress | Notes | PaymentMethod | PaymentReference | ItemsJson | ItemsSummary | Subtotal | Total | Status | CreatedAt | UpdatedAt | NoEmailReminderSent`
+   `OrderId | OwnerId | StoreSlug | CustomerName | CustomerPhone | CustomerEmail | Island | Village | DeliveryAddress | DeliveryMethod | DeliveryCost | Notes | PaymentMethod | PaymentReference | ItemsJson | ItemsSummary | Subtotal | Total | Status | CreatedAt | UpdatedAt | NoEmailReminderSent`
 
    (`NoEmailReminderSent` is a timestamp set the one time the "call this
    customer" reminder email goes out to the store owner — see "Reminder
-   emails" below. Leave it blank; the script manages it.)
+   emails" below. Leave it blank; the script manages it. `Island`/`Village`
+   are the customer's selected delivery location; `DeliveryAddress` is just
+   `Village, Island` for a human-readable single line. `DeliveryMethod` is
+   `truck`/`ship`/`airCargo`, and `DeliveryCost` is what that method cost at
+   order time — `Total` already includes it, `Subtotal` doesn't. See
+   "Delivery method eligibility" below for how the available choices are
+   worked out.)
 
    **Sessions**
    `Token | OwnerId | CreatedAt | ExpiresAt`
@@ -99,9 +105,10 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
    `DeliveryTruckCost`, `DeliveryShipCost`, `DeliveryAirCargoCost`, `Island`,
    `Village`, `LogoUrl`, and `LogoFileId` columns to the end of `Owners`, add
-   `ImageUrl2` and `ImageFileId2` to the end of `Products`, add
-   `NoEmailReminderSent` to the end of `Orders`, and add the new
-   `TwoFACodes` and `AbandonedCarts` tabs — everything else stays the same.
+   `ImageUrl2` and `ImageFileId2` to the end of `Products`, add `Island`,
+   `Village`, `DeliveryMethod`, `DeliveryCost`, and `NoEmailReminderSent` to
+   the end of `Orders`, and add the new `TwoFACodes` and `AbandonedCarts`
+   tabs — everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
@@ -176,6 +183,36 @@ A store owner can pause or delete their store from Settings:
   signed out and can no longer log in. This is a soft delete: no Sheet rows
   are ever erased, so it's reversible by editing the `Status` cell back to
   `active` directly in the Owners sheet if a store owner needs it restored.
+
+## Delivery method eligibility
+
+At checkout, the customer picks their Island and Village (same picker as a
+store owner's own Settings, "Other" free-text included), and only sees
+delivery methods they're actually allowed to choose. The rules, checked in
+this order, and re-derived server-side in `Orders.gs` so a crafted request
+can't unlock a method the UI hid:
+
+1. **Only methods the store has enabled** (Settings → Delivery Methods) are
+   ever candidates.
+2. **Ship requires a cart subtotal of at least $500** (before delivery cost),
+   for every customer, everywhere.
+3. **If the customer is in South Tarawa:**
+   - Ship and Air Cargo are blocked if the *store* is also in South Tarawa.
+   - Air Cargo is additionally blocked if the store is in North Tarawa (Air
+     Cargo only makes sense for the more distant outer islands).
+   - Truck is only available if the customer's village fuzzy-matches
+     "Buota", "Abatao", or "Tabiteuea" (case-insensitive, tolerates a single
+     typo) — these are the only villages a truck route can actually reach.
+4. **If the customer is anywhere else**, none of the South Tarawa-specific
+   restrictions apply — Truck and Air Cargo are available whenever the store
+   offers them, Ship still needs the $500 minimum.
+
+If zero delivery methods end up eligible, checkout shows why and the Place
+Order button stays disabled until the customer's location or cart changes.
+
+The chosen method's cost (set per-method in the store's own Settings, $0 =
+free) is added to the order's `Total` server-side — never trust a client to
+report its own delivery price.
 
 ## Security & operational notes
 

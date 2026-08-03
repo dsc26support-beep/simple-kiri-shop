@@ -8,6 +8,51 @@
 
 var VALID_ORDER_STATUSES = ['Pending Payment', 'Paid', 'Fulfilled', 'Cancelled'];
 
+// Villages where Truck delivery is physically viable for a South Tarawa
+// customer - fuzzy-matched (case/1-typo insensitive) against whichever
+// village they select.
+var TRUCK_ELIGIBLE_VILLAGES = ['buota', 'abatao', 'tabiteuea'];
+
+/**
+ * Mirrors the client-side eligibility check in checkout.js - re-derived here
+ * so a crafted request can't unlock a delivery method the UI would have
+ * hidden (e.g. Ship under the $500 minimum, or Air Cargo across a route the
+ * store doesn't actually serve).
+ */
+function computeEligibleDeliveryMethods(owner, customerIsland, customerVillage, subtotal) {
+  var eligible = [];
+  var custIsSouthTarawa = customerIsland === 'South Tarawa';
+  var storeIsland = owner.Island || '';
+
+  if (String(owner.DeliveryTruck) === 'true') {
+    if (!custIsSouthTarawa) {
+      eligible.push('truck');
+    } else {
+      var villageWords = String(customerVillage || '').toLowerCase().split(/[^a-z0-9]+/).filter(function (w) { return w.length > 2; });
+      var truckOk = villageWords.some(function (w) {
+        return TRUCK_ELIGIBLE_VILLAGES.some(function (target) { return wordsAreEquivalent(w, target); });
+      });
+      if (truckOk) eligible.push('truck');
+    }
+  }
+
+  if (String(owner.DeliveryShip) === 'true' && subtotal >= 500) {
+    if (!custIsSouthTarawa || storeIsland !== 'South Tarawa') eligible.push('ship');
+  }
+
+  if (String(owner.DeliveryAirCargo) === 'true') {
+    if (!custIsSouthTarawa) {
+      eligible.push('airCargo');
+    } else if (storeIsland !== 'South Tarawa' && storeIsland !== 'North Tarawa') {
+      eligible.push('airCargo');
+    }
+  }
+
+  return eligible;
+}
+
+var DELIVERY_COST_FIELD = { truck: 'DeliveryTruckCost', ship: 'DeliveryShipCost', airCargo: 'DeliveryAirCargoCost' };
+
 function actionCreateOrder(body) {
   var slug = body.storeSlug;
   if (!slug) return fail('storeSlug is required');
@@ -19,8 +64,12 @@ function actionCreateOrder(body) {
 
   var customerName = String(body.customerName || '').trim();
   var customerPhone = String(body.customerPhone || '').trim();
+  var island = String(body.island || '').trim();
+  var village = String(body.village || '').trim();
+  var deliveryMethod = String(body.deliveryMethod || '').trim();
   var paymentMethod = body.paymentMethod || '';
   if (!customerName || !customerPhone) return fail('Name and phone number are required');
+  if (!island || !village) return fail('Island and village are required');
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -57,6 +106,13 @@ function actionCreateOrder(body) {
       summaryParts.push(qty + '× ' + productName + ' ' + variant.Label);
     }
 
+    var eligibleMethods = computeEligibleDeliveryMethods(owner, island, village, subtotal);
+    if (eligibleMethods.indexOf(deliveryMethod) === -1) {
+      return fail('That delivery method is not available for your location - please refresh and choose an available option.');
+    }
+    var deliveryCost = Number(owner[DELIVERY_COST_FIELD[deliveryMethod]]) || 0;
+    var total = subtotal + deliveryCost;
+
     var orderId = generateOrderRef(slug);
     appendRowFromObject(getSheet('Orders'), {
       OrderId: orderId,
@@ -65,14 +121,18 @@ function actionCreateOrder(body) {
       CustomerName: customerName,
       CustomerPhone: customerPhone,
       CustomerEmail: body.customerEmail || '',
-      DeliveryAddress: body.deliveryAddress || '',
+      Island: island,
+      Village: village,
+      DeliveryAddress: village + ', ' + island,
+      DeliveryMethod: deliveryMethod,
+      DeliveryCost: deliveryCost,
       Notes: body.notes || '',
       PaymentMethod: paymentMethod,
       PaymentReference: orderId,
       ItemsJson: JSON.stringify(lineItems),
       ItemsSummary: summaryParts.join(', '),
       Subtotal: subtotal,
-      Total: subtotal,
+      Total: total,
       Status: 'Pending Payment',
       CreatedAt: nowIso(),
       UpdatedAt: nowIso()
@@ -82,7 +142,9 @@ function actionCreateOrder(body) {
 
     return ok({
       orderId: orderId,
-      total: subtotal,
+      total: total,
+      deliveryMethod: deliveryMethod,
+      deliveryCost: deliveryCost,
       paymentMethod: paymentMethod,
       store: publicOwnerFields(owner),
       items: lineItems
@@ -104,7 +166,11 @@ function actionListOwnerOrders(owner) {
       customerName: o.CustomerName,
       customerPhone: o.CustomerPhone,
       customerEmail: o.CustomerEmail,
+      island: o.Island,
+      village: o.Village,
       deliveryAddress: o.DeliveryAddress,
+      deliveryMethod: o.DeliveryMethod,
+      deliveryCost: o.DeliveryCost,
       notes: o.Notes,
       paymentMethod: o.PaymentMethod,
       paymentReference: o.PaymentReference,

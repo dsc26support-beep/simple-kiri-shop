@@ -50,6 +50,7 @@ function render() {
             <dt>Customer</dt><dd>${escapeHtml(o.customerName)}</dd>
             <dt>Phone</dt><dd>${escapeHtml(o.customerPhone)}</dd>
             ${o.deliveryAddress ? `<dt>Address</dt><dd>${escapeHtml(o.deliveryAddress)}</dd>` : ''}
+            ${o.deliveryMethod ? `<dt>Delivery</dt><dd>${escapeHtml(DELIVERY_ICON_LABELS[o.deliveryMethod] || o.deliveryMethod)}${o.deliveryCost != null ? ' — ' + (Number(o.deliveryCost) === 0 ? 'Free' : formatMoney(o.deliveryCost)) : ''}</dd>` : ''}
             <dt>Payment</dt><dd>${o.paymentMethod ? escapeHtml(o.paymentMethod) : 'Not yet specified'}</dd>
             <dt>Items</dt><dd>${escapeHtml(o.itemsSummary)}</dd>
             <dt>Total</dt><dd>${formatMoney(o.total)}</dd>

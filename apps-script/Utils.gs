@@ -58,6 +58,35 @@ function generate6DigitCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+// Word-level fuzzy matching (mirrors assets/js/helpers.js's client-side
+// version) - used server-side to re-validate delivery-method eligibility
+// rather than trusting whatever the client claims is eligible.
+function levenshteinDistance(a, b) {
+  if (a === b) return 0;
+  var m = a.length;
+  var n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  var prevRow = [];
+  for (var j = 0; j <= n; j++) prevRow[j] = j;
+  for (var i = 1; i <= m; i++) {
+    var currRow = [i];
+    for (var j2 = 1; j2 <= n; j2++) {
+      currRow[j2] = a[i - 1] === b[j2 - 1]
+        ? prevRow[j2 - 1]
+        : 1 + Math.min(prevRow[j2 - 1], prevRow[j2], currRow[j2 - 1]);
+    }
+    prevRow = currRow;
+  }
+  return prevRow[n];
+}
+
+function wordsAreEquivalent(a, b) {
+  if (a === b) return true;
+  return levenshteinDistance(a, b) <= 1;
+}
+
 /**
  * Sends mail via the script owner's Google account (MailApp) and swallows
  * failures (e.g. daily send quota exceeded) - callers already return a

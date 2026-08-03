@@ -193,6 +193,39 @@ header.site-header a {
   color: var(--color-success);
 }
 
+#delivery-method-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.delivery-method-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.6em 1em;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delivery-method-option:has(input:checked) {
+  border-color: var(--color-blue);
+}
+
+.delivery-method-option input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+}
+
+.delivery-method-option svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 nav.site-nav ul {
   list-style: none;
   display: flex;

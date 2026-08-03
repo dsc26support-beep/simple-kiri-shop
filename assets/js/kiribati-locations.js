@@ -9,7 +9,7 @@
 // ============================================================================
 const KIRIBATI_ISLANDS = {
   'South Tarawa': ['Betio', 'Bairiki', 'Bikenibeu', 'Nanikai', 'Eita', 'Ambo', 'Antebuka', 'Teaoraereke', 'Banraeaba', 'Abarao', 'Bonriki', 'Temaiku'],
-  'North Tarawa': ['Buariki', 'Abatao', 'Marenanuka', 'Tearinibai', 'Nabeina', 'Muribenua', 'Abaokoro'],
+  'North Tarawa': ['Buariki', 'Abatao', 'Marenanuka', 'Tearinibai', 'Nabeina', 'Muribenua', 'Abaokoro', 'Buota', 'Tabiteuea'],
   Makin: ['Makin Village', 'Onne', 'Tebanga'],
   Butaritari: ['Butaritari Village', 'Keuea', 'Tanimaiaki', 'Ukiangang', 'Kuma', 'Tabwiroa'],
   Marakei: ['Rawannawi', 'Buariki', 'Antebuka', 'Taboiaki', 'Tekabwibwi'],
