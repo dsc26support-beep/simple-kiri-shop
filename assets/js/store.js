@@ -123,7 +123,7 @@ function showAddingToCartState(btn) {
     btn.disabled = false;
     btn.classList.remove('btn-adding');
     btn.textContent = 'Add to Cart';
-  }, 500);
+  }, 1200);
 }
 
 function wireProductEvents() {
