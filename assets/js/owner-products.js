@@ -188,6 +188,16 @@ function onImageFileChange2(e) {
   reader.readAsDataURL(file);
 }
 
+function setSaveProductBusy(saveBtn, label) {
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = `${label}<span class="btn-saving-dots"><span></span><span></span><span></span></span>`;
+}
+
+function setSaveProductIdle(saveBtn) {
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'Save Product';
+}
+
 async function onSaveProduct(e) {
   e.preventDefault();
   const errorEl = document.getElementById('product-form-error');
@@ -220,21 +230,19 @@ async function onSaveProduct(e) {
   };
 
   const saveBtn = document.getElementById('save-product-btn');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Saving…';
+  setSaveProductBusy(saveBtn, productId ? 'Saving' : 'Adding');
 
   const action = productId ? 'updateProduct' : 'createProduct';
   const res = await Api.post(action, payload);
 
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not save this product.';
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Save Product';
+    setSaveProductIdle(saveBtn);
     return;
   }
 
   if (selectedImageFile) {
-    saveBtn.textContent = 'Uploading photo 1…';
+    setSaveProductBusy(saveBtn, 'Uploading photo 1');
     try {
       const { base64, mimeType } = await compressImage(selectedImageFile);
       const uploadRes = await Api.post('uploadProductImage', {
@@ -253,7 +261,7 @@ async function onSaveProduct(e) {
   }
 
   if (selectedImageFile2) {
-    saveBtn.textContent = 'Uploading photo 2…';
+    setSaveProductBusy(saveBtn, 'Uploading photo 2');
     try {
       const { base64, mimeType } = await compressImage(selectedImageFile2);
       const uploadRes = await Api.post('uploadProductImage', {
@@ -271,8 +279,7 @@ async function onSaveProduct(e) {
     }
   }
 
-  saveBtn.disabled = false;
-  saveBtn.textContent = 'Save Product';
+  setSaveProductIdle(saveBtn);
   closeForm();
   await loadProducts();
 }
