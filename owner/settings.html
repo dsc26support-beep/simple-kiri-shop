@@ -54,11 +54,23 @@
         </div>
 
         <h2>Delivery Methods</h2>
-        <p class="helper-text">Select all the ways you can deliver orders — these show as icons next to your store name.</p>
+        <p class="helper-text">Select all the ways you can deliver orders — these show as icons next to your store name. Set a cost for each ($0 = free delivery, shown with a green icon).</p>
         <div class="delivery-toggle-group" id="delivery-toggle-group" role="group" aria-label="Delivery methods">
-          <button type="button" class="delivery-toggle-btn" id="delivery-truck-btn" data-method="truck" aria-pressed="false"></button>
-          <button type="button" class="delivery-toggle-btn" id="delivery-ship-btn" data-method="ship" aria-pressed="false"></button>
-          <button type="button" class="delivery-toggle-btn" id="delivery-aircargo-btn" data-method="airCargo" aria-pressed="false"></button>
+          <div class="delivery-method-row">
+            <button type="button" class="delivery-toggle-btn" id="delivery-truck-btn" data-method="truck" aria-pressed="false"></button>
+            <label class="sr-only" for="delivery-truck-cost">Truck delivery cost</label>
+            <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-truck-cost" placeholder="Cost ($0 = free)">
+          </div>
+          <div class="delivery-method-row">
+            <button type="button" class="delivery-toggle-btn" id="delivery-ship-btn" data-method="ship" aria-pressed="false"></button>
+            <label class="sr-only" for="delivery-ship-cost">Ship delivery cost</label>
+            <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-ship-cost" placeholder="Cost ($0 = free)">
+          </div>
+          <div class="delivery-method-row">
+            <button type="button" class="delivery-toggle-btn" id="delivery-aircargo-btn" data-method="airCargo" aria-pressed="false"></button>
+            <label class="sr-only" for="delivery-aircargo-cost">Air cargo delivery cost</label>
+            <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-aircargo-cost" placeholder="Cost ($0 = free)">
+          </div>
         </div>
 
         <h2>Location</h2>
@@ -119,6 +131,16 @@
         <p id="twofa-action-error" class="form-error" role="alert"></p>
         <p id="twofa-action-success" class="form-success" role="status"></p>
       </div>
+
+      <div id="store-status-section" style="margin-top:2.5rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
+        <h2>Store Status</h2>
+        <p id="store-status-current" class="helper-text"></p>
+        <p class="helper-text">Standby hides your store from customers but you can still log in and switch it back at any time. Deleting also hides it and signs you out for good from here on — your data stays safely on file, so contact us if you ever need it restored.</p>
+        <button type="button" id="store-status-standby-btn" class="btn">Pause Store (Standby)</button>
+        <button type="button" id="store-status-reactivate-btn" class="btn btn-primary hidden">Reactivate Store</button>
+        <button type="button" id="store-status-delete-btn" class="btn btn-danger">Delete Store</button>
+        <p id="store-status-error" class="form-error" role="alert"></p>
+      </div>
     </div>
   </main>
 
@@ -133,6 +155,7 @@
   <script src="../assets/js/config.js"></script>
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/cookie-consent.js"></script>
   <script src="../assets/js/kiribati-locations.js"></script>
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/owner-nav.js"></script>

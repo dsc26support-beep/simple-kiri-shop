@@ -41,7 +41,10 @@ async function init() {
   document.getElementById('store-delivery-icons').innerHTML = renderDeliveryIcons({
     truck: res.storeDeliveryTruck,
     ship: res.storeDeliveryShip,
-    airCargo: res.storeDeliveryAirCargo
+    airCargo: res.storeDeliveryAirCargo,
+    truckCost: res.storeDeliveryTruckCost,
+    shipCost: res.storeDeliveryShipCost,
+    airCargoCost: res.storeDeliveryAirCargoCost
   });
 
   currentProducts = res.products;
@@ -65,7 +68,16 @@ async function loadSimilarProducts() {
   const res = await Api.get('searchProducts', { category });
   if (!res.ok) return;
 
-  const similar = res.products.filter((p) => p.storeSlug !== currentSlug).slice(0, 10);
+  // Same category (via the search call above) is only half the bar - a
+  // candidate also needs to share at least one equivalent word with one of
+  // this store's own product names (case/1-typo insensitive), so "similar
+  // products" actually resembles what's being viewed rather than just
+  // sharing a broad category like "general".
+  const ownNames = currentProducts.map((p) => p.name);
+  const similar = res.products
+    .filter((p) => p.storeSlug !== currentSlug)
+    .filter((p) => ownNames.some((name) => namesShareEquivalentWord(name, p.name)))
+    .slice(0, 10);
   if (similar.length === 0) return;
 
   document.getElementById('similar-products-list').innerHTML = similar.map(renderSimilarProductCard).join('');
@@ -86,7 +98,14 @@ function renderSimilarProductCard(product) {
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         <span class="helper-text">${escapeHtml(product.storeName)}</span>
         ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
-        ${renderDeliveryIcons({ truck: product.storeDeliveryTruck, ship: product.storeDeliveryShip, airCargo: product.storeDeliveryAirCargo })}
+        ${renderDeliveryIcons({
+          truck: product.storeDeliveryTruck,
+          ship: product.storeDeliveryShip,
+          airCargo: product.storeDeliveryAirCargo,
+          truckCost: product.storeDeliveryTruckCost,
+          shipCost: product.storeDeliveryShipCost,
+          airCargoCost: product.storeDeliveryAirCargoCost
+        })}
         <strong>${priceText}</strong>
         <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">View</a>
       </div>

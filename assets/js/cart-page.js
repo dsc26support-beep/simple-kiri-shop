@@ -29,7 +29,10 @@ async function init() {
     document.getElementById('store-delivery-icons').innerHTML = renderDeliveryIcons({
       truck: res.store.deliveryTruck,
       ship: res.store.deliveryShip,
-      airCargo: res.store.deliveryAirCargo
+      airCargo: res.store.deliveryAirCargo,
+      truckCost: res.store.deliveryTruckCost,
+      shipCost: res.store.deliveryShipCost,
+      airCargoCost: res.store.deliveryAirCargoCost
     });
   }
 

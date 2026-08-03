@@ -10,12 +10,13 @@
 
 var PUBLIC_POST_ACTIONS = [
   'registerOwner', 'loginOwner', 'createOrder',
-  'verifyLoginCode', 'requestPasswordReset', 'resetPasswordWithCode'
+  'verifyLoginCode', 'requestPasswordReset', 'resetPasswordWithCode',
+  'saveAbandonedCart'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
   'createProduct', 'updateProduct', 'deleteProduct', 'uploadProductImage', 'uploadStoreLogo',
-  'listOwnerOrders', 'updateOrderStatus',
+  'listOwnerOrders', 'updateOrderStatus', 'setStoreStatus',
   'enable2FARequest', 'confirm2FASetup', 'disable2FA'
 ];
 
@@ -47,6 +48,7 @@ function doPost(e) {
         case 'verifyLoginCode': return jsonOut(actionVerifyLoginCode(body));
         case 'requestPasswordReset': return jsonOut(actionRequestPasswordReset(body));
         case 'resetPasswordWithCode': return jsonOut(actionResetPasswordWithCode(body));
+        case 'saveAbandonedCart': return jsonOut(actionSaveAbandonedCart(body));
       }
     }
 
@@ -71,6 +73,7 @@ function doPost(e) {
         case 'uploadStoreLogo': return jsonOut(actionUploadStoreLogo(owner, body));
         case 'listOwnerOrders': return jsonOut(actionListOwnerOrders(owner));
         case 'updateOrderStatus': return jsonOut(actionUpdateOrderStatus(owner, body));
+        case 'setStoreStatus': return jsonOut(actionSetStoreStatus(owner, body));
         case 'enable2FARequest': return jsonOut(actionEnable2FARequest(owner));
         case 'confirm2FASetup': return jsonOut(actionConfirm2FASetup(owner, body));
         case 'disable2FA': return jsonOut(actionDisable2FA(owner));

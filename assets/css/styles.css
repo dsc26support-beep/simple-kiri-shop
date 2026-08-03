@@ -189,6 +189,10 @@ header.site-header a {
   display: block;
 }
 
+.delivery-icon-free {
+  color: var(--color-success);
+}
+
 nav.site-nav ul {
   list-style: none;
   display: flex;
@@ -282,6 +286,29 @@ footer.site-footer .copyright {
   margin-top: var(--space-2);
   color: var(--color-muted-light);
   font-size: 0.75rem;
+}
+
+.cookie-consent-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-ink);
+  color: #fff;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cookie-consent-banner p {
+  margin: 0;
+  max-width: 50em;
+  font-size: 0.9rem;
 }
 
 /* Buttons & form controls */

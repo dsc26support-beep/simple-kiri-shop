@@ -8,6 +8,8 @@ function init() {
 
   if (getQueryParam('expired')) {
     document.getElementById('session-message').textContent = 'Your session expired — please log in again.';
+  } else if (getQueryParam('deleted')) {
+    document.getElementById('session-message').textContent = 'Your store has been deleted. Contact admin@mwakete.com if this was a mistake.';
   }
 
   const tabLogin = document.getElementById('tab-login');

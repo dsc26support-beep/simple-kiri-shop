@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', init);
 
 const DELIVERY_BUTTONS = [
-  { id: 'delivery-truck-btn', method: 'truck', label: 'Truck' },
-  { id: 'delivery-ship-btn', method: 'ship', label: 'Ship' },
-  { id: 'delivery-aircargo-btn', method: 'airCargo', label: 'Air Cargo' }
+  { id: 'delivery-truck-btn', costId: 'delivery-truck-cost', method: 'truck', label: 'Truck' },
+  { id: 'delivery-ship-btn', costId: 'delivery-ship-cost', method: 'ship', label: 'Ship' },
+  { id: 'delivery-aircargo-btn', costId: 'delivery-aircargo-cost', method: 'airCargo', label: 'Air Cargo' }
 ];
 
 async function init() {
@@ -22,6 +22,8 @@ async function init() {
   fillForm(owner);
   renderTwoFAStatus(owner);
   wireTwoFA();
+  renderStoreStatus(owner);
+  wireStoreStatus();
 
   document.getElementById('settings-form').addEventListener('submit', onSaveSettings);
   document.getElementById('password-form').addEventListener('submit', onChangePassword);
@@ -32,9 +34,14 @@ function fillForm(owner) {
   document.getElementById('contact-email').value = owner.email || '';
   document.getElementById('contact-phone').value = owner.phone || '';
 
-  DELIVERY_BUTTONS.forEach(({ id, method }) => {
+  DELIVERY_BUTTONS.forEach(({ id, costId, method }) => {
     const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
-    document.getElementById(id).setAttribute('aria-pressed', String(!!owner[key]));
+    const pressed = !!owner[key];
+    document.getElementById(id).setAttribute('aria-pressed', String(pressed));
+    const costInput = document.getElementById(costId);
+    const cost = owner[key + 'Cost'];
+    costInput.value = cost == null ? '' : cost;
+    costInput.classList.toggle('hidden', !pressed);
   });
 
   document.getElementById('settings-island').value = owner.island || '';
@@ -83,10 +90,13 @@ function renderDeliveryToggleButtons() {
 }
 
 function wireDeliveryToggles() {
-  document.querySelectorAll('.delivery-toggle-btn').forEach((btn) => {
+  DELIVERY_BUTTONS.forEach(({ id, costId }) => {
+    const btn = document.getElementById(id);
+    const costInput = document.getElementById(costId);
     btn.addEventListener('click', () => {
       const pressed = btn.getAttribute('aria-pressed') === 'true';
       btn.setAttribute('aria-pressed', String(!pressed));
+      costInput.classList.toggle('hidden', pressed);
     });
   });
 }
@@ -162,8 +172,14 @@ async function onSaveSettings(e) {
     village: village
   };
 
-  DELIVERY_BUTTONS.forEach(({ id, method }) => {
-    payload['delivery' + method[0].toUpperCase() + method.slice(1)] = document.getElementById(id).getAttribute('aria-pressed') === 'true';
+  DELIVERY_BUTTONS.forEach(({ id, costId, method }) => {
+    const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
+    const pressed = document.getElementById(id).getAttribute('aria-pressed') === 'true';
+    payload[key] = pressed;
+    if (pressed) {
+      const raw = document.getElementById(costId).value.trim();
+      payload[key + 'Cost'] = raw === '' ? 0 : Math.max(0, parseFloat(raw) || 0);
+    }
   });
 
   const res = await Api.post('updateOwnerProfile', payload);
@@ -292,4 +308,64 @@ async function onDisable2FA() {
   document.getElementById('twofa-action-success').textContent = 'Two-factor authentication is now off.';
   renderTwoFAStatus(owner);
   setTimeout(() => { document.getElementById('twofa-action-success').textContent = ''; }, 3000);
+}
+
+function renderStoreStatus(owner) {
+  const currentEl = document.getElementById('store-status-current');
+  const standbyBtn = document.getElementById('store-status-standby-btn');
+  const reactivateBtn = document.getElementById('store-status-reactivate-btn');
+
+  if (owner.status === 'standby') {
+    currentEl.textContent = 'Your store is currently in Standby mode — hidden from customers.';
+    standbyBtn.classList.add('hidden');
+    reactivateBtn.classList.remove('hidden');
+  } else {
+    currentEl.textContent = 'Your store is currently Active and visible to customers.';
+    standbyBtn.classList.remove('hidden');
+    reactivateBtn.classList.add('hidden');
+  }
+}
+
+function wireStoreStatus() {
+  document.getElementById('store-status-standby-btn').addEventListener('click', () => onSetStoreStatus('standby'));
+  document.getElementById('store-status-reactivate-btn').addEventListener('click', () => onSetStoreStatus('active'));
+  document.getElementById('store-status-delete-btn').addEventListener('click', onDeleteStore);
+}
+
+async function onSetStoreStatus(status) {
+  const errorEl = document.getElementById('store-status-error');
+  errorEl.textContent = '';
+
+  if (status === 'standby' && !confirm('Pause your store? Customers won\'t be able to see it until you reactivate.')) return;
+
+  const res = await Api.post('setStoreStatus', { token: Auth.getToken(), status });
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not update store status.';
+    return;
+  }
+
+  const owner = Auth.getOwner();
+  owner.status = status;
+  Auth.saveSession(Auth.getToken(), owner);
+  renderStoreStatus(owner);
+}
+
+async function onDeleteStore() {
+  const confirmed = confirm(
+    'Delete your store? It will disappear from the directory immediately and you\'ll be signed out and unable to log back in. ' +
+    'Your data stays on file - contact admin@mwakete.com if you ever need it restored. This cannot be undone from the dashboard.'
+  );
+  if (!confirmed) return;
+
+  const errorEl = document.getElementById('store-status-error');
+  errorEl.textContent = '';
+
+  const res = await Api.post('setStoreStatus', { token: Auth.getToken(), status: 'closed' });
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not delete your store.';
+    return;
+  }
+
+  Auth.clearSession();
+  window.location.href = 'login.html?deleted=1';
 }

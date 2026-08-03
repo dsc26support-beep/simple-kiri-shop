@@ -78,6 +78,8 @@ function actionCreateOrder(body) {
       UpdatedAt: nowIso()
     });
 
+    if (body.customerEmail) markAbandonedCartConverted(slug, body.customerEmail, orderId);
+
     return ok({
       orderId: orderId,
       total: subtotal,

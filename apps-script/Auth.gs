@@ -30,9 +30,13 @@ function publicOwnerFields(owner) {
     logoUrl: owner.LogoUrl,
     island: owner.Island,
     village: owner.Village,
+    status: owner.Status,
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
     deliveryShip: String(owner.DeliveryShip) === 'true',
     deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true',
+    deliveryTruckCost: owner.DeliveryTruckCost === '' || owner.DeliveryTruckCost == null ? null : Number(owner.DeliveryTruckCost),
+    deliveryShipCost: owner.DeliveryShipCost === '' || owner.DeliveryShipCost == null ? null : Number(owner.DeliveryShipCost),
+    deliveryAirCargoCost: owner.DeliveryAirCargoCost === '' || owner.DeliveryAirCargoCost == null ? null : Number(owner.DeliveryAirCargoCost),
     twoFAEnabled: String(owner.TwoFAEnabled) === 'true'
   };
 }
@@ -46,6 +50,14 @@ function issueSession(ownerId) {
   return token;
 }
 
+// A store's Status is one of: 'active' (normal), 'standby' (owner paused it -
+// hidden from customers, but the owner can still log in to switch it back),
+// or 'closed' (owner deleted it from Settings - hidden from customers *and*
+// the owner is locked out; a soft delete, so the row itself is never erased).
+function ownerCanLogIn(owner) {
+  return !!owner && (owner.Status === 'active' || owner.Status === 'standby');
+}
+
 /** Validates a bearer token and returns the owner row, or throws. */
 function requireAuth(token) {
   if (!token) throw new Error('Not authenticated');
@@ -53,7 +65,7 @@ function requireAuth(token) {
   if (!session) throw new Error('Not authenticated');
   if (new Date(session.ExpiresAt).getTime() < Date.now()) throw new Error('Session expired, please log in again');
   var owner = findRowById(getSheet('Owners'), 'OwnerId', session.OwnerId);
-  if (!owner || owner.Status !== 'active') throw new Error('Not authenticated');
+  if (!ownerCanLogIn(owner)) throw new Error('Not authenticated');
   return owner;
 }
 
@@ -139,8 +151,10 @@ function actionLoginOwner(body) {
   var salt = owner ? owner.PasswordSalt : 'no-such-user-salt';
   var candidateHash = hashPassword(password, salt);
 
-  if (!owner || owner.Status !== 'active' || candidateHash !== owner.PasswordHash) {
-    return fail('Invalid username or password');
+  if (!ownerCanLogIn(owner) || candidateHash !== owner.PasswordHash) {
+    return fail(owner && owner.Status === 'closed'
+      ? 'This store has been deleted. Contact admin@mwakete.com if this is a mistake.'
+      : 'Invalid username or password');
   }
 
   if (String(owner.TwoFAEnabled) === 'true') {
@@ -161,7 +175,7 @@ function actionVerifyLoginCode(body) {
   if (!result.ok) return result;
 
   var owner = findRowById(getSheet('Owners'), 'OwnerId', result.ownerId);
-  if (!owner || owner.Status !== 'active') return fail('Account not found');
+  if (!ownerCanLogIn(owner)) return fail('Account not found');
 
   var token = issueSession(owner.OwnerId);
   return ok({ token: token, owner: publicOwnerFields(owner) });
@@ -173,6 +187,28 @@ function actionLogoutOwner(body) {
   var row = findRowById(sheet, 'Token', body.token);
   if (row) sheet.deleteRow(row.__row);
   return ok({});
+}
+
+var VALID_STORE_STATUSES = ['active', 'standby', 'closed'];
+
+/**
+ * Standby hides the store from customers but the owner can still log in and
+ * switch back. Closed (Settings' "Delete Store") also locks the owner out -
+ * a soft delete, so no Sheet rows are ever erased and it's reversible by
+ * editing the Owners sheet directly if needed.
+ */
+function actionSetStoreStatus(owner, body) {
+  var status = String(body.status || '');
+  if (VALID_STORE_STATUSES.indexOf(status) === -1) return fail('Invalid status');
+
+  var sheet = getSheet('Owners');
+  var row = findRowById(sheet, 'OwnerId', owner.OwnerId);
+  if (!row) return fail('Store account not found');
+
+  updateRowFromObject(sheet, row.__row, { Status: status });
+  if (status === 'closed') revokeAllSessions(owner.OwnerId);
+
+  return ok({ status: status });
 }
 
 /** Optional: wire to a daily time-driven trigger so the Sessions tab doesn't grow forever. */
@@ -271,7 +307,7 @@ function actionRequestPasswordReset(body) {
 
   // Always return a token so the response looks the same whether or not the
   // account exists - this endpoint must not be usable to enumerate usernames.
-  if (owner && owner.Status === 'active' && owner.Email) {
+  if (ownerCanLogIn(owner) && owner.Email) {
     var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'reset');
     return ok({ token: pending.token });
   }

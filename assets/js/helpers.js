@@ -8,6 +8,51 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Word-level fuzzy matching for "similar products": case differences never
+// count, and a single-character edit (typo) doesn't either, but that's the
+// only slack allowed - "rice" and "ride" match, "rice" and "rise" match,
+// but "rice" and "race" (2 edits away is fine, this IS 1 edit - kept for
+// illustration) ... in short: Levenshtein distance <= 1 after lowercasing.
+function levenshteinDistance(a, b) {
+  if (a === b) return 0;
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  let prevRow = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const currRow = [i];
+    for (let j = 1; j <= n; j++) {
+      currRow[j] =
+        a[i - 1] === b[j - 1]
+          ? prevRow[j - 1]
+          : 1 + Math.min(prevRow[j - 1], prevRow[j], currRow[j - 1]);
+    }
+    prevRow = currRow;
+  }
+  return prevRow[n];
+}
+
+function tokenizeProductName(name) {
+  return String(name || '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length > 2); // skip tiny/common words (of, a, in, ...)
+}
+
+function wordsAreEquivalent(wordA, wordB) {
+  if (wordA === wordB) return true;
+  return levenshteinDistance(wordA, wordB) <= 1;
+}
+
+/** True if the two product names share at least one word (case-insensitive, 1-typo tolerant). */
+function namesShareEquivalentWord(nameA, nameB) {
+  const wordsA = tokenizeProductName(nameA);
+  const wordsB = tokenizeProductName(nameB);
+  return wordsA.some((wa) => wordsB.some((wb) => wordsAreEquivalent(wa, wb)));
+}
+
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
@@ -97,16 +142,25 @@ const DELIVERY_ICON_SVG = {
 };
 const DELIVERY_ICON_LABELS = { truck: 'Truck delivery', ship: 'Ship delivery', airCargo: 'Air cargo delivery' };
 
-/** flags: {truck, ship, airCargo} booleans - renders 0-3 small labeled icons. */
+/**
+ * flags: {truck, ship, airCargo} booleans, plus optional {truckCost,
+ * shipCost, airCargoCost} numbers - renders 0-3 small labeled icons. A cost
+ * of exactly 0 means free delivery for that method and turns its icon green;
+ * a missing/null cost just omits the price from the label (store hasn't set
+ * one yet).
+ */
 function renderDeliveryIcons(flags) {
   flags = flags || {};
   const methods = ['truck', 'ship', 'airCargo'].filter((m) => flags[m]);
   if (methods.length === 0) return '';
   return `<span class="delivery-icons">${methods
-    .map(
-      (m) =>
-        `<span class="delivery-icon" role="img" aria-label="${escapeHtml(DELIVERY_ICON_LABELS[m])}" title="${escapeHtml(DELIVERY_ICON_LABELS[m])}">${DELIVERY_ICON_SVG[m]}</span>`
-    )
+    .map((m) => {
+      const cost = flags[m + 'Cost'];
+      const isFree = cost === 0;
+      const priceText = cost == null ? '' : cost === 0 ? ' — Free' : ` — ${formatMoney(cost)}`;
+      const label = DELIVERY_ICON_LABELS[m] + priceText;
+      return `<span class="delivery-icon${isFree ? ' delivery-icon-free' : ''}" role="img" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${DELIVERY_ICON_SVG[m]}</span>`;
+    })
     .join('')}</span>`;
 }
 

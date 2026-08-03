@@ -9,11 +9,18 @@ function getOwnerBySlug(slug) {
   return sheetToObjects(getSheet('Owners')).filter(function (o) { return o.StoreSlug === slug; })[0] || null;
 }
 
+function deliveryCostOf(rawCost) {
+  return rawCost === '' || rawCost == null ? null : Number(rawCost);
+}
+
 function deliveryFlagsOf(owner) {
   return {
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
     deliveryShip: String(owner.DeliveryShip) === 'true',
-    deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true'
+    deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true',
+    deliveryTruckCost: deliveryCostOf(owner.DeliveryTruckCost),
+    deliveryShipCost: deliveryCostOf(owner.DeliveryShipCost),
+    deliveryAirCargoCost: deliveryCostOf(owner.DeliveryAirCargoCost)
   };
 }
 
@@ -75,6 +82,9 @@ function actionSearchProducts(params) {
       product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
       product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
       product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+      product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
+      product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
+      product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
       return product;
     })
     .filter(function (p) { return p.variants.length > 0; });
@@ -132,6 +142,9 @@ function actionListProducts(params) {
   response.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
   response.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
   response.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+  response.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
+  response.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
+  response.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
   return ok(response);
 }
 
@@ -290,6 +303,13 @@ function actionUpdateOwnerProfile(owner, body) {
   if (body.deliveryTruck !== undefined) update.DeliveryTruck = body.deliveryTruck ? 'true' : 'false';
   if (body.deliveryShip !== undefined) update.DeliveryShip = body.deliveryShip ? 'true' : 'false';
   if (body.deliveryAirCargo !== undefined) update.DeliveryAirCargo = body.deliveryAirCargo ? 'true' : 'false';
+
+  var costFieldMap = { deliveryTruckCost: 'DeliveryTruckCost', deliveryShipCost: 'DeliveryShipCost', deliveryAirCargoCost: 'DeliveryAirCargoCost' };
+  Object.keys(costFieldMap).forEach(function (k) {
+    if (body[k] === undefined) return;
+    var cost = Number(body[k]);
+    update[costFieldMap[k]] = isNaN(cost) || cost < 0 ? '' : cost;
+  });
 
   if (body.newPassword) {
     if (String(body.newPassword).length < 8) return fail('Password must be at least 8 characters');

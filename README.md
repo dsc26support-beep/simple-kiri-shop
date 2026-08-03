@@ -58,12 +58,16 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | Island | Village | LogoUrl | LogoFileId`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId`
 
    (The `ANZ_*`/`Teremo_*`/`PaymentNotes` columns are no longer used by the
    app — checkout no longer displays payment details, so Settings no longer
    reads/writes them — but they're harmless to leave in place if you already
-   have this sheet set up.)
+   have this sheet set up. `DeliveryTruckCost`/`DeliveryShipCost`/
+   `DeliveryAirCargoCost` are per-method delivery prices — blank means "not
+   set", `0` means free delivery and shows that method's icon in green.
+   `Status` is now one of `active` / `standby` / `closed` — see "Store status"
+   below.)
 
    **Products**
    `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt`
@@ -76,7 +80,11 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `VariantId | ProductId | OwnerId | Label | Price | SKU | StockQty | Status`
 
    **Orders**
-   `OrderId | OwnerId | StoreSlug | CustomerName | CustomerPhone | CustomerEmail | DeliveryAddress | Notes | PaymentMethod | PaymentReference | ItemsJson | ItemsSummary | Subtotal | Total | Status | CreatedAt | UpdatedAt`
+   `OrderId | OwnerId | StoreSlug | CustomerName | CustomerPhone | CustomerEmail | DeliveryAddress | Notes | PaymentMethod | PaymentReference | ItemsJson | ItemsSummary | Subtotal | Total | Status | CreatedAt | UpdatedAt | NoEmailReminderSent`
+
+   (`NoEmailReminderSent` is a timestamp set the one time the "call this
+   customer" reminder email goes out to the store owner — see "Reminder
+   emails" below. Leave it blank; the script manages it.)
 
    **Sessions**
    `Token | OwnerId | CreatedAt | ExpiresAt`
@@ -84,15 +92,21 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    **TwoFACodes** (one-time email codes — shared by login 2FA, 2FA setup, and password reset)
    `Token | OwnerId | Code | Purpose | CreatedAt | ExpiresAt | Attempts`
 
+   **AbandonedCarts** (customers who typed an email at checkout but never placed the order)
+   `Id | StoreSlug | OwnerId | Email | CartJson | CreatedAt | Reminded | ConvertedOrderId`
+
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
-   `Island`, `Village`, `LogoUrl`, and `LogoFileId` columns to the end of
-   `Owners`, add `ImageUrl2` and `ImageFileId2` to the end of `Products`, and
-   add the new `TwoFACodes` tab — everything else stays the same.
+   `DeliveryTruckCost`, `DeliveryShipCost`, `DeliveryAirCargoCost`, `Island`,
+   `Village`, `LogoUrl`, and `LogoFileId` columns to the end of `Owners`, add
+   `ImageUrl2` and `ImageFileId2` to the end of `Products`, add
+   `NoEmailReminderSent` to the end of `Orders`, and add the new
+   `TwoFACodes` and `AbandonedCarts` tabs — everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
-   `Orders.gs`, `Images.gs`) and paste in the matching source from this repo.
+   `Orders.gs`, `Images.gs`, `Reminders.gs`) and paste in the matching source
+   from this repo.
 
 3. **Project Settings → Script Properties**, add:
    - `PEPPER` — a long random string (used to salt+pepper password hashes).
@@ -129,6 +143,39 @@ does not update the live `/exec` URL.
 Script will prompt you to re-authorize an additional permission (sending
 email as you, via `MailApp`) — this is expected, since login codes and reset
 codes are emailed from the script owner's own Google account.
+
+## Reminder emails (one-time manual setup)
+
+Two follow-up emails need a scheduled sweep, and Apps Script has no cron —
+you wire this up once by hand:
+
+1. In the Apps Script editor, open the **Triggers** page (clock icon on the
+   left sidebar).
+2. **Add Trigger** → function `runReminderSweep` → event source
+   **Time-driven** → **Hour timer** → every hour → Save.
+
+That's it — from then on, once an hour the script checks for:
+- **Abandoned carts**: a customer typed an email at checkout but never
+  placed the order, and it's been over an hour — they get a "you left
+  something in your cart" email.
+- **No-email orders**: an order came in with no customer email on file and
+  is still Pending Payment after an hour — the **store owner** gets an
+  email reminding them to call/WhatsApp the customer's phone directly,
+  since there's no way to auto-reach them.
+
+Each reminder only ever fires once per cart/order (tracked via `Reminded` in
+`AbandonedCarts` and `NoEmailReminderSent` in `Orders`).
+
+## Store status (Settings → Store Status)
+
+A store owner can pause or delete their store from Settings:
+- **Active** — normal, visible in the directory/search, owner can log in.
+- **Standby** (Pause Store) — hidden from customers, but the owner can still
+  log in and switch it back to Active at any time.
+- **Closed** (Delete Store) — hidden from customers *and* the owner is
+  signed out and can no longer log in. This is a soft delete: no Sheet rows
+  are ever erased, so it's reversible by editing the `Status` cell back to
+  `active` directly in the Owners sheet if a store owner needs it restored.
 
 ## Security & operational notes
 

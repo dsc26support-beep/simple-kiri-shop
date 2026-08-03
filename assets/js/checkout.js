@@ -39,13 +39,34 @@ async function init() {
   document.getElementById('store-delivery-icons').innerHTML = renderDeliveryIcons({
     truck: storeInfo.deliveryTruck,
     ship: storeInfo.deliveryShip,
-    airCargo: storeInfo.deliveryAirCargo
+    airCargo: storeInfo.deliveryAirCargo,
+    truckCost: storeInfo.deliveryTruckCost,
+    shipCost: storeInfo.deliveryShipCost,
+    airCargoCost: storeInfo.deliveryAirCargoCost
   });
 
   renderOrderReview();
 
   document.getElementById('checkout-form').addEventListener('submit', onSubmit);
   document.getElementById('copy-summary-btn').addEventListener('click', onCopySummary);
+  document.getElementById('customer-email').addEventListener('blur', onEmailBlur);
+}
+
+// Fire-and-forget: if the customer has typed a plausible email but hasn't
+// placed the order yet, record it so an abandoned-cart reminder can follow
+// up later if they never come back to finish checking out. Never blocks or
+// shows errors - this must stay invisible to a customer who's just filling
+// in a form.
+function onEmailBlur(e) {
+  const email = e.target.value.trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return;
+
+  const cart = Cart.getCart(currentSlug);
+  Api.post('saveAbandonedCart', {
+    storeSlug: currentSlug,
+    email,
+    items: cart.map((line) => ({ label: line.label, qty: line.qty }))
+  }).catch(() => {});
 }
 
 function renderOrderReview() {
@@ -140,8 +161,13 @@ function showConfirmation(orderResult, payload) {
 
   wireShareLinks(summaryText, orderResult.orderId);
 
+  // Click the mailto link rather than assigning window.location.href - the
+  // latter can trigger a real page navigation/reload in some mobile browsers
+  // when no mail app is configured (losing this confirmation screen and its
+  // Copy/Email/WhatsApp fallback buttons), while clicking the anchor just
+  // invokes the OS mail handler without navigating the current page.
   if (storeInfo.email) {
-    window.location.href = document.getElementById('email-order-link').href;
+    document.getElementById('email-order-link').click();
   }
 }
 

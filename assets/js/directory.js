@@ -35,7 +35,14 @@ function renderStoreCard(store) {
         <div class="store-card-meta">
           ${store.phone ? `<span class="store-phone">${escapeHtml(store.phone)}</span>` : ''}
         </div>
-        ${renderDeliveryIcons({ truck: store.deliveryTruck, ship: store.deliveryShip, airCargo: store.deliveryAirCargo })}
+        ${renderDeliveryIcons({
+          truck: store.deliveryTruck,
+          ship: store.deliveryShip,
+          airCargo: store.deliveryAirCargo,
+          truckCost: store.deliveryTruckCost,
+          shipCost: store.deliveryShipCost,
+          airCargoCost: store.deliveryAirCargoCost
+        })}
         <p class="helper-text">Visit store →</p>
       </div>
     </a>
