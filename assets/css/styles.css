@@ -396,6 +396,49 @@ legend {
   font-size: 0.9rem;
 }
 
+.similar-products-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+@media (min-width: 600px) {
+  .similar-products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
+.similar-product-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  font-size: 0.85rem;
+}
+
+.similar-product-card .product-image,
+.similar-product-card .placeholder-swatch {
+  aspect-ratio: 1 / 1;
+  font-size: 1.25rem;
+}
+
+.similar-product-card .product-card-body {
+  padding: var(--space-2);
+  gap: var(--space-1);
+}
+
+.similar-product-card .product-name {
+  font-size: 0.85rem;
+}
+
+.similar-product-card .btn {
+  min-height: 32px;
+  padding: 0.3em 0.6em;
+  font-size: 0.8rem;
+}
+
 .product-controls {
   display: flex;
   gap: var(--space-2);
