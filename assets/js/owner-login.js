@@ -90,6 +90,11 @@ async function onRegister(e) {
   const email = document.getElementById('register-email').value.trim();
   const phone = document.getElementById('register-phone').value.trim();
 
+  if (!email) {
+    errorEl.textContent = 'Contact email is required — that\'s where customer orders will be sent.';
+    return;
+  }
+
   const res = await Api.post('registerOwner', { storeName, username, password, email, phone });
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not create your store account.';

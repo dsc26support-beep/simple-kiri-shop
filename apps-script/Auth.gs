@@ -61,10 +61,14 @@ function actionRegisterOwner(body) {
   var storeName = String(body.storeName || '').trim();
   var username = String(body.username || '').trim().toLowerCase();
   var password = String(body.password || '');
+  var email = String(body.email || '').trim();
 
-  if (!storeName || !username || !password) return fail('Store name, username and password are required');
+  if (!storeName || !username || !password || !email) {
+    return fail('Store name, username, password and contact email are required');
+  }
   if (password.length < 8) return fail('Password must be at least 8 characters');
   if (!/^[a-z0-9_.-]{3,40}$/.test(username)) return fail('Username must be 3-40 characters: letters, numbers, . _ -');
+  if (email.indexOf('@') === -1) return fail('Enter a valid contact email');
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -93,7 +97,7 @@ function actionRegisterOwner(body) {
       Username: username,
       PasswordHash: hashPassword(password, salt),
       PasswordSalt: salt,
-      Email: body.email || '',
+      Email: email,
       Phone: body.phone || '',
       ANZ_AccountName: '',
       ANZ_AccountNumber: '',
