@@ -113,6 +113,19 @@ function renderSimilarProductCard(product) {
   `;
 }
 
+// Cart.addItem() is instant (localStorage) - this is a brief cosmetic
+// flourish confirming the click registered, not a real wait state.
+function showAddingToCartState(btn) {
+  btn.disabled = true;
+  btn.classList.add('btn-adding');
+  btn.innerHTML = 'Adding<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.classList.remove('btn-adding');
+    btn.textContent = 'Add to Cart';
+  }, 500);
+}
+
 function wireProductEvents() {
   document.getElementById('product-list').addEventListener('click', (e) => {
     const thumbBtn = e.target.closest('.product-gallery-thumb');
@@ -146,6 +159,7 @@ function wireProductEvents() {
       qty
     });
 
+    showAddingToCartState(btn);
     updateCartCount();
     const feedback = document.getElementById('cart-feedback');
     feedback.textContent = `Added ${qty} × ${product.name} (${variant.label}) to your cart.`;
