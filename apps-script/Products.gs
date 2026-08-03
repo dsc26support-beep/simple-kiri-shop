@@ -16,6 +16,53 @@ function actionListStores() {
   return ok({ stores: stores });
 }
 
+/**
+ * Cross-store product search, used by the homepage search box and category
+ * buttons. Matches on product name/description (case-insensitive substring)
+ * and/or exact category, across every active store's active products.
+ */
+function actionSearchProducts(params) {
+  var q = String(params.q || '').trim().toLowerCase();
+  var category = String(params.category || '').trim();
+
+  var ownersById = {};
+  sheetToObjects(getSheet('Owners'))
+    .filter(function (o) { return o.Status === 'active'; })
+    .forEach(function (o) { ownersById[o.OwnerId] = o; });
+
+  var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
+
+  var results = sheetToObjects(getSheet('Products'))
+    .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
+    .filter(function (p) {
+      if (category && p.Category !== category) return false;
+      if (q) {
+        var haystack = (String(p.Name) + ' ' + String(p.Description)).toLowerCase();
+        if (haystack.indexOf(q) === -1) return false;
+      }
+      return true;
+    })
+    .map(function (p) {
+      var owner = ownersById[p.OwnerId];
+      var productVariants = variants
+        .filter(function (v) { return v.ProductId === p.ProductId; })
+        .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
+      return {
+        productId: p.ProductId,
+        name: p.Name,
+        description: p.Description,
+        category: p.Category,
+        imageUrl: p.ImageUrl,
+        storeSlug: owner.StoreSlug,
+        storeName: owner.StoreName,
+        variants: productVariants
+      };
+    })
+    .filter(function (p) { return p.variants.length > 0; });
+
+  return ok({ products: results });
+}
+
 function actionGetStorePublicInfo(params) {
   var slug = params.storeSlug;
   if (!slug) return fail('storeSlug is required');

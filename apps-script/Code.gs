@@ -22,6 +22,7 @@ function doGet(e) {
       case 'listStores': return jsonOut(actionListStores());
       case 'listProducts': return jsonOut(actionListProducts(params));
       case 'getStorePublicInfo': return jsonOut(actionGetStorePublicInfo(params));
+      case 'searchProducts': return jsonOut(actionSearchProducts(params));
       default: return jsonOut(fail('Unknown action: ' + params.action));
     }
   } catch (err) {

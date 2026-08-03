@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Simple Kiri Shop</title>
-  <meta name="description" content="Shop from local Kiribati stores online. Pay by ANZ bank transfer or Teremo.">
+  <title>Search — Simple Kiri Shop</title>
   <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
@@ -13,8 +12,8 @@
   <header class="site-header">
     <div class="container">
       <div>
-        <p class="site-title">Simple Kiri Shop</p>
-        <p class="site-tagline">Shop local. Pay with ANZ or Teremo.</p>
+        <p class="site-title"><a href="index.html">Simple Kiri Shop</a></p>
+        <p class="site-tagline">Search</p>
       </div>
       <nav class="site-nav" aria-label="Main">
         <ul>
@@ -32,17 +31,18 @@
           <input id="search-input" type="search" placeholder="Search products (e.g. rice, t-shirt)">
           <button type="submit" class="btn btn-primary">Search</button>
         </form>
+        <div class="category-buttons" id="category-buttons" style="margin-top: 1rem;" aria-label="Shop by category"></div>
       </div>
     </section>
 
-    <section class="categories" aria-labelledby="categories-heading">
+    <section aria-labelledby="results-heading">
       <div class="container">
-        <h2 id="categories-heading" class="sr-only">Shop by category</h2>
-        <div class="category-buttons" id="category-buttons"></div>
+        <h1 id="results-heading">Results</h1>
+        <p id="results-status" class="helper-text" role="status">Loading…</p>
+        <div id="results-list" class="product-grid"></div>
+        <noscript><p>Please enable JavaScript in your browser to search.</p></noscript>
       </div>
     </section>
-
-    <noscript><div class="container"><p>Please enable JavaScript in your browser to search and shop.</p></div></noscript>
   </main>
 
   <footer class="site-footer">
@@ -55,6 +55,6 @@
   <script src="assets/js/config.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/helpers.js"></script>
-  <script src="assets/js/home.js"></script>
+  <script src="assets/js/search.js"></script>
 </body>
 </html>

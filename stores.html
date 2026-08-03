@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Simple Kiri Shop</title>
-  <meta name="description" content="Shop from local Kiribati stores online. Pay by ANZ bank transfer or Teremo.">
+  <title>All Stores — Simple Kiri Shop</title>
+  <meta name="description" content="Browse all local Kiribati stores on Simple Kiri Shop.">
   <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
@@ -13,8 +13,8 @@
   <header class="site-header">
     <div class="container">
       <div>
-        <p class="site-title">Simple Kiri Shop</p>
-        <p class="site-tagline">Shop local. Pay with ANZ or Teremo.</p>
+        <p class="site-title"><a href="index.html">Simple Kiri Shop</a></p>
+        <p class="site-tagline">All Stores</p>
       </div>
       <nav class="site-nav" aria-label="Main">
         <ul>
@@ -25,24 +25,14 @@
   </header>
 
   <main id="main">
-    <section class="hero">
+    <section id="stores" aria-labelledby="stores-heading">
       <div class="container">
-        <form id="search-form" class="search-box" role="search">
-          <label class="sr-only" for="search-input">Search products</label>
-          <input id="search-input" type="search" placeholder="Search products (e.g. rice, t-shirt)">
-          <button type="submit" class="btn btn-primary">Search</button>
-        </form>
+        <h1 id="stores-heading">All Stores</h1>
+        <p id="stores-status" class="helper-text" role="status">Loading stores…</p>
+        <div id="store-list" class="store-grid"></div>
+        <noscript><p>Please enable JavaScript in your browser to browse stores.</p></noscript>
       </div>
     </section>
-
-    <section class="categories" aria-labelledby="categories-heading">
-      <div class="container">
-        <h2 id="categories-heading" class="sr-only">Shop by category</h2>
-        <div class="category-buttons" id="category-buttons"></div>
-      </div>
-    </section>
-
-    <noscript><div class="container"><p>Please enable JavaScript in your browser to search and shop.</p></div></noscript>
   </main>
 
   <footer class="site-footer">
@@ -55,6 +45,6 @@
   <script src="assets/js/config.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/helpers.js"></script>
-  <script src="assets/js/home.js"></script>
+  <script src="assets/js/directory.js"></script>
 </body>
 </html>

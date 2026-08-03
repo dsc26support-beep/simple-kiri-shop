@@ -19,10 +19,12 @@ Static front end (HTML/CSS/JS)  <-- fetch -->  Apps Script Web App  <-->  Google
 ## Project structure
 
 ```
-index.html            Store directory (browse all stores)
-store.html             One store's product catalog (?store=slug)
-cart.html               Shopping cart for the active store
-checkout.html            Customer details, ANZ/Teremo instructions, places the order
+index.html            Homepage: search box + shop-by-category buttons
+stores.html            Full store directory (browse all stores)
+search.html             Cross-store product search/category results (?q= / ?category=)
+store.html               One store's product catalog (?store=slug)
+cart.html                 Shopping cart for the active store
+checkout.html              Customer details, ANZ/Teremo instructions, places the order
 
 owner/login.html         Store owner login + registration
 owner/dashboard.html      Store owner summary

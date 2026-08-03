@@ -21,3 +21,18 @@ function initials(name) {
     .join('')
     .toUpperCase();
 }
+
+// Kept in sync with the category <select> options in owner/products.html.
+const CATEGORIES = [
+  { id: 'pantry', label: 'Pantry / Food' },
+  { id: 'clothing', label: 'Clothing' },
+  { id: 'household', label: 'Household' },
+  { id: 'electronics', label: 'Electronics' },
+  { id: 'general', label: 'General' }
+];
+
+function renderCategoryButtons(containerId) {
+  document.getElementById(containerId).innerHTML = CATEGORIES.map(
+    (c) => `<a class="btn category-btn" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
+  ).join('');
+}

@@ -28,6 +28,10 @@ function init() {
 
   loginForm.addEventListener('submit', onLogin);
   registerForm.addEventListener('submit', onRegister);
+
+  if (getQueryParam('tab') === 'register') {
+    switchTab('register');
+  }
 }
 
 async function onLogin(e) {
