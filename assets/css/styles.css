@@ -476,19 +476,21 @@ legend {
 }
 
 .product-controls {
-  display: flex;
-  gap: var(--space-2);
   margin-top: auto;
 }
 
-.variety-select {
-  flex: 1 1 auto;
-  min-width: 0;
+.product-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .qty-input {
   flex: 0 0 4.5em;
   max-width: 4.5em;
+}
+
+.product-actions .add-to-cart-btn {
+  flex: 1 1 auto;
 }
 
 /* Store directory */

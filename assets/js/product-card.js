@@ -17,12 +17,14 @@ function renderProductCard(product) {
         <div class="product-controls">
           <label class="sr-only" for="variety-${escapeHtml(product.productId)}">Choose an option for ${escapeHtml(product.name)}</label>
           <select id="variety-${escapeHtml(product.productId)}" class="variety-select">${options}</select>
+        </div>
+        <div class="product-actions">
           <label class="sr-only" for="qty-${escapeHtml(product.productId)}">Quantity</label>
           <input id="qty-${escapeHtml(product.productId)}" class="qty-input" type="number" min="1" value="1" inputmode="numeric">
+          <button type="button" class="btn btn-primary add-to-cart-btn" data-product-id="${escapeHtml(product.productId)}" data-product-name="${escapeHtml(product.name)}">
+            Add to Cart
+          </button>
         </div>
-        <button type="button" class="btn btn-primary add-to-cart-btn" data-product-id="${escapeHtml(product.productId)}" data-product-name="${escapeHtml(product.name)}">
-          Add to Cart
-        </button>
       </div>
     </article>
   `;
