@@ -46,7 +46,10 @@ function actionUploadProductImage(owner, body) {
   var file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-  var url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
+  // drive.google.com/uc?export=view links are unreliable as <img> sources
+  // (Google frequently blocks the hotlink and shows a broken image icon) -
+  // the googleusercontent.com CDN form embeds reliably instead.
+  var url = 'https://lh3.googleusercontent.com/d/' + file.getId();
   var oldFileId = product.ImageFileId;
 
   updateRowFromObject(getSheet('Products'), product.__row, {
