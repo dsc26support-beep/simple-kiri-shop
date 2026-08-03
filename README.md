@@ -1,4 +1,4 @@
-# Simple Kiri Shop
+# Mwakete
 
 A multi-vendor online marketplace for Kiribati shoppers. Multiple store owners each
 register, log in, and manage their own products (with photos taken straight from
@@ -53,7 +53,7 @@ apps-script/*.gs           Google Apps Script backend source (see setup below)
 The front end can't talk to a Google Sheet directly — you need to create the
 Sheet and deploy the Apps Script backend under your own Google account first.
 
-1. **Create a Google Sheet** (e.g. "Simple Kiri Shop DB"). Add these tabs, each
+1. **Create a Google Sheet** (e.g. "Mwakete DB"). Add these tabs, each
    with the exact header row shown (row 1). Leave every tab otherwise empty —
    the script appends rows as people use the site.
 
@@ -94,7 +94,7 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    - `TOKEN_EXPIRY_HOURS` — optional, defaults to `168` (7 days) if unset.
 
    `IMAGE_FOLDER_ID` is set automatically the first time a photo is uploaded
-   (a "Simple Kiri Shop Product Images" Drive folder is created for you).
+   (a "Mwakete Product Images" Drive folder is created for you).
 
 4. **Deploy → New deployment → type "Web app".**
    - Execute as: **Me**

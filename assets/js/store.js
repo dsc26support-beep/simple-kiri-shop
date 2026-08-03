@@ -21,7 +21,7 @@ async function init() {
     return;
   }
 
-  document.title = res.storeName + ' — Simple Kiri Shop';
+  document.title = res.storeName + ' — Mwakete';
   document.getElementById('store-name-tagline').textContent = res.storeName;
 
   if (res.storeLogoUrl) {

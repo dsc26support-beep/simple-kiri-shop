@@ -16,7 +16,7 @@ function getImageFolder() {
       // stored id no longer valid, fall through and recreate
     }
   }
-  var folder = DriveApp.createFolder('Simple Kiri Shop Product Images');
+  var folder = DriveApp.createFolder('Mwakete Product Images');
   props.setProperty('IMAGE_FOLDER_ID', folder.getId());
   return folder;
 }

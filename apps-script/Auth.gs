@@ -206,17 +206,17 @@ function issueTwoFACode(ownerId, email, storeName, purpose) {
 
   var subject, body;
   if (purpose === 'reset') {
-    subject = 'Your Simple Kiri Shop password reset code';
+    subject = 'Your Mwakete password reset code';
     body = 'Hi ' + storeName + ',\n\nYour password reset code is: ' + code + '\n\n' +
       'Enter this code on the password reset page to choose a new password. This code expires in ' +
       TWOFA_CODE_EXPIRY_MINUTES + ' minutes.\n\nIf you did not request this, you can ignore this email.';
   } else if (purpose === 'setup') {
-    subject = 'Confirm two-factor authentication for Simple Kiri Shop';
+    subject = 'Confirm two-factor authentication for Mwakete';
     body = 'Hi ' + storeName + ',\n\nYour verification code is: ' + code + '\n\n' +
       'Enter this code to finish turning on two-factor authentication for your store account. ' +
       'This code expires in ' + TWOFA_CODE_EXPIRY_MINUTES + ' minutes.';
   } else {
-    subject = 'Your Simple Kiri Shop login code';
+    subject = 'Your Mwakete login code';
     body = 'Hi ' + storeName + ',\n\nYour login code is: ' + code + '\n\n' +
       'Enter this code to finish logging in. This code expires in ' + TWOFA_CODE_EXPIRY_MINUTES + ' minutes.\n\n' +
       'If this was not you, someone may have your password - consider resetting it.';
