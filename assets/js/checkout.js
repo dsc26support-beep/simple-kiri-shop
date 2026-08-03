@@ -388,7 +388,7 @@ function showConfirmation(orderResult, payload) {
   confirmSection.classList.remove('hidden');
 
   document.getElementById('confirmation-intro').textContent =
-    `Thank you, ${payload.customerName}! Your order reference is ${orderResult.orderId}. We're opening an email to the store now — if it doesn't open automatically, use the buttons below.`;
+    `Thank you, ${payload.customerName}! Your order reference is ${orderResult.orderId}.`;
 
   const summaryText = buildSummaryText(orderResult.orderId, payload, orderResult.items.map((i) => ({ label: i.label, unitPrice: i.unitPrice, qty: i.qty })), orderResult.total);
   document.getElementById('order-summary-text').value = summaryText;

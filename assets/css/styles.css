@@ -741,6 +741,11 @@ legend {
   margin-top: var(--space-3);
 }
 
+.confirmation-cta strong {
+  font-size: 1.25em;
+  font-weight: 700;
+}
+
 .empty-state {
   text-align: center;
   color: var(--color-muted);
