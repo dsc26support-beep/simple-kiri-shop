@@ -136,37 +136,6 @@ header.site-header .container.site-branding {
   background: #fff;
 }
 
-header.site-header {
-  position: relative;
-}
-
-.home-button {
-  position: absolute;
-  right: var(--space-2);
-  bottom: var(--space-1);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3em;
-  color: #fff;
-  text-decoration: none;
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.35em 0.7em;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.home-button:hover,
-.home-button:focus-visible {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.home-button svg {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
-
 header.site-header a {
   color: #fff;
   text-decoration: none;
