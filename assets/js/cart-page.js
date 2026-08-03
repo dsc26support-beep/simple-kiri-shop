@@ -37,6 +37,7 @@ async function init() {
   }
 
   document.getElementById('cart-items').addEventListener('click', onCartClick);
+  document.getElementById('cart-items').addEventListener('input', onCartInput);
   document.getElementById('cart-items').addEventListener('change', onCartChange);
 
   render();
@@ -70,7 +71,7 @@ function render() {
         </div>
         <label class="sr-only" for="qty-${escapeHtml(line.variantId)}">Quantity for ${escapeHtml(line.label)}</label>
         <input id="qty-${escapeHtml(line.variantId)}" class="cart-line-qty" type="number" min="1" value="${line.qty}" inputmode="numeric">
-        <strong>${formatMoney(line.unitPrice * line.qty)}</strong>
+        <strong class="cart-line-total">${formatMoney(line.unitPrice * line.qty)}</strong>
         <button type="button" class="btn btn-danger btn-small" data-action="remove">Remove</button>
       </div>
     `
@@ -89,6 +90,31 @@ function onCartClick(e) {
   render();
 }
 
+// Fires on every keystroke - keeps the price in sync live as the customer
+// types, without ever tearing down/rebuilding the input they're actively
+// typing in (which would kick focus out after each digit). A transient
+// empty/zero value while mid-edit (e.g. select-all then retype) is just
+// skipped here rather than treated as "remove this line" - that's only
+// committed on blur/Enter, in onCartChange below.
+function onCartInput(e) {
+  if (!e.target.classList.contains('cart-line-qty')) return;
+  const qty = parseInt(e.target.value, 10);
+  if (!(qty >= 1)) return;
+
+  const line = e.target.closest('.cart-line');
+  const variantId = line.dataset.variantId;
+  const updatedCart = Cart.updateQty(currentSlug, variantId, qty);
+  const updatedLine = updatedCart.find((l) => l.variantId === variantId);
+  if (!updatedLine) return;
+
+  line.querySelector('.cart-line-total').textContent = formatMoney(updatedLine.unitPrice * updatedLine.qty);
+  document.getElementById('cart-total').textContent = formatMoney(Cart.getTotal(currentSlug));
+  document.getElementById('cart-live').textContent = `${Cart.getItemCount(currentSlug)} item(s) in your cart.`;
+}
+
+// Fires on blur/Enter - the commit point. Handles the qty-dropped-to-0 case
+// (removes the line) with a full re-render, since by now the customer is
+// done editing and losing focus on this particular input doesn't matter.
 function onCartChange(e) {
   if (!e.target.classList.contains('cart-line-qty')) return;
   const variantId = e.target.closest('.cart-line').dataset.variantId;
