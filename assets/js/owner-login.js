@@ -40,6 +40,17 @@ function init() {
   }
 }
 
+function setButtonBusy(btn, label, idleLabel) {
+  btn.disabled = true;
+  btn.dataset.idleLabel = idleLabel;
+  btn.innerHTML = `${label}<span class="btn-saving-dots"><span></span><span></span><span></span></span>`;
+}
+
+function setButtonIdle(btn) {
+  btn.disabled = false;
+  btn.textContent = btn.dataset.idleLabel;
+}
+
 async function onLogin(e) {
   e.preventDefault();
   const errorEl = document.getElementById('login-error');
@@ -48,13 +59,19 @@ async function onLogin(e) {
   const username = document.getElementById('login-username').value.trim();
   const password = document.getElementById('login-password').value;
 
+  const submitBtn = document.getElementById('login-submit-btn');
+  setButtonBusy(submitBtn, 'Logging in', 'Log In');
+
   const res = await Api.post('loginOwner', { username, password });
+
   if (!res.ok) {
+    setButtonIdle(submitBtn);
     errorEl.textContent = res.error || 'Could not log in.';
     return;
   }
 
   if (res.twoFactorRequired) {
+    setButtonIdle(submitBtn);
     document.getElementById('twofa-pending-token').value = res.pendingToken;
     document.getElementById('login-form').classList.add('hidden');
     document.getElementById('twofa-form').classList.remove('hidden');
@@ -104,8 +121,13 @@ async function onRegister(e) {
     return;
   }
 
+  const submitBtn = document.getElementById('register-submit-btn');
+  setButtonBusy(submitBtn, 'Creating', 'Create Store Account');
+
   const res = await Api.post('registerOwner', { storeName, username, password, email, phone });
+
   if (!res.ok) {
+    setButtonIdle(submitBtn);
     errorEl.textContent = res.error || 'Could not create your store account.';
     return;
   }
