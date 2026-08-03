@@ -115,15 +115,17 @@ header.site-header .container {
 }
 
 header.site-header .container.header-top-row {
+  position: relative;
   padding-bottom: var(--space-1);
 }
 
 .header-logo-mark {
   position: absolute;
-  top: var(--space-2);
+  top: 50%;
   right: var(--space-2);
-  width: 20px;
-  height: 20px;
+  transform: translateY(-50%);
+  width: 23px;
+  height: 23px;
 }
 
 header.site-header .container.site-branding {
