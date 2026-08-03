@@ -4,9 +4,11 @@ let currentSlug = null;
 let storeInfo = null;
 
 const CHECKOUT_PROFILE_KEY = 'skiri_checkout_profile';
-// Truck delivery is only physically viable for a South Tarawa customer in
-// these villages - fuzzy-matched (case/1-typo insensitive) so "buota",
-// "Buota " or a small typo all still count.
+// Villages a truck route physically reaches at the South Tarawa/North Tarawa
+// causeway boundary - fuzzy-matched (case/1-typo insensitive). Used both as
+// an inclusion list (South Tarawa vendor -> these North Tarawa villages) and
+// an exclusion list (North Tarawa vendor -> everywhere on North Tarawa
+// EXCEPT these three) - see computeEligibleDeliveryMethods below.
 const TRUCK_ELIGIBLE_VILLAGES = ['buota', 'abatao', 'tabiteuea'];
 
 async function init() {
@@ -165,40 +167,50 @@ function getCustomerVillage() {
 
 /* ---------- Delivery method eligibility ---------- */
 
+function customerVillageMatchesTruckList(customerVillage) {
+  const tokens = tokenizeProductName(customerVillage);
+  return tokens.some((t) => TRUCK_ELIGIBLE_VILLAGES.some((target) => wordsAreEquivalent(t, target)));
+}
+
 /**
  * Client-side mirror of the server's computeEligibleDeliveryMethods in
  * Orders.gs - this is only for UI (showing/hiding options); the server
  * re-derives the same rules and is the actual source of truth, since this
  * endpoint is public and unauthenticated.
+ *
+ * Eligibility is organized around the VENDOR's own island:
+ *  - South Tarawa vendor: truck to South Tarawa + the 3 listed North Tarawa
+ *    villages; ship blocked to South Tarawa only; air blocked to South/North
+ *    Tarawa only.
+ *  - North Tarawa vendor: truck to North Tarawa EXCEPT the 3 listed
+ *    villages; ship ("boat") to South Tarawa only, as the one exception that
+ *    lets them reach off-island at all; air never available.
+ *  - Any other (outer island) vendor: truck only to their own same island;
+ *    ship and air only to South Tarawa.
  */
 function computeEligibleDeliveryMethods(subtotal) {
   if (!storeInfo) return [];
   const customerIsland = getCustomerIsland();
   const customerVillage = getCustomerVillage();
-  const custIsSouthTarawa = customerIsland === 'South Tarawa';
   const storeIsland = storeInfo.island || '';
   const eligible = [];
+  const shipOk = storeInfo.deliveryShip && subtotal >= 500;
 
-  if (storeInfo.deliveryTruck) {
-    if (!custIsSouthTarawa) {
-      eligible.push('truck');
-    } else {
-      const tokens = tokenizeProductName(customerVillage);
-      const truckOk = tokens.some((t) => TRUCK_ELIGIBLE_VILLAGES.some((target) => wordsAreEquivalent(t, target)));
-      if (truckOk) eligible.push('truck');
+  if (storeIsland === 'South Tarawa') {
+    if (storeInfo.deliveryTruck) {
+      if (customerIsland === 'South Tarawa') eligible.push('truck');
+      else if (customerIsland === 'North Tarawa' && customerVillageMatchesTruckList(customerVillage)) eligible.push('truck');
     }
-  }
-
-  if (storeInfo.deliveryShip && subtotal >= 500) {
-    if (!custIsSouthTarawa || storeIsland !== 'South Tarawa') eligible.push('ship');
-  }
-
-  if (storeInfo.deliveryAirCargo) {
-    if (!custIsSouthTarawa) {
-      eligible.push('airCargo');
-    } else if (storeIsland !== 'South Tarawa' && storeIsland !== 'North Tarawa') {
-      eligible.push('airCargo');
-    }
+    if (shipOk && customerIsland !== 'South Tarawa') eligible.push('ship');
+    if (storeInfo.deliveryAirCargo && customerIsland !== 'South Tarawa' && customerIsland !== 'North Tarawa') eligible.push('airCargo');
+  } else if (storeIsland === 'North Tarawa') {
+    if (storeInfo.deliveryTruck && customerIsland === 'North Tarawa' && !customerVillageMatchesTruckList(customerVillage)) eligible.push('truck');
+    if (shipOk && customerIsland === 'South Tarawa') eligible.push('ship');
+    // Air Cargo is never offered by a North Tarawa vendor.
+  } else {
+    if (storeInfo.deliveryTruck && customerIsland === storeIsland) eligible.push('truck');
+    if (shipOk && customerIsland === 'South Tarawa') eligible.push('ship');
+    if (storeInfo.deliveryAirCargo && customerIsland === 'South Tarawa') eligible.push('airCargo');
   }
 
   return eligible;

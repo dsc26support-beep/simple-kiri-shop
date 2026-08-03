@@ -188,24 +188,32 @@ A store owner can pause or delete their store from Settings:
 
 At checkout, the customer picks their Island and Village (same picker as a
 store owner's own Settings, "Other" free-text included), and only sees
-delivery methods they're actually allowed to choose. The rules, checked in
-this order, and re-derived server-side in `Orders.gs` so a crafted request
-can't unlock a method the UI hid:
+delivery methods they're actually allowed to choose. Eligibility is worked
+out from the **store's own Island**, re-derived server-side in `Orders.gs`
+so a crafted request can't unlock a method the UI hid:
 
-1. **Only methods the store has enabled** (Settings → Delivery Methods) are
-   ever candidates.
-2. **Ship requires a cart subtotal of at least $500** (before delivery cost),
-   for every customer, everywhere.
-3. **If the customer is in South Tarawa:**
-   - Ship and Air Cargo are blocked if the *store* is also in South Tarawa.
-   - Air Cargo is additionally blocked if the store is in North Tarawa (Air
-     Cargo only makes sense for the more distant outer islands).
-   - Truck is only available if the customer's village fuzzy-matches
-     "Buota", "Abatao", or "Tabiteuea" (case-insensitive, tolerates a single
-     typo) — these are the only villages a truck route can actually reach.
-4. **If the customer is anywhere else**, none of the South Tarawa-specific
-   restrictions apply — Truck and Air Cargo are available whenever the store
-   offers them, Ship still needs the $500 minimum.
+Applies in every case: only methods the store has enabled (Settings →
+Delivery Methods) are ever candidates, and Ship always requires a cart
+subtotal of at least $500 (before delivery cost).
+
+- **Store is in South Tarawa:**
+  - Truck: to any South Tarawa customer, or a North Tarawa customer whose
+    village fuzzy-matches "Buota", "Abatao", or "Tabiteuea"
+    (case-insensitive, tolerates a single typo).
+  - Ship: to anyone *except* South Tarawa customers.
+  - Air Cargo: to anyone except South Tarawa or North Tarawa customers.
+- **Store is in North Tarawa:**
+  - Truck: to North Tarawa customers, *except* the same three villages
+    above (a North Tarawa vendor's truck can't reach those specific
+    villages, unlike a South Tarawa vendor's).
+  - Ship: to South Tarawa customers only — the one route that lets a North
+    Tarawa store reach off-island at all.
+  - Air Cargo: never offered by a North Tarawa store.
+- **Store is anywhere else** (an outer island — not South Tarawa, not North
+  Tarawa):
+  - Truck: only to a customer on that exact same island.
+  - Ship and Air Cargo: to South Tarawa customers only.
+  - No method reaches North Tarawa or a different outer island from here.
 
 If zero delivery methods end up eligible, checkout shows why and the Place
 Order button stays disabled until the customer's location or cart changes.
