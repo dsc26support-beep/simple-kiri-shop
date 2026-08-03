@@ -98,6 +98,7 @@ h1, h2, h3 {
 }
 
 header.site-header {
+  position: relative;
   border-bottom: 4px solid var(--color-gold);
   background: var(--color-red);
   color: #fff;
@@ -118,10 +119,11 @@ header.site-header .container.header-top-row {
 }
 
 .header-logo-mark {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
   width: 20px;
   height: 20px;
-  border-radius: 4px;
-  flex-shrink: 0;
 }
 
 header.site-header .container.site-branding {
