@@ -19,9 +19,8 @@ function actionCreateOrder(body) {
 
   var customerName = String(body.customerName || '').trim();
   var customerPhone = String(body.customerPhone || '').trim();
-  var paymentMethod = body.paymentMethod;
+  var paymentMethod = body.paymentMethod || '';
   if (!customerName || !customerPhone) return fail('Name and phone number are required');
-  if (paymentMethod !== 'ANZ' && paymentMethod !== 'Teremo') return fail('Choose a payment method');
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);

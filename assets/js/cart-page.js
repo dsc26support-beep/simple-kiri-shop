@@ -15,6 +15,11 @@ async function init() {
   const res = await Api.get('getStorePublicInfo', { storeSlug: currentSlug });
   if (res.ok) {
     document.getElementById('store-name-tagline').textContent = `Your cart — ${res.store.storeName}`;
+    if (res.store.phone) {
+      const phoneLine = document.getElementById('store-phone-line');
+      phoneLine.textContent = res.store.phone;
+      phoneLine.classList.remove('hidden');
+    }
   }
 
   document.getElementById('cart-items').addEventListener('click', onCartClick);

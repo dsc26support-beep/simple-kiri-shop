@@ -24,6 +24,12 @@ async function init() {
   document.title = res.storeName + ' — Simple Kiri Shop';
   document.getElementById('store-name-tagline').textContent = res.storeName;
 
+  const phoneLine = document.getElementById('store-phone-line');
+  if (res.storePhone) {
+    phoneLine.textContent = res.storePhone;
+    phoneLine.classList.remove('hidden');
+  }
+
   currentProducts = res.products;
 
   if (currentProducts.length === 0) {
@@ -65,6 +71,7 @@ function renderSimilarProductCard(product) {
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         <span class="helper-text">${escapeHtml(product.storeName)}</span>
+        ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
         <strong>${priceText}</strong>
         <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">View</a>
       </div>

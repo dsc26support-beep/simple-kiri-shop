@@ -23,43 +23,16 @@ async function init() {
   storeInfo = res.store;
   document.getElementById('store-name-tagline').textContent = `Checkout — ${storeInfo.storeName}`;
 
-  renderPaymentPanels();
-  renderOrderReview();
+  const phoneLine = document.getElementById('store-phone-line');
+  if (storeInfo.phone) {
+    phoneLine.textContent = storeInfo.phone;
+    phoneLine.classList.remove('hidden');
+  }
 
-  document.querySelectorAll('input[name="paymentMethod"]').forEach((radio) => {
-    radio.addEventListener('change', updatePaymentPanelVisibility);
-  });
+  renderOrderReview();
 
   document.getElementById('checkout-form').addEventListener('submit', onSubmit);
   document.getElementById('copy-summary-btn').addEventListener('click', onCopySummary);
-}
-
-function renderPaymentPanels() {
-  document.getElementById('payment-instructions-anz').innerHTML = `
-    <dl>
-      <dt>Account Name</dt><dd>${escapeHtml(storeInfo.anzAccountName || 'Not provided yet — please contact the store')}</dd>
-      <dt>Account Number</dt><dd>${escapeHtml(storeInfo.anzAccountNumber || '—')}</dd>
-      <dt>Branch</dt><dd>${escapeHtml(storeInfo.anzBranch || '—')}</dd>
-    </dl>
-    <p class="helper-text">Use your Order Reference as the transfer reference.</p>
-  `;
-  document.getElementById('payment-instructions-teremo').innerHTML = `
-    <dl>
-      <dt>Teremo Number</dt><dd>${escapeHtml(storeInfo.teremoNumber || 'Not provided yet — please contact the store')}</dd>
-      <dt>Registered Name</dt><dd>${escapeHtml(storeInfo.teremoName || '—')}</dd>
-    </dl>
-    <p class="helper-text">Include your Order Reference in the transfer note.</p>
-  `;
-  if (storeInfo.paymentNotes) {
-    document.getElementById('payment-instructions-anz').innerHTML += `<p>${escapeHtml(storeInfo.paymentNotes)}</p>`;
-    document.getElementById('payment-instructions-teremo').innerHTML += `<p>${escapeHtml(storeInfo.paymentNotes)}</p>`;
-  }
-}
-
-function updatePaymentPanelVisibility() {
-  const method = document.querySelector('input[name="paymentMethod"]:checked')?.value;
-  document.getElementById('payment-instructions-anz').classList.toggle('hidden', method !== 'ANZ');
-  document.getElementById('payment-instructions-teremo').classList.toggle('hidden', method !== 'Teremo');
 }
 
 function renderOrderReview() {
@@ -85,14 +58,9 @@ async function onSubmit(e) {
   const form = e.target;
   const customerName = form.customerName.value.trim();
   const customerPhone = form.customerPhone.value.trim();
-  const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
 
   if (!customerName || !customerPhone) {
     errorEl.textContent = 'Please enter your name and phone number.';
-    return;
-  }
-  if (!paymentMethod) {
-    errorEl.textContent = 'Please choose a payment method.';
     return;
   }
 
@@ -104,7 +72,6 @@ async function onSubmit(e) {
     customerEmail: form.customerEmail.value.trim(),
     deliveryAddress: form.deliveryAddress.value.trim(),
     notes: form.notes.value.trim(),
-    paymentMethod,
     items: cart.map((line) => ({ variantId: line.variantId, qty: line.qty }))
   };
 
@@ -129,12 +96,8 @@ async function onSubmit(e) {
 
 function buildSummaryText(orderRef, payload, cart, total) {
   const lines = cart.map((l) => `- ${l.qty} x ${l.label} = ${formatMoney(l.unitPrice * l.qty)}`).join('\n');
-  const paymentBlock =
-    payload.paymentMethod === 'ANZ'
-      ? `ANZ Bank Transfer\nAccount Name: ${storeInfo.anzAccountName || 'N/A'}\nAccount Number: ${storeInfo.anzAccountNumber || 'N/A'}\nBranch: ${storeInfo.anzBranch || 'N/A'}`
-      : `Teremo\nNumber: ${storeInfo.teremoNumber || 'N/A'}\nName: ${storeInfo.teremoName || 'N/A'}`;
 
-  return `${storeInfo.storeName} - Order
+  return `${storeInfo.storeName} - New Order
 ${orderRef ? 'Order Ref: ' + orderRef : '(order not yet confirmed with the store server — please send this message directly)'}
 
 Customer: ${payload.customerName}
@@ -145,9 +108,9 @@ ${lines}
 
 Total: ${formatMoney(total)}
 
-Payment Method: ${payload.paymentMethod}
-${paymentBlock}
-${orderRef ? 'Use ' + orderRef + ' as your payment reference.' : ''}
+Hi, I'd like to place this order. Could you please reply with your ANZ or Teremo payment details so I can complete payment?${storeInfo.phone ? ' You can also reach me by phone/WhatsApp at ' + payload.customerPhone + ', or call/WhatsApp the store at ' + storeInfo.phone + '.' : ''}
+
+Thank you!
 `;
 }
 
@@ -156,26 +119,29 @@ function showConfirmation(orderResult, payload) {
   const confirmSection = document.getElementById('confirmation-section');
   confirmSection.classList.remove('hidden');
 
-  document.getElementById('confirmation-intro').textContent = `Thank you, ${payload.customerName}! Your order reference is ${orderResult.orderId}.`;
-
-  document.getElementById('confirmation-payment-panel').innerHTML =
-    payload.paymentMethod === 'ANZ' ? document.getElementById('payment-instructions-anz').innerHTML : document.getElementById('payment-instructions-teremo').innerHTML;
+  document.getElementById('confirmation-intro').textContent =
+    `Thank you, ${payload.customerName}! Your order reference is ${orderResult.orderId}. We're opening an email to the store now — if it doesn't open automatically, use the buttons below.`;
 
   const summaryText = buildSummaryText(orderResult.orderId, payload, orderResult.items.map((i) => ({ label: i.label, unitPrice: i.unitPrice, qty: i.qty })), orderResult.total);
   document.getElementById('order-summary-text').value = summaryText;
 
   wireShareLinks(summaryText, orderResult.orderId);
+
+  if (storeInfo.email) {
+    window.location.href = document.getElementById('email-order-link').href;
+  }
 }
 
 function showFallbackConfirmation(payload, cart) {
   const total = Cart.getTotal(currentSlug);
   const summaryText = buildSummaryText(null, payload, cart, total);
   // Reuse the confirmation section as a manual fallback if the API call failed.
+  // No auto-redirect here - there's no server-confirmed order yet, so the
+  // customer should review and send it themselves rather than being pushed
+  // into an email prematurely.
   document.getElementById('checkout-section').classList.add('hidden');
   document.getElementById('confirmation-section').classList.remove('hidden');
   document.getElementById('confirmation-intro').textContent = `We couldn't reach the store's order system, but you can still send your order directly, ${payload.customerName}.`;
-  document.getElementById('confirmation-payment-panel').innerHTML =
-    payload.paymentMethod === 'ANZ' ? document.getElementById('payment-instructions-anz').innerHTML : document.getElementById('payment-instructions-teremo').innerHTML;
   document.getElementById('order-summary-text').value = summaryText;
   wireShareLinks(summaryText, null);
 }

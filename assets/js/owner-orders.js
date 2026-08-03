@@ -50,7 +50,7 @@ function render() {
             <dt>Customer</dt><dd>${escapeHtml(o.customerName)}</dd>
             <dt>Phone</dt><dd>${escapeHtml(o.customerPhone)}</dd>
             ${o.deliveryAddress ? `<dt>Address</dt><dd>${escapeHtml(o.deliveryAddress)}</dd>` : ''}
-            <dt>Payment</dt><dd>${escapeHtml(o.paymentMethod)}</dd>
+            <dt>Payment</dt><dd>${o.paymentMethod ? escapeHtml(o.paymentMethod) : 'Not yet specified'}</dd>
             <dt>Items</dt><dd>${escapeHtml(o.itemsSummary)}</dd>
             <dt>Total</dt><dd>${formatMoney(o.total)}</dd>
             <dt>Placed</dt><dd>${escapeHtml(new Date(o.createdAt).toLocaleString())}</dd>

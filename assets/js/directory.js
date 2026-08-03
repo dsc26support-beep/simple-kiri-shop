@@ -21,6 +21,7 @@ async function init() {
       (store) => `
       <a class="store-card" href="store.html?store=${encodeURIComponent(store.storeSlug)}">
         <h3>${escapeHtml(store.storeName)}</h3>
+        ${store.phone ? `<p class="store-phone">${escapeHtml(store.phone)}</p>` : ''}
         <p class="helper-text">Visit store →</p>
       </a>
     `

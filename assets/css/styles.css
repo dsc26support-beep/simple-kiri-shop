@@ -128,6 +128,12 @@ header.site-header a {
   margin: 0;
 }
 
+.store-phone {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin: var(--space-1) 0 0;
+}
+
 nav.site-nav ul {
   list-style: none;
   display: flex;
@@ -300,18 +306,6 @@ fieldset {
 legend {
   font-weight: 700;
   padding: 0 var(--space-1);
-}
-
-.radio-option {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) 0;
-}
-
-.radio-option input {
-  width: auto;
-  min-height: auto;
 }
 
 .form-error {
@@ -506,27 +500,6 @@ legend {
   font-weight: 700;
   font-size: 1.15rem;
   padding-top: var(--space-3);
-}
-
-.payment-panel {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-3);
-  margin-top: var(--space-2);
-  background: var(--color-bg-alt);
-}
-
-.payment-panel dl {
-  margin: 0;
-}
-
-.payment-panel dt {
-  font-weight: 600;
-  margin-top: var(--space-2);
-}
-
-.payment-panel dd {
-  margin: 0;
 }
 
 #order-summary-text {

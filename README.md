@@ -3,9 +3,13 @@
 A multi-vendor online marketplace for Kiribati shoppers. Multiple store owners each
 register, log in, and manage their own products (with photos taken straight from
 their phone). Customers browse a store, add product varieties to a cart, and check
-out — payment is **manual**: each store's own **ANZ** bank transfer and **Teremo**
-details are shown at checkout, the customer pays outside the site, and the order
-sits as "Pending Payment" until the store owner confirms it.
+out — payment is **manual and off-site**: checkout collects the buyer's details only
+(no bank details are shown on the site), placing an order automatically opens an
+email to the store owner with the buyer's details, the order number, and a request
+for their ANZ/Teremo payment details, and the order sits as "Pending Payment" until
+the store owner confirms it. Store owners still keep their ANZ/Teremo details on
+file in Settings for their own reference (and for when replying to that email);
+customers just never see them on the site.
 
 There is no traditional server or database. **A Google Sheet is the CRM/database**,
 and a **Google Apps Script Web App** bound to that Sheet acts as the backend JSON
@@ -24,7 +28,7 @@ stores.html            Full store directory (browse all stores)
 search.html             Cross-store product search/category results (?q= / ?category=)
 store.html               One store's product catalog (?store=slug)
 cart.html                 Shopping cart for the active store
-checkout.html              Customer details, ANZ/Teremo instructions, places the order
+checkout.html              Customer details, places the order, auto-emails the store owner
 
 owner/login.html         Store owner login + registration (+ 2FA code step)
 owner/forgot-password.html Email-code password reset

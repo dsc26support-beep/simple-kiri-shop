@@ -14,6 +14,7 @@
       <div>
         <p class="site-title">Simple Kiri Shop</p>
         <p class="site-tagline" id="store-name-tagline">Checkout</p>
+        <p class="store-phone hidden" id="store-phone-line"></p>
       </div>
       <nav class="site-nav" aria-label="Main">
         <ul>
@@ -51,24 +52,9 @@
               <textarea id="notes" name="notes"></textarea>
             </div>
 
-            <fieldset>
-              <legend>Payment Method</legend>
-              <div class="radio-option">
-                <input type="radio" id="payment-anz" name="paymentMethod" value="ANZ" required>
-                <label for="payment-anz" style="margin:0;">ANZ Bank Transfer</label>
-              </div>
-              <div id="payment-instructions-anz" class="payment-panel hidden"></div>
-
-              <div class="radio-option">
-                <input type="radio" id="payment-teremo" name="paymentMethod" value="Teremo">
-                <label for="payment-teremo" style="margin:0;">Teremo</label>
-              </div>
-              <div id="payment-instructions-teremo" class="payment-panel hidden"></div>
-            </fieldset>
-
             <p id="checkout-error" class="form-error" role="alert"></p>
             <button type="submit" id="place-order-btn" class="btn btn-primary btn-block">Place Order</button>
-            <p class="helper-text">You'll pay the store directly using the details above, then send them your order reference to confirm.</p>
+            <p class="helper-text">After you order, we'll open an email to the store with your details so they can reply with how to pay.</p>
           </form>
         </div>
 
@@ -87,8 +73,6 @@
       <div class="container">
         <h1 id="confirmation-heading">Order Received</h1>
         <p id="confirmation-intro"></p>
-
-        <div id="confirmation-payment-panel"></div>
 
         <div class="field">
           <label for="order-summary-text">Order Summary (send this to the store to confirm)</label>
@@ -109,7 +93,7 @@
 
   <footer class="site-footer">
     <div class="container">
-      <p>No online payment is processed on this site — you pay the store directly.</p>
+      <p>No online payment is processed on this site — the store will contact you to arrange payment.</p>
       <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a></p>
     </div>
   </footer>

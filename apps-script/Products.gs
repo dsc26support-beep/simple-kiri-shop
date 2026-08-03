@@ -12,7 +12,7 @@ function getOwnerBySlug(slug) {
 function actionListStores() {
   var stores = sheetToObjects(getSheet('Owners'))
     .filter(function (o) { return o.Status === 'active'; })
-    .map(function (o) { return { storeSlug: o.StoreSlug, storeName: o.StoreName }; });
+    .map(function (o) { return { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone }; });
   return ok({ stores: stores });
 }
 
@@ -55,6 +55,7 @@ function actionSearchProducts(params) {
         imageUrl: p.ImageUrl,
         storeSlug: owner.StoreSlug,
         storeName: owner.StoreName,
+        storePhone: owner.Phone,
         variants: productVariants
       };
     })
@@ -101,7 +102,7 @@ function actionListProducts(params) {
     })
     .filter(function (p) { return p.variants.length > 0; });
 
-  return ok({ storeName: owner.StoreName, products: result });
+  return ok({ storeName: owner.StoreName, storePhone: owner.Phone, products: result });
 }
 
 function actionListOwnerProducts(owner) {
