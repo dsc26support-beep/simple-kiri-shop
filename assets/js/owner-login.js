@@ -94,6 +94,10 @@ async function onRegister(e) {
     errorEl.textContent = 'Contact email is required — that\'s where customer orders will be sent.';
     return;
   }
+  if (!phone) {
+    errorEl.textContent = 'Contact phone is required — it\'s shown to customers as a backup way to reach you.';
+    return;
+  }
 
   const res = await Api.post('registerOwner', { storeName, username, password, email, phone });
   if (!res.ok) {
