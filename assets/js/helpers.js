@@ -83,7 +83,7 @@ function renderCategoryButtons(containerId) {
 // site working offline-first on limited mobile data.
 const DELIVERY_ICON_SVG = {
   truck: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="14" height="10"></rect><path d="M15 10h4l3 3v4h-7z"></path><circle cx="6" cy="18" r="1.5"></circle><circle cx="17.5" cy="18" r="1.5"></circle></svg>',
-  ship: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18l1.5-7h13L20 18"></path><path d="M12 11V4"></path><path d="M12 5l5.5 6H12z"></path></svg>',
+  ship: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14h17l3 3-3 3H5l-3-3z"></path><rect x="4" y="10" width="5" height="4"></rect><path d="M6.5 10V5"></path><rect x="11" y="8" width="6" height="6"></rect><path d="M14 8v6M11 11h6"></path></svg>',
   airCargo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v7"></path><path d="M12 9l9 5v2l-9-3-9 3v-2z"></path><path d="M9 19l3-2 3 2"></path><path d="M12 17v4"></path></svg>'
 };
 const DELIVERY_ICON_LABELS = { truck: 'Truck delivery', ship: 'Ship delivery', airCargo: 'Air cargo delivery' };
