@@ -16,16 +16,26 @@ async function init() {
   }
 
   statusEl.textContent = `${res.stores.length} store${res.stores.length === 1 ? '' : 's'} available.`;
-  listEl.innerHTML = res.stores
-    .map(
-      (store) => `
-      <a class="store-card" href="store.html?store=${encodeURIComponent(store.storeSlug)}">
+  listEl.innerHTML = res.stores.map(renderStoreCard).join('');
+}
+
+function renderStoreCard(store) {
+  const logo = store.logoUrl
+    ? `<img class="store-card-logo" src="${escapeHtml(store.logoUrl)}" alt="">`
+    : `<div class="store-card-logo-placeholder" aria-hidden="true">${escapeHtml(initials(store.storeName))}</div>`;
+
+  return `
+    <a class="store-card" href="store.html?store=${encodeURIComponent(store.storeSlug)}">
+      ${logo}
+      <div class="store-card-info">
         <h3>${escapeHtml(store.storeName)}</h3>
-        ${store.phone ? `<p class="store-phone">${escapeHtml(store.phone)}</p>` : ''}
+        <div class="store-card-meta">
+          ${store.phone ? `<span class="store-phone">${escapeHtml(store.phone)}</span>` : ''}
+          ${store.island ? `<span class="store-phone">${escapeHtml(store.island)}</span>` : ''}
+        </div>
         ${renderDeliveryIcons({ truck: store.deliveryTruck, ship: store.deliveryShip, airCargo: store.deliveryAirCargo })}
         <p class="helper-text">Visit store →</p>
-      </a>
-    `
-    )
-    .join('');
+      </div>
+    </a>
+  `;
 }

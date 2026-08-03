@@ -15,6 +15,12 @@ async function init() {
   const res = await Api.get('getStorePublicInfo', { storeSlug: currentSlug });
   if (res.ok) {
     document.getElementById('store-name-tagline').textContent = `Your cart — ${res.store.storeName}`;
+    if (res.store.logoUrl) {
+      const logoImg = document.getElementById('store-logo-img');
+      logoImg.src = res.store.logoUrl;
+      logoImg.alt = res.store.storeName;
+      logoImg.classList.remove('hidden');
+    }
     if (res.store.phone) {
       const phoneLine = document.getElementById('store-phone-line');
       phoneLine.textContent = res.store.phone;

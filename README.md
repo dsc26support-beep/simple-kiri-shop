@@ -58,7 +58,7 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | Island | Village`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | Island | Village | LogoUrl | LogoFileId`
 
    (The `ANZ_*`/`Teremo_*`/`PaymentNotes` columns are no longer used by the
    app — checkout no longer displays payment details, so Settings no longer
@@ -82,8 +82,8 @@ Sheet and deploy the Apps Script backend under your own Google account first.
 
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
-   `Island`, and `Village` columns to the end of `Owners`, and add the new
-   `TwoFACodes` tab — everything else stays the same.
+   `Island`, `Village`, `LogoUrl`, and `LogoFileId` columns to the end of
+   `Owners`, and add the new `TwoFACodes` tab — everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
@@ -146,9 +146,9 @@ codes are emailed from the script owner's own Google account.
   payment details.
 - **Back up the Sheet periodically** (File → Download) — it's the sole system
   of record, with no other backup layer.
-- Product photo uploads are capped at 4MB and compressed client-side before
-  upload; the upload endpoint requires a valid store-owner token so it can't
-  be used as open anonymous file hosting.
+- Product photo and store logo uploads are capped at 4MB and compressed
+  client-side before upload; both endpoints require a valid store-owner
+  token so they can't be used as open anonymous file hosting.
 - **2FA is an emailed 6-digit code**, not an authenticator app (TOTP) — simpler
   to run reliably on Apps Script, but it means login security is only as
   strong as the owner's email account, and depends on `MailApp` actually

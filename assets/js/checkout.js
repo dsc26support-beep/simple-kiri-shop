@@ -23,6 +23,13 @@ async function init() {
   storeInfo = res.store;
   document.getElementById('store-name-tagline').textContent = `Checkout — ${storeInfo.storeName}`;
 
+  if (storeInfo.logoUrl) {
+    const logoImg = document.getElementById('store-logo-img');
+    logoImg.src = storeInfo.logoUrl;
+    logoImg.alt = storeInfo.storeName;
+    logoImg.classList.remove('hidden');
+  }
+
   const phoneLine = document.getElementById('store-phone-line');
   if (storeInfo.phone) {
     phoneLine.textContent = storeInfo.phone;

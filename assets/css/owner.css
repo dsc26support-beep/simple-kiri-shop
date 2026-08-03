@@ -10,6 +10,7 @@
   background: var(--color-blue);
   color: #fff;
   padding: var(--space-2) 0;
+  position: relative;
 }
 
 .owner-topbar .container {

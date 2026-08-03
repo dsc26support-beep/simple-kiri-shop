@@ -64,3 +64,42 @@ function actionUploadProductImage(owner, body) {
 
   return ok({ imageUrl: url });
 }
+
+function actionUploadStoreLogo(owner, body) {
+  var mimeType = body.mimeType;
+  var imageBase64 = body.imageBase64;
+
+  if (!mimeType || mimeType.indexOf('image/') !== 0) return fail('Only image uploads are allowed');
+  if (!imageBase64) return fail('No image data received');
+
+  var bytes;
+  try {
+    bytes = Utilities.base64Decode(imageBase64);
+  } catch (e) {
+    return fail('Invalid image data');
+  }
+  if (bytes.length > MAX_IMAGE_BYTES) return fail('Image is too large (max 4MB) - please choose a smaller photo');
+
+  var ownersSheet = getSheet('Owners');
+  var ownerRow = findRowById(ownersSheet, 'OwnerId', owner.OwnerId);
+  if (!ownerRow) return fail('Store account not found');
+
+  var folder = getImageFolder();
+  var blob = Utilities.newBlob(bytes, mimeType, 'logo_' + owner.OwnerId + '_' + Date.now());
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  var url = 'https://lh3.googleusercontent.com/d/' + file.getId();
+  var oldFileId = ownerRow.LogoFileId;
+
+  updateRowFromObject(ownersSheet, ownerRow.__row, {
+    LogoUrl: url,
+    LogoFileId: file.getId()
+  });
+
+  if (oldFileId) {
+    try { DriveApp.getFileById(oldFileId).setTrashed(true); } catch (e) { /* already gone, ignore */ }
+  }
+
+  return ok({ logoUrl: url });
+}

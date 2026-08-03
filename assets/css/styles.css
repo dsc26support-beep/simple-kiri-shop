@@ -111,6 +111,57 @@ header.site-header .container {
   padding-bottom: var(--space-3);
 }
 
+header.site-header .container.header-top-row {
+  padding-bottom: var(--space-1);
+}
+
+header.site-header .container.store-branding {
+  display: block;
+  text-align: center;
+  padding-top: 0;
+}
+
+.store-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto var(--space-2);
+  background: #fff;
+}
+
+header.site-header {
+  position: relative;
+}
+
+.home-button {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35em 0.7em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.home-button:hover,
+.home-button:focus-visible {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.home-button svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 header.site-header a {
   color: #fff;
   text-decoration: none;
@@ -480,7 +531,9 @@ legend {
   padding: var(--space-4);
   text-decoration: none;
   color: var(--color-ink);
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
 }
 
 .store-card:hover,
@@ -490,6 +543,41 @@ legend {
 
 .store-card h3 {
   margin: 0 0 var(--space-1);
+}
+
+.store-card-logo,
+.store-card-logo-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.store-card-logo {
+  object-fit: cover;
+  background: var(--color-bg-alt);
+}
+
+.store-card-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-blue);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.store-card-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.store-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
 }
 
 /* Cart & checkout */

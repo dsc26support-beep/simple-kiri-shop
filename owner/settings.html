@@ -23,6 +23,10 @@
         </ul>
       </nav>
     </div>
+    <a class="home-button" href="../index.html" aria-label="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M9 20v-6h6v6"></path></svg>
+      Home
+    </a>
   </div>
 
   <main id="main" class="owner-main">
@@ -42,6 +46,14 @@
         <div class="field">
           <label for="contact-phone">Contact Phone (used for WhatsApp order sharing)</label>
           <input id="contact-phone" type="tel">
+        </div>
+
+        <h2>Store Logo</h2>
+        <div class="field">
+          <label for="logo-image-input">Logo Image</label>
+          <img id="logo-preview" class="image-upload-preview hidden" alt="Store logo preview">
+          <input type="file" id="logo-image-input" accept="image/*">
+          <p id="logo-upload-status" class="helper-text"></p>
         </div>
 
         <h2>Delivery Methods</h2>

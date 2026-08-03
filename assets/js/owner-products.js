@@ -163,47 +163,6 @@ function onImageFileChange(e) {
   reader.readAsDataURL(file);
 }
 
-// Downscale/compress the photo client-side before upload - mobile camera
-// photos can be 5-10MB, which is both slow on Kiribati mobile data and
-// close to the Apps Script POST size limit once base64-encoded (~33% larger).
-function compressImage(file, maxDimension = 1280, quality = 0.8) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = () => {
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxDimension || height > maxDimension) {
-          const scale = maxDimension / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            const outReader = new FileReader();
-            outReader.onload = () => {
-              const base64 = outReader.result.split(',')[1];
-              resolve({ base64, mimeType: 'image/jpeg' });
-            };
-            outReader.onerror = reject;
-            outReader.readAsDataURL(blob);
-          },
-          'image/jpeg',
-          quality
-        );
-      };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 async function onSaveProduct(e) {
   e.preventDefault();
   const errorEl = document.getElementById('product-form-error');

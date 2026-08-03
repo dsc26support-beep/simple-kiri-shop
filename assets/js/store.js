@@ -24,6 +24,13 @@ async function init() {
   document.title = res.storeName + ' — Simple Kiri Shop';
   document.getElementById('store-name-tagline').textContent = res.storeName;
 
+  if (res.storeLogoUrl) {
+    const logoImg = document.getElementById('store-logo-img');
+    logoImg.src = res.storeLogoUrl;
+    logoImg.alt = res.storeName;
+    logoImg.classList.remove('hidden');
+  }
+
   const phoneLine = document.getElementById('store-phone-line');
   if (res.storePhone) {
     phoneLine.textContent = res.storePhone;

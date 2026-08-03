@@ -17,6 +17,7 @@ async function init() {
   populateIslandSelect();
   wireLocationFields();
   wirePasswordToggle('new-password');
+  document.getElementById('logo-image-input').addEventListener('change', onLogoFileChange);
 
   fillForm(owner);
   renderTwoFAStatus(owner);
@@ -38,6 +39,41 @@ function fillForm(owner) {
 
   document.getElementById('settings-island').value = owner.island || '';
   populateVillageSelect(owner.island || '', owner.village || '');
+
+  const logoPreview = document.getElementById('logo-preview');
+  if (owner.logoUrl) {
+    logoPreview.src = owner.logoUrl;
+    logoPreview.classList.remove('hidden');
+  }
+}
+
+async function onLogoFileChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('logo-upload-status');
+  const preview = document.getElementById('logo-preview');
+  statusEl.textContent = 'Uploading logo…';
+
+  try {
+    const { base64, mimeType } = await compressImage(file, 512, 0.85);
+    const res = await Api.post('uploadStoreLogo', { token: Auth.getToken(), imageBase64: base64, mimeType });
+    if (!res.ok) {
+      statusEl.textContent = res.error || 'Could not upload logo.';
+      return;
+    }
+    preview.src = res.logoUrl;
+    preview.classList.remove('hidden');
+    statusEl.textContent = 'Logo updated.';
+
+    const owner = Auth.getOwner();
+    owner.logoUrl = res.logoUrl;
+    Auth.saveSession(Auth.getToken(), owner);
+
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  } catch (err) {
+    statusEl.textContent = 'Could not process that image.';
+  }
 }
 
 function renderDeliveryToggleButtons() {

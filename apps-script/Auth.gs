@@ -27,6 +27,7 @@ function publicOwnerFields(owner) {
     storeSlug: owner.StoreSlug,
     email: owner.Email,
     phone: owner.Phone,
+    logoUrl: owner.LogoUrl,
     island: owner.Island,
     village: owner.Village,
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
@@ -78,6 +79,13 @@ function actionRegisterOwner(body) {
 
     var usernameTaken = owners.some(function (o) { return String(o.Username).toLowerCase() === username; });
     if (usernameTaken) return fail('That username is already taken');
+
+    var emailTaken = owners.some(function (o) { return String(o.Email).toLowerCase() === email.toLowerCase(); });
+    if (emailTaken) return fail('That email is already registered to a store');
+
+    var phoneDigits = phone.replace(/[^0-9]/g, '');
+    var phoneTaken = owners.some(function (o) { return String(o.Phone).replace(/[^0-9]/g, '') === phoneDigits; });
+    if (phoneTaken) return fail('That phone number is already registered to a store');
 
     var slugBase = slugify(storeName);
     var slug = slugBase;
