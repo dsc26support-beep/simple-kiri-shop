@@ -481,8 +481,14 @@ legend {
   margin-top: auto;
 }
 
+.variety-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .qty-input {
-  max-width: 5.5em;
+  flex: 0 0 4.5em;
+  max-width: 4.5em;
 }
 
 /* Store directory */
