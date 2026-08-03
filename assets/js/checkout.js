@@ -398,8 +398,8 @@ function showConfirmation(orderResult, payload) {
   // Click the mailto link rather than assigning window.location.href - the
   // latter can trigger a real page navigation/reload in some mobile browsers
   // when no mail app is configured (losing this confirmation screen and its
-  // Copy/Email/WhatsApp fallback buttons), while clicking the anchor just
-  // invokes the OS mail handler without navigating the current page.
+  // Copy/Email fallback buttons), while clicking the anchor just invokes the
+  // OS mail handler without navigating the current page.
   if (storeInfo.email) {
     document.getElementById('email-order-link').click();
   }
@@ -422,21 +422,12 @@ function showFallbackConfirmation(payload, cart) {
 
 function wireShareLinks(summaryText, orderRef) {
   const emailLink = document.getElementById('email-order-link');
-  const whatsappLink = document.getElementById('whatsapp-order-link');
 
   if (storeInfo.email) {
     emailLink.href = `mailto:${encodeURIComponent(storeInfo.email)}?subject=${encodeURIComponent('Order ' + (orderRef || ''))}&body=${encodeURIComponent(summaryText)}`;
     emailLink.classList.remove('hidden');
   } else {
     emailLink.classList.add('hidden');
-  }
-
-  const digits = (storeInfo.phone || '').replace(/[^0-9]/g, '');
-  if (digits) {
-    whatsappLink.href = `https://wa.me/${digits}?text=${encodeURIComponent(summaryText)}`;
-    whatsappLink.classList.remove('hidden');
-  } else {
-    whatsappLink.classList.add('hidden');
   }
 }
 
