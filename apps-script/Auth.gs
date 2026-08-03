@@ -27,12 +27,11 @@ function publicOwnerFields(owner) {
     storeSlug: owner.StoreSlug,
     email: owner.Email,
     phone: owner.Phone,
-    anzAccountName: owner.ANZ_AccountName,
-    anzAccountNumber: owner.ANZ_AccountNumber,
-    anzBranch: owner.ANZ_Branch,
-    teremoName: owner.Teremo_Name,
-    teremoNumber: owner.Teremo_Number,
-    paymentNotes: owner.PaymentNotes,
+    island: owner.Island,
+    village: owner.Village,
+    deliveryTruck: String(owner.DeliveryTruck) === 'true',
+    deliveryShip: String(owner.DeliveryShip) === 'true',
+    deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true',
     twoFAEnabled: String(owner.TwoFAEnabled) === 'true'
   };
 }

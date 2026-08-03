@@ -9,10 +9,22 @@ function getOwnerBySlug(slug) {
   return sheetToObjects(getSheet('Owners')).filter(function (o) { return o.StoreSlug === slug; })[0] || null;
 }
 
+function deliveryFlagsOf(owner) {
+  return {
+    deliveryTruck: String(owner.DeliveryTruck) === 'true',
+    deliveryShip: String(owner.DeliveryShip) === 'true',
+    deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true'
+  };
+}
+
 function actionListStores() {
   var stores = sheetToObjects(getSheet('Owners'))
     .filter(function (o) { return o.Status === 'active'; })
-    .map(function (o) { return { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone }; });
+    .map(function (o) {
+      var store = { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone };
+      Object.assign(store, deliveryFlagsOf(o));
+      return store;
+    });
   return ok({ stores: stores });
 }
 
@@ -47,7 +59,7 @@ function actionSearchProducts(params) {
       var productVariants = variants
         .filter(function (v) { return v.ProductId === p.ProductId; })
         .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
-      return {
+      var product = {
         productId: p.ProductId,
         name: p.Name,
         description: p.Description,
@@ -58,6 +70,10 @@ function actionSearchProducts(params) {
         storePhone: owner.Phone,
         variants: productVariants
       };
+      product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
+      product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
+      product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+      return product;
     })
     .filter(function (p) { return p.variants.length > 0; });
 
@@ -102,7 +118,11 @@ function actionListProducts(params) {
     })
     .filter(function (p) { return p.variants.length > 0; });
 
-  return ok({ storeName: owner.StoreName, storePhone: owner.Phone, products: result });
+  var response = { storeName: owner.StoreName, storePhone: owner.Phone, products: result };
+  response.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
+  response.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
+  response.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+  return ok(response);
 }
 
 function actionListOwnerProducts(owner) {
@@ -244,17 +264,17 @@ function actionUpdateOwnerProfile(owner, body) {
     storeName: 'StoreName',
     email: 'Email',
     phone: 'Phone',
-    anzAccountName: 'ANZ_AccountName',
-    anzAccountNumber: 'ANZ_AccountNumber',
-    anzBranch: 'ANZ_Branch',
-    teremoName: 'Teremo_Name',
-    teremoNumber: 'Teremo_Number',
-    paymentNotes: 'PaymentNotes'
+    island: 'Island',
+    village: 'Village'
   };
   var update = {};
   Object.keys(fieldMap).forEach(function (k) {
     if (body[k] !== undefined) update[fieldMap[k]] = body[k];
   });
+
+  if (body.deliveryTruck !== undefined) update.DeliveryTruck = body.deliveryTruck ? 'true' : 'false';
+  if (body.deliveryShip !== undefined) update.DeliveryShip = body.deliveryShip ? 'true' : 'false';
+  if (body.deliveryAirCargo !== undefined) update.DeliveryAirCargo = body.deliveryAirCargo ? 'true' : 'false';
 
   if (body.newPassword) {
     if (String(body.newPassword).length < 8) return fail('Password must be at least 8 characters');

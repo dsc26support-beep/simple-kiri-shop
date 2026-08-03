@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', init);
 function init() {
   document.getElementById('request-form').addEventListener('submit', onRequestCode);
   document.getElementById('reset-form').addEventListener('submit', onResetPassword);
+  wirePasswordToggle('reset-new-password');
 }
 
 async function onRequestCode(e) {

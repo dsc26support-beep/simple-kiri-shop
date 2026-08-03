@@ -30,6 +30,12 @@ async function init() {
     phoneLine.classList.remove('hidden');
   }
 
+  document.getElementById('store-delivery-icons').innerHTML = renderDeliveryIcons({
+    truck: res.storeDeliveryTruck,
+    ship: res.storeDeliveryShip,
+    airCargo: res.storeDeliveryAirCargo
+  });
+
   currentProducts = res.products;
 
   if (currentProducts.length === 0) {
@@ -72,6 +78,7 @@ function renderSimilarProductCard(product) {
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         <span class="helper-text">${escapeHtml(product.storeName)}</span>
         ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
+        ${renderDeliveryIcons({ truck: product.storeDeliveryTruck, ship: product.storeDeliveryShip, airCargo: product.storeDeliveryAirCargo })}
         <strong>${priceText}</strong>
         <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">View</a>
       </div>

@@ -1,7 +1,7 @@
 // Cart is scoped per store slug in localStorage: one checkout = one vendor,
-// since each store is paid directly and separately (ANZ/Teremo details
-// differ per store). A shopper can hold separate in-progress carts for
-// different stores without one clobbering the other.
+// since each store arranges payment directly and separately with the
+// customer. A shopper can hold separate in-progress carts for different
+// stores without one clobbering the other.
 const Cart = (function () {
   function storageKey(storeSlug) {
     return 'skiri_cart_' + storeSlug;

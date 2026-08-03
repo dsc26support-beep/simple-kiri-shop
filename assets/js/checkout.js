@@ -29,6 +29,12 @@ async function init() {
     phoneLine.classList.remove('hidden');
   }
 
+  document.getElementById('store-delivery-icons').innerHTML = renderDeliveryIcons({
+    truck: storeInfo.deliveryTruck,
+    ship: storeInfo.deliveryShip,
+    airCargo: storeInfo.deliveryAirCargo
+  });
+
   renderOrderReview();
 
   document.getElementById('checkout-form').addEventListener('submit', onSubmit);
@@ -108,7 +114,7 @@ ${lines}
 
 Total: ${formatMoney(total)}
 
-Hi, I'd like to place this order. Could you please reply with your ANZ or Teremo payment details so I can complete payment?${storeInfo.phone ? ' You can also reach me by phone/WhatsApp at ' + payload.customerPhone + ', or call/WhatsApp the store at ' + storeInfo.phone + '.' : ''}
+Hi, I'd like to place this order. Could you please reply and let me know how you'd like me to arrange payment?${storeInfo.phone ? ' You can also reach me by phone/WhatsApp at ' + payload.customerPhone + ', or call/WhatsApp the store at ' + storeInfo.phone + '.' : ''}
 
 Thank you!
 `;

@@ -30,6 +30,9 @@ function init() {
   registerForm.addEventListener('submit', onRegister);
   document.getElementById('twofa-form').addEventListener('submit', onVerifyTwoFA);
 
+  wirePasswordToggle('login-password');
+  wirePasswordToggle('register-password');
+
   if (getQueryParam('tab') === 'register') {
     switchTab('register');
   }

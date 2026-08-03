@@ -22,6 +22,7 @@ async function init() {
       <a class="store-card" href="store.html?store=${encodeURIComponent(store.storeSlug)}">
         <h3>${escapeHtml(store.storeName)}</h3>
         ${store.phone ? `<p class="store-phone">${escapeHtml(store.phone)}</p>` : ''}
+        ${renderDeliveryIcons({ truck: store.deliveryTruck, ship: store.deliveryShip, airCargo: store.deliveryAirCargo })}
         <p class="helper-text">Visit store →</p>
       </a>
     `

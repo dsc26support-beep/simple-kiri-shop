@@ -134,6 +134,23 @@ header.site-header a {
   margin: var(--space-1) 0 0;
 }
 
+.delivery-icons {
+  display: inline-flex;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  vertical-align: middle;
+}
+
+.delivery-icon {
+  display: inline-flex;
+}
+
+.delivery-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 nav.site-nav ul {
   list-style: none;
   display: flex;

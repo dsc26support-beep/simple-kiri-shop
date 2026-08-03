@@ -35,12 +35,13 @@ owner/forgot-password.html Email-code password reset
 owner/dashboard.html      Store owner summary
 owner/products.html       Product + variety management, phone photo upload
 owner/orders.html          Order list and status updates
-owner/settings.html        Store details, payment info, password change, 2FA on/off
+owner/settings.html        Store details, delivery methods, island/village, password change, 2FA on/off
 
 assets/js/config.js       The one line every deployment edits: APPS_SCRIPT_URL
 assets/js/api.js          fetch() wrapper for the Apps Script API
 assets/js/cart.js         Per-store shopping cart (localStorage)
 assets/js/auth.js          Store owner session/token handling
+assets/js/kiribati-locations.js  Island -> village data for Settings (see caveat below)
 assets/css/styles.css      Shared, mobile-first styles
 assets/css/owner.css        Store owner dashboard styles
 
@@ -57,7 +58,12 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | Island | Village`
+
+   (The `ANZ_*`/`Teremo_*`/`PaymentNotes` columns are no longer used by the
+   app — checkout no longer displays payment details, so Settings no longer
+   reads/writes them — but they're harmless to leave in place if you already
+   have this sheet set up.)
 
    **Products**
    `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | Status | SortOrder | CreatedAt | UpdatedAt`
@@ -75,8 +81,9 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `Token | OwnerId | Code | Purpose | CreatedAt | ExpiresAt | Attempts`
 
    If you already have this Sheet set up from an earlier version, just add the
-   `TwoFAEnabled` column to the end of `Owners`, and add the new `TwoFACodes`
-   tab — everything else stays the same.
+   `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
+   `Island`, and `Village` columns to the end of `Owners`, and add the new
+   `TwoFACodes` tab — everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
@@ -154,3 +161,10 @@ codes are emailed from the script owner's own Google account.
 - **Email sending quota**: `MailApp` on a free/consumer Google account is
   capped around 100 emails/day. Fine at small scale (login codes + resets);
   worth knowing if the marketplace grows a lot of daily 2FA logins.
+- **Island/village data is an unverified first draft.** `assets/js/kiribati-locations.js`
+  (`KIRIBATI_ISLANDS`) is a best-effort list, not confirmed against an
+  authoritative source — please review and correct village names per island
+  before relying on it. It's a single plain object, safe to hand-edit; every
+  island always gets an "Other (please specify)" option in the Settings
+  dropdown regardless of what's in this file, so a vendor is never blocked
+  by a missing or wrong entry while you fix it.

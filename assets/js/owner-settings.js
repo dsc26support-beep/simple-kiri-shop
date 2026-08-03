@@ -1,10 +1,23 @@
 document.addEventListener('DOMContentLoaded', init);
 
+const DELIVERY_BUTTONS = [
+  { id: 'delivery-truck-btn', method: 'truck', label: 'Truck' },
+  { id: 'delivery-ship-btn', method: 'ship', label: 'Ship' },
+  { id: 'delivery-aircargo-btn', method: 'airCargo', label: 'Air Cargo' }
+];
+
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
 
   document.getElementById('store-name-label').textContent = owner.storeName;
+
+  renderDeliveryToggleButtons();
+  wireDeliveryToggles();
+  populateIslandSelect();
+  wireLocationFields();
+  wirePasswordToggle('new-password');
+
   fillForm(owner);
   renderTwoFAStatus(owner);
   wireTwoFA();
@@ -17,12 +30,78 @@ function fillForm(owner) {
   document.getElementById('store-name').value = owner.storeName || '';
   document.getElementById('contact-email').value = owner.email || '';
   document.getElementById('contact-phone').value = owner.phone || '';
-  document.getElementById('anz-account-name').value = owner.anzAccountName || '';
-  document.getElementById('anz-account-number').value = owner.anzAccountNumber || '';
-  document.getElementById('anz-branch').value = owner.anzBranch || '';
-  document.getElementById('teremo-number').value = owner.teremoNumber || '';
-  document.getElementById('teremo-name').value = owner.teremoName || '';
-  document.getElementById('payment-notes').value = owner.paymentNotes || '';
+
+  DELIVERY_BUTTONS.forEach(({ id, method }) => {
+    const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
+    document.getElementById(id).setAttribute('aria-pressed', String(!!owner[key]));
+  });
+
+  document.getElementById('settings-island').value = owner.island || '';
+  populateVillageSelect(owner.island || '', owner.village || '');
+}
+
+function renderDeliveryToggleButtons() {
+  DELIVERY_BUTTONS.forEach(({ id, method, label }) => {
+    document.getElementById(id).innerHTML = `${DELIVERY_ICON_SVG[method]}<span>${label}</span>`;
+  });
+}
+
+function wireDeliveryToggles() {
+  document.querySelectorAll('.delivery-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pressed = btn.getAttribute('aria-pressed') === 'true';
+      btn.setAttribute('aria-pressed', String(!pressed));
+    });
+  });
+}
+
+function populateIslandSelect() {
+  const select = document.getElementById('settings-island');
+  select.innerHTML = ['<option value="">Select an island…</option>']
+    .concat(Object.keys(KIRIBATI_ISLANDS).map((island) => `<option value="${escapeHtml(island)}">${escapeHtml(island)}</option>`))
+    .join('');
+}
+
+function populateVillageSelect(island, selectedVillage) {
+  const villageSelect = document.getElementById('settings-village');
+  const otherField = document.getElementById('settings-village-other-field');
+  const otherInput = document.getElementById('settings-village-other');
+  const villages = KIRIBATI_ISLANDS[island] || [];
+
+  villageSelect.innerHTML = ['<option value="">Select a village…</option>']
+    .concat(villages.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`))
+    .concat([`<option value="${escapeHtml(KIRIBATI_OTHER_VILLAGE)}">${escapeHtml(KIRIBATI_OTHER_VILLAGE)}</option>`])
+    .join('');
+
+  if (selectedVillage && villages.indexOf(selectedVillage) !== -1) {
+    villageSelect.value = selectedVillage;
+    otherField.classList.add('hidden');
+    otherInput.value = '';
+  } else if (selectedVillage) {
+    villageSelect.value = KIRIBATI_OTHER_VILLAGE;
+    otherField.classList.remove('hidden');
+    otherInput.value = selectedVillage;
+  } else {
+    villageSelect.value = '';
+    otherField.classList.add('hidden');
+    otherInput.value = '';
+  }
+}
+
+function wireLocationFields() {
+  document.getElementById('settings-island').addEventListener('change', (e) => {
+    populateVillageSelect(e.target.value, '');
+  });
+
+  document.getElementById('settings-village').addEventListener('change', (e) => {
+    const otherField = document.getElementById('settings-village-other-field');
+    if (e.target.value === KIRIBATI_OTHER_VILLAGE) {
+      otherField.classList.remove('hidden');
+    } else {
+      otherField.classList.add('hidden');
+      document.getElementById('settings-village-other').value = '';
+    }
+  });
 }
 
 async function onSaveSettings(e) {
@@ -32,18 +111,24 @@ async function onSaveSettings(e) {
   errorEl.textContent = '';
   successEl.textContent = '';
 
+  const villageSelectValue = document.getElementById('settings-village').value;
+  const village =
+    villageSelectValue === KIRIBATI_OTHER_VILLAGE
+      ? document.getElementById('settings-village-other').value.trim()
+      : villageSelectValue;
+
   const payload = {
     token: Auth.getToken(),
     storeName: document.getElementById('store-name').value.trim(),
     email: document.getElementById('contact-email').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
-    anzAccountName: document.getElementById('anz-account-name').value.trim(),
-    anzAccountNumber: document.getElementById('anz-account-number').value.trim(),
-    anzBranch: document.getElementById('anz-branch').value.trim(),
-    teremoNumber: document.getElementById('teremo-number').value.trim(),
-    teremoName: document.getElementById('teremo-name').value.trim(),
-    paymentNotes: document.getElementById('payment-notes').value.trim()
+    island: document.getElementById('settings-island').value,
+    village: village
   };
+
+  DELIVERY_BUTTONS.forEach(({ id, method }) => {
+    payload['delivery' + method[0].toUpperCase() + method.slice(1)] = document.getElementById(id).getAttribute('aria-pressed') === 'true';
+  });
 
   const res = await Api.post('updateOwnerProfile', payload);
   if (!res.ok) {

@@ -44,33 +44,31 @@
           <input id="contact-phone" type="tel">
         </div>
 
-        <h2>ANZ Bank Transfer Details</h2>
-        <div class="field">
-          <label for="anz-account-name">Account Name</label>
-          <input id="anz-account-name">
-        </div>
-        <div class="field">
-          <label for="anz-account-number">Account Number</label>
-          <input id="anz-account-number">
-        </div>
-        <div class="field">
-          <label for="anz-branch">Branch</label>
-          <input id="anz-branch">
+        <h2>Delivery Methods</h2>
+        <p class="helper-text">Select all the ways you can deliver orders — these show as icons next to your store name.</p>
+        <div class="delivery-toggle-group" id="delivery-toggle-group" role="group" aria-label="Delivery methods">
+          <button type="button" class="delivery-toggle-btn" id="delivery-truck-btn" data-method="truck" aria-pressed="false"></button>
+          <button type="button" class="delivery-toggle-btn" id="delivery-ship-btn" data-method="ship" aria-pressed="false"></button>
+          <button type="button" class="delivery-toggle-btn" id="delivery-aircargo-btn" data-method="airCargo" aria-pressed="false"></button>
         </div>
 
-        <h2>Teremo Details</h2>
+        <h2>Location</h2>
         <div class="field">
-          <label for="teremo-number">Teremo Number</label>
-          <input id="teremo-number">
+          <label for="settings-island">Island</label>
+          <select id="settings-island">
+            <option value="">Select an island…</option>
+          </select>
         </div>
         <div class="field">
-          <label for="teremo-name">Registered Name</label>
-          <input id="teremo-name">
+          <label for="settings-village">Village</label>
+          <select id="settings-village">
+            <option value="">Select an island first…</option>
+          </select>
+          <p class="helper-text">This village list is a first draft — pick "Other" if yours isn't listed.</p>
         </div>
-
-        <div class="field">
-          <label for="payment-notes">Extra Payment Instructions (kept on file for your reference only — not shown to customers)</label>
-          <textarea id="payment-notes"></textarea>
+        <div class="field hidden" id="settings-village-other-field">
+          <label for="settings-village-other">Village Name</label>
+          <input id="settings-village-other" type="text">
         </div>
 
         <p id="settings-error" class="form-error" role="alert"></p>
@@ -124,6 +122,7 @@
   <script src="../assets/js/config.js"></script>
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/kiribati-locations.js"></script>
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/owner-nav.js"></script>
   <script src="../assets/js/owner-settings.js"></script>

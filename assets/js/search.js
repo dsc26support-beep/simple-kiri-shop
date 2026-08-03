@@ -68,6 +68,7 @@ function renderSearchResultCard(product) {
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         <p class="helper-text">Sold by ${escapeHtml(product.storeName)}</p>
         ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
+        ${renderDeliveryIcons({ truck: product.storeDeliveryTruck, ship: product.storeDeliveryShip, airCargo: product.storeDeliveryAirCargo })}
         <strong>${priceText}</strong>
         <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">View in Store</a>
       </div>

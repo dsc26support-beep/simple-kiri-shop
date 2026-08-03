@@ -20,6 +20,11 @@ async function init() {
       phoneLine.textContent = res.store.phone;
       phoneLine.classList.remove('hidden');
     }
+    document.getElementById('store-delivery-icons').innerHTML = renderDeliveryIcons({
+      truck: res.store.deliveryTruck,
+      ship: res.store.deliveryShip,
+      airCargo: res.store.deliveryAirCargo
+    });
   }
 
   document.getElementById('cart-items').addEventListener('click', onCartClick);
