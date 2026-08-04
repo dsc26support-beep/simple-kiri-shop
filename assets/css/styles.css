@@ -645,15 +645,18 @@ legend {
    (and reusable anywhere else a horizontal browse carousel is needed). */
 .carousel-row {
   display: flex;
+  align-items: center;
   gap: var(--space-2);
   overflow-x: auto;
   scroll-snap-type: x proximity;
-  padding-bottom: var(--space-2);
+  /* Extra vertical padding gives the centered card's scale-up (below)
+     room to grow into without being clipped by the scroll container. */
+  padding: var(--space-4) 0;
 }
 
 .trending-product-card {
   flex: 0 0 150px;
-  scroll-snap-align: start;
+  scroll-snap-align: center;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -663,6 +666,17 @@ legend {
   font-size: 0.85rem;
   text-decoration: none;
   color: inherit;
+  transition: transform 0.25s ease;
+  transform: scale(1);
+}
+
+/* The card nearest the carousel's horizontal center - kept in sync with
+   scroll position by wireTrendingCarouselFocus() in home.js, so this
+   keeps moving to whichever card is currently centered as the customer
+   scrolls/swipes through the row. */
+.trending-product-card.is-focused {
+  transform: scale(1.1);
+  z-index: 1;
 }
 
 .trending-product-card .product-image,

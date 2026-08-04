@@ -30,6 +30,50 @@ async function loadTrendingProducts() {
   statusEl.textContent = '';
   listEl.innerHTML = res.products.map(renderTrendingProductCard).join('');
   recordProductViewsOnce(res.products.map((p) => p.productId));
+  wireTrendingCarouselFocus(listEl);
+}
+
+// Keeps whichever card is nearest the carousel's horizontal center scaled
+// up (.is-focused in styles.css) as the customer scrolls/swipes through -
+// re-evaluated on every scroll so the "focused" card keeps moving to
+// whichever one is currently centered.
+function wireTrendingCarouselFocus(track) {
+  let ticking = false;
+
+  function updateFocusedCard() {
+    ticking = false;
+    const cards = track.querySelectorAll('.trending-product-card');
+    if (cards.length === 0) return;
+
+    const trackRect = track.getBoundingClientRect();
+    const trackCenter = trackRect.left + trackRect.width / 2;
+
+    let closest = null;
+    let closestDistance = Infinity;
+    cards.forEach((card) => {
+      const cardRect = card.getBoundingClientRect();
+      const cardCenter = cardRect.left + cardRect.width / 2;
+      const distance = Math.abs(cardCenter - trackCenter);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closest = card;
+      }
+    });
+
+    cards.forEach((card) => card.classList.toggle('is-focused', card === closest));
+  }
+
+  track.addEventListener(
+    'scroll',
+    () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(updateFocusedCard);
+    },
+    { passive: true }
+  );
+
+  updateFocusedCard();
 }
 
 // The whole card is a link to the product's store - on mobile only the
