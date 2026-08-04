@@ -358,6 +358,19 @@ footer.site-footer .copyright {
   left: var(--space-3);
 }
 
+.floating-action-btn--small {
+  padding: 0.4em 0.9em;
+  font-size: 0.85rem;
+  background: var(--color-blue-light);
+  color: var(--color-blue);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.floating-action-btn--small svg {
+  width: 16px;
+  height: 16px;
+}
+
 .cookie-consent-banner {
   position: fixed;
   left: 0;
