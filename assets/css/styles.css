@@ -641,6 +641,89 @@ legend {
   font-size: 0.8rem;
 }
 
+/* Horizontal scrolling rail, used by the home page's trending-products row
+   (and reusable anywhere else a horizontal browse carousel is needed). */
+.carousel-row {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--space-2);
+}
+
+.trending-product-card {
+  flex: 0 0 150px;
+  scroll-snap-align: start;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  font-size: 0.85rem;
+}
+
+.trending-product-card .product-image,
+.trending-product-card .placeholder-swatch {
+  aspect-ratio: 1 / 1;
+  font-size: 1.25rem;
+}
+
+.trending-product-card .product-card-body {
+  padding: var(--space-2);
+  gap: var(--space-1);
+}
+
+.trending-product-card .product-name {
+  font-size: 0.85rem;
+}
+
+.trending-product-card .btn {
+  min-height: 32px;
+  padding: 0.3em 0.6em;
+  font-size: 0.8rem;
+}
+
+/* Small circular-logo rail, used by the home page's popular-stores row. */
+.logo-carousel {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--space-2);
+}
+
+.logo-carousel-item {
+  flex: 0 0 76px;
+  scroll-snap-align: start;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.logo-carousel-logo,
+.logo-carousel-logo-placeholder {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-1);
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-alt);
+  font-weight: 700;
+}
+
+.logo-carousel-name {
+  display: block;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .product-controls {
   margin-top: auto;
 }

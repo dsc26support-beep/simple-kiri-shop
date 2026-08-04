@@ -57,6 +57,101 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+/**
+ * Shared "browse" card for a product from someone else's context (search
+ * results, similar products, the home page trending carousel) - image,
+ * name, store, delivery icons, price, and a link into that store. Distinct
+ * from renderProductCard in product-card.js, which is the full add-to-cart
+ * card shown on a store's own page.
+ */
+function renderBrowseProductCard(product, opts) {
+  opts = opts || {};
+  const linkLabel = opts.linkLabel || 'View';
+  const cardClass = opts.cardClass || '';
+
+  const media = product.imageUrl
+    ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
+    : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
+
+  const prices = product.variants.map((v) => v.price);
+  const priceText =
+    prices.length > 1 && Math.min(...prices) !== Math.max(...prices)
+      ? `${formatMoney(Math.min(...prices))} – ${formatMoney(Math.max(...prices))}`
+      : formatMoney(prices[0]);
+
+  return `
+    <article class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}">
+      ${media}
+      <div class="product-card-body">
+        <h3 class="product-name">${escapeHtml(product.name)}</h3>
+        <p class="helper-text">Sold by ${escapeHtml(product.storeName)}</p>
+        ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
+        ${renderDeliveryIcons({
+          truck: product.storeDeliveryTruck,
+          ship: product.storeDeliveryShip,
+          airCargo: product.storeDeliveryAirCargo,
+          truckCost: product.storeDeliveryTruckCost,
+          shipCost: product.storeDeliveryShipCost,
+          airCargoCost: product.storeDeliveryAirCargoCost
+        })}
+        <strong>${priceText}</strong>
+        <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">${escapeHtml(linkLabel)}</a>
+      </div>
+    </article>
+  `;
+}
+
+/** Small circular-logo carousel item, for the home page "popular stores" row. */
+function renderLogoCarouselItem(store) {
+  const logo = store.logoUrl
+    ? `<img class="logo-carousel-logo" src="${escapeHtml(store.logoUrl)}" alt="">`
+    : `<div class="logo-carousel-logo-placeholder" aria-hidden="true">${escapeHtml(initials(store.storeName))}</div>`;
+  return `
+    <a class="logo-carousel-item" href="store.html?store=${encodeURIComponent(store.storeSlug)}">
+      ${logo}
+      <span class="logo-carousel-name">${escapeHtml(store.storeName)}</span>
+    </a>
+  `;
+}
+
+function getLocalIdSet(key) {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(key)) || []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function saveLocalIdSet(key, set) {
+  try {
+    localStorage.setItem(key, JSON.stringify([...set]));
+  } catch (e) {
+    // storage full/unavailable - not worth failing over
+  }
+}
+
+// Records a view for each productId not already seen on this device
+// (deduped via localStorage - "once per visitor per product"). Fire-and-
+// forget: never blocks rendering or shows an error to the customer.
+function recordProductViewsOnce(productIds) {
+  const seen = getLocalIdSet('skiri_viewed_products');
+  const newIds = (productIds || []).filter((id) => id && !seen.has(id));
+  if (newIds.length === 0) return;
+  newIds.forEach((id) => seen.add(id));
+  saveLocalIdSet('skiri_viewed_products', seen);
+  Api.post('recordProductViews', { productIds: newIds }).catch(() => {});
+}
+
+// Same idea as recordProductViewsOnce, for a single store visit.
+function recordStoreVisitOnce(storeSlug) {
+  if (!storeSlug) return;
+  const seen = getLocalIdSet('skiri_visited_stores');
+  if (seen.has(storeSlug)) return;
+  seen.add(storeSlug);
+  saveLocalIdSet('skiri_visited_stores', seen);
+  Api.post('recordStoreVisit', { storeSlug }).catch(() => {});
+}
+
 // Downscale/compress a photo client-side before upload - mobile camera
 // photos can be 5-10MB, which is both slow on Kiribati mobile data and
 // close to the Apps Script POST size limit once base64-encoded (~33% larger).

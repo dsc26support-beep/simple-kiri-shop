@@ -54,8 +54,10 @@ async function init() {
   } else {
     statusEl.textContent = '';
     listEl.innerHTML = currentProducts.map(renderProductCard).join('');
+    recordProductViewsOnce(currentProducts.map((p) => p.productId));
   }
 
+  recordStoreVisitOnce(currentSlug);
   updateCartCount();
   wireProductEvents();
   wireGalleryScrollSync();
@@ -81,37 +83,11 @@ async function loadSimilarProducts() {
     .slice(0, 10);
   if (similar.length === 0) return;
 
-  document.getElementById('similar-products-list').innerHTML = similar.map(renderSimilarProductCard).join('');
+  document.getElementById('similar-products-list').innerHTML = similar
+    .map((p) => renderBrowseProductCard(p, { linkLabel: 'View', cardClass: 'similar-product-card' }))
+    .join('');
   document.getElementById('similar-section').classList.remove('hidden');
-}
-
-function renderSimilarProductCard(product) {
-  const media = product.imageUrl
-    ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
-    : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
-  const prices = product.variants.map((v) => v.price);
-  const priceText = prices.length ? formatMoney(Math.min(...prices)) : '';
-
-  return `
-    <article class="product-card similar-product-card">
-      ${media}
-      <div class="product-card-body">
-        <h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <span class="helper-text">${escapeHtml(product.storeName)}</span>
-        ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
-        ${renderDeliveryIcons({
-          truck: product.storeDeliveryTruck,
-          ship: product.storeDeliveryShip,
-          airCargo: product.storeDeliveryAirCargo,
-          truckCost: product.storeDeliveryTruckCost,
-          shipCost: product.storeDeliveryShipCost,
-          airCargoCost: product.storeDeliveryAirCargoCost
-        })}
-        <strong>${priceText}</strong>
-        <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">View</a>
-      </div>
-    </article>
-  `;
+  recordProductViewsOnce(similar.map((p) => p.productId));
 }
 
 // Cart.addItem() is instant (localStorage) - this is a brief cosmetic

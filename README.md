@@ -58,7 +58,7 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits`
 
    (The `ANZ_*`/`Teremo_*`/`PaymentNotes` columns are no longer used by the
    app — checkout no longer displays payment details, so Settings no longer
@@ -67,14 +67,18 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `DeliveryAirCargoCost` are per-method delivery prices — blank means "not
    set", `0` means free delivery and shows that method's icon in green.
    `Status` is now one of `active` / `standby` / `closed` — see "Store status"
-   below.)
+   below. `Visits` is a running count of unique visitors who've opened that
+   store's page — see "View/visit tracking" below. Leave it blank; the
+   script manages it.)
 
    **Products**
-   `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt`
+   `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt | Views`
 
    (`ImageUrl2`/`ImageFileId2` hold an optional second product photo — each
-   product supports up to 2 photos, shown as swappable thumbnails on the
-   storefront.)
+   product supports up to 2 photos, shown as a swipeable carousel on the
+   storefront. `Views` is a running count of unique visitors who've seen
+   that product's card anywhere on the site — see "View/visit tracking"
+   below. Leave it blank; the script manages it.)
 
    **Variants**
    `VariantId | ProductId | OwnerId | Label | Price | SKU | StockQty | Status`
@@ -104,11 +108,11 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
    `DeliveryTruckCost`, `DeliveryShipCost`, `DeliveryAirCargoCost`, `Island`,
-   `Village`, `LogoUrl`, and `LogoFileId` columns to the end of `Owners`, add
-   `ImageUrl2` and `ImageFileId2` to the end of `Products`, add `Island`,
-   `Village`, `DeliveryMethod`, `DeliveryCost`, and `NoEmailReminderSent` to
-   the end of `Orders`, and add the new `TwoFACodes` and `AbandonedCarts`
-   tabs — everything else stays the same.
+   `Village`, `LogoUrl`, `LogoFileId`, and `Visits` columns to the end of
+   `Owners`, add `ImageUrl2`, `ImageFileId2`, and `Views` to the end of
+   `Products`, add `Island`, `Village`, `DeliveryMethod`, `DeliveryCost`, and
+   `NoEmailReminderSent` to the end of `Orders`, and add the new
+   `TwoFACodes` and `AbandonedCarts` tabs — everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
@@ -221,6 +225,33 @@ Order button stays disabled until the customer's location or cart changes.
 The chosen method's cost (set per-method in the store's own Settings, $0 =
 free) is added to the order's `Total` server-side — never trust a client to
 report its own delivery price.
+
+## View/visit tracking (home page "Trending Products" / "Popular Stores")
+
+The home page shows two horizontally-scrolling rows: the 20 most-viewed
+products and the 20 most-visited stores, each ranked by a running counter
+(`Views` on `Products`, `Visits` on `Owners`).
+
+- A product view is counted **once per visitor per product** — the first
+  time that product's card renders anywhere it can appear (a store's own
+  page, search results, "Similar Products", or the trending row itself).
+  Dedup is a `localStorage` set on the visitor's device (`skiri_viewed_products`),
+  same lightweight approach as the cart/active-store tracking elsewhere on
+  the site — clearing site data or switching browsers resets it, and it's
+  not meant to be tamper-proof, just a reasonable popularity signal at this
+  scale.
+- A store visit is counted the same way, once per visitor per store, the
+  first time `store.html` loads for that store (`skiri_visited_stores`).
+- Both counters are incremented server-side (`recordProductViews`,
+  `recordStoreVisit` — public, unauthenticated actions, since there's no
+  customer login) under `LockService`, same pattern as other counter/write
+  operations in this codebase. Product views are batched into one request
+  per page load (all newly-seen product IDs at once) rather than one
+  request per product.
+- `listTopProducts`/`listTopStores` are public reads returning up to 20
+  active products/stores sorted by their counter, descending. Items with 0
+  views/visits still appear (useful on a brand-new store with little
+  traffic yet) — nothing is filtered out by count, only by `Status: active`.
 
 ## Security & operational notes
 

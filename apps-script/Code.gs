@@ -11,7 +11,7 @@
 var PUBLIC_POST_ACTIONS = [
   'registerOwner', 'loginOwner', 'createOrder',
   'verifyLoginCode', 'requestPasswordReset', 'resetPasswordWithCode',
-  'saveAbandonedCart'
+  'saveAbandonedCart', 'recordProductViews', 'recordStoreVisit'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -28,6 +28,8 @@ function doGet(e) {
       case 'listProducts': return jsonOut(actionListProducts(params));
       case 'getStorePublicInfo': return jsonOut(actionGetStorePublicInfo(params));
       case 'searchProducts': return jsonOut(actionSearchProducts(params));
+      case 'listTopProducts': return jsonOut(actionListTopProducts());
+      case 'listTopStores': return jsonOut(actionListTopStores());
       default: return jsonOut(fail('Unknown action: ' + params.action));
     }
   } catch (err) {
@@ -49,6 +51,8 @@ function doPost(e) {
         case 'requestPasswordReset': return jsonOut(actionRequestPasswordReset(body));
         case 'resetPasswordWithCode': return jsonOut(actionResetPasswordWithCode(body));
         case 'saveAbandonedCart': return jsonOut(actionSaveAbandonedCart(body));
+        case 'recordProductViews': return jsonOut(actionRecordProductViews(body));
+        case 'recordStoreVisit': return jsonOut(actionRecordStoreVisit(body));
       }
     }
 

@@ -35,6 +35,117 @@ function actionListStores() {
   return ok({ stores: stores });
 }
 
+/** Top 20 active products by view count, for the home page "trending" carousel. */
+function actionListTopProducts() {
+  var ownersById = {};
+  sheetToObjects(getSheet('Owners'))
+    .filter(function (o) { return o.Status === 'active'; })
+    .forEach(function (o) { ownersById[o.OwnerId] = o; });
+
+  var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
+
+  var results = sheetToObjects(getSheet('Products'))
+    .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
+    .map(function (p) {
+      var owner = ownersById[p.OwnerId];
+      var productVariants = variants
+        .filter(function (v) { return v.ProductId === p.ProductId; })
+        .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
+      var product = {
+        productId: p.ProductId,
+        name: p.Name,
+        description: p.Description,
+        category: p.Category,
+        imageUrl: p.ImageUrl,
+        imageUrl2: p.ImageUrl2,
+        storeSlug: owner.StoreSlug,
+        storeName: owner.StoreName,
+        storePhone: owner.Phone,
+        storeLogoUrl: owner.LogoUrl,
+        views: Number(p.Views) || 0,
+        variants: productVariants
+      };
+      product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
+      product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
+      product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+      product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
+      product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
+      product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
+      return product;
+    })
+    .filter(function (p) { return p.variants.length > 0; })
+    .sort(function (a, b) { return b.views - a.views; })
+    .slice(0, 20);
+
+  return ok({ products: results });
+}
+
+/** Top 20 active stores by visit count, for the home page "popular stores" logo carousel. */
+function actionListTopStores() {
+  var stores = sheetToObjects(getSheet('Owners'))
+    .filter(function (o) { return o.Status === 'active'; })
+    .map(function (o) {
+      var store = {
+        storeSlug: o.StoreSlug,
+        storeName: o.StoreName,
+        phone: o.Phone,
+        island: o.Island,
+        village: o.Village,
+        logoUrl: o.LogoUrl,
+        visits: Number(o.Visits) || 0
+      };
+      Object.assign(store, deliveryFlagsOf(o));
+      return store;
+    })
+    .sort(function (a, b) { return b.visits - a.visits; })
+    .slice(0, 20);
+  return ok({ stores: stores });
+}
+
+/**
+ * Records one view per productId, deduped client-side (once per visitor per
+ * product via localStorage) before this is ever called - so this just
+ * increments whatever it's given. Batched into one request per page load
+ * rather than one call per product, to keep this cheap at scale.
+ */
+function actionRecordProductViews(body) {
+  var productIds = Array.isArray(body.productIds) ? body.productIds : [];
+  var wanted = {};
+  productIds.forEach(function (id) { if (id) wanted[id] = true; });
+  if (Object.keys(wanted).length === 0) return ok({});
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var sheet = getSheet('Products');
+    sheetToObjects(sheet).forEach(function (p) {
+      if (wanted[p.ProductId]) {
+        updateRowFromObject(sheet, p.__row, { Views: (Number(p.Views) || 0) + 1 });
+      }
+    });
+    return ok({});
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Records one visit for a store, deduped client-side (once per visitor per store) before this is called. */
+function actionRecordStoreVisit(body) {
+  var slug = body.storeSlug;
+  if (!slug) return ok({});
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var sheet = getSheet('Owners');
+    var owner = findRowById(sheet, 'StoreSlug', slug);
+    if (owner) updateRowFromObject(sheet, owner.__row, { Visits: (Number(owner.Visits) || 0) + 1 });
+    return ok({});
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /**
  * Cross-store product search, used by the homepage search box and category
  * buttons. Matches on product name/description (case-insensitive substring)

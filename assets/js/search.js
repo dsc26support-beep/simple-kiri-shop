@@ -47,38 +47,6 @@ async function runSearch(q, category) {
   }
 
   statusEl.textContent = `${res.products.length} product${res.products.length === 1 ? '' : 's'} found.`;
-  listEl.innerHTML = res.products.map(renderSearchResultCard).join('');
-}
-
-function renderSearchResultCard(product) {
-  const media = product.imageUrl
-    ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
-    : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
-
-  const prices = product.variants.map((v) => v.price);
-  const priceText =
-    prices.length > 1 && Math.min(...prices) !== Math.max(...prices)
-      ? `${formatMoney(Math.min(...prices))} – ${formatMoney(Math.max(...prices))}`
-      : formatMoney(prices[0]);
-
-  return `
-    <article class="product-card search-result-card">
-      ${media}
-      <div class="product-card-body">
-        <h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <p class="helper-text">Sold by ${escapeHtml(product.storeName)}</p>
-        ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
-        ${renderDeliveryIcons({
-          truck: product.storeDeliveryTruck,
-          ship: product.storeDeliveryShip,
-          airCargo: product.storeDeliveryAirCargo,
-          truckCost: product.storeDeliveryTruckCost,
-          shipCost: product.storeDeliveryShipCost,
-          airCargoCost: product.storeDeliveryAirCargoCost
-        })}
-        <strong>${priceText}</strong>
-        <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">View in Store</a>
-      </div>
-    </article>
-  `;
+  listEl.innerHTML = res.products.map((p) => renderBrowseProductCard(p, { linkLabel: 'View in Store', cardClass: 'search-result-card' })).join('');
+  recordProductViewsOnce(res.products.map((p) => p.productId));
 }
