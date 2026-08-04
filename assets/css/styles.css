@@ -333,11 +333,9 @@ footer.site-footer .copyright {
   font-size: 0.75rem;
 }
 
-.floating-cart-btn {
+.floating-action-btn {
   position: fixed;
-  left: 50%;
   bottom: var(--space-3);
-  transform: translateX(-50%);
   z-index: 1001; /* stays above .cookie-consent-banner (1000) if both show at once */
   display: inline-flex;
   align-items: center;
@@ -349,6 +347,15 @@ footer.site-footer .copyright {
   font-weight: 700;
   text-decoration: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.floating-action-btn--center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.floating-action-btn--left {
+  left: var(--space-3);
 }
 
 .cookie-consent-banner {
