@@ -64,6 +64,7 @@ function actionUploadProductImage(owner, body) {
     try { DriveApp.getFileById(oldFileId).setTrashed(true); } catch (e) { /* already gone, ignore */ }
   }
 
+  invalidateCache(['v1:listProducts:' + owner.StoreSlug]);
   return ok({ imageUrl: url, slot: slot });
 }
 
@@ -103,5 +104,6 @@ function actionUploadStoreLogo(owner, body) {
     try { DriveApp.getFileById(oldFileId).setTrashed(true); } catch (e) { /* already gone, ignore */ }
   }
 
+  invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v1:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
   return ok({ logoUrl: url });
 }

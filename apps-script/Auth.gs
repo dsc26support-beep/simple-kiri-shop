@@ -208,6 +208,14 @@ function actionSetStoreStatus(owner, body) {
   updateRowFromObject(sheet, row.__row, { Status: status });
   if (status === 'closed') revokeAllSessions(owner.OwnerId);
 
+  invalidateCache([
+    'v1:listStores',
+    'v1:topStores',
+    'v1:topProducts',
+    'v1:listProducts:' + owner.StoreSlug,
+    'v1:storeInfo:' + owner.StoreSlug
+  ]);
+
   return ok({ status: status });
 }
 

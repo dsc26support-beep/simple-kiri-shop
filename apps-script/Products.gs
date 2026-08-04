@@ -25,80 +25,86 @@ function deliveryFlagsOf(owner) {
 }
 
 function actionListStores() {
-  var stores = sheetToObjects(getSheet('Owners'))
-    .filter(function (o) { return o.Status === 'active'; })
-    .map(function (o) {
-      var store = { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone, island: o.Island, village: o.Village, logoUrl: o.LogoUrl };
-      Object.assign(store, deliveryFlagsOf(o));
-      return store;
-    });
+  var stores = getCached('v1:listStores', 60, function () {
+    return sheetToObjects(getSheet('Owners'))
+      .filter(function (o) { return o.Status === 'active'; })
+      .map(function (o) {
+        var store = { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone, island: o.Island, village: o.Village, logoUrl: o.LogoUrl };
+        Object.assign(store, deliveryFlagsOf(o));
+        return store;
+      });
+  });
   return ok({ stores: stores });
 }
 
 /** Top 20 active products by view count, for the home page "trending" carousel. */
 function actionListTopProducts() {
-  var ownersById = {};
-  sheetToObjects(getSheet('Owners'))
-    .filter(function (o) { return o.Status === 'active'; })
-    .forEach(function (o) { ownersById[o.OwnerId] = o; });
+  var results = getCached('v1:topProducts', 300, function () {
+    var ownersById = {};
+    sheetToObjects(getSheet('Owners'))
+      .filter(function (o) { return o.Status === 'active'; })
+      .forEach(function (o) { ownersById[o.OwnerId] = o; });
 
-  var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
+    var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
 
-  var results = sheetToObjects(getSheet('Products'))
-    .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
-    .map(function (p) {
-      var owner = ownersById[p.OwnerId];
-      var productVariants = variants
-        .filter(function (v) { return v.ProductId === p.ProductId; })
-        .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
-      var product = {
-        productId: p.ProductId,
-        name: p.Name,
-        description: p.Description,
-        category: p.Category,
-        imageUrl: p.ImageUrl,
-        imageUrl2: p.ImageUrl2,
-        storeSlug: owner.StoreSlug,
-        storeName: owner.StoreName,
-        storePhone: owner.Phone,
-        storeLogoUrl: owner.LogoUrl,
-        views: Number(p.Views) || 0,
-        variants: productVariants
-      };
-      product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
-      product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
-      product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
-      product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
-      product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
-      product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
-      return product;
-    })
-    .filter(function (p) { return p.variants.length > 0; })
-    .sort(function (a, b) { return b.views - a.views; })
-    .slice(0, 20);
+    return sheetToObjects(getSheet('Products'))
+      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
+      .map(function (p) {
+        var owner = ownersById[p.OwnerId];
+        var productVariants = variants
+          .filter(function (v) { return v.ProductId === p.ProductId; })
+          .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
+        var product = {
+          productId: p.ProductId,
+          name: p.Name,
+          description: p.Description,
+          category: p.Category,
+          imageUrl: p.ImageUrl,
+          imageUrl2: p.ImageUrl2,
+          storeSlug: owner.StoreSlug,
+          storeName: owner.StoreName,
+          storePhone: owner.Phone,
+          storeLogoUrl: owner.LogoUrl,
+          views: Number(p.Views) || 0,
+          variants: productVariants
+        };
+        product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
+        product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
+        product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+        product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
+        product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
+        product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
+        return product;
+      })
+      .filter(function (p) { return p.variants.length > 0; })
+      .sort(function (a, b) { return b.views - a.views; })
+      .slice(0, 20);
+  });
 
   return ok({ products: results });
 }
 
 /** Top 20 active stores by visit count, for the home page "popular stores" logo carousel. */
 function actionListTopStores() {
-  var stores = sheetToObjects(getSheet('Owners'))
-    .filter(function (o) { return o.Status === 'active'; })
-    .map(function (o) {
-      var store = {
-        storeSlug: o.StoreSlug,
-        storeName: o.StoreName,
-        phone: o.Phone,
-        island: o.Island,
-        village: o.Village,
-        logoUrl: o.LogoUrl,
-        visits: Number(o.Visits) || 0
-      };
-      Object.assign(store, deliveryFlagsOf(o));
-      return store;
-    })
-    .sort(function (a, b) { return b.visits - a.visits; })
-    .slice(0, 20);
+  var stores = getCached('v1:topStores', 300, function () {
+    return sheetToObjects(getSheet('Owners'))
+      .filter(function (o) { return o.Status === 'active'; })
+      .map(function (o) {
+        var store = {
+          storeSlug: o.StoreSlug,
+          storeName: o.StoreName,
+          phone: o.Phone,
+          island: o.Island,
+          village: o.Village,
+          logoUrl: o.LogoUrl,
+          visits: Number(o.Visits) || 0
+        };
+        Object.assign(store, deliveryFlagsOf(o));
+        return store;
+      })
+      .sort(function (a, b) { return b.visits - a.visits; })
+      .slice(0, 20);
+  });
   return ok({ stores: stores });
 }
 
@@ -206,56 +212,67 @@ function actionSearchProducts(params) {
 function actionGetStorePublicInfo(params) {
   var slug = params.storeSlug;
   if (!slug) return fail('storeSlug is required');
-  var owner = getOwnerBySlug(slug);
-  if (!owner || owner.Status !== 'active') return fail('Store not found');
-  return ok({ store: publicOwnerFields(owner) });
+
+  var store = getCached('v1:storeInfo:' + slug, 60, function () {
+    var owner = getOwnerBySlug(slug);
+    if (!owner || owner.Status !== 'active') return null;
+    return publicOwnerFields(owner);
+  });
+  if (!store) return fail('Store not found');
+  return ok({ store: store });
 }
 
 function actionListProducts(params) {
   var slug = params.storeSlug;
   if (!slug) return fail('storeSlug is required');
-  var owner = getOwnerBySlug(slug);
-  if (!owner || owner.Status !== 'active') return fail('Store not found');
 
-  var products = sheetToObjects(getSheet('Products')).filter(function (p) {
-    return p.OwnerId === owner.OwnerId && p.Status === 'active';
+  var response = getCached('v1:listProducts:' + slug, 60, function () {
+    var owner = getOwnerBySlug(slug);
+    if (!owner || owner.Status !== 'active') return null;
+
+    var products = sheetToObjects(getSheet('Products')).filter(function (p) {
+      return p.OwnerId === owner.OwnerId && p.Status === 'active';
+    });
+    var variants = sheetToObjects(getSheet('Variants')).filter(function (v) {
+      return v.OwnerId === owner.OwnerId && v.Status === 'active';
+    });
+
+    var result = products
+      .sort(function (a, b) { return (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0); })
+      .map(function (p) {
+        var productVariants = variants
+          .filter(function (v) { return v.ProductId === p.ProductId; })
+          .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
+        return {
+          productId: p.ProductId,
+          name: p.Name,
+          description: p.Description,
+          category: p.Category,
+          imageUrl: p.ImageUrl,
+          imageUrl2: p.ImageUrl2,
+          variants: productVariants
+        };
+      })
+      .filter(function (p) { return p.variants.length > 0; });
+
+    var out = {
+      storeName: owner.StoreName,
+      storePhone: owner.Phone,
+      storeLogoUrl: owner.LogoUrl,
+      storeIsland: owner.Island,
+      storeVillage: owner.Village,
+      products: result
+    };
+    out.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
+    out.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
+    out.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+    out.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
+    out.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
+    out.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
+    return out;
   });
-  var variants = sheetToObjects(getSheet('Variants')).filter(function (v) {
-    return v.OwnerId === owner.OwnerId && v.Status === 'active';
-  });
 
-  var result = products
-    .sort(function (a, b) { return (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0); })
-    .map(function (p) {
-      var productVariants = variants
-        .filter(function (v) { return v.ProductId === p.ProductId; })
-        .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
-      return {
-        productId: p.ProductId,
-        name: p.Name,
-        description: p.Description,
-        category: p.Category,
-        imageUrl: p.ImageUrl,
-        imageUrl2: p.ImageUrl2,
-        variants: productVariants
-      };
-    })
-    .filter(function (p) { return p.variants.length > 0; });
-
-  var response = {
-    storeName: owner.StoreName,
-    storePhone: owner.Phone,
-    storeLogoUrl: owner.LogoUrl,
-    storeIsland: owner.Island,
-    storeVillage: owner.Village,
-    products: result
-  };
-  response.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
-  response.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
-  response.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
-  response.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
-  response.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
-  response.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
+  if (!response) return fail('Store not found');
   return ok(response);
 }
 
@@ -377,6 +394,7 @@ function actionCreateOrUpdateProduct(owner, body) {
       }
     });
 
+    invalidateCache(['v1:listProducts:' + owner.StoreSlug]);
     return ok({ productId: productId });
   } finally {
     lock.releaseLock();
@@ -388,6 +406,7 @@ function actionDeleteProduct(owner, body) {
   var existing = findRowById(sheet, 'ProductId', body.productId);
   if (!existing || existing.OwnerId !== owner.OwnerId) return fail('Product not found');
   updateRowFromObject(sheet, existing.__row, { Status: 'archived', UpdatedAt: nowIso() });
+  invalidateCache(['v1:listProducts:' + owner.StoreSlug]);
   return ok({});
 }
 
@@ -430,5 +449,6 @@ function actionUpdateOwnerProfile(owner, body) {
   }
 
   updateRowFromObject(sheet, row.__row, update);
+  invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v1:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
   return ok({ owner: publicOwnerFields(findRowById(sheet, 'OwnerId', owner.OwnerId)) });
 }

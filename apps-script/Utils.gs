@@ -100,3 +100,29 @@ function sendAppEmail(to, subject, body) {
     // best effort only
   }
 }
+
+/**
+ * Script-wide cache for the read-heavy public actions (full-table Sheet
+ * scans on every request otherwise). Keys are versioned ('v1:...') since
+ * ScriptCache is script-scoped and survives redeploys - bumping the prefix
+ * is a cheap way to guarantee a future response-shape change never serves
+ * stale-shaped cached JSON.
+ */
+function getCached(key, ttlSeconds, producerFn) {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+
+  var value = producerFn();
+  try {
+    cache.put(key, JSON.stringify(value), ttlSeconds);
+  } catch (e) {
+    // Value too large for the ~100KB per-key cap - just skip caching this one.
+    Logger.log('getCached: skipped caching ' + key + ' (' + e + ')');
+  }
+  return value;
+}
+
+function invalidateCache(keys) {
+  CacheService.getScriptCache().removeAll(keys);
+}
