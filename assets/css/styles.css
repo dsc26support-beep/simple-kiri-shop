@@ -661,6 +661,8 @@ legend {
   flex-direction: column;
   background: #fff;
   font-size: 0.85rem;
+  text-decoration: none;
+  color: inherit;
 }
 
 .trending-product-card .product-image,
@@ -669,19 +671,18 @@ legend {
   font-size: 1.25rem;
 }
 
-.trending-product-card .product-card-body {
+/* Photo-only on mobile - the name/store/price/delivery-icon details only
+   show from 600px up. The whole card is still the click target on mobile
+   (it's an <a>), just visually reduced to the image. */
+.trending-product-card-body {
+  display: none;
   padding: var(--space-2);
   gap: var(--space-1);
+  flex-direction: column;
 }
 
 .trending-product-card .product-name {
   font-size: 0.85rem;
-}
-
-.trending-product-card .btn {
-  min-height: 32px;
-  padding: 0.3em 0.6em;
-  font-size: 0.8rem;
 }
 
 /* Small circular-logo rail, used by the home page's popular-stores row. */
@@ -722,6 +723,30 @@ legend {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Mobile: no "Trending Products" heading (the row speaks for itself) and
+   no "Popular Stores" row at all - both come back from 600px up. */
+#trending-products-heading {
+  display: none;
+}
+
+.trending-stores {
+  display: none;
+}
+
+@media (min-width: 600px) {
+  #trending-products-heading {
+    display: block;
+  }
+
+  .trending-product-card-body {
+    display: flex;
+  }
+
+  .trending-stores {
+    display: block;
+  }
 }
 
 .product-controls {
