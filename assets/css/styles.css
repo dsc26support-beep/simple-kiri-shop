@@ -333,6 +333,24 @@ footer.site-footer .copyright {
   font-size: 0.75rem;
 }
 
+.floating-cart-btn {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translateX(-50%);
+  z-index: 1001; /* stays above .cookie-consent-banner (1000) if both show at once */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.75em 1.5em;
+  border-radius: 999px;
+  background: var(--color-blue);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 .cookie-consent-banner {
   position: fixed;
   left: 0;
