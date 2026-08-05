@@ -124,6 +124,31 @@ function requireAuth(token) {
   return owner;
 }
 
+var EMAIL_FORMAT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Shared by actionRegisterOwner and actionUpdateOwnerProfile so format/
+ * blank/dedupe checks can't drift apart again - previously
+ * actionUpdateOwnerProfile skipped all three, letting an owner blank out or
+ * duplicate their own recovery email (the same email password reset relies
+ * on). excludeOwnerId lets an update skip flagging the caller's own current
+ * email as a duplicate of itself. ownersList lets a caller that already has
+ * a fresh Owners scan (e.g. actionRegisterOwner, mid-lock) avoid a second one.
+ */
+function validateOwnerEmail(email, excludeOwnerId, ownersList) {
+  var trimmed = String(email || '').trim();
+  if (!trimmed) return fail('Contact email is required');
+  if (!EMAIL_FORMAT_RE.test(trimmed)) return fail('Enter a valid contact email');
+
+  var owners = ownersList || sheetToObjects(getSheet('Owners'));
+  var taken = owners.some(function (o) {
+    return String(o.Email).toLowerCase() === trimmed.toLowerCase() && o.OwnerId !== excludeOwnerId;
+  });
+  if (taken) return fail('That email is already registered to a store');
+
+  return null;
+}
+
 function actionRegisterOwner(body) {
   var storeName = String(body.storeName || '').trim();
   var username = String(body.username || '').trim().toLowerCase();
@@ -136,7 +161,6 @@ function actionRegisterOwner(body) {
   }
   if (password.length < 8) return fail('Password must be at least 8 characters');
   if (!/^[a-z0-9_.-]{3,40}$/.test(username)) return fail('Username must be 3-40 characters: letters, numbers, . _ -');
-  if (email.indexOf('@') === -1) return fail('Enter a valid contact email');
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -147,8 +171,8 @@ function actionRegisterOwner(body) {
     var usernameTaken = owners.some(function (o) { return String(o.Username).toLowerCase() === username; });
     if (usernameTaken) return fail('That username is already taken');
 
-    var emailTaken = owners.some(function (o) { return String(o.Email).toLowerCase() === email.toLowerCase(); });
-    if (emailTaken) return fail('That email is already registered to a store');
+    var emailErr = validateOwnerEmail(email, null, owners);
+    if (emailErr) return emailErr;
 
     var phoneDigits = phone.replace(/[^0-9]/g, '');
     var phoneTaken = owners.some(function (o) { return String(o.Phone).replace(/[^0-9]/g, '') === phoneDigits; });

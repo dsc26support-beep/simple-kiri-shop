@@ -416,11 +416,9 @@ function actionGetOwnerProfile(owner) {
 
 function actionUpdateOwnerProfile(owner, body) {
   var sheet = getSheet('Owners');
-  var row = findRowById(sheet, 'OwnerId', owner.OwnerId);
 
   var fieldMap = {
     storeName: 'StoreName',
-    email: 'Email',
     phone: 'Phone',
     island: 'Island',
     village: 'Village'
@@ -448,7 +446,28 @@ function actionUpdateOwnerProfile(owner, body) {
     update.PasswordHash = hashPassword(body.newPassword, salt);
   }
 
-  updateRowFromObject(sheet, row.__row, update);
-  invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v1:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
-  return ok({ owner: publicOwnerFields(findRowById(sheet, 'OwnerId', owner.OwnerId)) });
+  // Email gets its own validated path (format, non-blank, not already
+  // claimed by another owner) - actionRegisterOwner already enforces all
+  // three at signup, this closes the gap where an update could silently
+  // skip them, including blanking out the very email password reset
+  // depends on. The dedupe check is a check-then-write, so it needs the
+  // same lock-guarded read every other duplicate check in this codebase uses.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var row = findRowById(sheet, 'OwnerId', owner.OwnerId);
+    if (!row) return fail('Store account not found');
+
+    if (body.email !== undefined) {
+      var emailErr = validateOwnerEmail(body.email, owner.OwnerId);
+      if (emailErr) return emailErr;
+      update.Email = String(body.email).trim();
+    }
+
+    updateRowFromObject(sheet, row.__row, update);
+    invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v1:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
+    return ok({ owner: publicOwnerFields(findRowById(sheet, 'OwnerId', owner.OwnerId)) });
+  } finally {
+    lock.releaseLock();
+  }
 }
