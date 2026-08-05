@@ -178,9 +178,21 @@ function actionCreateOrder(body) {
   }
 }
 
-function actionListOwnerOrders(owner) {
-  var orders = sheetToObjects(getSheet('Orders')).filter(function (o) { return o.OwnerId === owner.OwnerId; });
-  orders.sort(function (a, b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); });
+/**
+ * Paginated via body.limit/offset (same shape as actionListStores/
+ * actionListOwnerProducts/actionGetVendorConversations) - see
+ * docs/production-readiness-report.md Finding 10. Sorted newest-first
+ * before slicing so the page boundary is stable across repeated calls
+ * (new orders only ever get created, never reordered).
+ */
+function actionListOwnerOrders(owner, body) {
+  body = body || {};
+  var allOrders = sheetToObjects(getSheet('Orders')).filter(function (o) { return o.OwnerId === owner.OwnerId; });
+  allOrders.sort(function (a, b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); });
+
+  var limit = clampPageSize(body.limit, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE);
+  var offset = Math.max(0, Number(body.offset) || 0);
+  var orders = allOrders.slice(offset, offset + limit);
 
   var result = orders.map(function (o) {
     var items = [];
@@ -206,7 +218,7 @@ function actionListOwnerOrders(owner) {
     };
   });
 
-  return ok({ orders: result });
+  return ok({ orders: result, total: allOrders.length, hasMore: offset + limit < allOrders.length });
 }
 
 function actionUpdateOrderStatus(owner, body) {

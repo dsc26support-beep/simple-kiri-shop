@@ -68,12 +68,12 @@ Google's published Apps Script quotas (consumer Google account): ~30 simultaneou
 
 ### P2 — Real but lower-severity at this scale (fix is UI work, not backend risk)
 
-**Finding 10 — Several list views are unpaginated and render everything in one shot.**
-- `stores.html`/`directory.js` (`assets/js/directory.js:19`) fetches and renders **every** active store in one DOM pass — at 10,000 vendors, a 10,000-node render on every visit to the store directory.
-- `owner/orders.html`/`owner-orders.js` (`assets/js/owner-orders.js:23,32-64`) fetches a vendor's **entire** order history on every page load and does a full `innerHTML` re-render of the whole list after every single status-dropdown change — for a long-lived high-volume vendor this is a growing, unbounded per-page-load download and re-render.
-- `owner/products.html`/`owner-products.js` has the same unbounded-fetch shape for a vendor's product catalog (lower severity — catalogs are naturally smaller than order history).
+**Finding 10 — Several list views were unpaginated and rendered everything in one shot.** *(Fixed — see below.)*
+- `stores.html`/`directory.js` fetched and rendered **every** active store in one DOM pass — at 10,000 vendors, a 10,000-node render on every visit to the store directory.
+- `owner/orders.html`/`owner-orders.js` fetched a vendor's **entire** order history on every page load and did a full `innerHTML` re-render of the whole list after every single status-dropdown change — for a long-lived high-volume vendor this was a growing, unbounded per-page-load download and re-render.
+- `owner/products.html`/`owner-products.js` had the same unbounded-fetch shape for a vendor's product catalog (lower severity — catalogs are naturally smaller than order history).
 
-None of these will *break* at 10,000 vendors (a 10,000-item JSON payload and DOM render is slow and janky, not fatal), but they're real UX/perf regressions worth fixing before launch at this scale. Not fixed in this pass — each requires a `limit`/`offset` API change *and* a "Load more" UI addition, which is real feature work, not a minimal safe refactor (see §5 scope decision).
+*Fix — done.* All three actions (`actionListStores`, `actionListOwnerOrders`, `actionListOwnerProducts`) now take `limit`/`offset` and return `{..., total, hasMore}`, mirroring the shape already proven for chat's `actionGetVendorConversations`. Each page grew a "Load More" button that re-requests with a larger `limit` — the same "regrow the limit, always from offset 0" pattern already used by the vendor conversation list and its polling refresh, chosen over a true offset cursor for the same reason: it can't skip or duplicate rows if the underlying order changes between calls. One real bug surfaced and was fixed during Playwright verification: a newly created product is appended past whatever page a vendor had loaded, so naively growing the limit by 1 after a save could reveal the *next existing* product instead of the *new* one — fixed by tracking the pre-save total and requesting `total + 1`, which is always enough regardless of how much was already loaded. 157/157 backend tests passing (7 new), plus a 15-scenario Playwright pass across all three pages (deleted after verification, per this repo's convention of never committing ephemeral check scripts).
 
 **Finding 11 — Chat's anonymous rate limiting is keyed on client-controlled identifiers (already documented, restated here for the scale context).**
 `chatRateLimitIdentity` (`Code.gs:48`) keys on `customerToken`, a client-generated `localStorage` UUID with no server issuance — trivially reset by clearing storage or opening a private window. This was already an accepted trade-off in the security-audit work (no caller IP is available to Apps Script Web Apps at all), restated here only because "millions of messages" raises the stakes on it: it stops naive flooding, not a deliberate script targeting the marketplace at scale.
@@ -97,7 +97,7 @@ Both changes are `node --check`-clean and the full backend suite passes (150/150
 
 **Everything else in §3 is a recommendation, not a change made here**, because each one is either:
 - a genuine architecture migration (Findings 1-3 — moving chat off Sheets, which no in-place refactor can substitute for), or
-- a deliberate scope/behavior decision that isn't mine to make unilaterally (Finding 7's archiving window, Finding 10's pagination UX, Finding 8's CDN choice, Finding 9's email provider), or
+- a deliberate scope/behavior decision that isn't mine to make unilaterally (Finding 7's archiving window, Finding 8's CDN choice, Finding 9's email provider), or
 - already a known, previously-accepted trade-off restated for context (Finding 11).
 
 Implementing any of those now would be scope creep against "refactor only where absolutely necessary" — they're listed so the roadmap in §6 is concrete, not so they get silently built into this pass.
@@ -111,6 +111,6 @@ Implementing any of those now would be scope creep against "refactor only where 
 2. Move the Owners/Products/Orders read path off live Sheets scans onto an indexed store, or accept Sheets for those (they're much smaller than Messages) but add real archiving for `Orders`/`AbandonedCarts` (Finding 7) so the reminder sweep's cost stops growing forever.
 3. Move off Apps Script Web Apps as the API layer, or at minimum move to Google Workspace to raise the execution-quota ceilings (Finding 4) — necessary regardless of the datastore choice, since the ~30-simultaneous-execution and ~90-min/day runtime ceilings apply to the whole deployment no matter what's behind it.
 4. Add a real CDN/object storage for images (Finding 8) and an external transactional email provider (Finding 9) — both straightforward swaps once the deployment isn't Apps Script-only.
-5. Add pagination UI to the directory, owner orders, and owner products views (Finding 10) — pure frontend/API-shape work, no architecture dependency, can happen any time.
+5. ~~Add pagination UI to the directory, owner orders, and owner products views~~ — done (Finding 10).
 
 None of steps 1-3 are small — they are, collectively, a second architecture for this app's data layer. That is the honest answer to "can this reach 10k/100k/millions": not on the current Sheets+Apps Script foundation, no matter how much the application code on top of it is tuned.

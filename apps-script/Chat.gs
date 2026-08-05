@@ -34,13 +34,6 @@ var CHAT_CONVERSATIONS_CACHE_TTL_SECONDS = 8;
 
 function chatMessagesCacheKey(conversationId) { return 'v1:chat:messages:' + conversationId; }
 function chatConversationsCacheKey(ownerId) { return 'v1:chat:conversations:' + ownerId; }
-
-/** Clamps a client-requested page size to a sane default/ceiling - shared by message and conversation pagination. */
-function clampPageSize(requested, defaultSize, maxSize) {
-  var n = Number(requested);
-  if (!n || n <= 0) return defaultSize;
-  return Math.min(Math.floor(n), maxSize);
-}
 // 'deleted'/'archived' are vendor-only housekeeping states (see
 // actionDeleteConversation/actionArchiveConversation below) - a soft delete,
 // consistent with every other "delete" in this codebase (archived products,

@@ -1,10 +1,24 @@
 document.addEventListener('DOMContentLoaded', init);
 
-async function init() {
-  const listEl = document.getElementById('store-list');
-  const statusEl = document.getElementById('stores-status');
+// The directory only ever asks for "the top N stores" and re-fetches from
+// the start when N grows (same shape as owner-messages.js's conversation
+// list pagination) rather than true offset-cursor paging - simpler, and
+// avoids any skip/duplicate risk if the underlying list ever changes
+// between calls. At 10k+ vendors this is what keeps the initial page load
+// and DOM render bounded instead of rendering every store at once - see
+// docs/production-readiness-report.md Finding 10.
+const STORE_PAGE_SIZE = 20;
+let storesLoadedLimit = STORE_PAGE_SIZE;
+let storesHasMore = false;
 
-  const res = await Api.get('listStores', {});
+async function init() {
+  document.getElementById('stores-load-more').addEventListener('click', onLoadMore);
+  await loadStores();
+}
+
+async function loadStores() {
+  const statusEl = document.getElementById('stores-status');
+  const res = await Api.get('listStores', { limit: storesLoadedLimit });
   if (!res.ok) {
     statusEl.textContent = res.error || 'Could not load stores right now. Please try again later.';
     return;
@@ -15,8 +29,15 @@ async function init() {
     return;
   }
 
-  statusEl.textContent = `${res.stores.length} store${res.stores.length === 1 ? '' : 's'} available.`;
-  listEl.innerHTML = res.stores.map(renderStoreCard).join('');
+  storesHasMore = !!res.hasMore;
+  statusEl.textContent = `${res.stores.length} of ${res.total} store${res.total === 1 ? '' : 's'} shown.`;
+  document.getElementById('store-list').innerHTML = res.stores.map(renderStoreCard).join('');
+  document.getElementById('stores-load-more').classList.toggle('hidden', !storesHasMore);
+}
+
+async function onLoadMore() {
+  storesLoadedLimit += STORE_PAGE_SIZE;
+  await loadStores();
 }
 
 function renderStoreCard(store) {

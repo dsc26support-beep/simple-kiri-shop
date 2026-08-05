@@ -154,6 +154,23 @@ function rateLimitHit(key, maxCount, windowSeconds) {
   return state.count > maxCount;
 }
 
+var DEFAULT_LIST_PAGE_SIZE = 20;
+var MAX_LIST_PAGE_SIZE = 100;
+
+/**
+ * Clamps a client-requested page size to a sane default/ceiling. Shared by
+ * every paginated list action (store directory, owner orders, owner
+ * products, and - originally introduced there - chat messages/
+ * conversations, which keep their own DEFAULT_MESSAGE_PAGE_SIZE-style
+ * constants in Chat.gs since their sizes differ) so the clamp logic itself
+ * doesn't drift across each one's own limit handling.
+ */
+function clampPageSize(requested, defaultSize, maxSize) {
+  var n = Number(requested);
+  if (!n || n <= 0) return defaultSize;
+  return Math.min(Math.floor(n), maxSize);
+}
+
 /**
  * Rejects (rather than truncates) a field whose length exceeds maxLen.
  * Chat's MAX_CHAT_MESSAGE_LENGTH truncation (Chat.gs's appendMessage) is a

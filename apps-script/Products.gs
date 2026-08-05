@@ -24,8 +24,18 @@ function deliveryFlagsOf(owner) {
   };
 }
 
-function actionListStores() {
-  var stores = getCached('v1:listStores', 60, function () {
+/**
+ * Paginated the same way actionGetVendorConversations already is (Chat.gs):
+ * the cache holds the full, unsliced list so one cached value serves every
+ * page size a caller asks for, and slicing happens after the cache read.
+ * At 10k+ vendors this is the directory the storefront's landing page
+ * renders, so an unbounded response/DOM render there was the largest
+ * unpaginated list in the app - see docs/production-readiness-report.md
+ * Finding 10.
+ */
+function actionListStores(params) {
+  params = params || {};
+  var all = getCached('v1:listStores', 60, function () {
     return sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return o.Status === 'active'; })
       .map(function (o) {
@@ -34,7 +44,10 @@ function actionListStores() {
         return store;
       });
   });
-  return ok({ stores: stores });
+  var limit = clampPageSize(params.limit, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE);
+  var offset = Math.max(0, Number(params.offset) || 0);
+  var page = all.slice(offset, offset + limit);
+  return ok({ stores: page, total: all.length, hasMore: offset + limit < all.length });
 }
 
 /** Top 20 active products by view count, for the home page "trending" carousel. */
@@ -326,9 +339,21 @@ function actionListProducts(params) {
   return ok(response);
 }
 
-function actionListOwnerProducts(owner) {
-  var products = sheetToObjects(getSheet('Products')).filter(function (p) { return p.OwnerId === owner.OwnerId; });
+/**
+ * Paginated via body.limit/offset (same shape as actionGetVendorConversations
+ * and actionListStores) - see docs/production-readiness-report.md Finding
+ * 10. Sheet row order is stable (appendRowFromObject only ever appends, rows
+ * are never reordered), so slicing before mapping is a safe, deterministic
+ * page boundary across repeated calls.
+ */
+function actionListOwnerProducts(owner, body) {
+  body = body || {};
+  var allProducts = sheetToObjects(getSheet('Products')).filter(function (p) { return p.OwnerId === owner.OwnerId; });
   var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.OwnerId === owner.OwnerId; });
+
+  var limit = clampPageSize(body.limit, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE);
+  var offset = Math.max(0, Number(body.offset) || 0);
+  var products = allProducts.slice(offset, offset + limit);
 
   var result = products.map(function (p) {
     var productVariants = variants
@@ -349,7 +374,7 @@ function actionListOwnerProducts(owner) {
     };
   });
 
-  return ok({ products: result });
+  return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length });
 }
 
 function actionCreateOrUpdateProduct(owner, body) {

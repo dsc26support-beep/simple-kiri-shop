@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', init);
 
 const STATUS_OPTIONS = ['Pending Payment', 'Paid', 'Fulfilled', 'Cancelled'];
+const ORDERS_PAGE_SIZE = 20;
 let ownerOrders = [];
+let ordersHasMore = false;
 
 async function init() {
   const owner = await Auth.guardOwnerAuth();
@@ -9,20 +11,37 @@ async function init() {
   document.getElementById('store-name-label').textContent = owner.storeName;
 
   document.getElementById('order-list').addEventListener('change', onStatusChange);
+  document.getElementById('orders-load-more').addEventListener('click', onLoadMore);
   await loadOrders();
 }
 
-async function loadOrders() {
+/**
+ * Re-requests "the top N orders" each time, growing N via Load More rather
+ * than a true offset cursor - mirrors the pattern already used for the
+ * vendor conversation list (owner-messages.js) and the store directory
+ * (directory.js). onStatusChange below never calls this on success (it
+ * patches the already-loaded array in place), so a normal status edit never
+ * loses pages the vendor had already loaded - only the initial load and the
+ * Load More/error-retry paths do.
+ */
+async function loadOrders(opts) {
+  const limit = (opts && opts.limit) || ownerOrders.length || ORDERS_PAGE_SIZE;
   const statusEl = document.getElementById('orders-status');
   statusEl.textContent = 'Loading…';
-  const res = await Api.post('listOwnerOrders', { token: Auth.getToken() });
+  const res = await Api.post('listOwnerOrders', { token: Auth.getToken(), limit });
   if (!res.ok) {
     statusEl.textContent = res.error || 'Could not load orders.';
     return;
   }
   ownerOrders = res.orders;
-  statusEl.textContent = ownerOrders.length === 0 ? 'No orders yet.' : `${ownerOrders.length} order(s).`;
+  ordersHasMore = !!res.hasMore;
+  statusEl.textContent = ownerOrders.length === 0 ? 'No orders yet.' : `${ownerOrders.length} of ${res.total} order(s) shown.`;
+  document.getElementById('orders-load-more').classList.toggle('hidden', !ordersHasMore);
   render();
+}
+
+function onLoadMore() {
+  loadOrders({ limit: ownerOrders.length + ORDERS_PAGE_SIZE });
 }
 
 function statusClass(status) {

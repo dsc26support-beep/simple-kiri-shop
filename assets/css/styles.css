@@ -874,6 +874,14 @@ footer.site-footer .copyright {
   margin-bottom: var(--space-2);
 }
 
+/* Shared "Load More" affordance for paginated lists (store directory, owner
+   orders/products - see owner.css for the owner-side variant). */
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
 .chat-loading {
   text-align: center;
 }

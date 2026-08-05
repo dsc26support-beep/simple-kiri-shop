@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', init);
 
+const PRODUCTS_PAGE_SIZE = 20;
 let ownerProducts = [];
+let productsHasMore = false;
+let productsTotal = 0;
 let selectedImageFile = null;
 let selectedImageFile2 = null;
 let variantRowSeq = 0;
@@ -17,21 +20,37 @@ async function init() {
   document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
   document.getElementById('product-image-input-2').addEventListener('change', onImageFileChange2);
   document.getElementById('owner-product-list').addEventListener('click', onListClick);
+  document.getElementById('products-load-more').addEventListener('click', onLoadMore);
 
   await loadProducts();
 }
 
-async function loadProducts() {
+/**
+ * Re-requests "the top N products" each time, growing N via Load More -
+ * same limit-only shape as owner-orders.js/directory.js/owner-messages.js's
+ * conversation list, so a save/archive that calls this with no opts (see
+ * onArchive/onSaveProduct below) preserves whatever page depth the vendor
+ * had already reached instead of resetting to page 1.
+ */
+async function loadProducts(opts) {
+  const limit = (opts && opts.limit) || ownerProducts.length || PRODUCTS_PAGE_SIZE;
   const statusEl = document.getElementById('products-status');
   statusEl.textContent = 'Loading…';
-  const res = await Api.post('listOwnerProducts', { token: Auth.getToken() });
+  const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit });
   if (!res.ok) {
     statusEl.textContent = res.error || 'Could not load your products.';
     return;
   }
   ownerProducts = res.products;
-  statusEl.textContent = ownerProducts.length === 0 ? 'You have no products yet — add your first one above.' : '';
+  productsHasMore = !!res.hasMore;
+  productsTotal = res.total;
+  statusEl.textContent = ownerProducts.length === 0 ? 'You have no products yet — add your first one above.' : `${ownerProducts.length} of ${res.total} product(s) shown.`;
+  document.getElementById('products-load-more').classList.toggle('hidden', !productsHasMore);
   renderList();
+}
+
+function onLoadMore() {
+  loadProducts({ limit: ownerProducts.length + PRODUCTS_PAGE_SIZE });
 }
 
 function renderList() {
@@ -281,5 +300,15 @@ async function onSaveProduct(e) {
 
   setSaveProductIdle(saveBtn);
   closeForm();
-  await loadProducts();
+  // A brand-new product lands past the END of append order (a new Sheet row
+  // is always appended, never inserted at the front), at position
+  // productsTotal (0-indexed) - the total BEFORE this save. Growing the
+  // limit by just ownerProducts.length+1 (how much is currently ON SCREEN)
+  // would only work if the vendor had already loaded everything; if they're
+  // still on page 1, that undercounts and would silently show a different
+  // *existing* product instead of the new one. productsTotal+1 is always
+  // enough regardless of how much was loaded. An edit doesn't change the
+  // total, so it reuses the plain "reload what's currently visible" path
+  // (loadProducts() with no opts).
+  await loadProducts(productId ? undefined : { limit: productsTotal + 1 });
 }

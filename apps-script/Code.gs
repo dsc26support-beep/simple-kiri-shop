@@ -84,7 +84,7 @@ function doGet(e) {
   try {
     var params = (e && e.parameter) || {};
     switch (params.action) {
-      case 'listStores': return jsonOut(actionListStores());
+      case 'listStores': return jsonOut(actionListStores(params));
       case 'listProducts': return jsonOut(actionListProducts(params));
       case 'getStorePublicInfo': return jsonOut(actionGetStorePublicInfo(params));
       case 'searchProducts': return jsonOut(actionSearchProducts(params));
@@ -136,13 +136,13 @@ function doPost(e) {
       switch (action) {
         case 'getOwnerProfile': return jsonOut(actionGetOwnerProfile(owner));
         case 'updateOwnerProfile': return jsonOut(actionUpdateOwnerProfile(owner, body));
-        case 'listOwnerProducts': return jsonOut(actionListOwnerProducts(owner));
+        case 'listOwnerProducts': return jsonOut(actionListOwnerProducts(owner, body));
         case 'createProduct':
         case 'updateProduct': return jsonOut(actionCreateOrUpdateProduct(owner, body));
         case 'deleteProduct': return jsonOut(actionDeleteProduct(owner, body));
         case 'uploadProductImage': return jsonOut(actionUploadProductImage(owner, body));
         case 'uploadStoreLogo': return jsonOut(actionUploadStoreLogo(owner, body));
-        case 'listOwnerOrders': return jsonOut(actionListOwnerOrders(owner));
+        case 'listOwnerOrders': return jsonOut(actionListOwnerOrders(owner, body));
         case 'updateOrderStatus': return jsonOut(actionUpdateOrderStatus(owner, body));
         case 'setStoreStatus': return jsonOut(actionSetStoreStatus(owner, body));
         case 'enable2FARequest': return jsonOut(actionEnable2FARequest(owner));
