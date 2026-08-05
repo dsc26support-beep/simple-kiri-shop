@@ -159,6 +159,24 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    preset or configure anything else on Cloudinary's side; the script signs
    every request itself, so no "unsigned upload" setup is required.
 
+   **Optional — Resend for transactional email instead of MailApp.** By
+   default, every email this app sends (2FA codes, password reset codes,
+   reminder-sweep emails) goes out via `MailApp`, using the script owner's
+   own Google account — simple, zero setup, but capped around 100 emails/day
+   on a free/consumer account (see the Security & operational notes below).
+   If you'd rather send through [Resend](https://resend.com) (they have a
+   free tier with a much higher daily cap), add both of:
+   - `RESEND_API_KEY` — from your Resend dashboard's API Keys page.
+   - `RESEND_FROM_EMAIL` — the sender address to send as, e.g.
+     `Mwakete <noreply@yourdomain.com>`. Resend requires this to be on a
+     domain you've verified with them first (unlike MailApp, it can't just
+     default to your Gmail address).
+
+   Both must be set together — with either missing, email keeps going via
+   MailApp exactly as before. Even once configured, a failed Resend send
+   (network error, unverified domain, etc.) automatically falls back to
+   MailApp for that one email rather than losing it.
+
 4. **Deploy → New deployment → type "Web app".**
    - Execute as: **Me**
    - Who has access: **Anyone**
@@ -322,7 +340,9 @@ products and the 20 most-visited stores, each ranked by a running counter
   existing login sessions.
 - **Email sending quota**: `MailApp` on a free/consumer Google account is
   capped around 100 emails/day. Fine at small scale (login codes + resets);
-  worth knowing if the marketplace grows a lot of daily 2FA logins.
+  worth knowing if the marketplace grows a lot of daily 2FA logins. Set
+  `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (see the setup steps above) to send
+  through Resend instead, which has a much higher quota on its free tier.
 - **Island/village data is an unverified first draft.** `assets/js/kiribati-locations.js`
   (`KIRIBATI_ISLANDS`) is a best-effort list, not confirmed against an
   authoritative source — please review and correct village names per island

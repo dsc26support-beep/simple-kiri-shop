@@ -63,9 +63,10 @@ Google's published Apps Script quotas (consumer Google account): ~30 simultaneou
 
 *Fix — done, opt-in.* `Utils.gs` gained a provider-agnostic `uploadImage()`/`deleteStoredImage()` pair that all three upload paths (product photos, store logos, chat photos) now go through. When `CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET` are all set in Script Properties, uploads go to Cloudinary via signed requests (so deletion of a replaced photo works too, not just upload — signed rather than unsigned specifically so `deleteStoredImage` has a real Admin API to call). With any one of the three unset, every upload falls through to the exact Drive path this app already had, unchanged — a deployment that never touches Cloudinary behaves identically to before. Provenance (which provider produced a given file id) is tracked with a `cld:` prefix stored in the same `ImageFileId`/`LogoFileId` columns Drive ids already used, so deletion always routes correctly regardless of whether Cloudinary gets configured/unconfigured later. README documents the three new properties as clearly optional. 163/163 backend tests passing (6 new, using a new `UrlFetchApp` mock added to the test harness).
 
-**Finding 9 — `MailApp`'s ~100-email/day quota, already flagged in the README as a "small scale" caveat, is far below what 10,000 vendors implies.**
+**Finding 9 — `MailApp`'s ~100-email/day quota, already flagged in the README as a "small scale" caveat, is far below what 10,000 vendors implies.** *(Fixed, opt-in — see below.)*
 2FA login codes, password resets, and reminder-sweep emails all share this one quota. Even a small fraction of 10,000 vendors using 2FA daily exceeds 100 sends/day trivially — this was already documented as a known constraint at "small scale," but the target scale in this review makes it a near-certainty on day one, not a someday concern.
-*Fix:* out of scope (requires an external transactional email provider); flagged for the roadmap.
+
+*Fix — done, opt-in.* `sendAppEmail` (`Utils.gs`) — the single choke point every email in this app already went through — now sends via [Resend](https://resend.com) when `RESEND_API_KEY`/`RESEND_FROM_EMAIL` are both set in Script Properties, falling back to the original `MailApp` path whenever they're not configured, or when a configured Resend send itself fails (network error, unverified sending domain, etc.) — an email is never silently dropped either way. Same opt-in shape as Finding 8's Cloudinary swap: a deployment that never sets the two properties behaves identically to before. 168/168 backend tests passing (5 new), including one exercising the real 2FA code-send path end to end, not just `sendAppEmail` in isolation.
 
 ### P2 — Real but lower-severity at this scale (fix is UI work, not backend risk)
 
@@ -87,21 +88,25 @@ Google's published Apps Script quotas (consumer Google account): ~30 simultaneou
 - **The chat-performance pass already shipped real mitigations** (caching, pagination, adaptive polling backoff, write-skipping) that measurably reduce *how often* the expensive operations in Findings 2-4 run, even though they can't change *how expensive* any single one is. That work was necessary but not sufficient — this report is explicit that it bought headroom, not a scale-proof architecture.
 - **Input validation, length caps, and rate limiting are already comprehensive** (from the prior security-fix pass) and don't need scale-specific rework — `capLength`/`rateLimitHit` are O(1) regardless of table size.
 
-## 5. What was actually refactored in this pass, and why nothing bigger was touched
+## 5. What's actually been fixed since this report was written, and what deliberately hasn't
 
-Per the instruction to refactor only where absolutely necessary, exactly two changes were made — both small, safe, behavior-preserving-at-the-margins, and directly justified by a finding above:
+This report's findings drove real follow-up work, done incrementally rather than as one large unilateral rewrite, per "refactor only where absolutely necessary." In the order applied:
 
-1. **`pruneExpiredSessions()` wired into the existing hourly `runReminderSweep()`** (`apps-script/Reminders.gs`) — closes Finding 5. This was a one-line addition to a function that already runs on an hourly trigger every deployment is instructed to set up (`README.md`), calling code that already existed, fully written, and now covered by a new regression test (`Reminders: ... > runReminderSweep also prunes expired sessions`). Zero new failure modes: worst case if something were wrong, an already-expired session simply survives one more hour, exactly like before this change.
-2. **`actionSearchProducts` wrapped in `getCached(...)`** (`apps-script/Products.gs`) — closes Finding 6, bringing it in line with its four sibling read actions that were already cached. Uses the exact same TTL-only staleness trade-off already accepted for `v1:topProducts`/`v1:topStores` (60s, no explicit invalidation — the query-keyed cache space is unbounded the way the fixed list-action keys aren't, so entries just expire on their own TTL). Two new regression tests confirm both the caching behavior and that different queries don't collide in the cache.
+1. **`pruneExpiredSessions()` wired into the existing hourly `runReminderSweep()`** (`apps-script/Reminders.gs`) — closes Finding 5. A one-line addition to a function that already runs on an hourly trigger every deployment is instructed to set up, calling code that already existed, fully written. Zero new failure modes: worst case an already-expired session simply survives one more hour, exactly like before.
+2. **`actionSearchProducts` wrapped in `getCached(...)`** (`apps-script/Products.gs`) — closes Finding 6, bringing it in line with its four sibling read actions that were already cached. Same TTL-only staleness trade-off already accepted for `v1:topProducts`/`v1:topStores` (60s, no explicit invalidation, since the query-keyed cache space is unbounded the way the fixed list-action keys aren't).
+3. **A lookback window bounds `runReminderSweep`'s per-row work** — partially closes Finding 7; see that finding's write-up above for the precise "bounds the work after the read, not the read itself" scope.
+4. **Pagination (`limit`/`offset`) added to `actionListStores`/`actionListOwnerOrders`/`actionListOwnerProducts`**, plus "Load More" UI on all three pages — closes Finding 10; see that finding's write-up above, including a real bug (new-product visibility) the Playwright verification pass caught before it shipped.
+5. **Opt-in Cloudinary image hosting** (`Utils.gs`'s `uploadImage`/`deleteStoredImage`, used by all three upload paths) — closes Finding 8, opt-in via Script Properties, Drive remains the default with zero configuration.
+6. **Opt-in Resend transactional email** (`Utils.gs`'s `sendAppEmail`) — closes Finding 9, opt-in via Script Properties, `MailApp` remains the default and the automatic fallback on any Resend failure.
 
-Both changes are `node --check`-clean and the full backend suite passes (150/150 — 147 pre-existing + 3 new).
+Every change above is `node --check`-clean; the full backend suite currently stands at 168/168 (up from a 147-test baseline before this review began). Each was verified in isolation at the time it landed — see each fix's own commit for its exact before/after test counts.
 
-**Everything else in §3 is a recommendation, not a change made here**, because each one is either:
-- a genuine architecture migration (Findings 1-3 — moving chat off Sheets, which no in-place refactor can substitute for), or
-- a deliberate scope/behavior decision that isn't mine to make unilaterally (Finding 7's archiving window, Finding 9's email provider), or
+**What's still open, deliberately not touched**, because each is either:
+- a genuine architecture migration (Findings 1-3 — moving chat off Sheets, which no in-place refactor can substitute for; Finding 4's Apps Script execution quotas, which need a platform change, not a code change), or
+- a deliberate scope/behavior decision that isn't mine to make unilaterally (Finding 7's remaining piece — an actual archiving/retention policy, as opposed to the lookback bound already shipped), or
 - already a known, previously-accepted trade-off restated for context (Finding 11).
 
-Implementing any of those now would be scope creep against "refactor only where absolutely necessary" — they're listed so the roadmap in §6 is concrete, not so they get silently built into this pass.
+Building any of those now would be scope creep against "refactor only where absolutely necessary" — they're listed so the roadmap in §6 stays concrete, not so they get silently built in.
 
 ## 6. Roadmap and realistic ceiling
 
@@ -111,7 +116,7 @@ Implementing any of those now would be scope creep against "refactor only where 
 1. Move `Conversations`/`Messages` off Sheets onto a real datastore (Finding 1/2/3). This is the one change that's load-bearing for every number in the target scale — it removes the cell ceiling, makes per-conversation reads O(1)-ish instead of full-table scans, and enables row-level transactions instead of one script-wide lock for chat specifically.
 2. Move the Owners/Products/Orders read path off live Sheets scans onto an indexed store, or accept Sheets for those (they're much smaller than Messages) but add real archiving for `Orders`/`AbandonedCarts` (Finding 7) so the reminder sweep's cost stops growing forever.
 3. Move off Apps Script Web Apps as the API layer, or at minimum move to Google Workspace to raise the execution-quota ceilings (Finding 4) — necessary regardless of the datastore choice, since the ~30-simultaneous-execution and ~90-min/day runtime ceilings apply to the whole deployment no matter what's behind it.
-4. ~~Add a real CDN/object storage for images~~ — done, opt-in (Finding 8). An external transactional email provider (Finding 9) is still open — a straightforward swap once the deployment isn't Apps Script-only.
+4. ~~Add a real CDN/object storage for images~~ — done, opt-in (Finding 8). ~~An external transactional email provider~~ — also done, opt-in (Finding 9).
 5. ~~Add pagination UI to the directory, owner orders, and owner products views~~ — done (Finding 10).
 
 None of steps 1-3 are small — they are, collectively, a second architecture for this app's data layer. That is the honest answer to "can this reach 10k/100k/millions": not on the current Sheets+Apps Script foundation, no matter how much the application code on top of it is tuned.

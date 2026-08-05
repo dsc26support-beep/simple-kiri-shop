@@ -88,12 +88,60 @@ function wordsAreEquivalent(a, b) {
 }
 
 /**
- * Sends mail via the script owner's Google account (MailApp) and swallows
- * failures (e.g. daily send quota exceeded) - callers already return a
- * generic success response regardless, so a delivery failure shouldn't leak
- * account existence or surface a confusing error to the caller.
+ * Resend (resend.com) is an opt-in swap for MailApp - see
+ * docs/production-readiness-report.md Finding 9. MailApp's free-account
+ * quota is ~100 emails/day, shared across every login code, password reset,
+ * and reminder-sweep email this whole app sends; a transactional email
+ * provider has a real (usually much higher, and monitorable) quota instead.
+ * Both properties are required together - RESEND_FROM_EMAIL because Resend
+ * requires a sender address on a domain you've verified with them (unlike
+ * MailApp, which always sends as the script owner's own Gmail address with
+ * zero configuration) - so there's no sane default to fall back to for it.
+ */
+function getResendConfig() {
+  var props = PropertiesService.getScriptProperties();
+  var apiKey = props.getProperty('RESEND_API_KEY');
+  var fromEmail = props.getProperty('RESEND_FROM_EMAIL');
+  if (!apiKey || !fromEmail) return null;
+  return { apiKey: apiKey, fromEmail: fromEmail };
+}
+
+/** Returns true on a confirmed send, false on any failure (network, auth, Resend rejecting the request) - never throws, matching sendAppEmail's own best-effort contract. */
+function sendViaResend(to, subject, body, config) {
+  try {
+    var response = UrlFetchApp.fetch('https://api.resend.com/emails', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + config.apiKey },
+      payload: JSON.stringify({ from: config.fromEmail, to: [to], subject: subject, text: body }),
+      muteHttpExceptions: true
+    });
+    var result = JSON.parse(response.getContentText());
+    return !!(result && result.id);
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Sends mail via Resend when configured (see getResendConfig above),
+ * falling back to MailApp - the original, always-available path - either
+ * when Resend isn't configured at all, or when a configured Resend send
+ * itself fails. Swallows every failure end to end (e.g. MailApp's own daily
+ * quota exceeded) - callers already return a generic success response
+ * regardless, so a delivery failure shouldn't leak account existence or
+ * surface a confusing error to the caller. Trade-off worth stating plainly:
+ * falling back to MailApp on a Resend failure means a misconfigured Resend
+ * setup (e.g. an unverified from-domain) could go unnoticed for a while,
+ * since emails would keep quietly arriving via MailApp instead of visibly
+ * failing - accepted here as consistent with this function's existing
+ * "never surface an error" philosophy, same category of trade-off as
+ * MailApp's own quota-exceeded already being swallowed silently.
  */
 function sendAppEmail(to, subject, body) {
+  var resendConfig = getResendConfig();
+  if (resendConfig && sendViaResend(to, subject, body, resendConfig)) return;
+
   try {
     MailApp.sendEmail(to, subject, body);
   } catch (e) {
