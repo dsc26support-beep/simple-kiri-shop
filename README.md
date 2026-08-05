@@ -228,6 +228,39 @@ That's it — from then on, once an hour the script checks for:
 Each reminder only ever fires once per cart/order (tracked via `Reminded` in
 `AbandonedCarts` and `NoEmailReminderSent` in `Orders`).
 
+## Order archiving (optional, one-time manual setup)
+
+The `Orders` sheet only ever grows, and every read of it (the reminder
+sweep above, the vendor dashboard's order list, updating an order's status)
+scans the whole tab — Sheets has no server-side filtering. If your
+marketplace runs long enough to build up a lot of order history, you can
+opt into archiving:
+
+1. Add a new sheet tab named exactly `OrdersArchive`.
+2. Copy the header row (row 1) from the `Orders` tab into it, unchanged —
+   same column names, any order. The columns don't need to match exactly
+   (extra columns are fine), but every column `Orders` has must also be
+   present here, or archiving skips itself rather than write incomplete
+   rows.
+
+That's the whole setup — no separate trigger, it rides the same hourly
+`runReminderSweep` trigger from the section above. Once `OrdersArchive`
+exists with matching headers, any order older than **~12 months** (any
+status) gets moved into it and removed from the live `Orders` tab on the
+next sweep. An archived order:
+- Disappears from the vendor's Orders dashboard — this is intentional, not
+  a bug, and there's no in-app way to view archived orders.
+- Is fully preserved in `OrdersArchive`, recoverable at any time via direct
+  spreadsheet access (the same "Sheet owner is the de facto admin" lever
+  this app already relies on for anything not exposed in-app).
+
+Until you create `OrdersArchive`, nothing changes — this is entirely
+opt-in, and a deployment that never adds the tab behaves exactly as before.
+
+Abandoned carts older than ~12 months are deleted outright by the same
+sweep (no archive tab, no opt-in) — nothing in this app ever displays
+historical abandoned-cart data to anyone, so there's nothing to preserve.
+
 ## Store status (Settings → Store Status)
 
 A store owner can pause or delete their store from Settings:

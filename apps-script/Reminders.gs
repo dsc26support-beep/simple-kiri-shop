@@ -44,6 +44,95 @@ function isWithinReminderLookback(createdAt) {
   return (Date.now() - createdMs) <= REMINDER_LOOKBACK_MS;
 }
 
+/* ---------- Order/AbandonedCart archiving (Finding 7's remaining piece) ----------
+ *
+ * The lookback window above bounds the sweep's PER-ROW work, but not the
+ * underlying Sheets read itself - sheetToObjects() (Db.gs) always reads a
+ * sheet's entire used range, with no server-side filter, so the full
+ * historical Orders/AbandonedCarts table is still read into memory every
+ * hour no matter how few rows are actually due. The only way to bound that
+ * read in a Sheets-backed design is to physically shrink the live sheet -
+ * which is what this section does. See
+ * docs/production-readiness-report.md Finding 2/7.
+ */
+
+var ORDER_ARCHIVE_AGE_MS = 365 * 24 * 60 * 60 * 1000; // ~12 months
+var ORDERS_ARCHIVE_TAB_NAME = 'OrdersArchive';
+
+/**
+ * Archiving only activates once OrdersArchive exists AND its header row
+ * matches Orders' exactly - appendRowFromObject (Db.gs) maps by the TARGET
+ * sheet's own header names, so a typo'd/missing column in a manually
+ * created tab wouldn't error, it would just silently write blanks into that
+ * column for every archived row forever. Checking headers up front turns
+ * that into a one-time Logger.log warning instead of quiet, permanent data
+ * loss. Uses getSheetByName directly (not Db.gs's getSheet(), which
+ * throws) since "the tab doesn't exist yet" is this feature's normal
+ * not-configured state, not an error - same opt-in-via-Script-Properties
+ * shape as the Cloudinary/Resend integrations, just gated on a Sheet tab's
+ * existence instead. A deployment that never creates OrdersArchive keeps
+ * archiving off forever, with zero risk of a new failure mode.
+ */
+function getOrdersArchiveSheet() {
+  var sheet = SpreadsheetApp.getActive().getSheetByName(ORDERS_ARCHIVE_TAB_NAME);
+  if (!sheet) return null;
+
+  var archiveHeaders = getHeaders(sheet);
+  var ordersHeaders = getHeaders(getSheet('Orders'));
+  var headersOk = ordersHeaders.every(function (h) { return archiveHeaders.indexOf(h) !== -1; });
+  if (!headersOk) {
+    Logger.log('OrdersArchive exists but its headers do not match Orders - skipping archiving. Expected: ' + ordersHeaders.join(','));
+    return null;
+  }
+  return sheet;
+}
+
+/**
+ * Moves Orders rows older than ORDER_ARCHIVE_AGE_MS into OrdersArchive and
+ * deletes them from the live sheet - so the live sheet's read cost (this
+ * sweep, the vendor dashboard's actionListOwnerOrders, actionUpdateOrderStatus's
+ * findRowById scan) stays bounded by "recent orders," not total historical
+ * volume. A vendor stops seeing an archived order in their dashboard the
+ * moment it's archived - by design, not a bug: recovery, if ever needed, is
+ * manual Sheet access by the Sheet owner, the same lever this app already
+ * relies on everywhere else undocumented recovery is needed.
+ */
+function archiveOldOrders() {
+  var archiveSheet = getOrdersArchiveSheet();
+  if (!archiveSheet) return;
+
+  var ordersSheet = getSheet('Orders');
+  var now = Date.now();
+  sheetToObjects(ordersSheet)
+    .filter(function (o) { return (now - new Date(o.CreatedAt).getTime()) >= ORDER_ARCHIVE_AGE_MS; })
+    .sort(function (a, b) { return b.__row - a.__row; }) // delete bottom-up so row numbers stay valid - same convention as pruneExpiredSessions/revokeAllSessions (Auth.gs)
+    .forEach(function (o) {
+      appendRowFromObject(archiveSheet, o); // the leftover __row key is harmless - appendRowFromObject only ever reads keys matching the target sheet's own headers
+      ordersSheet.deleteRow(o.__row);
+    });
+}
+
+var ABANDONED_CART_RETENTION_MS = ORDER_ARCHIVE_AGE_MS; // same ~12 months, for consistency
+
+/**
+ * Unlike Orders, nothing ever displays a historical AbandonedCarts row to
+ * anyone - no vendor-facing page reads this table at all, only this sweep
+ * and actionSaveAbandonedCart/markAbandonedCartConverted touch it - so
+ * there's nothing to preserve, just delete. This also cleans up rows that
+ * aged past REMINDER_LOOKBACK_MS without ever being reminded or converted,
+ * which would otherwise sit forever. Always-on (no opt-in tab check needed,
+ * unlike archiveOldOrders above) since it's pure deletion of data nothing
+ * ever reads again.
+ */
+function deleteStaleAbandonedCarts() {
+  var sheet = getSheet('AbandonedCarts');
+  var now = Date.now();
+  sheetToObjects(sheet)
+    .filter(function (r) { return (now - new Date(r.CreatedAt).getTime()) >= ABANDONED_CART_RETENTION_MS; })
+    .sort(function (a, b) { return b.__row - a.__row; })
+    .forEach(function (r) { sheet.deleteRow(r.__row); });
+}
+
 function actionSaveAbandonedCart(body) {
   var slug = String(body.storeSlug || '').trim();
   var email = String(body.email || '').trim();
@@ -179,4 +268,11 @@ function runReminderSweep() {
   // Sessions only ever grows (see pruneExpiredSessions in Auth.gs), and
   // every authenticated request scans the whole table via requireAuth.
   pruneExpiredSessions();
+
+  // Runs after the reminder logic above so a cart/order gets its chance to
+  // be reminded in this same run before either cleanup step touches it -
+  // no real overlap at ~12 months vs. hours, but keeps the ordering
+  // logically clean. See the "Order/AbandonedCart archiving" section above.
+  archiveOldOrders();
+  deleteStaleAbandonedCarts();
 }
