@@ -1,13 +1,11 @@
 /**
- * Vendor-specific live chat — DATA LAYER ONLY.
+ * Vendor-specific live chat: data layer + backend API actions.
  *
- * This file defines the Conversations/Messages Sheet model and the plain
- * helper functions that read and write them. There are no `action*`
- * handlers here and nothing in this file is registered in Code.gs's
- * PUBLIC_POST_ACTIONS/PROTECTED_POST_ACTIONS or its doGet/doPost switches —
- * none of this is reachable from the outside yet. No chat UI exists either.
- * See docs/vendor-chat-design.md for the full design (API shape, security,
- * polling strategy) this is the storage layer for.
+ * Still no chat UI anywhere in the repo - this file is the Conversations/
+ * Messages Sheet model (unchanged from the original data-layer pass) plus
+ * the action* handlers that Code.gs now routes to. See
+ * docs/vendor-chat-design.md for the full design (API shape, security,
+ * polling strategy) this implements.
  *
  * Sheet schema (see README.md):
  *   Conversations: ConversationId | OwnerId | StoreSlug | CustomerToken |
@@ -16,16 +14,23 @@
  *   Messages: MessageId | ConversationId | OwnerId | StoreSlug | SenderType |
  *     Body | CreatedAt
  *
- * Locking: none of these functions take LockService.getScriptLock() - like
- * Db.gs's generic helpers, that's a write-orchestration concern for the
- * future API layer (e.g. a sendChatMessage handler), not this data layer.
- * Same reasoning: findRowById/appendRowFromObject/updateRowFromObject are
- * lock-free too, and every existing action handler takes its own lock
- * around whichever sequence of them needs to be atomic.
+ * Locking: the data-layer functions below (findConversation, appendMessage,
+ * etc.) still take no lock themselves - same reasoning as Db.gs's generic
+ * helpers. The action* handlers at the bottom of this file are what take
+ * LockService.getScriptLock() around a multi-step sequence, exactly like
+ * every other action handler in this codebase.
  */
 
 var MAX_CHAT_MESSAGE_LENGTH = 2000; // Sheet-cell/payload size guard, same role as Images.gs's MAX_IMAGE_BYTES
-var CHAT_CONVERSATION_STATUSES = ['open', 'closed'];
+// 'deleted'/'archived' are vendor-only housekeeping states (see
+// actionDeleteConversation/actionArchiveConversation below) - a soft delete,
+// consistent with every other "delete" in this codebase (archived products,
+// deleted variants, closed stores). A new message from either side always
+// reopens a conversation back to 'open' (touchConversationOnNewMessage),
+// including one a vendor had archived or deleted - a customer who keeps
+// writing should never silently stop reaching the vendor just because the
+// vendor tidied their inbox.
+var CHAT_CONVERSATION_STATUSES = ['open', 'closed', 'archived', 'deleted'];
 var CHAT_SENDER_TYPES = ['customer', 'vendor'];
 
 /* ---------- Conversations ---------- */
@@ -212,4 +217,171 @@ function publicMessageFields(message) {
     body: message.Body,
     createdAt: message.CreatedAt
   };
+}
+
+/* ==================== Backend API actions ====================
+ * Registered in Code.gs's PUBLIC_POST_ACTIONS/PROTECTED_POST_ACTIONS and
+ * doPost switch. sendMessage/getConversation/markAsRead are public actions
+ * that serve BOTH sides of a conversation from one function each - Code.gs's
+ * public/protected split is binary (protected always requires a token), but
+ * chat genuinely needs "auth if you have a vendor token, anonymous
+ * customer-token flow otherwise" - so these three do that branching
+ * themselves via resolveChatRequest() rather than being force-fit into two
+ * near-duplicate public/protected handlers each.
+ */
+
+/**
+ * Resolves which conversation a request is about and which side is calling,
+ * shared by sendMessage/getConversation/markAsRead so the "vendor token vs.
+ * anonymous customer token" branching exists in exactly one place.
+ *
+ * Vendor path (body.token present): requireAuth()'s the token, requires
+ * body.conversationId, and ownership-checks it - the same pattern as every
+ * other owned-row action in this codebase (actionUpdateOrderStatus,
+ * actionDeleteProduct, etc.).
+ *
+ * Customer path (no token): requires body.storeSlug + body.customerToken.
+ * With opts.createIfMissing, resolves the store and finds-or-creates the
+ * conversation (only sendMessage should pass this - a customer's first
+ * message is what starts a thread). Without it, just looks up whatever
+ * conversation already exists - `conversation: null` is a valid, non-error
+ * result here (no thread yet), not every caller wants one created.
+ *
+ * Returns { ok: true, conversation, senderType } or { ok: false, error }.
+ */
+function resolveChatRequest(body, opts) {
+  var createIfMissing = !!(opts && opts.createIfMissing);
+
+  if (body.token) {
+    var owner;
+    try {
+      owner = requireAuth(body.token);
+    } catch (e) {
+      return { ok: false, error: e.message || 'Not authenticated' };
+    }
+    if (!body.conversationId) return { ok: false, error: 'conversationId is required' };
+    var conversation = getConversationById(body.conversationId);
+    if (!conversation || conversation.OwnerId !== owner.OwnerId) return { ok: false, error: 'Conversation not found' };
+    return { ok: true, conversation: conversation, senderType: 'vendor' };
+  }
+
+  var storeSlug = body.storeSlug;
+  var customerToken = body.customerToken;
+  if (!storeSlug || !customerToken) return { ok: false, error: 'storeSlug and customerToken are required' };
+
+  if (createIfMissing) {
+    var storeOwner = getOwnerBySlug(storeSlug);
+    if (!storeOwner || storeOwner.Status !== 'active') return { ok: false, error: 'Store not found' };
+    var conv = findOrCreateConversation(storeOwner, storeSlug, customerToken, body.customerName);
+    return { ok: true, conversation: conv, senderType: 'customer' };
+  }
+
+  return { ok: true, conversation: findConversation(storeSlug, customerToken), senderType: 'customer' };
+}
+
+/**
+ * Public action. Sends a message from either side (see resolveChatRequest) -
+ * creates the conversation on a customer's first message. Lock-guarded
+ * around the find-or-create-then-append sequence, same as actionCreateOrder.
+ */
+function actionSendMessage(body) {
+  var resolved = resolveChatRequest(body, { createIfMissing: true });
+  if (!resolved.ok) return fail(resolved.error);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var message = appendMessage(resolved.conversation, resolved.senderType, body.body);
+    if (!message) return fail('Message text is required');
+    return ok({
+      conversationId: resolved.conversation.ConversationId,
+      message: publicMessageFields(message)
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Public action. Fetches one conversation + its messages for whichever side
+ * is calling, optionally incremental via body.sinceMessageId (the polling
+ * cursor from the design doc). Marks it read for that side as a side effect.
+ * A customer with no conversation yet gets {conversation:null, messages:[]},
+ * not an error - that's the normal "haven't sent a first message" state.
+ */
+function actionGetConversation(body) {
+  var resolved = resolveChatRequest(body, { createIfMissing: false });
+  if (!resolved.ok) return fail(resolved.error);
+  if (!resolved.conversation) return ok({ conversation: null, messages: [] });
+
+  var messages = listMessagesForConversation(resolved.conversation.ConversationId, body.sinceMessageId);
+  if (resolved.senderType === 'vendor') markConversationReadByVendor(resolved.conversation.ConversationId);
+  else markConversationReadByCustomer(resolved.conversation.ConversationId);
+
+  return ok({
+    conversation: publicConversationFields(resolved.conversation),
+    messages: messages.map(publicMessageFields)
+  });
+}
+
+/**
+ * Public action. Explicit "mark read" for either side, independent of
+ * fetching messages (e.g. a vendor glancing at the inbox list without
+ * opening the full thread). No-op-ish failure if there's no conversation to
+ * mark - unlike sendMessage, this never creates one.
+ */
+function actionMarkAsRead(body) {
+  var resolved = resolveChatRequest(body, { createIfMissing: false });
+  if (!resolved.ok) return fail(resolved.error);
+  if (!resolved.conversation) return fail('Conversation not found');
+
+  if (resolved.senderType === 'vendor') markConversationReadByVendor(resolved.conversation.ConversationId);
+  else markConversationReadByCustomer(resolved.conversation.ConversationId);
+
+  return ok({});
+}
+
+/**
+ * Protected action (vendor only). The inbox list - every conversation for
+ * this owner except ones they've deleted, newest-activity first. Archived
+ * conversations are still included (tagged via `status`) so a future UI can
+ * filter/group by status rather than losing them from the list entirely.
+ * Unpaginated for now, same as every other owner-scoped list in this
+ * codebase (listOwnerProducts, listOwnerOrders) - pagination is a separate,
+ * not-yet-implemented plan that applies to all of them together.
+ */
+function actionGetVendorConversations(owner) {
+  var conversations = listConversationsForOwner(owner.OwnerId)
+    .filter(function (c) { return c.Status !== 'deleted'; })
+    .map(publicConversationFields);
+  return ok({ conversations: conversations });
+}
+
+/** Protected action (vendor only). Soft-deletes a conversation - hides it from actionGetVendorConversations, never removes the row. */
+function actionDeleteConversation(owner, body) {
+  var conversation = getConversationById(body.conversationId);
+  if (!conversation || conversation.OwnerId !== owner.OwnerId) return fail('Conversation not found');
+  setConversationStatus(body.conversationId, 'deleted');
+  return ok({});
+}
+
+/** Protected action (vendor only). Marks a conversation archived - still listed, tagged with status:'archived' for the UI to filter/group. */
+function actionArchiveConversation(owner, body) {
+  var conversation = getConversationById(body.conversationId);
+  if (!conversation || conversation.OwnerId !== owner.OwnerId) return fail('Conversation not found');
+  setConversationStatus(body.conversationId, 'archived');
+  return ok({});
+}
+
+/**
+ * Protected action (vendor only). Count of conversations with an unread
+ * message waiting, for a lightweight nav badge - the "slow background poll"
+ * case from the design doc's polling strategy, deliberately separate from
+ * fetching full conversation/message data.
+ */
+function actionGetUnreadCount(owner) {
+  var count = listConversationsForOwner(owner.OwnerId)
+    .filter(function (c) { return c.Status !== 'deleted' && String(c.UnreadByVendor) === 'true'; })
+    .length;
+  return ok({ unreadCount: count });
 }

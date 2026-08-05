@@ -11,13 +11,19 @@
 var PUBLIC_POST_ACTIONS = [
   'registerOwner', 'loginOwner', 'createOrder',
   'verifyLoginCode', 'requestPasswordReset', 'resetPasswordWithCode',
-  'saveAbandonedCart', 'recordProductViews', 'recordStoreVisit'
+  'saveAbandonedCart', 'recordProductViews', 'recordStoreVisit',
+  // Chat: these three serve BOTH sides of a conversation (anonymous customer
+  // or a vendor with a token) from one action each, so they can't sit only
+  // in PROTECTED_POST_ACTIONS - they do their own optional auth internally
+  // via resolveChatRequest() in Chat.gs. See that file for why.
+  'sendMessage', 'getConversation', 'markAsRead'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
   'createProduct', 'updateProduct', 'deleteProduct', 'uploadProductImage', 'uploadStoreLogo',
   'listOwnerOrders', 'updateOrderStatus', 'setStoreStatus',
-  'enable2FARequest', 'confirm2FASetup', 'disable2FA'
+  'enable2FARequest', 'confirm2FASetup', 'disable2FA',
+  'getVendorConversations', 'deleteConversation', 'archiveConversation', 'getUnreadCount'
 ];
 
 function doGet(e) {
@@ -53,6 +59,9 @@ function doPost(e) {
         case 'saveAbandonedCart': return jsonOut(actionSaveAbandonedCart(body));
         case 'recordProductViews': return jsonOut(actionRecordProductViews(body));
         case 'recordStoreVisit': return jsonOut(actionRecordStoreVisit(body));
+        case 'sendMessage': return jsonOut(actionSendMessage(body));
+        case 'getConversation': return jsonOut(actionGetConversation(body));
+        case 'markAsRead': return jsonOut(actionMarkAsRead(body));
       }
     }
 
@@ -81,6 +90,10 @@ function doPost(e) {
         case 'enable2FARequest': return jsonOut(actionEnable2FARequest(owner));
         case 'confirm2FASetup': return jsonOut(actionConfirm2FASetup(owner, body));
         case 'disable2FA': return jsonOut(actionDisable2FA(owner));
+        case 'getVendorConversations': return jsonOut(actionGetVendorConversations(owner));
+        case 'deleteConversation': return jsonOut(actionDeleteConversation(owner, body));
+        case 'archiveConversation': return jsonOut(actionArchiveConversation(owner, body));
+        case 'getUnreadCount': return jsonOut(actionGetUnreadCount(owner));
       }
     }
 
