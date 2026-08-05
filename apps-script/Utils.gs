@@ -202,3 +202,160 @@ function constantTimeEquals(a, b) {
   }
   return diff === 0;
 }
+
+/* ---------- Image hosting: Cloudinary (opt-in) with a Drive fallback ----------
+ *
+ * Product/logo/chat photos were originally always uploaded to Google Drive
+ * and hotlinked via the googleusercontent.com CDN form - functional, but
+ * Drive is a file-storage product, not a real CDN (no availability SLA
+ * under load, no resizing) - see docs/production-readiness-report.md
+ * Finding 8. Cloudinary support below is entirely opt-in: it only activates
+ * once CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET are
+ * all set in Script Properties (see README's setup steps). With none of
+ * those set, uploadImage() falls straight through to the exact Drive path
+ * this app already had - a fresh deployment that never touches Cloudinary
+ * behaves identically to before this was added.
+ */
+
+function bytesToHex(bytes) {
+  return bytes.map(function (b) {
+    var v = b < 0 ? b + 256 : b;
+    return (v < 16 ? '0' : '') + v.toString(16);
+  }).join('');
+}
+
+function getCloudinaryConfig() {
+  var props = PropertiesService.getScriptProperties();
+  var cloudName = props.getProperty('CLOUDINARY_CLOUD_NAME');
+  var apiKey = props.getProperty('CLOUDINARY_API_KEY');
+  var apiSecret = props.getProperty('CLOUDINARY_API_SECRET');
+  if (!cloudName || !apiKey || !apiSecret) return null;
+  return { cloudName: cloudName, apiKey: apiKey, apiSecret: apiSecret };
+}
+
+/**
+ * Cloudinary's signed-upload scheme: every param sent EXCEPT file/cloud_name/
+ * resource_type/api_key gets sorted by key, joined as "k=v&k2=v2", the API
+ * secret appended, then SHA-1'd (hex, not base64 - unlike hashPassword's
+ * base64Encode elsewhere in this codebase, Cloudinary's API expects a hex
+ * digest specifically). Same function signs both the upload and destroy
+ * (delete) calls below - the param set just differs.
+ */
+function cloudinarySign(paramsToSign, apiSecret) {
+  var sortedKeys = Object.keys(paramsToSign).sort();
+  var toSign = sortedKeys.map(function (k) { return k + '=' + paramsToSign[k]; }).join('&') + apiSecret;
+  var digestBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_1, toSign, Utilities.Charset.UTF_8);
+  return bytesToHex(digestBytes);
+}
+
+/**
+ * Uploads to Cloudinary if configured, else returns null so the caller
+ * falls back to Drive. `folder` is optional (chat images use a separate
+ * Cloudinary folder from product/logo images, mirroring the existing
+ * Drive-folder separation - see Chat.gs's getChatImageFolder comment for
+ * why that separation exists). Any request param that affects the upload
+ * must be included in the signature or Cloudinary rejects it - folder is
+ * no exception, so it's added to paramsToSign only when present.
+ */
+function uploadToCloudinary(bytes, mimeType, filenameHint, folder) {
+  var config = getCloudinaryConfig();
+  if (!config) return null;
+
+  var timestamp = Math.floor(Date.now() / 1000);
+  var paramsToSign = { timestamp: timestamp };
+  if (folder) paramsToSign.folder = folder;
+  var signature = cloudinarySign(paramsToSign, config.apiSecret);
+
+  var payload = {
+    file: Utilities.newBlob(bytes, mimeType, filenameHint),
+    api_key: config.apiKey,
+    timestamp: String(timestamp),
+    signature: signature
+  };
+  if (folder) payload.folder = folder;
+
+  var response;
+  try {
+    response = UrlFetchApp.fetch('https://api.cloudinary.com/v1_1/' + config.cloudName + '/image/upload', {
+      method: 'post',
+      payload: payload,
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    Logger.log('Cloudinary upload request failed: ' + e);
+    return null;
+  }
+
+  var result;
+  try {
+    result = JSON.parse(response.getContentText());
+  } catch (e) {
+    return null;
+  }
+  if (!result.secure_url) {
+    Logger.log('Cloudinary upload rejected: ' + response.getContentText());
+    return null;
+  }
+  // 'cld:' prefix records provenance in the same column Drive file ids
+  // already occupy, so deleteStoredImage can route to the right provider
+  // later even if Cloudinary is configured/unconfigured in between - see
+  // deleteStoredImage below.
+  return { imageUrl: result.secure_url, imageFileId: 'cld:' + result.public_id };
+}
+
+function deleteCloudinaryImage(publicId) {
+  var config = getCloudinaryConfig();
+  if (!config) return;
+
+  var timestamp = Math.floor(Date.now() / 1000);
+  var paramsToSign = { public_id: publicId, timestamp: timestamp };
+  var signature = cloudinarySign(paramsToSign, config.apiSecret);
+
+  try {
+    UrlFetchApp.fetch('https://api.cloudinary.com/v1_1/' + config.cloudName + '/image/destroy', {
+      method: 'post',
+      payload: { public_id: publicId, api_key: config.apiKey, timestamp: String(timestamp), signature: signature },
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    // best effort - same as the pre-existing Drive setTrashed try/catch this mirrors
+  }
+}
+
+/**
+ * Single upload entry point for every image path in the app (product
+ * photos, store logos, chat photos). Tries Cloudinary first (if
+ * configured), falls back to Drive otherwise - callers never need to know
+ * which provider actually served a given upload. `driveFolder` is a
+ * zero-arg function returning the DriveApp folder to use for the fallback
+ * path (lazy, so it's never called when Cloudinary handles the upload).
+ * `cloudinaryFolder` is optional and only affects the Cloudinary path.
+ */
+function uploadImage(bytes, mimeType, filenameHint, driveFolder, cloudinaryFolder) {
+  var cloudinaryResult = uploadToCloudinary(bytes, mimeType, filenameHint, cloudinaryFolder);
+  if (cloudinaryResult) return cloudinaryResult;
+
+  var folder = driveFolder();
+  var blob = Utilities.newBlob(bytes, mimeType, filenameHint);
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  // drive.google.com/uc?export=view links are unreliable as <img> sources
+  // (Google frequently blocks the hotlink and shows a broken image icon) -
+  // the googleusercontent.com CDN form embeds reliably instead.
+  var url = 'https://lh3.googleusercontent.com/d/' + file.getId();
+  return { imageUrl: url, imageFileId: file.getId() };
+}
+
+/** Deletes a previously-uploaded image by whichever provider produced its id - see the 'cld:' prefix note in uploadToCloudinary above. */
+function deleteStoredImage(fileId) {
+  if (!fileId) return;
+  if (String(fileId).indexOf('cld:') === 0) {
+    deleteCloudinaryImage(String(fileId).slice(4));
+    return;
+  }
+  try {
+    DriveApp.getFileById(fileId).setTrashed(true);
+  } catch (e) {
+    // already gone, ignore
+  }
+}

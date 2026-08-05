@@ -300,7 +300,7 @@ function publicConversationFields(conversation) {
   };
 }
 
-/** Shapes a raw Messages row for eventual API responses - omits ConversationId/OwnerId/StoreSlug/ImageFileId (the last is a Drive-internal id, not needed by either side of the conversation). */
+/** Shapes a raw Messages row for eventual API responses - omits ConversationId/OwnerId/StoreSlug/ImageFileId (the last is a hosting-provider-internal id - Drive file id or Cloudinary public_id, see Utils.gs's uploadImage - not needed by either side of the conversation). */
 function publicMessageFields(message) {
   return {
     messageId: message.MessageId,
@@ -429,12 +429,14 @@ function getMaxChatImageBytes() {
 }
 
 /**
- * Public action. Uploads an image to Drive and appends it as a message from
- * whichever side is calling (see resolveChatRequest) - same
- * decode/validate/upload shape as Images.gs's actionUploadProductImage, but
- * writing a Messages row instead of updating a Products row, and using the
- * chat-specific folder + configurable size cap above. `body.body`, if
- * present, is sent as an optional caption alongside the image.
+ * Public action. Uploads an image (via Utils.gs's uploadImage() -
+ * Cloudinary if configured, else this file's Drive folder) and appends it
+ * as a message from whichever side is calling (see resolveChatRequest) -
+ * same decode/validate/upload shape as Images.gs's actionUploadProductImage,
+ * but writing a Messages row instead of updating a Products row, and using
+ * the chat-specific folder/Cloudinary subfolder + configurable size cap
+ * above. `body.body`, if present, is sent as an optional caption alongside
+ * the image.
  */
 function actionSendChatImage(body) {
   var mimeType = body.mimeType;
@@ -459,15 +461,11 @@ function actionSendChatImage(body) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    var folder = getChatImageFolder();
-    var blob = Utilities.newBlob(bytes, mimeType, resolved.conversation.ConversationId + '_' + Date.now());
-    var file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    var url = 'https://lh3.googleusercontent.com/d/' + file.getId();
+    var uploaded = uploadImage(bytes, mimeType, resolved.conversation.ConversationId + '_' + Date.now(), getChatImageFolder, 'chat');
 
     var message = appendMessage(resolved.conversation, resolved.senderType, body.body, {
-      imageUrl: url,
-      imageFileId: file.getId()
+      imageUrl: uploaded.imageUrl,
+      imageFileId: uploaded.imageFileId
     });
     if (!message) return fail('Could not send this image');
 

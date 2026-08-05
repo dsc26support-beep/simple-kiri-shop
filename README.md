@@ -141,6 +141,24 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    photos, kept in a separate Drive folder) are both set automatically the
    first time a photo is uploaded through each path.
 
+   **Optional — Cloudinary image hosting instead of Drive.** By default,
+   product photos, store logos, and chat photos are all hosted on Google
+   Drive (via the folders above) and hotlinked through a CDN-style URL. This
+   works, but Drive isn't a real CDN — no availability guarantee under heavy
+   traffic, no image resizing. If you'd rather host images on
+   [Cloudinary](https://cloudinary.com) (they have a free tier), add all
+   three of:
+   - `CLOUDINARY_CLOUD_NAME` — your Cloudinary account's cloud name.
+   - `CLOUDINARY_API_KEY` — from your Cloudinary dashboard's API Keys page.
+   - `CLOUDINARY_API_SECRET` — same page. Treat this like a password — it's
+     what lets the script sign upload/delete requests.
+
+   All three must be set for Cloudinary to activate — with any one missing,
+   every upload silently falls back to the Drive path above, exactly as if
+   Cloudinary were never configured. You don't need to create an upload
+   preset or configure anything else on Cloudinary's side; the script signs
+   every request itself, so no "unsigned upload" setup is required.
+
 4. **Deploy → New deployment → type "Web app".**
    - Execute as: **Me**
    - Who has access: **Anyone**
