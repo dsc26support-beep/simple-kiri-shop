@@ -116,7 +116,7 @@ function ownerCanLogIn(owner) {
 /** Validates a bearer token and returns the owner row, or throws. */
 function requireAuth(token) {
   if (!token) throw new Error('Not authenticated');
-  var session = findRowById(getSheet('Sessions'), 'Token', token);
+  var session = findRowBySecret(getSheet('Sessions'), 'Token', token);
   if (!session) throw new Error('Not authenticated');
   if (new Date(session.ExpiresAt).getTime() < Date.now()) throw new Error('Session expired, please log in again');
   var owner = findRowById(getSheet('Owners'), 'OwnerId', session.OwnerId);
@@ -228,14 +228,14 @@ function actionLoginOwner(body) {
   if (!username || !password) return fail('Username and password are required');
 
   var owner = sheetToObjects(getSheet('Owners')).filter(function (o) {
-    return String(o.Username).toLowerCase() === username;
+    return constantTimeEquals(String(o.Username).toLowerCase(), username);
   })[0];
 
   // Compare against a dummy hash even on a missing user so response timing
   // doesn't reveal whether the username exists.
   var salt = owner ? owner.PasswordSalt : 'no-such-user-salt';
   var candidateHash = hashPassword(password, salt);
-  var loginSucceeded = ownerCanLogIn(owner) && candidateHash === owner.PasswordHash;
+  var loginSucceeded = ownerCanLogIn(owner) && constantTimeEquals(candidateHash, owner.PasswordHash);
 
   // Runs AFTER the (constant-cost) hash comparison above and BEFORE
   // branching on its result, so a locked-out username's response isn't
@@ -375,7 +375,7 @@ function consumeTwoFACode(token, code, expectedPurpose, expectedOwnerId) {
   lock.waitLock(30000);
   try {
     var sheet = getSheet('TwoFACodes');
-    var row = findRowById(sheet, 'Token', token);
+    var row = findRowBySecret(sheet, 'Token', token);
     if (!row || row.Purpose !== expectedPurpose) return fail('This verification code is invalid or has expired');
     if (expectedOwnerId && row.OwnerId !== expectedOwnerId) return fail('This verification code is invalid');
 
@@ -387,7 +387,7 @@ function consumeTwoFACode(token, code, expectedPurpose, expectedOwnerId) {
       sheet.deleteRow(row.__row);
       return fail('Too many incorrect attempts - please request a new code');
     }
-    if (String(row.Code).trim() !== String(code).trim()) {
+    if (!constantTimeEquals(String(row.Code).trim(), String(code).trim())) {
       updateRowFromObject(sheet, row.__row, { Attempts: Number(row.Attempts) + 1 });
       return fail('Incorrect code, please try again');
     }

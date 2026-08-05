@@ -43,6 +43,26 @@ function findRowById(sheet, idField, idValue) {
 }
 
 /**
+ * Same shape as findRowById, but for secret fields (Sessions.Token,
+ * TwoFACodes.Token) where match timing must not leak how many leading
+ * characters a guess got right. Deliberately NOT a change to findRowById -
+ * that generic helper serves ~15+ non-secret id lookups elsewhere
+ * (OwnerId, ProductId, VariantId, ConversationId, StoreSlug, ...) where
+ * constant-time comparison buys nothing and would just be unnecessary
+ * overhead on every plain lookup. Always runs a full constantTimeEquals
+ * per row rather than short-circuiting on an early length mismatch -
+ * an early-exit "optimization" here would reintroduce exactly the timing
+ * signal this function exists to close.
+ */
+function findRowBySecret(sheet, idField, idValue) {
+  var rows = sheetToObjects(sheet);
+  for (var i = 0; i < rows.length; i++) {
+    if (constantTimeEquals(String(rows[i][idField]), String(idValue))) return rows[i];
+  }
+  return null;
+}
+
+/**
  * Sheets (like Excel) interprets a cell value starting with =, +, -, or @ as
  * a formula - including when written via Range.setValue()/setValues() from
  * Apps Script, not just typed by hand. Left alone, that turns every free-text

@@ -164,3 +164,24 @@ function capLength(value, maxLen, fieldLabel) {
   if (str.length > maxLen) return fail(fieldLabel + ' must be ' + maxLen + ' characters or fewer');
   return null;
 }
+
+/**
+ * Constant-time string comparison, modeled on Node's crypto.timingSafeEqual
+ * (no native equivalent exists in Apps Script). Returns false immediately
+ * on a length mismatch - same as timingSafeEqual's own behavior - otherwise
+ * XORs every char code so comparison time depends only on length, never on
+ * where the first differing character is. Used for secret comparisons
+ * (session tokens, 2FA codes, password hashes) - see Db.gs's
+ * findRowBySecret and its call sites in Auth.gs.
+ */
+function constantTimeEquals(a, b) {
+  var strA = String(a == null ? '' : a);
+  var strB = String(b == null ? '' : b);
+  if (strA.length !== strB.length) return false;
+
+  var diff = 0;
+  for (var i = 0; i < strA.length; i++) {
+    diff |= strA.charCodeAt(i) ^ strB.charCodeAt(i);
+  }
+  return diff === 0;
+}
