@@ -16,7 +16,7 @@ var PUBLIC_POST_ACTIONS = [
   // or a vendor with a token) from one action each, so they can't sit only
   // in PROTECTED_POST_ACTIONS - they do their own optional auth internally
   // via resolveChatRequest() in Chat.gs. See that file for why.
-  'sendMessage', 'getConversation', 'markAsRead'
+  'sendMessage', 'getConversation', 'markAsRead', 'sendChatImage'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -62,6 +62,7 @@ function doPost(e) {
         case 'sendMessage': return jsonOut(actionSendMessage(body));
         case 'getConversation': return jsonOut(actionGetConversation(body));
         case 'markAsRead': return jsonOut(actionMarkAsRead(body));
+        case 'sendChatImage': return jsonOut(actionSendChatImage(body));
       }
     }
 

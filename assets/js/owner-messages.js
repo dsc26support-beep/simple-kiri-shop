@@ -10,6 +10,7 @@ let activeLastMessageId = null;
 let searchQuery = '';
 let conversationPollTimer = null;
 let listPollTimer = null;
+let selectedReplyImageFile = null;
 
 async function init() {
   const owner = await Auth.guardOwnerAuth();
@@ -25,6 +26,7 @@ async function init() {
   document.getElementById('reply-input').addEventListener('input', autoResizeReplyInput);
   document.getElementById('reply-input').addEventListener('keydown', onReplyKeydown);
   document.addEventListener('visibilitychange', onVisibilityChange);
+  wireReplyImageAttach();
 
   await loadConversations({ isPoll: false });
   startListPolling();
@@ -167,9 +169,18 @@ function appendConversationMessage(m) {
 
   const bubble = document.createElement('div');
   bubble.className = 'chat-message ' + (m.senderType === 'vendor' ? 'chat-message--mine' : 'chat-message--theirs');
-  const p = document.createElement('p');
-  p.textContent = m.body;
-  bubble.appendChild(p);
+  if (m.imageUrl) {
+    const img = document.createElement('img');
+    img.className = 'chat-message-image';
+    img.src = m.imageUrl;
+    img.alt = 'Photo';
+    bubble.appendChild(img);
+  }
+  if (m.body) {
+    const p = document.createElement('p');
+    p.textContent = m.body;
+    bubble.appendChild(p);
+  }
   messagesEl.appendChild(bubble);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   return bubble;
@@ -216,11 +227,109 @@ async function sendReply(text) {
   }
 }
 
+/* ---------- Reply image attachment (mirrors chat-window.js's customer-side flow) ---------- */
+
+function markReplyImageFailed(bubble, compressed, caption, errorMessage) {
+  bubble.classList.add('chat-message--failed');
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.className = 'chat-message-retry';
+  retry.textContent = (errorMessage || 'Failed to send') + ' · Retry';
+  retry.addEventListener('click', () => {
+    bubble.remove();
+    sendReplyCompressedImage(compressed, caption);
+  });
+  bubble.appendChild(retry);
+}
+
+async function sendReplyCompressedImage(compressed, caption) {
+  const dataUrl = 'data:' + compressed.mimeType + ';base64,' + compressed.base64;
+  const bubble = appendConversationMessage({ senderType: 'vendor', body: caption, imageUrl: dataUrl });
+  bubble.classList.add('chat-message--sending');
+
+  const res = await Api.post('sendChatImage', {
+    token: Auth.getToken(),
+    conversationId: activeConversationId,
+    mimeType: compressed.mimeType,
+    imageBase64: compressed.base64,
+    body: caption || ''
+  });
+  bubble.classList.remove('chat-message--sending');
+
+  if (!res.ok) {
+    markReplyImageFailed(bubble, compressed, caption, res.error);
+    return;
+  }
+
+  activeLastMessageId = res.message.messageId;
+  const conv = ownerConversations.find((c) => c.conversationId === activeConversationId);
+  if (conv) {
+    conv.lastMessagePreview = caption || 'Photo';
+    conv.lastMessageAt = res.message.createdAt;
+    conv.lastSenderType = 'vendor';
+    renderConversationList();
+  }
+}
+
+async function sendReplyImage(file, caption) {
+  let compressed;
+  try {
+    compressed = await compressImage(file);
+  } catch (e) {
+    alert("Couldn't process that photo — please try a different one.");
+    return;
+  }
+  sendReplyCompressedImage(compressed, caption);
+}
+
+function clearReplyImageSelection() {
+  selectedReplyImageFile = null;
+  document.getElementById('reply-image-input').value = '';
+  document.getElementById('reply-image-preview-img').src = '';
+  document.getElementById('reply-image-preview').classList.add('hidden');
+}
+
+function wireReplyImageAttach() {
+  const attachBtn = document.getElementById('reply-attach-btn');
+  const imageInput = document.getElementById('reply-image-input');
+  const previewEl = document.getElementById('reply-image-preview');
+  const previewImg = document.getElementById('reply-image-preview-img');
+  const previewRemoveBtn = document.getElementById('reply-image-preview-remove');
+  if (!attachBtn || !imageInput) return;
+
+  attachBtn.addEventListener('click', () => imageInput.click());
+
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    selectedReplyImageFile = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      previewImg.src = reader.result;
+      previewEl.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  previewRemoveBtn.addEventListener('click', clearReplyImageSelection);
+}
+
 function onReplySubmit(e) {
   e.preventDefault();
   const input = document.getElementById('reply-input');
   const text = input.value.trim();
-  if (!text || !activeConversationId) return;
+  if (!activeConversationId) return;
+
+  if (selectedReplyImageFile) {
+    const file = selectedReplyImageFile;
+    clearReplyImageSelection();
+    input.value = '';
+    autoResizeReplyInput();
+    sendReplyImage(file, text);
+    return;
+  }
+
+  if (!text) return;
   input.value = '';
   autoResizeReplyInput();
   sendReply(text);

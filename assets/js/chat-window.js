@@ -28,6 +28,11 @@ function initChatWindow() {
   const form = document.getElementById('chat-window-form');
   const input = document.getElementById('chat-message-input');
   const badge = document.getElementById('chat-unread-badge');
+  const attachBtn = document.getElementById('chat-attach-btn');
+  const imageInput = document.getElementById('chat-image-input');
+  const previewEl = document.getElementById('chat-image-preview');
+  const previewImg = document.getElementById('chat-image-preview-img');
+  const previewRemoveBtn = document.getElementById('chat-image-preview-remove');
 
   const storeSlug = getStoreSlug();
   const customerToken = storeSlug ? getOrCreateCustomerToken(storeSlug) : null;
@@ -36,6 +41,7 @@ function initChatWindow() {
   let hasLoadedOnce = false;
   let lastMessageId = null;
   let pollTimer = null;
+  let selectedImageFile = null;
 
   function scrollMessagesToBottom() {
     body.scrollTop = body.scrollHeight;
@@ -113,9 +119,18 @@ function initChatWindow() {
     clearEmptyState();
     const bubble = document.createElement('div');
     bubble.className = 'chat-message ' + senderClass;
-    const p = document.createElement('p');
-    p.textContent = text;
-    bubble.appendChild(p);
+    if (opts && opts.imageUrl) {
+      const img = document.createElement('img');
+      img.className = 'chat-message-image';
+      img.src = opts.imageUrl;
+      img.alt = 'Photo';
+      bubble.appendChild(img);
+    }
+    if (text) {
+      const p = document.createElement('p');
+      p.textContent = text;
+      bubble.appendChild(p);
+    }
     if (opts && opts.beforeTyping) messagesEl.insertBefore(bubble, typingEl);
     else messagesEl.appendChild(bubble);
     scrollMessagesToBottom();
@@ -184,7 +199,7 @@ function initChatWindow() {
 
     messages.forEach((m) => {
       const senderClass = m.senderType === 'vendor' ? 'chat-message--vendor' : 'chat-message--customer';
-      appendMessage(senderClass, m.body, { beforeTyping: true });
+      appendMessage(senderClass, m.body, { beforeTyping: true, imageUrl: m.imageUrl || null });
     });
     lastMessageId = messages[messages.length - 1].messageId;
     setLastSeenMessageId(lastMessageId); // panel is open while this runs, so this counts as "seen"
@@ -217,6 +232,85 @@ function initChatWindow() {
     }
     lastMessageId = res.message.messageId;
     setLastSeenMessageId(lastMessageId);
+  }
+
+  /**
+   * Image send/retry, mirrored after sendMessage() above. The already-
+   * compressed { base64, mimeType } is what a retry resends - no point
+   * recompressing the same file a second time on failure.
+   */
+  function markImageBubbleFailed(bubble, compressed, caption, errorMessage) {
+    bubble.classList.add('chat-message--failed');
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'chat-message-retry';
+    retry.textContent = (errorMessage || 'Failed to send') + ' · Retry';
+    retry.addEventListener('click', () => {
+      bubble.remove();
+      sendCompressedImage(compressed, caption);
+    });
+    bubble.appendChild(retry);
+  }
+
+  async function sendCompressedImage(compressed, caption) {
+    const dataUrl = 'data:' + compressed.mimeType + ';base64,' + compressed.base64;
+    const bubble = appendMessage('chat-message--customer', caption || '', { beforeTyping: true, imageUrl: dataUrl });
+    bubble.classList.add('chat-message--sending');
+
+    const res = await Api.post('sendChatImage', {
+      storeSlug,
+      customerToken,
+      mimeType: compressed.mimeType,
+      imageBase64: compressed.base64,
+      body: caption || ''
+    });
+
+    bubble.classList.remove('chat-message--sending');
+    if (!res.ok) {
+      markImageBubbleFailed(bubble, compressed, caption, res.error);
+      return;
+    }
+    lastMessageId = res.message.messageId;
+    setLastSeenMessageId(lastMessageId);
+  }
+
+  /** Compresses (helpers.js's shared compressImage) before ever hitting the network - same reasoning as product photos/store logos. */
+  async function sendImageMessage(file, caption) {
+    let compressed;
+    try {
+      compressed = await compressImage(file);
+    } catch (e) {
+      alert("Couldn't process that photo — please try a different one.");
+      return;
+    }
+    sendCompressedImage(compressed, caption);
+  }
+
+  function clearImageSelection() {
+    selectedImageFile = null;
+    imageInput.value = '';
+    previewImg.src = '';
+    previewEl.classList.add('hidden');
+  }
+
+  if (attachBtn && imageInput) {
+    attachBtn.addEventListener('click', () => imageInput.click());
+
+    // "Allow preview": show the picked photo before it's compressed/sent, so
+    // the customer can back out (Remove) without ever hitting the network.
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files[0];
+      if (!file) return;
+      selectedImageFile = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        previewImg.src = reader.result;
+        previewEl.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    previewRemoveBtn.addEventListener('click', clearImageSelection);
   }
 
   function openWindow() {
@@ -284,6 +378,16 @@ function initChatWindow() {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
+
+    if (selectedImageFile) {
+      const file = selectedImageFile;
+      clearImageSelection();
+      input.value = '';
+      autoResizeInput();
+      sendImageMessage(file, text);
+      return;
+    }
+
     if (!text) return;
     input.value = '';
     autoResizeInput();

@@ -648,6 +648,14 @@ footer.site-footer .copyright {
   animation: chat-message-in 0.2s ease both;
 }
 
+.chat-message-image {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  border-radius: 10px;
+  margin-bottom: 0.4em;
+}
+
 .chat-message p {
   margin: 0;
 }
@@ -787,6 +795,72 @@ footer.site-footer .copyright {
   outline-offset: 2px;
 }
 
+.chat-attach-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.chat-attach-btn:hover {
+  color: var(--color-ink);
+  background: var(--color-bg-alt);
+}
+
+.chat-attach-btn:active {
+  transform: scale(0.9);
+}
+
+.chat-attach-btn:focus-visible {
+  outline: 3px solid var(--color-blue-light);
+  outline-offset: 2px;
+}
+
+/* Selected-photo preview strip, shown above the input row before sending - "allow preview" before a compress/upload round trip. */
+.chat-image-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.chat-image-preview.hidden {
+  display: none;
+}
+
+.chat-image-preview img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.chat-image-preview-remove {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-bg-alt);
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.chat-image-preview-remove:hover {
+  color: var(--color-danger);
+}
+
 .chat-empty-state {
   margin: auto;
   color: var(--color-muted);
@@ -872,6 +946,26 @@ footer.site-footer .copyright {
 
   .chat-send-btn:hover {
     background: #fff;
+  }
+
+  .chat-attach-btn {
+    background: #2a2c30;
+    border-color: #3a3d42;
+    color: #cfcfcf;
+  }
+
+  .chat-attach-btn:hover {
+    background: #3a3d42;
+    color: #fff;
+  }
+
+  .chat-image-preview img {
+    border-color: #3a3d42;
+  }
+
+  .chat-image-preview-remove {
+    background: #2a2c30;
+    color: #cfcfcf;
   }
 }
 

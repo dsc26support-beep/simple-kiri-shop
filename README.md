@@ -106,12 +106,10 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    **AbandonedCarts** (customers who typed an email at checkout but never placed the order)
    `Id | StoreSlug | OwnerId | Email | CartJson | CreatedAt | Reminded | ConvertedOrderId`
 
-   **Conversations** and **Messages** (vendor-specific live chat — data layer
-   only for now; see `docs/vendor-chat-design.md`. No UI or API reads/writes
-   these tabs yet, so it's safe to add them ahead of time or skip them until
-   the feature ships)
+   **Conversations** and **Messages** (vendor-specific live chat — see
+   `docs/vendor-chat-design.md` for the full design)
    `ConversationId | OwnerId | StoreSlug | CustomerToken | CustomerName | Status | CreatedAt | UpdatedAt | LastMessageAt | LastMessagePreview | LastSenderType | UnreadByVendor | UnreadByCustomer`
-   `MessageId | ConversationId | OwnerId | StoreSlug | SenderType | Body | CreatedAt`
+   `MessageId | ConversationId | OwnerId | StoreSlug | SenderType | Body | CreatedAt | ImageUrl | ImageFileId`
 
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
@@ -119,9 +117,10 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `Village`, `LogoUrl`, `LogoFileId`, and `Visits` columns to the end of
    `Owners`, add `ImageUrl2`, `ImageFileId2`, and `Views` to the end of
    `Products`, add `Island`, `Village`, `DeliveryMethod`, `DeliveryCost`, and
-   `NoEmailReminderSent` to the end of `Orders`, and add the new
-   `TwoFACodes`, `AbandonedCarts`, `Conversations`, and `Messages` tabs —
-   everything else stays the same.
+   `NoEmailReminderSent` to the end of `Orders`, add `ImageUrl` and
+   `ImageFileId` to the end of `Messages` (photo attachments in chat), and add
+   the new `TwoFACodes`, `AbandonedCarts`, `Conversations`, and `Messages`
+   tabs — everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
@@ -133,9 +132,14 @@ Sheet and deploy the Apps Script backend under your own Google account first.
 3. **Project Settings → Script Properties**, add:
    - `PEPPER` — a long random string (used to salt+pepper password hashes).
    - `TOKEN_EXPIRY_HOURS` — optional, defaults to `168` (7 days) if unset.
+   - `MAX_CHAT_IMAGE_BYTES` — optional, caps how large a decoded chat photo
+     can be. Defaults to `5242880` (5MB, the same ceiling as product photos)
+     if unset — set this property to change the limit without editing code
+     or redeploying.
 
-   `IMAGE_FOLDER_ID` is set automatically the first time a photo is uploaded
-   (a "Mwakete Product Images" Drive folder is created for you).
+   `IMAGE_FOLDER_ID` (product/logo photos) and `CHAT_IMAGE_FOLDER_ID` (chat
+   photos, kept in a separate Drive folder) are both set automatically the
+   first time a photo is uploaded through each path.
 
 4. **Deploy → New deployment → type "Web app".**
    - Execute as: **Me**

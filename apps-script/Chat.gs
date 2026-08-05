@@ -12,7 +12,7 @@
  *     CustomerName | Status | CreatedAt | UpdatedAt | LastMessageAt |
  *     LastMessagePreview | LastSenderType | UnreadByVendor | UnreadByCustomer
  *   Messages: MessageId | ConversationId | OwnerId | StoreSlug | SenderType |
- *     Body | CreatedAt
+ *     Body | CreatedAt | ImageUrl | ImageFileId
  *
  * Locking: the data-layer functions below (findConversation, appendMessage,
  * etc.) still take no lock themselves - same reasoning as Db.gs's generic
@@ -145,12 +145,19 @@ function touchConversationOnNewMessage(conversation, senderType, previewText) {
  * Appends a message and updates the parent conversation's denormalized
  * fields in the same call, so callers can't do one without the other and
  * leave the inbox list stale. Returns null (and writes nothing) for an
- * invalid senderType or an empty/whitespace-only body.
+ * invalid senderType, or a message with neither text nor an image.
+ *
+ * `attachment` is optional: { imageUrl, imageFileId } from
+ * actionSendChatImage's Drive upload. A text message passes it as null/
+ * undefined; an image message may still carry a caption in `body`, so the
+ * two aren't mutually exclusive - only an empty body AND no attachment is
+ * rejected.
  */
-function appendMessage(conversation, senderType, body) {
+function appendMessage(conversation, senderType, body, attachment) {
   if (CHAT_SENDER_TYPES.indexOf(senderType) === -1) return null;
   var trimmed = String(body || '').trim().slice(0, MAX_CHAT_MESSAGE_LENGTH);
-  if (!trimmed) return null;
+  var hasImage = !!(attachment && attachment.imageUrl);
+  if (!trimmed && !hasImage) return null;
 
   var sheet = getSheet('Messages');
   var messageId = newId('msg');
@@ -162,10 +169,12 @@ function appendMessage(conversation, senderType, body) {
     StoreSlug: conversation.StoreSlug,
     SenderType: senderType,
     Body: trimmed,
-    CreatedAt: now
+    CreatedAt: now,
+    ImageUrl: hasImage ? attachment.imageUrl : '',
+    ImageFileId: hasImage ? attachment.imageFileId : ''
   });
 
-  touchConversationOnNewMessage(conversation, senderType, trimmed);
+  touchConversationOnNewMessage(conversation, senderType, trimmed || 'Photo');
 
   return findRowById(sheet, 'MessageId', messageId);
 }
@@ -209,13 +218,14 @@ function publicConversationFields(conversation) {
   };
 }
 
-/** Shapes a raw Messages row for eventual API responses - omits ConversationId/OwnerId/StoreSlug, redundant once scoped to one conversation. */
+/** Shapes a raw Messages row for eventual API responses - omits ConversationId/OwnerId/StoreSlug/ImageFileId (the last is a Drive-internal id, not needed by either side of the conversation). */
 function publicMessageFields(message) {
   return {
     messageId: message.MessageId,
     senderType: message.SenderType,
     body: message.Body,
-    createdAt: message.CreatedAt
+    createdAt: message.CreatedAt,
+    imageUrl: message.ImageUrl || ''
   };
 }
 
@@ -293,6 +303,92 @@ function actionSendMessage(body) {
   try {
     var message = appendMessage(resolved.conversation, resolved.senderType, body.body);
     if (!message) return fail('Message text is required');
+    return ok({
+      conversationId: resolved.conversation.ConversationId,
+      message: publicMessageFields(message)
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Chat images get their own Drive folder (separate from Images.gs's product-
+ * photo folder) since these come from anonymous customers, not authenticated
+ * vendors uploading their own catalog - keeping the two separate makes it
+ * easy to find/moderate/prune chat uploads independently later. Same
+ * lazy-create-and-remember-the-id pattern as Images.gs's getImageFolder().
+ */
+function getChatImageFolder() {
+  var props = PropertiesService.getScriptProperties();
+  var folderId = props.getProperty('CHAT_IMAGE_FOLDER_ID');
+  if (folderId) {
+    try {
+      return DriveApp.getFolderById(folderId);
+    } catch (e) {
+      // stored id no longer valid, fall through and recreate
+    }
+  }
+  var folder = DriveApp.createFolder('Mwakete Chat Images');
+  props.setProperty('CHAT_IMAGE_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+/**
+ * "Maximum size configurable" - unlike Images.gs's MAX_IMAGE_BYTES (a fixed
+ * code constant), the chat image cap reads a Script Property so it can be
+ * tuned from the Apps Script editor's Project Settings without touching code
+ * or redeploying. Falls back to the same 5MB ceiling as product photos if
+ * the property is unset or not a positive number.
+ */
+function getMaxChatImageBytes() {
+  var configured = Number(PropertiesService.getScriptProperties().getProperty('MAX_CHAT_IMAGE_BYTES'));
+  return configured > 0 ? configured : 5 * 1024 * 1024;
+}
+
+/**
+ * Public action. Uploads an image to Drive and appends it as a message from
+ * whichever side is calling (see resolveChatRequest) - same
+ * decode/validate/upload shape as Images.gs's actionUploadProductImage, but
+ * writing a Messages row instead of updating a Products row, and using the
+ * chat-specific folder + configurable size cap above. `body.body`, if
+ * present, is sent as an optional caption alongside the image.
+ */
+function actionSendChatImage(body) {
+  var mimeType = body.mimeType;
+  var imageBase64 = body.imageBase64;
+  if (!mimeType || mimeType.indexOf('image/') !== 0) return fail('Only image uploads are allowed');
+  if (!imageBase64) return fail('No image data received');
+
+  var bytes;
+  try {
+    bytes = Utilities.base64Decode(imageBase64);
+  } catch (e) {
+    return fail('Invalid image data');
+  }
+  var maxBytes = getMaxChatImageBytes();
+  if (bytes.length > maxBytes) {
+    return fail('Image is too large (max ' + Math.floor(maxBytes / (1024 * 1024)) + 'MB) - please choose a smaller photo');
+  }
+
+  var resolved = resolveChatRequest(body, { createIfMissing: true });
+  if (!resolved.ok) return fail(resolved.error);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var folder = getChatImageFolder();
+    var blob = Utilities.newBlob(bytes, mimeType, resolved.conversation.ConversationId + '_' + Date.now());
+    var file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var url = 'https://lh3.googleusercontent.com/d/' + file.getId();
+
+    var message = appendMessage(resolved.conversation, resolved.senderType, body.body, {
+      imageUrl: url,
+      imageFileId: file.getId()
+    });
+    if (!message) return fail('Could not send this image');
+
     return ok({
       conversationId: resolved.conversation.ConversationId,
       message: publicMessageFields(message)
