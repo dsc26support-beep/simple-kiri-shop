@@ -339,6 +339,12 @@ function actionListOwnerProducts(owner) {
 function actionCreateOrUpdateProduct(owner, body) {
   var name = String(body.name || '').trim();
   if (!name) return fail('Product name is required');
+  var nameErr = capLength(name, 150, 'Product name');
+  if (nameErr) return nameErr;
+  var descErr = capLength(body.description, 2000, 'Product description');
+  if (descErr) return descErr;
+  var categoryErr = capLength(body.category, 50, 'Category');
+  if (categoryErr) return categoryErr;
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -450,17 +456,28 @@ function actionGetOwnerProfile(owner) {
 
 function actionUpdateOwnerProfile(owner, body) {
   var sheet = getSheet('Owners');
-
-  var fieldMap = {
-    storeName: 'StoreName',
-    phone: 'Phone',
-    island: 'Island',
-    village: 'Village'
-  };
   var update = {};
-  Object.keys(fieldMap).forEach(function (k) {
-    if (body[k] !== undefined) update[fieldMap[k]] = body[k];
-  });
+
+  if (body.storeName !== undefined) {
+    var storeNameErr = capLength(body.storeName, 100, 'Store name');
+    if (storeNameErr) return storeNameErr;
+    update.StoreName = body.storeName;
+  }
+  if (body.phone !== undefined) {
+    var phoneErr = capLength(body.phone, 30, 'Phone number');
+    if (phoneErr) return phoneErr;
+    update.Phone = body.phone;
+  }
+  if (body.island !== undefined) {
+    var islandErr = capLength(body.island, 100, 'Island');
+    if (islandErr) return islandErr;
+    update.Island = body.island;
+  }
+  if (body.village !== undefined) {
+    var villageErr = capLength(body.village, 100, 'Village');
+    if (villageErr) return villageErr;
+    update.Village = body.village;
+  }
 
   if (body.deliveryTruck !== undefined) update.DeliveryTruck = body.deliveryTruck ? 'true' : 'false';
   if (body.deliveryShip !== undefined) update.DeliveryShip = body.deliveryShip ? 'true' : 'false';

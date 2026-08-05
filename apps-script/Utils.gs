@@ -153,3 +153,14 @@ function rateLimitHit(key, maxCount, windowSeconds) {
 
   return state.count > maxCount;
 }
+
+/**
+ * Rejects (rather than truncates) a field whose length exceeds maxLen.
+ * Chat's MAX_CHAT_MESSAGE_LENGTH truncation (Chat.gs's appendMessage) is a
+ * deliberately separate, unchanged precedent - not revisited here.
+ */
+function capLength(value, maxLen, fieldLabel) {
+  var str = String(value == null ? '' : value);
+  if (str.length > maxLen) return fail(fieldLabel + ' must be ' + maxLen + ' characters or fewer');
+  return null;
+}

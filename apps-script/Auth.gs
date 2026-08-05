@@ -138,6 +138,8 @@ var EMAIL_FORMAT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function validateOwnerEmail(email, excludeOwnerId, ownersList) {
   var trimmed = String(email || '').trim();
   if (!trimmed) return fail('Contact email is required');
+  var lengthErr = capLength(trimmed, 254, 'Email');
+  if (lengthErr) return lengthErr;
   if (!EMAIL_FORMAT_RE.test(trimmed)) return fail('Enter a valid contact email');
 
   var owners = ownersList || sheetToObjects(getSheet('Owners'));
@@ -161,6 +163,10 @@ function actionRegisterOwner(body) {
   }
   if (password.length < 8) return fail('Password must be at least 8 characters');
   if (!/^[a-z0-9_.-]{3,40}$/.test(username)) return fail('Username must be 3-40 characters: letters, numbers, . _ -');
+  var storeNameErr = capLength(storeName, 100, 'Store name');
+  if (storeNameErr) return storeNameErr;
+  var phoneErr = capLength(phone, 30, 'Phone number');
+  if (phoneErr) return phoneErr;
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);

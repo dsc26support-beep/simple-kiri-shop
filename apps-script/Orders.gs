@@ -86,6 +86,14 @@ function actionCreateOrder(body) {
   var paymentMethod = body.paymentMethod || '';
   if (!customerName || !customerPhone) return fail('Name and phone number are required');
   if (!island || !village) return fail('Island and village are required');
+  var nameErr = capLength(customerName, 100, 'Name');
+  if (nameErr) return nameErr;
+  var islandErr = capLength(island, 100, 'Island');
+  if (islandErr) return islandErr;
+  var villageErr = capLength(village, 100, 'Village');
+  if (villageErr) return villageErr;
+  var notesErr = capLength(body.notes, 2000, 'Notes');
+  if (notesErr) return notesErr;
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
