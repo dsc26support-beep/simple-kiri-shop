@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', init);
 
-const CONVERSATION_POLL_MS = 4000;
-const LIST_POLL_MS = 8000;
+const CONVERSATION_POLL_MS = 6000; // within the requested 5-10s range
+const LIST_POLL_MS = 8000; // ditto
+const BASE_TITLE = document.title;
 
 let ownerConversations = [];
 let activeConversationId = null;
@@ -66,7 +67,15 @@ function renderConversationList() {
   else if (filtered.length === 0) statusEl.textContent = 'No conversations match your search.';
   else statusEl.textContent = '';
 
+  updateUnreadTitle();
+
   listEl.innerHTML = filtered.map(renderConversationListItem).join('');
+}
+
+/** Notification counter for the browser tab - the conversation-list poll is this page's own "chat is open" signal, so this stays live while the page is open. */
+function updateUnreadTitle() {
+  const unreadCount = ownerConversations.filter((c) => c.unreadByVendor).length;
+  document.title = unreadCount > 0 ? `(${unreadCount}) ${BASE_TITLE}` : BASE_TITLE;
 }
 
 function renderConversationListItem(c) {

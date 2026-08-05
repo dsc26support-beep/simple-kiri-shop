@@ -3,9 +3,17 @@
 // async/await + fetch()). Customers are anonymous, so identity is a
 // per-store token generated once and kept in localStorage, same pattern as
 // cart.js's skiri_cart_<slug>.
+//
+// Notifications: the recurring poll (new messages arriving live) only runs
+// while the panel is actually open. The unread badge still needs to mean
+// something when the panel is CLOSED, so on every page load we do exactly
+// ONE (not recurring) getConversation check against a persisted "last seen
+// message" cursor - separate from the in-memory polling cursor - and count
+// how many vendor messages have arrived since. That single check is not a
+// poll, so it doesn't violate "only poll while open".
 document.addEventListener('DOMContentLoaded', initChatWindow);
 
-const CHAT_POLL_INTERVAL_MS = 4000;
+const CHAT_POLL_INTERVAL_MS = 6000; // within the requested 5-10s range
 
 function initChatWindow() {
   const fab = document.getElementById('chat-fab');
@@ -47,6 +55,45 @@ function initChatWindow() {
       localStorage.setItem(key, token);
     }
     return token;
+  }
+
+  function getLastSeenMessageId() {
+    return localStorage.getItem('skiri_chat_lastseen_' + storeSlug);
+  }
+
+  function setLastSeenMessageId(messageId) {
+    if (!messageId) return;
+    localStorage.setItem('skiri_chat_lastseen_' + storeSlug, messageId);
+  }
+
+  function updateBadge(count) {
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = String(count);
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  /**
+   * One-time check (not a recurring poll) so the badge reflects reality
+   * right after a page load/reload even though the panel is closed and the
+   * live poll isn't running yet. Uses the persisted "last seen" cursor, not
+   * the in-memory polling cursor, and deliberately does NOT advance that
+   * cursor - only actually opening the panel counts as "seen".
+   */
+  async function checkForUnreadMessages() {
+    if (!storeSlug || !customerToken) return;
+    const params = { storeSlug, customerToken };
+    const sinceId = getLastSeenMessageId();
+    if (sinceId) params.sinceMessageId = sinceId;
+
+    const res = await Api.post('getConversation', params);
+    if (!res.ok || !res.conversation) return;
+
+    const newFromVendor = (res.messages || []).filter((m) => m.senderType === 'vendor');
+    updateBadge(newFromVendor.length);
   }
 
   function clearEmptyState() {
@@ -140,6 +187,7 @@ function initChatWindow() {
       appendMessage(senderClass, m.body, { beforeTyping: true });
     });
     lastMessageId = messages[messages.length - 1].messageId;
+    setLastSeenMessageId(lastMessageId); // panel is open while this runs, so this counts as "seen"
   }
 
   function startPolling() {
@@ -168,6 +216,7 @@ function initChatWindow() {
       return;
     }
     lastMessageId = res.message.messageId;
+    setLastSeenMessageId(lastMessageId);
   }
 
   function openWindow() {
@@ -175,7 +224,7 @@ function initChatWindow() {
     win.classList.add('chat-window--open');
     win.setAttribute('aria-hidden', 'false');
     fab.setAttribute('aria-expanded', 'true');
-    if (badge) badge.classList.add('hidden');
+    updateBadge(0); // opening it is reading it
 
     if (!hasLoadedOnce) {
       hasLoadedOnce = true;
@@ -240,4 +289,6 @@ function initChatWindow() {
     autoResizeInput();
     sendMessage(text);
   });
+
+  checkForUnreadMessages();
 }
