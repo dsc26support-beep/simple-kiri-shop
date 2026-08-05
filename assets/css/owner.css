@@ -383,6 +383,11 @@
   flex: 1;
 }
 
+.conversation-list-load-more {
+  flex: 0 0 auto;
+  margin: var(--space-2);
+}
+
 .conversation-list-item {
   display: block;
   width: 100%;

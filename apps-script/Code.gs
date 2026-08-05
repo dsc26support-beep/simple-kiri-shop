@@ -148,7 +148,7 @@ function doPost(e) {
         case 'enable2FARequest': return jsonOut(actionEnable2FARequest(owner));
         case 'confirm2FASetup': return jsonOut(actionConfirm2FASetup(owner, body));
         case 'disable2FA': return jsonOut(actionDisable2FA(owner));
-        case 'getVendorConversations': return jsonOut(actionGetVendorConversations(owner));
+        case 'getVendorConversations': return jsonOut(actionGetVendorConversations(owner, body));
         case 'deleteConversation': return jsonOut(actionDeleteConversation(owner, body));
         case 'archiveConversation': return jsonOut(actionArchiveConversation(owner, body));
         case 'getUnreadCount': return jsonOut(actionGetUnreadCount(owner));

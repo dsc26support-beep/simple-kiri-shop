@@ -868,6 +868,12 @@ footer.site-footer .copyright {
   text-align: center;
 }
 
+/* "Load earlier messages" - pins to the top of the message list (lazy-loaded history pagination). Reuses .btn/.btn-small for the button look, this just centers/spaces it within the message column. */
+.chat-load-earlier-btn {
+  align-self: center;
+  margin-bottom: var(--space-2);
+}
+
 .chat-loading {
   text-align: center;
 }

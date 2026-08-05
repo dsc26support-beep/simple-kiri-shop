@@ -204,22 +204,39 @@ scalability ceiling (Section 10), not to pretend polling is free.
   matters more here than anywhere else in the app given the mobile, data-cost-aware
   audience already reflected in decisions like client-side image compression before
   upload.
-- **Adaptive interval with backoff:** start at ~3s while the panel is open and
-  actively exchanging messages; back off geometrically (3s → 5s → 10s → cap at 30s)
-  after each poll that returns zero new messages; reset immediately to 3s the
-  moment a new message arrives (from either poll direction) or the local user sends
-  one. This keeps an idle-but-open conversation cheap while staying responsive
-  during an actual back-and-forth.
+- **Adaptive interval with backoff — as implemented:** rather than a fixed
+  `setInterval`, both `chat-window.js` (customer) and `owner-messages.js` (vendor
+  conversation view) run a self-rescheduling `setTimeout` loop so the delay can
+  actually change between ticks. Concretely: the customer widget and the vendor's
+  open-conversation poll start at 5s and back off ×1.5 per empty poll up to a 20s
+  ceiling; the vendor's conversation-*list* poll (badge-style, lower priority) uses
+  a wider 8s–30s range. Any poll that *does* return new messages, or the local user
+  sending a message, resets the delay to its floor immediately. This is the same
+  "start fast, back off when idle, reset on activity" shape originally sketched
+  here as "~3s → 30s" — the exact numbers were tuned during implementation rather
+  than matching that sketch verbatim; documented here as a deliberate, not
+  accidental, deviation.
 - **Incremental fetch via `sinceMessageId`.** Every poll after the first passes the
   last-seen message ID, so the response only contains new messages — this bounds
-  *payload size and client render cost* to the delta, though (per Section 0) it does
-  **not** reduce the server-side Sheet-scan cost under the current `Db.gs` model.
-  That asymmetry is the feature's core scaling risk — see Section 10.
+  *payload size and client render cost* to the delta. The server-side Sheet-scan
+  cost this originally couldn't avoid (per Section 0) is now addressed separately
+  by the per-conversation cache described in Section 10 item 1 — the scan still
+  happens, but only once per cache TTL window rather than once per poll.
 - **Vendor-side badge polling is separate and much slower**: while the vendor is
   *not* in the messages view (e.g., on `owner/dashboard.html` or elsewhere in the
   dashboard), a lightweight, infrequent poll (e.g., every 60s) just checks for any
   `UnreadByVendor` conversation to drive a nav badge — never the full message-fetch
   polling loop, which only runs inside the actual conversation view.
+- **Backward pagination ("load earlier messages") — new since this section was
+  first written.** The strategy above only ever covered *forward* incremental
+  polling (`sinceMessageId`). Both chat surfaces now also support paging
+  *backward* into history via a separate `beforeMessageId` + `limit` cursor,
+  triggered by an explicit "Load earlier messages" button rather than any poll —
+  a conversation opens showing only the most recent page (`DEFAULT_MESSAGE_PAGE_SIZE`
+  messages, `Chat.gs`), and older messages are fetched on demand, prepended above
+  the current scroll position without disturbing it. This bounds the initial
+  render/download cost for long-running conversations the same way the vendor
+  conversation *list* was already bounded by `limit`/`offset` — see Section 10.
 
 ## 8. Notifications
 
@@ -273,20 +290,27 @@ layer:
 
 Ordered roughly by "how soon this would actually bite":
 
-1. **The polling-cost/Sheets-scan mismatch is the feature's real ceiling.** Every
-   poll — customer or vendor — still costs a full `Messages`-tab scan server-side
-   even with a `sinceMessageId` cursor narrowing the *response* (Section 0/7). This
-   is a fundamentally more continuous read load than the rest of the app's one-shot
-   page loads, and will hit Apps Script's daily execution/quota ceilings sooner
-   than any other part of the system as chat adoption grows. Natural next steps, in
-   order of effort:
-   - Add a `getCached`/`invalidateCache`-style short-TTL cache (`Utils.gs`) for
-     "recent messages in conversation X," invalidated on new message — same pattern
-     already built for the read-heavy list actions.
-   - If that's not enough: move chat specifically off Sheets onto a purpose-built
-     realtime store (Firebase Realtime Database/Firestore, or Supabase Realtime) —
-     a scoped hybrid architecture (Sheets stays the system of record for
-     Owners/Products/Orders; only chat moves), not a rewrite of the whole backend.
+1. **The polling-cost/Sheets-scan mismatch was the feature's real ceiling — now
+   substantially mitigated, not eliminated.** As originally written, every poll —
+   customer or vendor — cost a full `Messages`-tab scan server-side even with a
+   `sinceMessageId` cursor narrowing only the *response* (Section 0/7). This is now
+   addressed the way this section originally proposed: `Chat.gs` wraps the full
+   per-conversation message scan in `getCached`/`invalidateCache`
+   (`CHAT_MESSAGES_CACHE_TTL_SECONDS = 10`), and the full per-owner conversation
+   scan the same way (`CHAT_CONVERSATIONS_CACHE_TTL_SECONDS = 8`) — the same
+   pattern already used for the read-heavy list actions elsewhere in the app. The
+   cache is invalidated precisely on the writes that change what it holds (new
+   message, conversation status change, read-state flip), documented in full in
+   `docs/chat-performance-optimizations.md`. This bounds the scan to roughly once
+   per TTL window regardless of poll frequency, rather than once per poll — a large
+   reduction, but still a scan-based read model underneath, not a truly indexed
+   one, so it remains the ceiling if chat volume grows far enough. Remaining next
+   steps, in order of effort:
+   - If the cached-scan model isn't enough at higher volume: move chat specifically
+     off Sheets onto a purpose-built realtime store (Firebase Realtime
+     Database/Firestore, or Supabase Realtime) — a scoped hybrid architecture
+     (Sheets stays the system of record for Owners/Products/Orders; only chat
+     moves), not a rewrite of the whole backend.
 2. **True real-time delivery** (websockets/SSE instead of polling) is impossible on
    Apps Script Web Apps by design — only reachable via the same hybrid-backend
    move described above. Not required for v1; polling with the adaptive interval

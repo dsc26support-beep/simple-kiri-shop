@@ -1,15 +1,33 @@
 document.addEventListener('DOMContentLoaded', init);
 
-const CONVERSATION_POLL_MS = 6000; // within the requested 5-10s range
-const LIST_POLL_MS = 8000; // ditto
+// Adaptive polling backoff (both loops) - starts fast right after activity
+// and geometrically backs off while idle, same "reduce Apps Script
+// executions" reasoning as the customer-side chat window. The list poll
+// keeps a slower floor/ceiling than the conversation poll since a new
+// conversation arriving is less time-sensitive than a reply inside one
+// already open - preserves the original 6s/8s distinction between the two,
+// just adaptive now instead of fixed. See docs/chat-performance-optimizations.md.
+const CONVERSATION_POLL_MIN_MS = 5000;
+const CONVERSATION_POLL_MAX_MS = 20000;
+const LIST_POLL_MIN_MS = 8000;
+const LIST_POLL_MAX_MS = 30000;
+const POLL_BACKOFF_FACTOR = 1.5;
+const CONVERSATION_LIST_PAGE_SIZE = 20;
 const BASE_TITLE = document.title;
 
 let ownerConversations = [];
+let conversationsHasMore = false;
 let activeConversationId = null;
 let activeLastMessageId = null;
+let activeOldestMessageId = null;
+let activeOldestBubble = null;
+let activeHasMoreBefore = false;
+let isLoadingEarlierMessages = false;
 let searchQuery = '';
 let conversationPollTimer = null;
+let conversationPollDelayMs = CONVERSATION_POLL_MIN_MS;
 let listPollTimer = null;
+let listPollDelayMs = LIST_POLL_MIN_MS;
 let selectedReplyImageFile = null;
 
 async function init() {
@@ -19,9 +37,11 @@ async function init() {
 
   document.getElementById('conversation-search').addEventListener('input', onSearchInput);
   document.getElementById('conversation-list').addEventListener('click', onConversationClick);
+  document.getElementById('conversation-list-load-more').addEventListener('click', onLoadMoreConversations);
   document.getElementById('back-to-list-btn').addEventListener('click', closeConversation);
   document.getElementById('archive-btn').addEventListener('click', onArchive);
   document.getElementById('delete-btn').addEventListener('click', onDelete);
+  document.getElementById('conversation-load-earlier-btn').addEventListener('click', loadEarlierConversationMessages);
   document.getElementById('reply-form').addEventListener('submit', onReplySubmit);
   document.getElementById('reply-input').addEventListener('input', autoResizeReplyInput);
   document.getElementById('reply-input').addEventListener('keydown', onReplyKeydown);
@@ -34,19 +54,41 @@ async function init() {
 
 /* ---------- Conversation list ---------- */
 
+/**
+ * `opts.limit`, if given, overrides the fetch size (used by "Load More" to
+ * grow the visible page). Otherwise: the very first call omits `limit`
+ * entirely so the backend applies its own default page, and every
+ * subsequent call (including every poll) re-requests exactly however many
+ * conversations are already loaded - a poll's job is to refresh what's on
+ * screen, not to silently grow or shrink it.
+ */
 async function loadConversations(opts) {
   const isPoll = !!(opts && opts.isPoll);
   const statusEl = document.getElementById('conversations-status');
   if (!isPoll) statusEl.textContent = 'Loading…';
 
-  const res = await Api.post('getVendorConversations', { token: Auth.getToken() });
+  const params = { token: Auth.getToken() };
+  const limit = (opts && opts.limit) || ownerConversations.length || undefined;
+  if (limit) params.limit = limit;
+
+  const res = await Api.post('getVendorConversations', params);
   if (!res.ok) {
     if (!isPoll) statusEl.textContent = res.error || 'Could not load conversations.';
     return; // a background poll failing stays silent and just retries next interval
   }
 
   ownerConversations = res.conversations;
+  conversationsHasMore = !!res.hasMore;
   renderConversationList();
+}
+
+async function onLoadMoreConversations() {
+  const btn = document.getElementById('conversation-list-load-more');
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+  await loadConversations({ isPoll: false, limit: ownerConversations.length + CONVERSATION_LIST_PAGE_SIZE });
+  btn.disabled = false;
+  btn.textContent = 'Load More';
 }
 
 function onSearchInput(e) {
@@ -57,6 +99,7 @@ function onSearchInput(e) {
 function renderConversationList() {
   const listEl = document.getElementById('conversation-list');
   const statusEl = document.getElementById('conversations-status');
+  const loadMoreBtn = document.getElementById('conversation-list-load-more');
   const q = searchQuery.trim().toLowerCase();
   const filtered = ownerConversations.filter((c) => {
     if (!q) return true;
@@ -72,6 +115,8 @@ function renderConversationList() {
   updateUnreadTitle();
 
   listEl.innerHTML = filtered.map(renderConversationListItem).join('');
+  if (conversationsHasMore) loadMoreBtn.classList.remove('hidden');
+  else loadMoreBtn.classList.add('hidden');
 }
 
 /** Notification counter for the browser tab - the conversation-list poll is this page's own "chat is open" signal, so this stays live while the page is open. */
@@ -110,6 +155,10 @@ function onConversationClick(e) {
 async function openConversation(conversationId) {
   activeConversationId = conversationId;
   activeLastMessageId = null;
+  activeOldestMessageId = null;
+  activeOldestBubble = null;
+  activeHasMoreBefore = false;
+  updateLoadEarlierMessagesButton();
 
   document.getElementById('messages-layout').classList.add('has-open-conversation');
   document.getElementById('conversation-empty-state').classList.add('hidden');
@@ -133,6 +182,10 @@ async function openConversation(conversationId) {
 function closeConversation() {
   activeConversationId = null;
   activeLastMessageId = null;
+  activeOldestMessageId = null;
+  activeOldestBubble = null;
+  activeHasMoreBefore = false;
+  updateLoadEarlierMessagesButton();
   stopConversationPolling();
   document.getElementById('messages-layout').classList.remove('has-open-conversation');
   document.getElementById('conversation-empty-state').classList.remove('hidden');
@@ -140,9 +193,21 @@ function closeConversation() {
   renderConversationList();
 }
 
+function updateLoadEarlierMessagesButton() {
+  const btn = document.getElementById('conversation-load-earlier-btn');
+  if (activeHasMoreBefore) btn.classList.remove('hidden');
+  else btn.classList.add('hidden');
+}
+
+/**
+ * Initial open (no cursor - server returns the most recent page) or a
+ * polling delta (sinceMessageId - always unbounded, never paginated).
+ * Returns true if any new message was received, so the adaptive-poll
+ * scheduler knows whether to reset to the fast interval or keep backing off.
+ */
 async function loadConversationMessages(opts) {
   const isPoll = !!(opts && opts.isPoll);
-  if (!activeConversationId) return;
+  if (!activeConversationId) return false;
 
   const params = { token: Auth.getToken(), conversationId: activeConversationId };
   if (activeLastMessageId) params.sinceMessageId = activeLastMessageId;
@@ -150,19 +215,59 @@ async function loadConversationMessages(opts) {
   const res = await Api.post('getConversation', params);
   if (!res.ok) {
     if (!isPoll) document.getElementById('conversation-messages').innerHTML = '<p class="helper-text">Could not load messages.</p>';
-    return;
+    return false;
   }
 
   const messagesEl = document.getElementById('conversation-messages');
   const messages = res.messages || [];
   if (!isPoll) {
     messagesEl.innerHTML = messages.length === 0 ? '<p class="helper-text">No messages yet.</p>' : '';
+    activeHasMoreBefore = !!res.hasMoreBefore;
+    updateLoadEarlierMessagesButton();
   }
-  messages.forEach(appendConversationMessage);
-  if (messages.length > 0) activeLastMessageId = messages[messages.length - 1].messageId;
+  messages.forEach((m) => {
+    const bubble = appendConversationMessage(m);
+    if (!activeOldestBubble) activeOldestBubble = bubble; // first message rendered this session becomes the "load earlier" anchor
+  });
+  if (messages.length > 0) {
+    activeLastMessageId = messages[messages.length - 1].messageId;
+    if (!activeOldestMessageId) activeOldestMessageId = messages[0].messageId;
+  }
+  return messages.length > 0;
 }
 
-function appendConversationMessage(m) {
+/** Pages backward into older history for the open conversation - same prepend-and-preserve-scroll approach as chat-window.js's loadEarlierMessages(), just against #conversation-messages directly since that element is its own scroll container here (unlike the customer widget's separate scrolling wrapper). */
+async function loadEarlierConversationMessages() {
+  if (isLoadingEarlierMessages || !activeHasMoreBefore || !activeOldestMessageId) return;
+  isLoadingEarlierMessages = true;
+  const btn = document.getElementById('conversation-load-earlier-btn');
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Loading…';
+
+  const res = await Api.post('getConversation', { token: Auth.getToken(), conversationId: activeConversationId, beforeMessageId: activeOldestMessageId });
+
+  btn.disabled = false;
+  btn.textContent = originalLabel;
+  isLoadingEarlierMessages = false;
+  if (!res.ok) return;
+
+  const messagesEl = document.getElementById('conversation-messages');
+  const scrollHeightBefore = messagesEl.scrollHeight;
+  const scrollTopBefore = messagesEl.scrollTop;
+  const messages = res.messages || [];
+  const anchor = activeOldestBubble || messagesEl.firstChild;
+  messages.forEach((m, i) => {
+    const bubble = appendConversationMessage(m, { insertBeforeEl: anchor });
+    if (i === 0) activeOldestBubble = bubble;
+  });
+  if (messages.length > 0) activeOldestMessageId = messages[0].messageId;
+  activeHasMoreBefore = !!res.hasMoreBefore;
+  updateLoadEarlierMessagesButton();
+  messagesEl.scrollTop = scrollTopBefore + (messagesEl.scrollHeight - scrollHeightBefore);
+}
+
+function appendConversationMessage(m, opts) {
   const messagesEl = document.getElementById('conversation-messages');
   const placeholder = messagesEl.querySelector('.helper-text');
   if (placeholder) placeholder.remove();
@@ -174,6 +279,7 @@ function appendConversationMessage(m) {
     img.className = 'chat-message-image';
     img.src = m.imageUrl;
     img.alt = 'Photo';
+    img.loading = 'lazy'; // off-screen chat photos don't cost bandwidth until scrolled into view
     bubble.appendChild(img);
   }
   if (m.body) {
@@ -181,8 +287,12 @@ function appendConversationMessage(m) {
     p.textContent = m.body;
     bubble.appendChild(p);
   }
-  messagesEl.appendChild(bubble);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  if (opts && opts.insertBeforeEl) {
+    messagesEl.insertBefore(bubble, opts.insertBeforeEl);
+  } else {
+    messagesEl.appendChild(bubble);
+    messagesEl.scrollTop = messagesEl.scrollHeight; // prepending older history must never yank the view down to the bottom
+  }
   return bubble;
 }
 
@@ -218,6 +328,7 @@ async function sendReply(text) {
   }
 
   activeLastMessageId = res.message.messageId;
+  conversationPollDelayMs = CONVERSATION_POLL_MIN_MS; // sending is activity too - resume fast polling rather than waiting out a backed-off interval
   const conv = ownerConversations.find((c) => c.conversationId === activeConversationId);
   if (conv) {
     conv.lastMessagePreview = text;
@@ -262,6 +373,7 @@ async function sendReplyCompressedImage(compressed, caption) {
   }
 
   activeLastMessageId = res.message.messageId;
+  conversationPollDelayMs = CONVERSATION_POLL_MIN_MS; // see sendReply's identical reset
   const conv = ownerConversations.find((c) => c.conversationId === activeConversationId);
   if (conv) {
     conv.lastMessagePreview = caption || 'Photo';
@@ -380,30 +492,53 @@ async function onDelete() {
 
 /* ---------- Polling ---------- */
 
+async function conversationPollTick() {
+  if (document.visibilityState === 'visible') {
+    const gotNewMessage = await loadConversationMessages({ isPoll: true });
+    conversationPollDelayMs = gotNewMessage
+      ? CONVERSATION_POLL_MIN_MS
+      : Math.min(CONVERSATION_POLL_MAX_MS, Math.round(conversationPollDelayMs * POLL_BACKOFF_FACTOR));
+  }
+  conversationPollTimer = setTimeout(conversationPollTick, conversationPollDelayMs);
+}
+
 function startConversationPolling() {
   stopConversationPolling();
-  conversationPollTimer = setInterval(() => {
-    if (document.visibilityState === 'visible') loadConversationMessages({ isPoll: true });
-  }, CONVERSATION_POLL_MS);
+  conversationPollDelayMs = CONVERSATION_POLL_MIN_MS; // opening/reopening the panel counts as fresh activity
+  conversationPollTimer = setTimeout(conversationPollTick, conversationPollDelayMs);
 }
 
 function stopConversationPolling() {
   if (conversationPollTimer) {
-    clearInterval(conversationPollTimer);
+    clearTimeout(conversationPollTimer);
     conversationPollTimer = null;
   }
 }
 
+async function listPollTick() {
+  if (document.visibilityState === 'visible') {
+    const beforeCount = ownerConversations.length;
+    await loadConversations({ isPoll: true });
+    // A changed count (new conversation arrived, or one dropped out somehow)
+    // counts as activity; an identical-shaped refresh does not - a truly
+    // idle inbox is the common case this backoff is meant to save requests on.
+    const gotChange = ownerConversations.length !== beforeCount;
+    listPollDelayMs = gotChange
+      ? LIST_POLL_MIN_MS
+      : Math.min(LIST_POLL_MAX_MS, Math.round(listPollDelayMs * POLL_BACKOFF_FACTOR));
+  }
+  listPollTimer = setTimeout(listPollTick, listPollDelayMs);
+}
+
 function startListPolling() {
   stopListPolling();
-  listPollTimer = setInterval(() => {
-    if (document.visibilityState === 'visible') loadConversations({ isPoll: true });
-  }, LIST_POLL_MS);
+  listPollDelayMs = LIST_POLL_MIN_MS;
+  listPollTimer = setTimeout(listPollTick, listPollDelayMs);
 }
 
 function stopListPolling() {
   if (listPollTimer) {
-    clearInterval(listPollTimer);
+    clearTimeout(listPollTimer);
     listPollTimer = null;
   }
 }

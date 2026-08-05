@@ -22,6 +22,25 @@
  */
 
 var MAX_CHAT_MESSAGE_LENGTH = 2000; // Sheet-cell/payload size guard, same role as Images.gs's MAX_IMAGE_BYTES
+
+// Performance tuning - see docs/chat-performance-optimizations.md for the
+// full rationale behind every constant and cache/pagination decision below.
+var DEFAULT_MESSAGE_PAGE_SIZE = 50;
+var MAX_MESSAGE_PAGE_SIZE = 100;
+var DEFAULT_CONVERSATION_PAGE_SIZE = 20;
+var MAX_CONVERSATION_PAGE_SIZE = 100;
+var CHAT_MESSAGES_CACHE_TTL_SECONDS = 10;
+var CHAT_CONVERSATIONS_CACHE_TTL_SECONDS = 8;
+
+function chatMessagesCacheKey(conversationId) { return 'v1:chat:messages:' + conversationId; }
+function chatConversationsCacheKey(ownerId) { return 'v1:chat:conversations:' + ownerId; }
+
+/** Clamps a client-requested page size to a sane default/ceiling - shared by message and conversation pagination. */
+function clampPageSize(requested, defaultSize, maxSize) {
+  var n = Number(requested);
+  if (!n || n <= 0) return defaultSize;
+  return Math.min(Math.floor(n), maxSize);
+}
 // 'deleted'/'archived' are vendor-only housekeeping states (see
 // actionDeleteConversation/actionArchiveConversation below) - a soft delete,
 // consistent with every other "delete" in this codebase (archived products,
@@ -89,13 +108,27 @@ function findOrCreateConversation(owner, storeSlug, customerToken, customerName)
   return createConversation(owner, storeSlug, customerToken, customerName);
 }
 
-/** All of one owner's conversations, most recently active first. Unsliced - pagination is a future API-layer concern. */
+/**
+ * All of one owner's conversations, most recently active first - cached
+ * briefly (CHAT_CONVERSATIONS_CACHE_TTL_SECONDS) since this is otherwise a
+ * full Conversations-table scan on every call, and it's read on every
+ * vendor inbox poll plus the nav unread badge. Unsliced - callers page the
+ * result themselves (see actionGetVendorConversations) so the cached value
+ * is identical regardless of what page was requested. Invalidated on every
+ * write that changes what this list contains or how it's ordered - see
+ * touchConversationOnNewMessage, markConversationReadByVendor,
+ * setConversationStatus. (markConversationReadByCustomer deliberately does
+ * NOT invalidate this - UnreadByCustomer isn't surfaced anywhere in the
+ * vendor-facing UI this list feeds, so there's nothing to go stale.)
+ */
 function listConversationsForOwner(ownerId) {
-  return sheetToObjects(getSheet('Conversations'))
-    .filter(function (c) { return c.OwnerId === ownerId; })
-    .sort(function (a, b) {
-      return new Date(b.LastMessageAt || b.CreatedAt) - new Date(a.LastMessageAt || a.CreatedAt);
-    });
+  return getCached(chatConversationsCacheKey(ownerId), CHAT_CONVERSATIONS_CACHE_TTL_SECONDS, function () {
+    return sheetToObjects(getSheet('Conversations'))
+      .filter(function (c) { return c.OwnerId === ownerId; })
+      .sort(function (a, b) {
+        return new Date(b.LastMessageAt || b.CreatedAt) - new Date(a.LastMessageAt || a.CreatedAt);
+      });
+  });
 }
 
 function setConversationStatus(conversationId, status) {
@@ -103,18 +136,31 @@ function setConversationStatus(conversationId, status) {
   var conversation = getConversationById(conversationId);
   if (!conversation) return null;
   updateRowFromObject(getSheet('Conversations'), conversation.__row, { Status: status, UpdatedAt: nowIso() });
+  invalidateCache([chatConversationsCacheKey(conversation.OwnerId)]);
   return getConversationById(conversationId);
 }
 
+/**
+ * Skips the write entirely once already read - this gets called on every
+ * single getConversation poll from the vendor side (as a side effect, see
+ * actionGetConversation), so without this check a conversation that's
+ * already been read writes an identical "still false" value to the sheet
+ * on every poll cycle forever. See docs/chat-performance-optimizations.md
+ * "Batch writes".
+ */
 function markConversationReadByVendor(conversationId) {
   var conversation = getConversationById(conversationId);
   if (!conversation) return;
+  if (String(conversation.UnreadByVendor) === 'false') return;
   updateRowFromObject(getSheet('Conversations'), conversation.__row, { UnreadByVendor: 'false' });
+  invalidateCache([chatConversationsCacheKey(conversation.OwnerId)]);
 }
 
+/** Same write-skip reasoning as markConversationReadByVendor above, for the customer-polling side. No cache to invalidate here - see listConversationsForOwner's comment. */
 function markConversationReadByCustomer(conversationId) {
   var conversation = getConversationById(conversationId);
   if (!conversation) return;
+  if (String(conversation.UnreadByCustomer) === 'false') return;
   updateRowFromObject(getSheet('Conversations'), conversation.__row, { UnreadByCustomer: 'false' });
 }
 
@@ -137,6 +183,7 @@ function touchConversationOnNewMessage(conversation, senderType, previewText) {
   if (senderType === 'customer') update.UnreadByVendor = 'true';
   if (senderType === 'vendor') update.UnreadByCustomer = 'true';
   updateRowFromObject(getSheet('Conversations'), conversation.__row, update);
+  invalidateCache([chatConversationsCacheKey(conversation.OwnerId)]);
 }
 
 /* ---------- Messages ---------- */
@@ -175,28 +222,70 @@ function appendMessage(conversation, senderType, body, attachment) {
   });
 
   touchConversationOnNewMessage(conversation, senderType, trimmed || 'Photo');
+  // touchConversationOnNewMessage already invalidates the owner's conversations-list
+  // cache; the conversation's own message-list cache needs its own invalidation.
+  invalidateCache([chatMessagesCacheKey(conversation.ConversationId)]);
 
   return findRowById(sheet, 'MessageId', messageId);
 }
 
 /**
- * All messages for a conversation, oldest first. If sinceMessageId is given,
- * returns only the messages after it - the incremental-fetch cursor from the
- * design doc's polling strategy. Falls back to the full list if
- * sinceMessageId doesn't match anything (a stale/invalid cursor), the same
- * defensive-fallback style used elsewhere in this codebase (e.g. malformed
- * ItemsJson parsing in Orders.gs).
+ * Every message in one conversation, oldest first, cached briefly
+ * (CHAT_MESSAGES_CACHE_TTL_SECONDS) - the Messages sheet has no way to
+ * query "just this conversation's rows," so every miss otherwise re-scans
+ * the ENTIRE table across every store's every conversation. Never sliced
+ * itself - callers page the result (see listMessagesForConversation) so
+ * the cached value is identical no matter what page/cursor was requested.
+ * Invalidated immediately on every new message (see appendMessage), so
+ * this is never the reason a message looks delayed - the cache only ever
+ * absorbs repeat reads between genuine writes (e.g. overlapping polls).
  */
-function listMessagesForConversation(conversationId, sinceMessageId) {
-  var messages = sheetToObjects(getSheet('Messages'))
-    .filter(function (m) { return m.ConversationId === conversationId; })
-    .sort(function (a, b) { return new Date(a.CreatedAt) - new Date(b.CreatedAt); });
+function getConversationMessagesRaw(conversationId) {
+  return getCached(chatMessagesCacheKey(conversationId), CHAT_MESSAGES_CACHE_TTL_SECONDS, function () {
+    return sheetToObjects(getSheet('Messages'))
+      .filter(function (m) { return m.ConversationId === conversationId; })
+      .sort(function (a, b) { return new Date(a.CreatedAt) - new Date(b.CreatedAt); });
+  });
+}
 
-  if (!sinceMessageId) return messages;
+/**
+ * Paginated/incremental message fetch for one conversation. `opts` picks
+ * exactly one mode:
+ *  - opts.sinceMessageId: everything after that message, oldest first -
+ *    the polling-delta cursor. Deliberately unbounded (no limit applied) -
+ *    a real gap between two polls a few seconds apart is always small, and
+ *    truncating it would silently drop a message from the live view.
+ *    Falls back to the full list if the cursor doesn't match anything (a
+ *    stale/invalid cursor), the same defensive-fallback style used
+ *    elsewhere in this codebase (e.g. malformed ItemsJson in Orders.gs).
+ *  - opts.beforeMessageId: up to opts.limit messages immediately before
+ *    that message - "load earlier history," paging backward.
+ *  - neither: the most recent opts.limit messages - the initial-load page,
+ *    so opening a long-running conversation never fetches its entire
+ *    history in one response.
+ * Returns { messages, hasMoreBefore } - hasMoreBefore is always false for
+ * the sinceMessageId/polling mode, which never pages backward.
+ */
+function listMessagesForConversation(conversationId, opts) {
+  opts = opts || {};
+  var all = getConversationMessagesRaw(conversationId);
 
-  var cursorIndex = messages.findIndex(function (m) { return m.MessageId === sinceMessageId; });
-  if (cursorIndex === -1) return messages;
-  return messages.slice(cursorIndex + 1);
+  if (opts.sinceMessageId) {
+    var sinceIndex = all.findIndex(function (m) { return m.MessageId === opts.sinceMessageId; });
+    return { messages: sinceIndex === -1 ? all : all.slice(sinceIndex + 1), hasMoreBefore: false };
+  }
+
+  var limit = clampPageSize(opts.limit, DEFAULT_MESSAGE_PAGE_SIZE, MAX_MESSAGE_PAGE_SIZE);
+
+  if (opts.beforeMessageId) {
+    var beforeIndex = all.findIndex(function (m) { return m.MessageId === opts.beforeMessageId; });
+    var upTo = beforeIndex === -1 ? all.length : beforeIndex;
+    var start = Math.max(0, upTo - limit);
+    return { messages: all.slice(start, upTo), hasMoreBefore: start > 0 };
+  }
+
+  var start2 = Math.max(0, all.length - limit);
+  return { messages: all.slice(start2), hasMoreBefore: start2 > 0 };
 }
 
 /* ---------- Model shaping (mirrors publicOwnerFields in Auth.gs) ---------- */
@@ -399,24 +488,33 @@ function actionSendChatImage(body) {
 }
 
 /**
- * Public action. Fetches one conversation + its messages for whichever side
- * is calling, optionally incremental via body.sinceMessageId (the polling
- * cursor from the design doc). Marks it read for that side as a side effect.
- * A customer with no conversation yet gets {conversation:null, messages:[]},
- * not an error - that's the normal "haven't sent a first message" state.
+ * Public action. Fetches one conversation + a page of its messages for
+ * whichever side is calling. Three ways to call it (see
+ * listMessagesForConversation): body.sinceMessageId for the live polling
+ * delta, body.beforeMessageId(+body.limit) to page backward into older
+ * history, or neither for the initial load's most-recent-page (also
+ * +body.limit). Marks it read for that side as a side effect. A customer
+ * with no conversation yet gets {conversation:null, messages:[],
+ * hasMoreBefore:false}, not an error - that's the normal "haven't sent a
+ * first message" state.
  */
 function actionGetConversation(body) {
   var resolved = resolveChatRequest(body, { createIfMissing: false });
   if (!resolved.ok) return fail(resolved.error);
-  if (!resolved.conversation) return ok({ conversation: null, messages: [] });
+  if (!resolved.conversation) return ok({ conversation: null, messages: [], hasMoreBefore: false });
 
-  var messages = listMessagesForConversation(resolved.conversation.ConversationId, body.sinceMessageId);
+  var page = listMessagesForConversation(resolved.conversation.ConversationId, {
+    sinceMessageId: body.sinceMessageId,
+    beforeMessageId: body.beforeMessageId,
+    limit: body.limit
+  });
   if (resolved.senderType === 'vendor') markConversationReadByVendor(resolved.conversation.ConversationId);
   else markConversationReadByCustomer(resolved.conversation.ConversationId);
 
   return ok({
     conversation: publicConversationFields(resolved.conversation),
-    messages: messages.map(publicMessageFields)
+    messages: page.messages.map(publicMessageFields),
+    hasMoreBefore: page.hasMoreBefore
   });
 }
 
@@ -439,18 +537,20 @@ function actionMarkAsRead(body) {
 
 /**
  * Protected action (vendor only). The inbox list - every conversation for
- * this owner except ones they've deleted, newest-activity first. Archived
- * conversations are still included (tagged via `status`) so a future UI can
- * filter/group by status rather than losing them from the list entirely.
- * Unpaginated for now, same as every other owner-scoped list in this
- * codebase (listOwnerProducts, listOwnerOrders) - pagination is a separate,
- * not-yet-implemented plan that applies to all of them together.
+ * this owner except ones they've deleted, newest-activity first, paginated
+ * via body.limit/body.offset (defaults: DEFAULT_CONVERSATION_PAGE_SIZE,
+ * clamped to MAX_CONVERSATION_PAGE_SIZE). Archived conversations are still
+ * included (tagged via `status`) so the UI can filter/group by status
+ * rather than losing them from the list entirely. Reads from the cached,
+ * unsliced list (listConversationsForOwner) and slices AFTER the cache
+ * read, so one cached value serves every page/poll.
  */
-function actionGetVendorConversations(owner) {
-  var conversations = listConversationsForOwner(owner.OwnerId)
-    .filter(function (c) { return c.Status !== 'deleted'; })
-    .map(publicConversationFields);
-  return ok({ conversations: conversations });
+function actionGetVendorConversations(owner, body) {
+  var all = listConversationsForOwner(owner.OwnerId).filter(function (c) { return c.Status !== 'deleted'; });
+  var limit = clampPageSize(body.limit, DEFAULT_CONVERSATION_PAGE_SIZE, MAX_CONVERSATION_PAGE_SIZE);
+  var offset = Math.max(0, Number(body.offset) || 0);
+  var page = all.slice(offset, offset + limit).map(publicConversationFields);
+  return ok({ conversations: page, total: all.length, hasMore: offset + limit < all.length });
 }
 
 /** Protected action (vendor only). Soft-deletes a conversation - hides it from actionGetVendorConversations, never removes the row. */

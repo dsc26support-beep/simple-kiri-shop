@@ -13,7 +13,16 @@
 // poll, so it doesn't violate "only poll while open".
 document.addEventListener('DOMContentLoaded', initChatWindow);
 
-const CHAT_POLL_INTERVAL_MS = 6000; // within the requested 5-10s range
+// Adaptive polling backoff: starts fast right after activity (a message
+// arriving or being sent) and geometrically backs off while idle, capping
+// at CHAT_POLL_MAX_MS. This is the same "reduce Apps Script executions"
+// reasoning as the vendor side (owner-messages.js) - most poll cycles on an
+// open-but-quiet conversation return zero new messages, so there's no
+// reason to keep hitting the backend at a fixed fast interval indefinitely.
+// See docs/chat-performance-optimizations.md.
+const CHAT_POLL_MIN_MS = 5000;
+const CHAT_POLL_MAX_MS = 20000;
+const CHAT_POLL_BACKOFF_FACTOR = 1.5;
 
 function initChatWindow() {
   const fab = document.getElementById('chat-fab');
@@ -33,6 +42,7 @@ function initChatWindow() {
   const previewEl = document.getElementById('chat-image-preview');
   const previewImg = document.getElementById('chat-image-preview-img');
   const previewRemoveBtn = document.getElementById('chat-image-preview-remove');
+  const loadEarlierBtn = document.getElementById('chat-load-earlier-btn');
 
   const storeSlug = getStoreSlug();
   const customerToken = storeSlug ? getOrCreateCustomerToken(storeSlug) : null;
@@ -41,7 +51,12 @@ function initChatWindow() {
   let hasLoadedOnce = false;
   let lastMessageId = null;
   let pollTimer = null;
+  let pollDelayMs = CHAT_POLL_MIN_MS;
   let selectedImageFile = null;
+  let oldestMessageId = null; // earliest messageId currently rendered - the cursor for "load earlier"
+  let oldestBubble = null; // DOM node of the earliest rendered bubble - the prepend anchor
+  let hasMoreBefore = false;
+  let isLoadingEarlier = false;
 
   function scrollMessagesToBottom() {
     body.scrollTop = body.scrollHeight;
@@ -124,6 +139,7 @@ function initChatWindow() {
       img.className = 'chat-message-image';
       img.src = opts.imageUrl;
       img.alt = 'Photo';
+      img.loading = 'lazy'; // off-screen chat photos (older history, long threads) don't cost bandwidth until scrolled into view - real savings on mobile data
       bubble.appendChild(img);
     }
     if (text) {
@@ -131,9 +147,12 @@ function initChatWindow() {
       p.textContent = text;
       bubble.appendChild(p);
     }
-    if (opts && opts.beforeTyping) messagesEl.insertBefore(bubble, typingEl);
+    // insertBeforeEl (older-message prepend) takes priority over beforeTyping
+    // (normal bottom-append) - see loadEarlierMessages().
+    if (opts && opts.insertBeforeEl) messagesEl.insertBefore(bubble, opts.insertBeforeEl);
+    else if (opts && opts.beforeTyping) messagesEl.insertBefore(bubble, typingEl);
     else messagesEl.appendChild(bubble);
-    scrollMessagesToBottom();
+    if (!opts || !opts.insertBeforeEl) scrollMessagesToBottom(); // prepending older history must never yank the view down to the bottom
     return bubble;
   }
 
@@ -169,11 +188,25 @@ function initChatWindow() {
     loadingEl.innerHTML = '<span class="chat-spinner" aria-hidden="true"></span><span>Loading conversation…</span>';
   }
 
+  function updateLoadEarlierButton() {
+    if (!loadEarlierBtn) return;
+    if (hasMoreBefore) loadEarlierBtn.classList.remove('hidden');
+    else loadEarlierBtn.classList.add('hidden');
+  }
+
+  /**
+   * Initial load (no cursor - server returns the most recent page, see
+   * apps-script/Chat.gs's listMessagesForConversation) or a polling delta
+   * (sinceMessageId - always the full unbounded gap, never paginated).
+   * Returns true if any new message was received, so the adaptive-poll
+   * scheduler knows whether to reset to the fast interval or keep backing
+   * off - see startPolling/scheduleNextPoll.
+   */
   async function loadConversation(opts) {
     const isPoll = !!(opts && opts.isPoll);
     if (!storeSlug || !customerToken) {
       if (!isPoll) showLoadError();
-      return;
+      return false;
     }
 
     const params = { storeSlug, customerToken };
@@ -183,38 +216,96 @@ function initChatWindow() {
 
     if (!res.ok) {
       if (!isPoll) showLoadError();
-      return; // background polls fail silently and retry next interval
+      return false; // background polls fail silently and retry next interval
     }
 
     if (!isPoll) {
       loadingEl.classList.add('hidden');
       messagesEl.classList.remove('hidden');
+      hasMoreBefore = !!res.hasMoreBefore;
+      updateLoadEarlierButton();
     }
 
     const messages = res.messages || [];
     if (messages.length === 0) {
       if (!isPoll && !lastMessageId) showEmptyState();
-      return;
+      return false;
     }
 
     messages.forEach((m) => {
       const senderClass = m.senderType === 'vendor' ? 'chat-message--vendor' : 'chat-message--customer';
-      appendMessage(senderClass, m.body, { beforeTyping: true, imageUrl: m.imageUrl || null });
+      const bubble = appendMessage(senderClass, m.body, { beforeTyping: true, imageUrl: m.imageUrl || null });
+      if (!oldestBubble) oldestBubble = bubble; // first message ever rendered in this session becomes the initial "load earlier" anchor
     });
     lastMessageId = messages[messages.length - 1].messageId;
+    if (!oldestMessageId) oldestMessageId = messages[0].messageId; // only the very first load establishes the oldest boundary - later appends are always newer
     setLastSeenMessageId(lastMessageId); // panel is open while this runs, so this counts as "seen"
+    return true;
+  }
+
+  /**
+   * Pages backward into older history, prepending above the current
+   * earliest bubble and preserving scroll position (without this, inserting
+   * content above the visible area would otherwise yank the view down by
+   * the inserted height). Guarded by isLoadingEarlier against double-clicks
+   * firing two overlapping fetches.
+   */
+  async function loadEarlierMessages() {
+    if (isLoadingEarlier || !hasMoreBefore || !oldestMessageId) return;
+    isLoadingEarlier = true;
+    loadEarlierBtn.disabled = true;
+    const originalLabel = loadEarlierBtn.textContent;
+    loadEarlierBtn.textContent = 'Loading…';
+
+    const res = await Api.post('getConversation', { storeSlug, customerToken, beforeMessageId: oldestMessageId });
+
+    loadEarlierBtn.disabled = false;
+    loadEarlierBtn.textContent = originalLabel;
+    isLoadingEarlier = false;
+
+    if (!res.ok) return; // leave the button as-is so the customer can just try again
+
+    const scrollHeightBefore = body.scrollHeight;
+    const scrollTopBefore = body.scrollTop;
+    const messages = res.messages || [];
+    const anchor = oldestBubble || typingEl;
+    messages.forEach((m, i) => {
+      const senderClass = m.senderType === 'vendor' ? 'chat-message--vendor' : 'chat-message--customer';
+      const bubble = appendMessage(senderClass, m.body, { insertBeforeEl: anchor, imageUrl: m.imageUrl || null });
+      if (i === 0) oldestBubble = bubble; // messages arrive oldest-first, so the first one processed is the new earliest
+    });
+    if (messages.length > 0) oldestMessageId = messages[0].messageId;
+    hasMoreBefore = !!res.hasMoreBefore;
+    updateLoadEarlierButton();
+    // Keep whatever was on-screen anchored in place instead of visually jumping.
+    body.scrollTop = scrollTopBefore + (body.scrollHeight - scrollHeightBefore);
+  }
+
+  if (loadEarlierBtn) loadEarlierBtn.addEventListener('click', loadEarlierMessages);
+
+  function scheduleNextPoll() {
+    pollTimer = setTimeout(pollTick, pollDelayMs);
+  }
+
+  async function pollTick() {
+    if (document.visibilityState === 'visible') {
+      const gotNewMessage = await loadConversation({ isPoll: true });
+      pollDelayMs = gotNewMessage
+        ? CHAT_POLL_MIN_MS
+        : Math.min(CHAT_POLL_MAX_MS, Math.round(pollDelayMs * CHAT_POLL_BACKOFF_FACTOR));
+    }
+    scheduleNextPoll();
   }
 
   function startPolling() {
     stopPolling();
-    pollTimer = setInterval(() => {
-      if (document.visibilityState === 'visible') loadConversation({ isPoll: true });
-    }, CHAT_POLL_INTERVAL_MS);
+    pollDelayMs = CHAT_POLL_MIN_MS; // always resume at the fast interval - opening/reopening the panel counts as fresh activity
+    scheduleNextPoll();
   }
 
   function stopPolling() {
     if (pollTimer) {
-      clearInterval(pollTimer);
+      clearTimeout(pollTimer);
       pollTimer = null;
     }
   }
@@ -232,6 +323,7 @@ function initChatWindow() {
     }
     lastMessageId = res.message.messageId;
     setLastSeenMessageId(lastMessageId);
+    pollDelayMs = CHAT_POLL_MIN_MS; // sending is activity too - a reply might come back quickly, so resume fast polling rather than waiting out a backed-off interval
   }
 
   /**
@@ -272,6 +364,7 @@ function initChatWindow() {
     }
     lastMessageId = res.message.messageId;
     setLastSeenMessageId(lastMessageId);
+    pollDelayMs = CHAT_POLL_MIN_MS; // see sendMessage's identical reset
   }
 
   /** Compresses (helpers.js's shared compressImage) before ever hitting the network - same reasoning as product photos/store logos. */
