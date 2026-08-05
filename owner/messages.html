@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Messages — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/owner.css">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Messages</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="orders.html">Orders</a></li>
+          <li><a href="messages.html">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden">0</span></a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Messages</h1>
+
+      <div class="messages-layout" id="messages-layout">
+        <section class="conversation-list-pane" aria-label="Conversation list">
+          <div class="conversation-search-row">
+            <input type="search" id="conversation-search" placeholder="Search by customer name…" aria-label="Search conversations">
+          </div>
+          <p id="conversations-status" class="helper-text" role="status"></p>
+          <div id="conversation-list" class="conversation-list"></div>
+        </section>
+
+        <section class="conversation-detail-pane" aria-label="Conversation">
+          <div id="conversation-empty-state" class="conversation-empty-state">
+            <p>Select a conversation to view messages.</p>
+          </div>
+
+          <div id="conversation-detail" class="conversation-detail hidden">
+            <div class="conversation-detail-header">
+              <button type="button" id="back-to-list-btn" class="conversation-back-btn" aria-label="Back to conversation list">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+              </button>
+              <div class="conversation-detail-info">
+                <strong id="detail-customer-name">Customer</strong>
+                <span id="detail-status-badge" class="status-badge"></span>
+              </div>
+              <div class="conversation-detail-actions">
+                <button type="button" id="archive-btn" class="btn btn-small">Archive</button>
+                <button type="button" id="delete-btn" class="btn btn-small btn-danger">Delete</button>
+              </div>
+            </div>
+
+            <div id="conversation-messages" class="conversation-messages"></div>
+
+            <form id="reply-form" class="conversation-reply-row">
+              <textarea id="reply-input" class="conversation-reply-input" placeholder="Type a reply…" rows="1" aria-label="Type a reply"></textarea>
+              <button type="submit" id="reply-send-btn" class="conversation-send-btn" aria-label="Send reply">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4 20-7z"></path></svg>
+              </button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Mwakete — Store Owner Portal</p>
+      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/cookie-consent.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/owner-nav.js"></script>
+  <script src="../assets/js/owner-messages.js"></script>
+</body>
+</html>

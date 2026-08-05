@@ -35,6 +35,7 @@ owner/forgot-password.html Email-code password reset
 owner/dashboard.html      Store owner summary
 owner/products.html       Product + variety management, phone photo upload
 owner/orders.html          Order list and status updates
+owner/messages.html        Vendor chat inbox - conversation list, search, reply, archive/delete
 owner/settings.html        Store details, delivery methods, island/village, password change, 2FA on/off
 
 assets/js/config.js       The one line every deployment edits: APPS_SCRIPT_URL

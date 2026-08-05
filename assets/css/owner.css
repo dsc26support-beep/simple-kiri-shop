@@ -149,7 +149,8 @@
 
 .status-badge.status-active,
 .status-badge.status-paid,
-.status-badge.status-fulfilled {
+.status-badge.status-fulfilled,
+.status-badge.status-open {
   background: #e3f4e6;
   color: var(--color-success);
 }
@@ -299,3 +300,306 @@
 
 /* .btn-saving-dots / .btn-adding animation now lives in styles.css so
    customer-facing pages (e.g. Add to Cart) can use it too. */
+
+/* Nav "Messages" unread badge, loaded once per page by owner-nav.js. */
+.nav-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.nav-unread-badge.hidden {
+  display: none;
+}
+
+/*
+ * Vendor chat dashboard (owner/messages.html) - a two-pane inbox layout.
+ * Both panes stack full-width on mobile (list first, then the detail pane
+ * once a conversation is opened, via .has-open-conversation); side-by-side
+ * from 800px up, where the back button becomes unnecessary and hides.
+ */
+.messages-layout {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 65vh;
+}
+
+@media (min-width: 800px) {
+  .messages-layout {
+    flex-direction: row;
+    height: 70vh;
+  }
+}
+
+.conversation-list-pane {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.messages-layout.has-open-conversation .conversation-list-pane {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .conversation-list-pane {
+    width: 320px;
+    flex: 0 0 320px;
+    border-bottom: none;
+    border-right: 1px solid var(--color-border);
+    height: 100%;
+  }
+
+  .messages-layout.has-open-conversation .conversation-list-pane {
+    display: flex;
+  }
+}
+
+.conversation-search-row {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+
+.conversation-search-row input {
+  width: 100%;
+}
+
+.conversation-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.conversation-list-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--color-border);
+  background: #fff;
+  cursor: pointer;
+}
+
+.conversation-list-item:hover,
+.conversation-list-item:focus-visible {
+  background: var(--color-bg-alt);
+}
+
+.conversation-list-item.is-active {
+  background: var(--color-bg-alt);
+  border-left-color: var(--color-blue);
+}
+
+.conversation-list-item.is-unread .conversation-item-name,
+.conversation-list-item.is-unread .conversation-item-preview {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.conversation-item-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.conversation-item-name {
+  font-size: 0.92rem;
+}
+
+.conversation-item-unread-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--color-blue);
+  vertical-align: middle;
+}
+
+.conversation-item-time {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.conversation-item-preview {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-detail-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.conversation-empty-state {
+  margin: auto;
+  padding: var(--space-4);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.conversation-detail.hidden,
+.conversation-empty-state.hidden {
+  display: none;
+}
+
+.conversation-detail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.conversation-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+
+.conversation-back-btn {
+  display: flex;
+  flex: 0 0 auto;
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+@media (min-width: 800px) {
+  .conversation-back-btn {
+    display: none;
+  }
+}
+
+.conversation-detail-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.conversation-detail-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+
+.conversation-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-bg-alt);
+}
+
+/*
+ * .chat-message (shape/animation) comes from styles.css - these two
+ * modifiers are the vendor-dashboard's own perspective on it ("mine" vs
+ * "theirs"), distinct from styles.css's customer-facing --customer/--vendor
+ * pair, since here the VENDOR is the one sending, not receiving.
+ */
+.chat-message--mine {
+  align-self: flex-end;
+  background: var(--color-blue);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message--theirs {
+  align-self: flex-start;
+  background: #fff;
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: 4px;
+}
+
+.conversation-reply-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+
+.conversation-reply-input {
+  flex: 1 1 auto;
+  resize: none;
+  max-height: 100px;
+  padding: 0.6em 0.9em;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--color-ink);
+  background: var(--color-bg);
+}
+
+.conversation-reply-input:focus-visible {
+  outline: 2px solid var(--color-blue-light);
+  outline-offset: 1px;
+}
+
+.conversation-send-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-blue);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+
+.conversation-send-btn:hover {
+  background: var(--color-ink);
+}
+
+.conversation-send-btn:active {
+  transform: scale(0.9);
+}
+
+.conversation-send-btn:focus-visible {
+  outline: 3px solid var(--color-blue-light);
+  outline-offset: 2px;
+}
