@@ -191,54 +191,70 @@ function actionRecordStoreVisit(body) {
  * buttons. Matches on product name/description (case-insensitive substring)
  * and/or exact category, across every active store's active products.
  */
+/**
+ * Cached like its listStores/listProducts/topProducts/topStores siblings
+ * (all read-heavy, all full-table scans otherwise) - this one was originally
+ * left out despite being the highest-traffic customer-facing action (every
+ * homepage search/category click), which is an oversight rather than a
+ * deliberate choice. Keyed per query+category since the query space is
+ * unbounded (unlike the fixed keys those siblings use) - CacheService
+ * entries just expire on their own TTL, so this doesn't need explicit
+ * invalidation any more than v1:topProducts/v1:topStores already don't (same
+ * TTL-only staleness tradeoff, 60s to match listProducts). The query portion
+ * of the key is capped so a very long q can never produce an invalid
+ * CacheService key (250-char limit).
+ */
 function actionSearchProducts(params) {
   var q = String(params.q || '').trim().toLowerCase();
   var category = String(params.category || '').trim();
+  var cacheKey = 'v1:search:' + category + ':' + q.slice(0, 100);
 
-  var ownersById = {};
-  sheetToObjects(getSheet('Owners'))
-    .filter(function (o) { return o.Status === 'active'; })
-    .forEach(function (o) { ownersById[o.OwnerId] = o; });
+  var results = getCached(cacheKey, 60, function () {
+    var ownersById = {};
+    sheetToObjects(getSheet('Owners'))
+      .filter(function (o) { return o.Status === 'active'; })
+      .forEach(function (o) { ownersById[o.OwnerId] = o; });
 
-  var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
+    var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
 
-  var results = sheetToObjects(getSheet('Products'))
-    .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
-    .filter(function (p) {
-      if (category && p.Category !== category) return false;
-      if (q) {
-        var haystack = (String(p.Name) + ' ' + String(p.Description)).toLowerCase();
-        if (haystack.indexOf(q) === -1) return false;
-      }
-      return true;
-    })
-    .map(function (p) {
-      var owner = ownersById[p.OwnerId];
-      var productVariants = variants
-        .filter(function (v) { return v.ProductId === p.ProductId; })
-        .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
-      var product = {
-        productId: p.ProductId,
-        name: p.Name,
-        description: p.Description,
-        category: p.Category,
-        imageUrl: p.ImageUrl,
-        imageUrl2: p.ImageUrl2,
-        storeSlug: owner.StoreSlug,
-        storeName: owner.StoreName,
-        storePhone: owner.Phone,
-        storeLogoUrl: owner.LogoUrl,
-        variants: productVariants
-      };
-      product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
-      product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
-      product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
-      product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
-      product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
-      product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
-      return product;
-    })
-    .filter(function (p) { return p.variants.length > 0; });
+    return sheetToObjects(getSheet('Products'))
+      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
+      .filter(function (p) {
+        if (category && p.Category !== category) return false;
+        if (q) {
+          var haystack = (String(p.Name) + ' ' + String(p.Description)).toLowerCase();
+          if (haystack.indexOf(q) === -1) return false;
+        }
+        return true;
+      })
+      .map(function (p) {
+        var owner = ownersById[p.OwnerId];
+        var productVariants = variants
+          .filter(function (v) { return v.ProductId === p.ProductId; })
+          .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
+        var product = {
+          productId: p.ProductId,
+          name: p.Name,
+          description: p.Description,
+          category: p.Category,
+          imageUrl: p.ImageUrl,
+          imageUrl2: p.ImageUrl2,
+          storeSlug: owner.StoreSlug,
+          storeName: owner.StoreName,
+          storePhone: owner.Phone,
+          storeLogoUrl: owner.LogoUrl,
+          variants: productVariants
+        };
+        product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
+        product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
+        product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+        product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
+        product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
+        product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
+        return product;
+      })
+      .filter(function (p) { return p.variants.length > 0; });
+  });
 
   return ok({ products: results });
 }

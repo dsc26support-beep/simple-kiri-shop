@@ -141,4 +141,10 @@ function runReminderSweep() {
       sendAppEmail(owner.Email, subject, body);
       updateRowFromObject(ordersSheet, o.__row, { NoEmailReminderSent: nowIso() });
     });
+
+  // Piggybacks on this sweep's already-required hourly trigger (see README)
+  // rather than needing a second trigger wired up separately - without this,
+  // Sessions only ever grows (see pruneExpiredSessions in Auth.gs), and
+  // every authenticated request scans the whole table via requireAuth.
+  pruneExpiredSessions();
 }
