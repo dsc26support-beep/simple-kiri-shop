@@ -194,12 +194,12 @@ function appendOptimisticReply(text) {
   return bubble;
 }
 
-function markReplyFailed(bubble, text) {
+function markReplyFailed(bubble, text, errorMessage) {
   bubble.classList.add('chat-message--failed');
   const retry = document.createElement('button');
   retry.type = 'button';
   retry.className = 'chat-message-retry';
-  retry.textContent = 'Failed to send · Retry';
+  retry.textContent = (errorMessage || 'Failed to send') + ' · Retry';
   retry.addEventListener('click', () => {
     bubble.remove();
     sendReply(text);
@@ -213,7 +213,7 @@ async function sendReply(text) {
   bubble.classList.remove('chat-message--sending');
 
   if (!res.ok) {
-    markReplyFailed(bubble, text);
+    markReplyFailed(bubble, text, res.error);
     return;
   }
 

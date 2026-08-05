@@ -26,6 +26,60 @@ var PROTECTED_POST_ACTIONS = [
   'getVendorConversations', 'deleteConversation', 'archiveConversation', 'getUnreadCount'
 ];
 
+// Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
+// catches a script deliberately flooding a vendor's inbox/Drive storage.
+// Both are anonymous-safe (see chatRateLimitIdentity) - not full abuse
+// resistance (no IP is available to key on, and a customerToken can be
+// reset by clearing localStorage), just a backstop against naive flooding.
+var CHAT_RATE_LIMIT_ACTIONS = ['sendMessage', 'sendChatImage'];
+var CHAT_BURST_MAX = 5;
+var CHAT_BURST_WINDOW_SECONDS = 10;
+var CHAT_SUSTAINED_MAX = 30;
+var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
+
+/**
+ * Identity for chat rate limiting: a vendor calling with a session token is
+ * keyed on that raw token; an anonymous customer is keyed on their
+ * customerToken. Returns null if neither is present, so a malformed
+ * request falls through to the action's own validation (resolveChatRequest
+ * in Chat.gs) to produce the real error instead of a misleading
+ * rate-limit one.
+ */
+function chatRateLimitIdentity(body) {
+  if (body.token) return 'token:' + body.token;
+  if (body.customerToken) return 'cust:' + body.customerToken;
+  return null;
+}
+
+/**
+ * Two-tier rate gate for the chat-sending actions, run in doPost BEFORE the
+ * action dispatch - the closest thing to middleware this router has (same
+ * spot PROTECTED_POST_ACTIONS' requireAuth gate already runs centrally).
+ * Returns a fail() object (rateLimited:true) if either cap trips, or null
+ * to let the request through - the action handlers stay unaware rate
+ * limiting exists.
+ */
+function checkChatRateLimit(action, body) {
+  if (CHAT_RATE_LIMIT_ACTIONS.indexOf(action) === -1) return null;
+  var identity = chatRateLimitIdentity(body);
+  if (!identity) return null;
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var burstHit = rateLimitHit('ratelimit:chat:burst:' + identity, CHAT_BURST_MAX, CHAT_BURST_WINDOW_SECONDS);
+    var sustainedHit = rateLimitHit('ratelimit:chat:sustained:' + identity, CHAT_SUSTAINED_MAX, CHAT_SUSTAINED_WINDOW_SECONDS);
+    if (burstHit || sustainedHit) {
+      var out = fail('You are sending messages too fast - please wait a moment and try again.');
+      out.rateLimited = true;
+      return out;
+    }
+    return null;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function doGet(e) {
   try {
     var params = (e && e.parameter) || {};
@@ -49,6 +103,9 @@ function doPost(e) {
     var action = body.action;
 
     if (PUBLIC_POST_ACTIONS.indexOf(action) !== -1) {
+      var rateLimitFail = checkChatRateLimit(action, body);
+      if (rateLimitFail) return jsonOut(rateLimitFail);
+
       switch (action) {
         case 'registerOwner': return jsonOut(actionRegisterOwner(body));
         case 'loginOwner': return jsonOut(actionLoginOwner(body));

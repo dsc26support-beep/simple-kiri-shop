@@ -137,12 +137,12 @@ function initChatWindow() {
     return bubble;
   }
 
-  function markBubbleFailed(bubble, retryText) {
+  function markBubbleFailed(bubble, retryText, errorMessage) {
     bubble.classList.add('chat-message--failed');
     const retry = document.createElement('button');
     retry.type = 'button';
     retry.className = 'chat-message-retry';
-    retry.textContent = 'Failed to send · Retry';
+    retry.textContent = (errorMessage || 'Failed to send') + ' · Retry';
     retry.addEventListener('click', () => {
       bubble.remove();
       sendMessage(retryText);
@@ -227,7 +227,7 @@ function initChatWindow() {
 
     bubble.classList.remove('chat-message--sending');
     if (!res.ok) {
-      markBubbleFailed(bubble, text);
+      markBubbleFailed(bubble, text, res.error);
       return;
     }
     lastMessageId = res.message.messageId;

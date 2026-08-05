@@ -114,6 +114,21 @@ function actionListTopStores() {
  * increments whatever it's given. Batched into one request per page load
  * rather than one call per product, to keep this cheap at scale.
  */
+var VIEW_COOLDOWN_SECONDS = 5 * 60;
+
+/**
+ * Anti-gaming guard on top of the existing client-side once-per-visitor
+ * dedup: this endpoint is fully anonymous with no caller identity at all
+ * (no token, no customerToken), so a per-visitor limit isn't available -
+ * instead each productId can increment at most once per 5 minutes,
+ * globally, regardless of who's calling. This directly caps the abuse
+ * metric (how fast a product's count can be inflated) without needing a
+ * new anonymous identifier, which would offer no real Sybil-resistance
+ * here anyway (nothing stops a script from minting a fresh one per
+ * request). Items currently in cooldown are silently skipped, not
+ * rejected - this action's contract is "never error the customer," so a
+ * batch with some cooling-down items still returns ok:true.
+ */
 function actionRecordProductViews(body) {
   var productIds = Array.isArray(body.productIds) ? body.productIds : [];
   var wanted = {};
@@ -123,9 +138,19 @@ function actionRecordProductViews(body) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
+    var cache = CacheService.getScriptCache();
+    var toIncrement = {};
+    Object.keys(wanted).forEach(function (id) {
+      var cooldownKey = 'viewcooldown:v1:' + id;
+      if (cache.get(cooldownKey)) return; // already counted in the last 5 min - skip silently
+      try { cache.put(cooldownKey, '1', VIEW_COOLDOWN_SECONDS); } catch (e) { /* best effort */ }
+      toIncrement[id] = true;
+    });
+    if (Object.keys(toIncrement).length === 0) return ok({});
+
     var sheet = getSheet('Products');
     sheetToObjects(sheet).forEach(function (p) {
-      if (wanted[p.ProductId]) {
+      if (toIncrement[p.ProductId]) {
         updateRowFromObject(sheet, p.__row, { Views: (Number(p.Views) || 0) + 1 });
       }
     });
@@ -135,7 +160,9 @@ function actionRecordProductViews(body) {
   }
 }
 
-/** Records one visit for a store, deduped client-side (once per visitor per store) before this is called. */
+var VISIT_COOLDOWN_SECONDS = 5 * 60;
+
+/** Records one visit for a store, deduped client-side (once per visitor per store) before this is called, plus the same global 5-minute per-store cooldown actionRecordProductViews uses - see that function's comment. */
 function actionRecordStoreVisit(body) {
   var slug = body.storeSlug;
   if (!slug) return ok({});
@@ -143,9 +170,16 @@ function actionRecordStoreVisit(body) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
+    var cache = CacheService.getScriptCache();
+    var cooldownKey = 'visitcooldown:v1:' + slug;
+    if (cache.get(cooldownKey)) return ok({}); // already counted in the last 5 min - skip silently
+
     var sheet = getSheet('Owners');
     var owner = findRowById(sheet, 'StoreSlug', slug);
-    if (owner) updateRowFromObject(sheet, owner.__row, { Visits: (Number(owner.Visits) || 0) + 1 });
+    if (owner) {
+      try { cache.put(cooldownKey, '1', VISIT_COOLDOWN_SECONDS); } catch (e) { /* best effort */ }
+      updateRowFromObject(sheet, owner.__row, { Visits: (Number(owner.Visits) || 0) + 1 });
+    }
     return ok({});
   } finally {
     lock.releaseLock();

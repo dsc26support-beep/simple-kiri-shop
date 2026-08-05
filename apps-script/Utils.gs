@@ -126,3 +126,30 @@ function getCached(key, ttlSeconds, producerFn) {
 function invalidateCache(keys) {
   CacheService.getScriptCache().removeAll(keys);
 }
+
+/**
+ * Generic fixed-window rate counter backed by CacheService. The window is
+ * anchored to the first hit, not refreshed on every call, so this is a true
+ * "no more than maxCount per windowSeconds" cap rather than a rolling one
+ * that never lets a saturated key cool down. Callers wrap this in
+ * LockService.getScriptLock() around the read-increment-write, same as
+ * every other check-then-write sequence in this codebase - this function
+ * itself does not lock, matching Db.gs's helpers' convention of leaving
+ * locking to the caller.
+ */
+function rateLimitHit(key, maxCount, windowSeconds) {
+  var cache = CacheService.getScriptCache();
+  var now = Date.now();
+  var raw = cache.get(key);
+  var state = raw ? JSON.parse(raw) : { count: 0, firstAt: now };
+  state.count++;
+
+  var ttlSeconds = Math.max(1, windowSeconds - Math.floor((now - state.firstAt) / 1000));
+  try {
+    cache.put(key, JSON.stringify(state), ttlSeconds);
+  } catch (e) {
+    // best effort - if the cache put fails for some reason, fail open rather than block real traffic
+  }
+
+  return state.count > maxCount;
+}
