@@ -105,6 +105,13 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    **AbandonedCarts** (customers who typed an email at checkout but never placed the order)
    `Id | StoreSlug | OwnerId | Email | CartJson | CreatedAt | Reminded | ConvertedOrderId`
 
+   **Conversations** and **Messages** (vendor-specific live chat — data layer
+   only for now; see `docs/vendor-chat-design.md`. No UI or API reads/writes
+   these tabs yet, so it's safe to add them ahead of time or skip them until
+   the feature ships)
+   `ConversationId | OwnerId | StoreSlug | CustomerToken | CustomerName | Status | CreatedAt | UpdatedAt | LastMessageAt | LastMessagePreview | LastSenderType | UnreadByVendor | UnreadByCustomer`
+   `MessageId | ConversationId | OwnerId | StoreSlug | SenderType | Body | CreatedAt`
+
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
    `DeliveryTruckCost`, `DeliveryShipCost`, `DeliveryAirCargoCost`, `Island`,
@@ -112,12 +119,15 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `Owners`, add `ImageUrl2`, `ImageFileId2`, and `Views` to the end of
    `Products`, add `Island`, `Village`, `DeliveryMethod`, `DeliveryCost`, and
    `NoEmailReminderSent` to the end of `Orders`, and add the new
-   `TwoFACodes` and `AbandonedCarts` tabs — everything else stays the same.
+   `TwoFACodes`, `AbandonedCarts`, `Conversations`, and `Messages` tabs —
+   everything else stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
-   `Orders.gs`, `Images.gs`, `Reminders.gs`) and paste in the matching source
-   from this repo.
+   `Orders.gs`, `Images.gs`, `Reminders.gs`, `Chat.gs`) and paste in the
+   matching source from this repo. (`Chat.gs` is data-layer helpers only —
+   see the Conversations/Messages note above — safe to include now even
+   though nothing calls it yet.)
 
 3. **Project Settings → Script Properties**, add:
    - `PEPPER` — a long random string (used to salt+pepper password hashes).
