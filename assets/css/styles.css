@@ -371,6 +371,62 @@ footer.site-footer .copyright {
   height: 16px;
 }
 
+.floating-action-btn--right {
+  right: max(var(--space-3), env(safe-area-inset-right));
+}
+
+/*
+ * Chat floating action button - circular, icon-only, distinct from the
+ * pill/label style above on purpose (bottom-right circular chat bubble is
+ * the near-universal convention for chat widgets). No badge, no click
+ * handler yet - this is UI only, wired up once messaging exists.
+ */
+.chat-fab-btn {
+  bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.chat-fab-btn svg {
+  width: 26px;
+  height: 26px;
+}
+
+@media (hover: hover) {
+  .chat-fab-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.chat-fab-btn:active {
+  transform: scale(0.95);
+}
+
+.chat-fab-btn:focus-visible {
+  outline: 3px solid var(--color-blue-light);
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chat-fab-btn {
+    background: var(--color-blue-light);
+    color: var(--color-ink);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  @media (hover: hover) {
+    .chat-fab-btn:hover {
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    }
+  }
+}
+
 .cookie-consent-banner {
   position: fixed;
   left: 0;
