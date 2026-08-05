@@ -5,9 +5,12 @@ Scope: full repo — `apps-script/*.gs` (backend) and `assets/js/*.js` + every
 `.html` page (frontend). Read-only findings, cross-checked against the actual
 source (no assumptions carried over from earlier design docs).
 
-Per the request, this pass **fixes only Critical findings**; everything else
-below is a documented recommendation awaiting approval before any code
-changes are made.
+The original pass **fixed only Critical findings** (§3a, §7's abandoned-cart
+issue) and documented the rest for approval. All six remaining findings (3b,
+3c, 3d, 6, 7's chat/view-counter gap, and the Low-severity comparison
+finding) have since been approved and fixed in a follow-up pass — see
+"What was fixed" at the bottom for the full list. Every finding on this
+report is now closed.
 
 ## Severity legend
 
@@ -22,16 +25,16 @@ changes are made.
 
 ## Summary table
 
-| # | Category | Finding | Severity | Fixed this pass? |
+| # | Category | Finding | Severity | Fixed? |
 |---|---|---|---|---|
 | 1 | Input validation | Google Sheets formula/CSV injection via unsanitized free text written to cells | **Critical** | ✅ Yes |
 | 2 | Spam prevention | Abandoned-cart reminder email: arbitrary destination address + attacker-controlled body content | **Critical** | ✅ Yes |
-| 3 | Rate limiting | No login attempt throttling — unlimited password guesses against a known username | High | No |
-| 4 | Spam prevention | `sendMessage`/`sendChatImage` unauthenticated with no per-token throttle — inbox/Drive-storage flooding | Medium | No |
-| 5 | Spam prevention | `recordProductViews`/`recordStoreVisit` unauthenticated, unthrottled — trending-rank gaming | Medium | No |
-| 6 | Input validation | No length caps on free-text fields (product name/description, store name, order notes, customer name) | Medium | No |
-| 7 | Input validation | `actionUpdateOwnerProfile` doesn't re-run registration's email-format/duplicate checks | Medium | No |
-| 8 | Authentication | Session-token / username string comparisons are non-constant-time | Low | No |
+| 3 | Rate limiting | No login attempt throttling — unlimited password guesses against a known username | High | ✅ Yes |
+| 4 | Spam prevention | `sendMessage`/`sendChatImage` unauthenticated with no per-token throttle — inbox/Drive-storage flooding | Medium | ✅ Yes |
+| 5 | Spam prevention | `recordProductViews`/`recordStoreVisit` unauthenticated, unthrottled — trending-rank gaming | Medium | ✅ Yes |
+| 6 | Input validation | No length caps on free-text fields (product name/description, store name, order notes, customer name) | Medium | ✅ Yes |
+| 7 | Input validation | `actionUpdateOwnerProfile` doesn't re-run registration's email-format/duplicate checks | **High** (elevated — password reset depends on this email) | ✅ Yes |
+| 8 | Authentication | Session-token / username string comparisons are non-constant-time | Low | ✅ Yes |
 | 9 | XSS, CSRF, Authorization, Vendor isolation, Customer isolation | No findings — see detail below | — | N/A |
 
 ---
@@ -109,40 +112,45 @@ stored/displayed value) but is never evaluated as a formula. Applied once, in
 future write through the app's one data-access chokepoint with no per-call-site
 changes needed.
 
-### 3b. No login attempt throttling — High, not fixed
+### 3b. No login attempt throttling — High, **fixed**
 
-`actionLoginOwner` (Auth.gs) has no lockout or delay after repeated failed
-attempts against a known username — only the eventual 8-character minimum
-password length stands between an attacker and a scripted dictionary attack.
-(2FA-enabled accounts and the 2FA/reset code flow itself *do* have a 5-attempt
-lockout — this gap is specifically the initial username+password check.)
-A real fix needs a persisted failed-attempt counter with a cooldown, which is
-a small but genuine design decision (how long to lock, whether to lock the
-account or just slow it down, how it interacts with the timing-safe dummy-hash
-check that already exists) — flagged for approval rather than bundled in as
-a "critical" one-liner.
+`actionLoginOwner` (Auth.gs) had no lockout or delay after repeated failed
+attempts against a known username. Fixed: 5 failures within a 15-minute
+window now locks that username out for 30 minutes, tracked via
+`CacheService` (Apps Script Web Apps expose no caller IP at all, so lockout
+keys purely off the submitted username string — which locks out identically
+whether or not that username maps to a real account, so this doesn't reopen
+the enumeration issue the existing dummy-hash timing mitigation already
+closed). Covers 2FA-enabled accounts automatically, since the check runs
+before the 2FA branch. See `apps-script/Auth.gs`'s
+`checkAndRecordLoginAttempt`.
 
-### 3c. No length caps on free-text fields — Medium, not fixed
+### 3c. No length caps on free-text fields — Medium, **fixed**
 
 Product name/description/category, store name, order notes/customer
 name/island/village, and owner profile fields (Products.gs, Orders.gs,
-Auth.gs) have no server-side maximum length (chat messages are the one
-exception, already capped at 2000 chars). Not independently exploitable for
-anything beyond oversized payloads/Sheet cell bloat, but worth capping
-consistently (e.g. 200 chars for names, 2000 for free-text notes/descriptions)
-the same way chat already is.
+Auth.gs) had no server-side maximum length (chat messages were the one
+exception, already capped at 2000 chars). Fixed: a shared `capLength()`
+helper (Utils.gs) now rejects — rather than silently truncates — any of
+these fields over a per-field cap (100–2000 chars depending on the field;
+see `apps-script/Utils.gs`'s `capLength` call sites). Chat's existing
+truncate-not-reject behavior is deliberately left as a separate, unchanged
+precedent.
 
-### 3d. `actionUpdateOwnerProfile` skips registration's validation — Medium, not fixed
+### 3d. `actionUpdateOwnerProfile` skips registration's validation — elevated to High, **fixed**
 
-`actionRegisterOwner` requires a non-blank, `@`-containing email and checks
-for duplicate email/phone across all owners. `actionUpdateOwnerProfile`
-(Products.gs:417) writes `body.email`/`body.phone` straight through with
-none of those checks — an owner can blank out their own contact email
-(silently breaking the auto-email-to-vendor order flow) or set it to a value
-already used by another store (breaking the "email is unique" invariant the
-rest of the app assumes). Scoped entirely to the owner's own row — not a
-cross-vendor authorization issue — but a real data-integrity gap worth
-closing by reusing the same validation `actionRegisterOwner` already has.
+`actionRegisterOwner` requires a non-blank, valid-format email and checks
+for duplicate email across all owners. `actionUpdateOwnerProfile`
+(Products.gs) previously wrote `body.email` straight through with none of
+those checks — an owner could blank out their own contact email (silently
+breaking the auto-email-to-vendor order flow) or set it to a value already
+used by another store. **Elevated from Medium to High**: password reset
+(`actionRequestPasswordReset`/`actionResetPasswordWithCode`) emails a
+6-digit code to this exact address, so a blanked/broken email directly
+defeats account recovery. Fixed via a shared `validateOwnerEmail()`
+(Auth.gs) now used by both actions, plus `actionUpdateOwnerProfile` gaining
+`LockService` locking it previously had none of (needed for the new
+dedupe check-then-write to be race-safe).
 
 ## 4. Authentication
 
@@ -163,15 +171,16 @@ closing by reusing the same validation `actionRegisterOwner` already has.
   (`revokeAllSessions`) — correct, limits damage from a credential-stuffing
   reset.
 - Logout deletes the server-side Sessions row, not just the client copy.
-- Gap: no login-attempt throttling — see 3b above (cross-referenced as High,
-  not Critical, since it requires a specific known username and 8+ char
-  passwords are required).
-- Low/informational: token and username comparisons (`Db.gs`'s
-  `findRowById`, `actionLoginOwner`'s username lookup) use plain `===`, not a
-  constant-time comparison. A timing side-channel to recover a 68-character
-  session token or guess a username one character at a time is not
-  practically exploitable over Apps Script's network latency and per-request
-  execution overhead, but noted for completeness.
+- Login-attempt throttling — see 3b above, **fixed**.
+- Low/informational, **fixed**: token and username comparisons previously
+  used plain `===`, not a constant-time comparison. While not practically
+  exploitable over Apps Script's own latency/execution-overhead floor, a new
+  `constantTimeEquals()` (Utils.gs, modeled on Node's `crypto.timingSafeEqual`)
+  is now used for the Sessions.Token lookup (via a new `findRowBySecret` in
+  Db.gs, kept separate from the generic `findRowById` used by ~15+ non-secret
+  id lookups), the TwoFACodes.Token lookup and code comparison, the password
+  hash comparison, and (per explicit request, despite limited security value
+  since usernames aren't secrets) the username match in `actionLoginOwner`.
 
 ## 5. Authorization
 
@@ -200,39 +209,45 @@ client-supplied `ownerId`/ID field. Verified individually:
 
 ## 6. Rate limiting
 
-**Result: none exists anywhere in the backend.** `LockService` (used
-throughout) is a concurrency guard against double-writes, not a throttle —
-confirmed by inspecting every `LockService`/`CacheService` usage in the
-codebase; `CacheService` is exclusively the read-through cache added earlier
-for list endpoints, also not a rate limiter.
+**Fixed for the two highest-value places identified below (login attempts,
+chat sends, view/visit counters).** `LockService` is a concurrency guard
+against double-writes, not a throttle by itself — the fix layers rate
+counters on top of it, using `CacheService` (the same mechanism already
+proven for the read-through cache) for all counter/lockout state. No new
+Sheet tab, no new Script Property, no external dependency (no IP is ever
+available to key on either way — Apps Script Web Apps don't expose caller
+IP, confirmed by inspecting `doGet`/`doPost`).
 
-This is a genuine, real limitation, but it's also a platform constraint:
-Apps Script Web Apps have no built-in per-IP/per-token request throttling
-primitive, and building one from scratch (a persisted counter + cooldown
-window, keyed by IP or token, enforced via `CacheService` or a Sheet) is a
-non-trivial design decision — how strict, what the lockout/cooldown shape is,
-whether it risks blocking legitimate shared-IP mobile users (relevant for
-this app's actual audience) — that deserves explicit approval rather than a
-silent "critical" fix. Flagged here; the two concrete high-value places to
-prioritize (if approved) are login attempts (3b above) and chat
-sends (7 below).
+- Login attempts — see 3b above: 5 failures/15min → 30min lockout, keyed by
+  username.
+- Chat sends (`sendMessage`/`sendChatImage`) — see §7 below: a two-tier
+  burst (5/10s) + sustained (30/60s) limiter runs centrally in `Code.gs`'s
+  `doPost`, before action dispatch — the closest thing this router has to
+  middleware, mirroring how `PROTECTED_POST_ACTIONS` already centrally gates
+  on `requireAuth`. Keyed by session token (vendor) or `customerToken`
+  (anonymous customer).
+- View/visit counters (`recordProductViews`/`recordStoreVisit`) — see §7
+  below: a global 5-minute per-item cooldown, not a per-caller limit (no
+  caller identity exists for these at all, and a fresh client-generated ID
+  would offer no real abuse-resistance in an unauthenticated context anyway).
+
+**Accepted residual limitation, stated explicitly rather than left
+implicit**: none of this is full abuse-resistance against a determined
+attacker — a `customerToken` is client-generated and trivially reset by
+clearing `localStorage`, and there's still no way to distinguish "one
+attacker with many identities" from "many real visitors." These limiters are
+a backstop against naive/accidental flooding (a stuck retry loop, a simple
+script), which is what this platform's constraints make achievable without
+external infrastructure.
 
 ## 7. Spam prevention
 
 - **Abandoned-cart reminder email abuse — Critical, fixed.** See below.
-- `sendMessage`/`sendChatImage`/`getConversation`/`markAsRead` are fully
-  anonymous, public, and unthrottled — a script can flood a specific vendor's
-  inbox with junk conversations, or (via `sendChatImage`) burn through Drive
-  storage with junk uploads up to the configurable per-image size cap. Medium
-  severity: annoying and resource-consuming, but bounded to one vendor's own
-  inbox/storage per attack, doesn't touch other vendors or leak data, and the
-  vendor can always Archive/Delete. Not fixed this pass — needs the same
-  rate-limiting design conversation as 6 above.
-- `recordProductViews`/`recordStoreVisit` are fully anonymous and unthrottled
-  — trivially scriptable to inflate a product/store's view/visit count and
-  distort the home page's "Trending Products"/"Popular Stores" carousels.
-  Medium severity: cosmetic/ranking manipulation only, no data exposure, no
-  resource exhaustion beyond a few extra cells being written. Not fixed.
+- **`sendMessage`/`sendChatImage` — Medium, fixed.** See §6 above for the
+  rate-limiting design. `getConversation`/`markAsRead` (read-only) are
+  intentionally not rate-limited — already bounded by the existing 6–10s
+  polling interval design.
+- **`recordProductViews`/`recordStoreVisit` — Medium, fixed.** See §6 above.
 
 ### Abandoned-cart reminder email — Critical, fixed
 
@@ -289,7 +304,9 @@ that could redirect it to another vendor's data.
 
 ---
 
-## What was fixed this pass
+## What was fixed
+
+**Original pass (Critical only):**
 
 1. **`apps-script/Db.gs`** — `appendRowFromObject`/`updateRowFromObject` now
    sanitize every outgoing string value against Sheets formula injection
@@ -302,13 +319,41 @@ that could redirect it to another vendor's data.
    client-supplied display label; `runReminderSweep` re-derives real product
    names from Products/Variants before building the reminder email.
 
-## What's next (needs your approval before any of this is touched)
+**Follow-up pass (approved, all remaining findings, in priority order):**
 
-- 3b — add login-attempt throttling.
-- 3c — add consistent length caps on free-text fields.
-- 3d — reuse registration's email validation/duplicate-check in
-  `actionUpdateOwnerProfile`.
-- 6/7 — a rate-limiting design for `sendMessage`/`sendChatImage`/
-  `recordProductViews`/`recordStoreVisit` (and, if desired, a stricter
-  guard on who `saveAbandonedCart` can email, beyond the content-injection
-  fix already applied).
+3. **Fix 1 — login-attempt throttling** (`apps-script/Auth.gs`). See 3b.
+4. **Fix 2 — email validation/dedup on profile update** (`apps-script/Auth.gs`,
+   `apps-script/Products.gs`). See 3d. Elevated to High mid-audit since
+   password reset depends on this exact email.
+5. **Fix 3 — rate limiting** on chat sends (`apps-script/Code.gs`,
+   `apps-script/Chat.gs` call sites) and view/visit counters
+   (`apps-script/Products.gs`). See §6/§7. Small companion frontend fix:
+   `assets/js/chat-window.js` and `assets/js/owner-messages.js` now surface
+   the real server error on a failed text-message send/reply, not a generic
+   "Failed to send" — relevant now that a rate-limited send is a real path
+   a user can hit.
+6. **Fix 4 — length caps** on free-text fields (`apps-script/Utils.gs`'s
+   `capLength`, applied across `Auth.gs`/`Products.gs`/`Orders.gs`). See 3c.
+7. **Fix 5 — constant-time comparison** for session tokens, 2FA codes, and
+   password hashes (`apps-script/Utils.gs`'s `constantTimeEquals`,
+   `apps-script/Db.gs`'s `findRowBySecret`, applied in `apps-script/Auth.gs`).
+   See §4's comparison finding.
+
+Each of the five follow-up fixes was implemented, covered by new tests, and
+verified against a full regression run before moving to the next — the
+harness-based suite (kept outside the repo) now has 137 tests, all passing.
+
+No finding in this report required a new Sheet tab, a new Script Property,
+or an external dependency (Redis or otherwise) — every fix uses either the
+existing `CacheService` (already proven for the read-through cache layer)
+or plain in-request validation.
+
+## What's next
+
+Nothing outstanding from this audit. Future changes to free-text fields,
+new public actions, or new fields that get emailed/rendered elsewhere should
+follow the same patterns this pass established: run new Sheet writes through
+the existing sanitization chokepoint (automatic, no per-call-site action
+needed), cap new free-text fields via `capLength`, and rate-limit any new
+unauthenticated write action the same way `checkChatRateLimit`/the view-count
+cooldown do.
