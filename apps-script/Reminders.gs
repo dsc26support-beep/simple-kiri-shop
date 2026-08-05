@@ -13,6 +13,36 @@
  */
 
 var REMINDER_DELAY_MS = 60 * 60 * 1000; // 1 hour
+// Bounds the hourly sweep's per-row work (JSON.parse, catalog lookups, email
+// building) so it stops growing with total historical Orders/AbandonedCarts
+// volume - rows older than this could never still be legitimately due, so
+// they're skipped before any of that work runs. Does NOT reduce the
+// underlying Sheets read (sheetToObjects has no server-side filter - see
+// docs/production-readiness-report.md Finding 2); only bounds what happens
+// after that read. Expressed as a multiple of REMINDER_DELAY_MS so the two
+// stay proportionate if the delay is ever retuned - 48x gives a wide,
+// deliberately generous margin so a trigger that's briefly late or misses a
+// run doesn't silently lose a still-reachable row (see
+// docs/production-readiness-report.md Finding 7).
+var REMINDER_LOOKBACK_MS = 48 * REMINDER_DELAY_MS; // 48 hours
+
+/**
+ * True if createdAt is recent enough that a row could still legitimately be
+ * due for a reminder - i.e. within REMINDER_LOOKBACK_MS of now. An
+ * unparseable/malformed CreatedAt is treated as within-window (fails open)
+ * rather than silently excluded, matching this codebase's general
+ * malformed-data convention of degrading gracefully instead of losing rows
+ * quietly. In practice a no-op either way: the existing due-check already
+ * evaluates false for a NaN timestamp, so a malformed row was never
+ * reminded before this change and still won't be - this just keeps that
+ * from becoming an accidental side effect if the conditions are ever
+ * reordered.
+ */
+function isWithinReminderLookback(createdAt) {
+  var createdMs = new Date(createdAt).getTime();
+  if (isNaN(createdMs)) return true;
+  return (Date.now() - createdMs) <= REMINDER_LOOKBACK_MS;
+}
 
 function actionSaveAbandonedCart(body) {
   var slug = String(body.storeSlug || '').trim();
@@ -81,7 +111,8 @@ function runReminderSweep() {
 
   var cartsSheet = getSheet('AbandonedCarts');
   var dueCarts = sheetToObjects(cartsSheet).filter(function (r) {
-    return !r.Reminded && !r.ConvertedOrderId && (now - new Date(r.CreatedAt).getTime()) >= REMINDER_DELAY_MS;
+    return !r.Reminded && !r.ConvertedOrderId && isWithinReminderLookback(r.CreatedAt) &&
+      (now - new Date(r.CreatedAt).getTime()) >= REMINDER_DELAY_MS;
   });
 
   if (dueCarts.length > 0) {
@@ -125,6 +156,7 @@ function runReminderSweep() {
   sheetToObjects(ordersSheet)
     .filter(function (o) {
       return !o.CustomerEmail && o.Status === 'Pending Payment' && !o.NoEmailReminderSent &&
+        isWithinReminderLookback(o.CreatedAt) &&
         (now - new Date(o.CreatedAt).getTime()) >= REMINDER_DELAY_MS;
     })
     .forEach(function (o) {
