@@ -281,7 +281,7 @@ function onEmailBlur(e) {
   Api.post('saveAbandonedCart', {
     storeSlug: currentSlug,
     email,
-    items: cart.map((line) => ({ label: line.label, qty: line.qty }))
+    items: cart.map((line) => ({ productId: line.productId, variantId: line.variantId, qty: line.qty }))
   }).catch(() => {});
 }
 

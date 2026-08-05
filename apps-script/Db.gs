@@ -42,10 +42,30 @@ function findRowById(sheet, idField, idValue) {
   return null;
 }
 
+/**
+ * Sheets (like Excel) interprets a cell value starting with =, +, -, or @ as
+ * a formula - including when written via Range.setValue()/setValues() from
+ * Apps Script, not just typed by hand. Left alone, that turns every free-text
+ * field this app writes from untrusted input (order notes, customer/chat
+ * names, chat messages, product descriptions, ...) into a formula-injection
+ * vector against whoever opens the Sheet later (e.g. IMPORTXML exfiltrating
+ * adjacent cells, or a HYPERLINK(...) phishing link). Prefixing with a
+ * leading apostrophe is the same "force text" marker Sheets itself uses -
+ * the stored/displayed value is unchanged, it just never evaluates as a
+ * formula. Applied once here so every write through the app's one
+ * data-access chokepoint is covered, with no per-call-site sanitization to
+ * remember.
+ */
+function sanitizeForSheetCell(value) {
+  if (typeof value !== 'string') return value;
+  if (/^[=+\-@]/.test(value)) return "'" + value;
+  return value;
+}
+
 function appendRowFromObject(sheet, obj) {
   var headers = getHeaders(sheet);
   var row = headers.map(function (h) {
-    return (obj[h] !== undefined && obj[h] !== null) ? obj[h] : '';
+    return (obj[h] !== undefined && obj[h] !== null) ? sanitizeForSheetCell(obj[h]) : '';
   });
   sheet.appendRow(row);
 }
@@ -55,7 +75,7 @@ function updateRowFromObject(sheet, rowNumber, obj) {
   var headers = getHeaders(sheet);
   var existing = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
   var newRow = headers.map(function (h, i) {
-    return Object.prototype.hasOwnProperty.call(obj, h) ? obj[h] : existing[i];
+    return Object.prototype.hasOwnProperty.call(obj, h) ? sanitizeForSheetCell(obj[h]) : existing[i];
   });
   sheet.getRange(rowNumber, 1, 1, headers.length).setValues([newRow]);
 }

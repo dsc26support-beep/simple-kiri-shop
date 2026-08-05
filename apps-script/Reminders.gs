@@ -25,7 +25,20 @@ function actionSaveAbandonedCart(body) {
   var owner = getOwnerBySlug(slug);
   if (!owner || owner.Status !== 'active') return ok({});
 
-  var items = Array.isArray(body.items) ? body.items : [];
+  // Only the bare identifiers/qty are kept - no client-supplied display text
+  // (e.g. an item "label") is ever persisted here. runReminderSweep()
+  // re-derives real product names from the live catalog before emailing, so
+  // this can't be used to inject attacker-chosen text into an email sent to
+  // an address the client also fully controls. See docs/security-audit.md.
+  var items = (Array.isArray(body.items) ? body.items : [])
+    .map(function (i) {
+      return {
+        productId: String(i.productId || ''),
+        variantId: String(i.variantId || ''),
+        qty: Math.max(1, parseInt(i.qty, 10) || 1)
+      };
+    })
+    .filter(function (i) { return i.productId && i.variantId; });
   var cartJson = JSON.stringify(items);
 
   var sheet = getSheet('AbandonedCarts');
@@ -67,17 +80,34 @@ function runReminderSweep() {
   var now = Date.now();
 
   var cartsSheet = getSheet('AbandonedCarts');
-  sheetToObjects(cartsSheet)
-    .filter(function (r) {
-      return !r.Reminded && !r.ConvertedOrderId && (now - new Date(r.CreatedAt).getTime()) >= REMINDER_DELAY_MS;
-    })
-    .forEach(function (r) {
+  var dueCarts = sheetToObjects(cartsSheet).filter(function (r) {
+    return !r.Reminded && !r.ConvertedOrderId && (now - new Date(r.CreatedAt).getTime()) >= REMINDER_DELAY_MS;
+  });
+
+  if (dueCarts.length > 0) {
+    // Loaded once for every due cart, not per-row - these reminders can
+    // fire in a batch and every cart needs the same live catalog lookup.
+    var products = sheetToObjects(getSheet('Products'));
+    var variants = sheetToObjects(getSheet('Variants'));
+
+    dueCarts.forEach(function (r) {
       var owner = findRowById(getSheet('Owners'), 'OwnerId', r.OwnerId);
       if (!owner || owner.Status !== 'active') return;
 
       var items = [];
       try { items = JSON.parse(r.CartJson || '[]'); } catch (e) { /* malformed row, ignore */ }
-      var lines = items.map(function (i) { return '- ' + i.qty + ' x ' + i.label; }).join('\n');
+
+      // Display names are re-derived from the live catalog, never trusted
+      // from the stored cart - see actionSaveAbandonedCart above and
+      // docs/security-audit.md. Also scoped to this store's own variants so
+      // a productId/variantId that doesn't belong to this owner can't pull
+      // another store's product name into the email.
+      var lines = items.map(function (i) {
+        var variant = variants.filter(function (v) { return v.VariantId === i.variantId && v.OwnerId === r.OwnerId; })[0];
+        var product = variant ? products.filter(function (p) { return p.ProductId === variant.ProductId; })[0] : null;
+        var label = product ? (product.Name + (variant.Label ? ' - ' + variant.Label : '')) : 'an item';
+        return '- ' + (i.qty || 1) + ' x ' + label;
+      }).join('\n');
 
       var subject = 'You left something in your cart at ' + owner.StoreName;
       var body = 'Hi,\n\n' +
@@ -89,6 +119,7 @@ function runReminderSweep() {
       sendAppEmail(r.Email, subject, body);
       updateRowFromObject(cartsSheet, r.__row, { Reminded: nowIso() });
     });
+  }
 
   var ordersSheet = getSheet('Orders');
   sheetToObjects(ordersSheet)
