@@ -9,6 +9,61 @@
 
 var TOKEN_EXPIRY_HOURS_DEFAULT = 168; // 7 days
 
+var LOGIN_FAIL_WINDOW_SECONDS = 15 * 60;
+var LOGIN_FAIL_MAX_ATTEMPTS = 5;
+var LOGIN_LOCKOUT_SECONDS = 30 * 60;
+
+/**
+ * Tracks failed login attempts per lowercased username - no IP is available
+ * to Apps Script Web Apps (doGet/doPost only ever expose e.parameter and
+ * e.postData.contents), so lockout has to key off an identifier the caller
+ * already supplied. 5 failures within a 15-minute window locks that
+ * username out for 30 minutes. Called on every login attempt, success or
+ * failure, so a locked and not-yet-locked username do the same cache
+ * read-then-write work - only the branch taken differs, not the cost of
+ * getting there (the password hash comparison itself already ran before
+ * this is called - see actionLoginOwner).
+ */
+function checkAndRecordLoginAttempt(username, loginSucceeded) {
+  var failKey = 'loginfail:v1:' + username;
+  var lockKey = 'loginlock:v1:' + username;
+  var cache = CacheService.getScriptCache();
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var lockRaw = cache.get(lockKey);
+    if (lockRaw) {
+      var lockState = JSON.parse(lockRaw);
+      var retryAfterMinutes = Math.max(1, Math.ceil((lockState.unlockAt - Date.now()) / 60000));
+      return { locked: true, retryAfterMinutes: retryAfterMinutes };
+    }
+
+    if (loginSucceeded) {
+      cache.remove(failKey);
+      return { locked: false };
+    }
+
+    var now = Date.now();
+    var failRaw = cache.get(failKey);
+    var failState = failRaw ? JSON.parse(failRaw) : { count: 0, firstAt: now };
+    failState.count++;
+
+    if (failState.count >= LOGIN_FAIL_MAX_ATTEMPTS) {
+      var unlockAt = now + LOGIN_LOCKOUT_SECONDS * 1000;
+      try { cache.put(lockKey, JSON.stringify({ unlockAt: unlockAt }), LOGIN_LOCKOUT_SECONDS); } catch (e) { /* best effort */ }
+      cache.remove(failKey);
+      return { locked: true, retryAfterMinutes: Math.ceil(LOGIN_LOCKOUT_SECONDS / 60) };
+    }
+
+    var ttlSeconds = Math.max(1, LOGIN_FAIL_WINDOW_SECONDS - Math.floor((now - failState.firstAt) / 1000));
+    try { cache.put(failKey, JSON.stringify(failState), ttlSeconds); } catch (e) { /* best effort */ }
+    return { locked: false };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getPepper() {
   var pepper = PropertiesService.getScriptProperties().getProperty('PEPPER');
   if (!pepper) throw new Error('Server misconfigured: set PEPPER in Script Properties');
@@ -150,8 +205,20 @@ function actionLoginOwner(body) {
   // doesn't reveal whether the username exists.
   var salt = owner ? owner.PasswordSalt : 'no-such-user-salt';
   var candidateHash = hashPassword(password, salt);
+  var loginSucceeded = ownerCanLogIn(owner) && candidateHash === owner.PasswordHash;
 
-  if (!ownerCanLogIn(owner) || candidateHash !== owner.PasswordHash) {
+  // Runs AFTER the (constant-cost) hash comparison above and BEFORE
+  // branching on its result, so a locked-out username's response isn't
+  // detectably faster than a normal wrong-password one. A nonexistent
+  // username locks out identically to a real one (this is keyed purely on
+  // the submitted string), so this doesn't reopen the enumeration issue the
+  // dummy-hash comparison above already closes.
+  var lockout = checkAndRecordLoginAttempt(username, loginSucceeded);
+  if (lockout.locked) {
+    return fail('Too many failed login attempts. Please try again in ' + lockout.retryAfterMinutes + ' minute(s).');
+  }
+
+  if (!loginSucceeded) {
     return fail(owner && owner.Status === 'closed'
       ? 'This store has been deleted. Contact admin@mwakete.com if this is a mistake.'
       : 'Invalid username or password');
