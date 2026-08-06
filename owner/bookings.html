@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard — Mwakete</title>
+  <title>Bookings — Mwakete</title>
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/styles.css">
   <link rel="stylesheet" href="../assets/css/owner.css">
@@ -13,7 +13,7 @@
 
   <div class="owner-topbar">
     <div class="container">
-      <strong id="store-name-label">Dashboard</strong>
+      <strong id="store-name-label">Bookings</strong>
       <nav class="owner-nav" aria-label="Store owner">
         <ul>
           <li><a href="../index.html">Home</a></li>
@@ -31,26 +31,10 @@
 
   <main id="main" class="owner-main">
     <div class="container">
-      <h1>Welcome<span id="welcome-name"></span></h1>
-      <p><a id="storefront-link" href="#" target="_blank" rel="noopener">View my public storefront →</a></p>
-
-      <div class="dashboard-cards">
-        <div class="dashboard-card">
-          <span class="metric" id="metric-products">–</span>
-          <span>Active Products</span>
-        </div>
-        <div class="dashboard-card">
-          <span class="metric" id="metric-orders">–</span>
-          <span>Total Orders</span>
-        </div>
-        <div class="dashboard-card">
-          <span class="metric" id="metric-pending">–</span>
-          <span>Pending Payment</span>
-        </div>
-      </div>
-
-      <p><a class="btn btn-primary" href="products.html">Manage Products</a>
-      <a class="btn" href="orders.html">View Orders</a></p>
+      <h1>Bookings</h1>
+      <p id="bookings-status" class="helper-text" role="status"></p>
+      <div id="booking-list"></div>
+      <p class="load-more-row"><button type="button" id="bookings-load-more" class="btn btn-small hidden">Load More Bookings</button></p>
     </div>
   </main>
 
@@ -68,6 +52,6 @@
   <script src="../assets/js/cookie-consent.js"></script>
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/owner-nav.js"></script>
-  <script src="../assets/js/owner-dashboard.js"></script>
+  <script src="../assets/js/owner-bookings.js"></script>
 </body>
 </html>

@@ -125,6 +125,7 @@ function openForm(product) {
     document.getElementById('product-name').value = product.name;
     document.getElementById('product-description').value = product.description || '';
     document.getElementById('product-category').value = product.category || 'general';
+    document.getElementById('product-listing-type').value = product.listingType || 'goods';
     document.getElementById('product-status').value = product.status || 'active';
     if (product.imageUrl) {
       preview.src = product.imageUrl;
@@ -147,6 +148,7 @@ function openForm(product) {
     document.getElementById('product-name').value = '';
     document.getElementById('product-description').value = '';
     document.getElementById('product-category').value = 'general';
+    document.getElementById('product-listing-type').value = 'goods';
     document.getElementById('product-status').value = 'active';
     preview.classList.add('hidden');
     preview2.classList.add('hidden');
@@ -244,6 +246,7 @@ async function onSaveProduct(e) {
     name: document.getElementById('product-name').value.trim(),
     description: document.getElementById('product-description').value.trim(),
     category: document.getElementById('product-category').value,
+    listingType: document.getElementById('product-listing-type').value,
     status: document.getElementById('product-status').value,
     variants
   };

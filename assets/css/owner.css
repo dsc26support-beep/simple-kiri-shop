@@ -150,6 +150,7 @@
 .status-badge.status-active,
 .status-badge.status-paid,
 .status-badge.status-fulfilled,
+.status-badge.status-confirmed,
 .status-badge.status-open {
   background: #e3f4e6;
   color: var(--color-success);
@@ -162,6 +163,7 @@
 }
 
 .status-badge.status-cancelled,
+.status-badge.status-declined,
 .status-badge.status-archived {
   background: #fbe4e2;
   color: var(--color-danger);

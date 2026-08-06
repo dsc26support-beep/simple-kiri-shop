@@ -1431,6 +1431,34 @@ legend {
   flex: 1 1 auto;
 }
 
+/* Booking listings (rental cars, hotels, tours, etc.) - date-range request
+   in place of the qty/add-to-cart controls goods listings use. */
+
+.booking-dates-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.booking-dates-row input {
+  flex: 1 1 0;
+}
+
+.booking-contact-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.request-booking-btn {
+  width: 100%;
+}
+
+.booking-request-status {
+  margin-top: var(--space-1);
+}
+
 /* Store directory */
 
 .store-grid {

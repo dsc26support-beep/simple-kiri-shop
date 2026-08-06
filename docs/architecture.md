@@ -95,6 +95,7 @@ Static front end (HTML/CSS/JS)  <-- fetch -->  Apps Script Web App  <-->  Google
   Utils.gs                  Shared helpers, response envelope, caching layer
   Auth.gs                   Registration, login, sessions, 2FA, password reset
   Products.gs                Store directory, product/variant CRUD, owner profile
+  Bookings.gs                  Booking-listing requests + confirm/decline lifecycle
   Orders.gs                   Order creation and management, delivery eligibility
   Images.gs                    Product photo / store logo upload to Drive
   Reminders.gs                  Abandoned-cart and no-email-order reminder sweeps
@@ -111,7 +112,7 @@ Apps Script editor) to go live.
 
 ## 3. Frontend architecture
 
-Static HTML/CSS/JS. 12 HTML pages: 6 customer-facing at the repo root, 6 vendor-facing
+Static HTML/CSS/JS. 13 HTML pages: 6 customer-facing at the repo root, 7 vendor-facing
 under `owner/`.
 
 ### Script loading model
@@ -197,6 +198,12 @@ response is `{ok:true, ...}` or `{ok:false, error}`.
   view/visit counters, cross-store search, and the cached public read actions
   (`listStores`, `listProducts`, `getStorePublicInfo`, `listTopProducts`,
   `listTopStores`).
+- **`Bookings.gs`** — booking-listing requests (`ListingType === 'booking'`) and their
+  confirm/decline lifecycle. The no-double-booking guarantee lives here:
+  `actionUpdateBookingStatus` re-checks for an overlapping already-`Confirmed`
+  booking on the same listing inside a `LockService` lock before allowing a confirm
+  to go through — the same lock-guarded check-then-write pattern `Orders.gs` uses
+  for its own price/stock re-validation.
 - **`Orders.gs`** — order creation (server-recomputed pricing, `LockService`-guarded,
   authoritative delivery-eligibility re-check) and owner order management.
 - **`Images.gs`** — product photo (up to 2 per product) and store logo upload to
@@ -241,6 +248,7 @@ POST body (`body.token`), validated by `requireAuth()` before the handler runs.
 | `registerOwner` | `actionRegisterOwner(body)` | Auth.gs |
 | `loginOwner` | `actionLoginOwner(body)` | Auth.gs |
 | `createOrder` | `actionCreateOrder(body)` | Orders.gs |
+| `createBookingRequest` | `actionCreateBookingRequest(body)` | Bookings.gs |
 | `verifyLoginCode` | `actionVerifyLoginCode(body)` | Auth.gs |
 | `requestPasswordReset` | `actionRequestPasswordReset(body)` | Auth.gs |
 | `resetPasswordWithCode` | `actionResetPasswordWithCode(body)` | Auth.gs |
@@ -262,6 +270,8 @@ POST body (`body.token`), validated by `requireAuth()` before the handler runs.
 | `uploadStoreLogo` | `actionUploadStoreLogo(owner, body)` | Images.gs |
 | `listOwnerOrders` | `actionListOwnerOrders(owner)` | Orders.gs |
 | `updateOrderStatus` | `actionUpdateOrderStatus(owner, body)` | Orders.gs |
+| `listOwnerBookings` | `actionListOwnerBookings(owner, body)` | Bookings.gs |
+| `updateBookingStatus` | `actionUpdateBookingStatus(owner, body)` | Bookings.gs |
 | `setStoreStatus` | `actionSetStoreStatus(owner, body)` | Auth.gs |
 | `enable2FARequest` | `actionEnable2FARequest(owner)` | Auth.gs |
 | `confirm2FASetup` | `actionConfirm2FASetup(owner, body)` | Auth.gs |
@@ -288,8 +298,9 @@ deployments) lives in
 | Tab | Columns |
 |---|---|
 | **Owners** | `OwnerId, StoreName, StoreSlug, Username, PasswordHash, PasswordSalt, Email, Phone, ANZ_AccountName, ANZ_AccountNumber, ANZ_Branch, Teremo_Name, Teremo_Number, PaymentNotes, Status, CreatedAt, TwoFAEnabled, DeliveryTruck, DeliveryShip, DeliveryAirCargo, DeliveryTruckCost, DeliveryShipCost, DeliveryAirCargoCost, Island, Village, LogoUrl, LogoFileId, Visits` |
-| **Products** | `ProductId, OwnerId, StoreSlug, Name, Description, Category, ImageUrl, ImageFileId, ImageUrl2, ImageFileId2, Status, SortOrder, CreatedAt, UpdatedAt, Views` |
+| **Products** | `ProductId, OwnerId, StoreSlug, Name, Description, Category, ListingType, ImageUrl, ImageFileId, ImageUrl2, ImageFileId2, Status, SortOrder, CreatedAt, UpdatedAt, Views` |
 | **Variants** | `VariantId, ProductId, OwnerId, Label, Price, SKU, StockQty, Status` |
+| **Bookings** | `BookingId, OwnerId, StoreSlug, ProductId, ProductName, VariantId, RateLabel, RatePrice, CustomerName, CustomerPhone, CustomerEmail, Island, Village, Notes, StartDate, EndDate, Status, CreatedAt, UpdatedAt` |
 | **Orders** | `OrderId, OwnerId, StoreSlug, CustomerName, CustomerPhone, CustomerEmail, Island, Village, DeliveryAddress, DeliveryMethod, DeliveryCost, Notes, PaymentMethod, PaymentReference, ItemsJson, ItemsSummary, Subtotal, Total, Status, CreatedAt, UpdatedAt, NoEmailReminderSent` |
 | **Sessions** | `Token, OwnerId, CreatedAt, ExpiresAt` |
 | **TwoFACodes** | `Token, OwnerId, Code, Purpose, CreatedAt, ExpiresAt, Attempts` |
@@ -304,6 +315,12 @@ Notes:
 - `Orders.ItemsJson` is an immutable snapshot of exactly what was bought and at what
   price, recomputed server-side at order time — never trust the client's submitted
   price.
+- `Products.ListingType` (`goods` default, or `booking`) splits the catalog into two
+  demand paths: `goods` listings use `Variants` + cart/checkout as always; `booking`
+  listings (rental cars, hotels, tours) still use `Variants` as their rate options,
+  but customers submit a date-range request into `Bookings` instead — no cart, no
+  checkout. `Bookings.ProductName`/`RateLabel`/`RatePrice` are snapshotted the same
+  way `Orders.ItemsJson` is, for the same reason.
 - Soft deletes throughout: a product's `Status` becomes `archived` (never removed), a
   variant dropped from an edit becomes `Status: deleted`, and a store's `Status`
   moves through `active` / `standby` / `closed` — no row is ever hard-deleted by the
@@ -367,6 +384,15 @@ that `OwnerId` before allowing a read or write.
 4. `owner/orders.html` — lists this owner's orders newest-first, lets the owner
    update each order's `Status` (`Pending Payment` → `Paid` → `Fulfilled`, or
    `Cancelled`).
+4b. `owner/bookings.html` — for `booking`-type listings only (Section 3 note on
+   `ListingType`). Lists booking requests newest-first; the owner confirms or
+   declines a `Pending` one, or cancels a `Confirmed` one — no other transition is
+   allowed (unlike Orders' any-status-to-any-status update, this is enforced
+   server-side via an explicit transition table). Confirming re-checks, inside a
+   `LockService` lock, that no other `Confirmed` booking on the same listing
+   overlaps these dates — see `actionUpdateBookingStatus` in `Bookings.gs`. A
+   `Pending` row already conflicting with a `Confirmed` one is flagged
+   (`overlapsConfirmed`) so the owner knows to decline it.
 5. `owner/settings.html` — store name/contact, delivery methods (Truck/Ship/Air
    Cargo, each independently toggleable with its own price), island/village
    location, store logo, password change, 2FA enable/disable, and store status.
@@ -410,6 +436,17 @@ No accounts. A customer's entire "identity" is `localStorage` on their own devic
    visitor (deduped via a `localStorage` set), batched into one POST per page load,
    and drive the home page's Trending Products / Popular Stores carousels
    (`listTopProducts` / `listTopStores`, top 20 by count).
+7. **Booking listings** (`Products.ListingType === 'booking'`) skip steps 2-4 above
+   entirely — no cart, no checkout. On `store.html`, such a listing renders a rate
+   picker, a start/end date pair, and a "Request Booking" button instead of
+   qty/Add to Cart; submitting calls `createBookingRequest` directly. The request is
+   rejected up front if it overlaps a booking already `Confirmed` for that listing,
+   but two customers *can* both have overlapping `Pending` requests — the vendor
+   resolves that by confirming one (Section 8, step 4b). **No double bookings is a
+   hard guarantee, not just a request-time check**: it's enforced again inside a
+   `LockService` lock at the moment a `Pending` booking is confirmed, which is the
+   only point two requests could otherwise race each other into both being
+   Confirmed.
 
 ---
 

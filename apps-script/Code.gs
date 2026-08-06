@@ -9,7 +9,7 @@
  */
 
 var PUBLIC_POST_ACTIONS = [
-  'registerOwner', 'loginOwner', 'createOrder',
+  'registerOwner', 'loginOwner', 'createOrder', 'createBookingRequest',
   'verifyLoginCode', 'requestPasswordReset', 'resetPasswordWithCode',
   'saveAbandonedCart', 'recordProductViews', 'recordStoreVisit',
   // Chat: these three serve BOTH sides of a conversation (anonymous customer
@@ -22,6 +22,7 @@ var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
   'createProduct', 'updateProduct', 'deleteProduct', 'uploadProductImage', 'uploadStoreLogo',
   'listOwnerOrders', 'updateOrderStatus', 'setStoreStatus',
+  'listOwnerBookings', 'updateBookingStatus',
   'enable2FARequest', 'confirm2FASetup', 'disable2FA',
   'getVendorConversations', 'deleteConversation', 'archiveConversation', 'getUnreadCount'
 ];
@@ -110,6 +111,7 @@ function doPost(e) {
         case 'registerOwner': return jsonOut(actionRegisterOwner(body));
         case 'loginOwner': return jsonOut(actionLoginOwner(body));
         case 'createOrder': return jsonOut(actionCreateOrder(body));
+        case 'createBookingRequest': return jsonOut(actionCreateBookingRequest(body));
         case 'verifyLoginCode': return jsonOut(actionVerifyLoginCode(body));
         case 'requestPasswordReset': return jsonOut(actionRequestPasswordReset(body));
         case 'resetPasswordWithCode': return jsonOut(actionResetPasswordWithCode(body));
@@ -145,6 +147,8 @@ function doPost(e) {
         case 'listOwnerOrders': return jsonOut(actionListOwnerOrders(owner, body));
         case 'updateOrderStatus': return jsonOut(actionUpdateOrderStatus(owner, body));
         case 'setStoreStatus': return jsonOut(actionSetStoreStatus(owner, body));
+        case 'listOwnerBookings': return jsonOut(actionListOwnerBookings(owner, body));
+        case 'updateBookingStatus': return jsonOut(actionUpdateBookingStatus(owner, body));
         case 'enable2FARequest': return jsonOut(actionEnable2FARequest(owner));
         case 'confirm2FASetup': return jsonOut(actionConfirm2FASetup(owner, body));
         case 'disable2FA': return jsonOut(actionDisable2FA(owner));

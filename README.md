@@ -73,16 +73,30 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    script manages it.)
 
    **Products**
-   `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt | Views`
+   `ProductId | OwnerId | StoreSlug | Name | Description | Category | ListingType | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt | Views`
 
    (`ImageUrl2`/`ImageFileId2` hold an optional second product photo — each
    product supports up to 2 photos, shown as a swipeable carousel on the
    storefront. `Views` is a running count of unique visitors who've seen
    that product's card anywhere on the site — see "View/visit tracking"
-   below. Leave it blank; the script manages it.)
+   below. Leave it blank; the script manages it. `ListingType` is `goods`
+   (the default — customers add it to a cart and checkout) or `booking` —
+   see "Booking listings" below. A blank cell is treated as `goods`.)
 
    **Variants**
    `VariantId | ProductId | OwnerId | Label | Price | SKU | StockQty | Status`
+
+   (For a `booking`-type product, each variant is a rate rather than a size/
+   pack — e.g. `Per Night` / `Per Day` / `Per Trip`.)
+
+   **Bookings** (date-range requests against a `booking`-type Product — see
+   "Booking listings" below)
+   `BookingId | OwnerId | StoreSlug | ProductId | ProductName | VariantId | RateLabel | RatePrice | CustomerName | CustomerPhone | CustomerEmail | Island | Village | Notes | StartDate | EndDate | Status | CreatedAt | UpdatedAt`
+
+   (`ProductName`/`RateLabel`/`RatePrice` are snapshotted at request time, so
+   a booking keeps showing what the customer actually saw even if the
+   listing is edited later. `Status` is one of `Pending` / `Confirmed` /
+   `Declined` / `Cancelled`.)
 
    **Orders**
    `OrderId | OwnerId | StoreSlug | CustomerName | CustomerPhone | CustomerEmail | Island | Village | DeliveryAddress | DeliveryMethod | DeliveryCost | Notes | PaymentMethod | PaymentReference | ItemsJson | ItemsSummary | Subtotal | Total | Status | CreatedAt | UpdatedAt | NoEmailReminderSent`
@@ -118,16 +132,19 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `Owners`, add `ImageUrl2`, `ImageFileId2`, and `Views` to the end of
    `Products`, add `Island`, `Village`, `DeliveryMethod`, `DeliveryCost`, and
    `NoEmailReminderSent` to the end of `Orders`, add `ImageUrl` and
-   `ImageFileId` to the end of `Messages` (photo attachments in chat), and add
-   the new `TwoFACodes`, `AbandonedCarts`, `Conversations`, and `Messages`
-   tabs — everything else stays the same.
+   `ImageFileId` to the end of `Messages` (photo attachments in chat), add
+   `ListingType` to the end of `Products` (see "Booking listings" below —
+   every existing row is treated as `goods` until you set it), add the new
+   `Bookings` tab (see its column list above), and add the new `TwoFACodes`,
+   `AbandonedCarts`, `Conversations`, and `Messages` tabs — everything else
+   stays the same.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
-   `Orders.gs`, `Images.gs`, `Reminders.gs`, `Chat.gs`) and paste in the
-   matching source from this repo. (`Chat.gs` is data-layer helpers only —
-   see the Conversations/Messages note above — safe to include now even
-   though nothing calls it yet.)
+   `Bookings.gs`, `Orders.gs`, `Images.gs`, `Reminders.gs`, `Chat.gs`) and
+   paste in the matching source from this repo. (`Chat.gs` is data-layer
+   helpers only — see the Conversations/Messages note above — safe to
+   include now even though nothing calls it yet.)
 
 3. **Project Settings → Script Properties**, add:
    - `PEPPER` — a long random string (used to salt+pepper password hashes).
@@ -260,6 +277,38 @@ opt-in, and a deployment that never adds the tab behaves exactly as before.
 Abandoned carts older than ~12 months are deleted outright by the same
 sweep (no archive tab, no opt-in) — nothing in this app ever displays
 historical abandoned-cart data to anyone, so there's nothing to preserve.
+
+## Booking listings (rental cars, hotels, tours, etc.)
+
+Alongside regular `goods` products (add to cart, checkout), a vendor can
+create a `booking`-type listing — Settings → the "Listing Type" dropdown when
+adding/editing a product. A booking listing skips cart/checkout entirely:
+
+1. The customer picks a rate (a Variant, e.g. "Per Night"), a start/end date,
+   and submits a booking request directly from the store page.
+2. The request lands in `Bookings` as `Pending` — no email/payment is
+   collected or processed automatically, same as everywhere else in this
+   app.
+3. The vendor sees it on the new **Bookings** page (owner dashboard nav) and
+   manually **Confirms** or **Declines** it. Once Confirmed, it can later be
+   **Cancelled**. No other status changes are allowed (e.g. a Declined
+   booking can't be re-confirmed — the customer would need to submit a new
+   request).
+
+**No double bookings, guaranteed.** Two Confirmed bookings can never have
+overlapping dates on the same listing. This isn't just a check when the
+customer submits a request (multiple customers *can* have overlapping
+Pending requests — the vendor picks one) — it's enforced again, inside a
+`LockService` lock, at the moment the vendor clicks Confirm
+(`actionUpdateBookingStatus` in `apps-script/Bookings.gs`), which re-reads
+the live `Bookings` sheet and rejects the confirmation if another booking on
+the same listing was just confirmed for an overlapping range. If a Pending
+request already conflicts with a Confirmed one, the owner's Bookings page
+flags it so the vendor knows to decline it instead.
+
+Booking listings are excluded from the home page "Trending Products"
+carousel and store pages' "Similar Products" row, since both assume an
+add-to-cart affordance a booking listing doesn't have.
 
 ## Store status (Settings → Store Status)
 

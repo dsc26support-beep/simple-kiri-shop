@@ -22,21 +22,60 @@ function renderProductCard(product) {
         </div>`
       : '';
 
+  const pid = escapeHtml(product.productId);
+
+  if (product.listingType === 'booking') {
+    return `
+      <article class="product-card" data-product-id="${pid}">
+        ${media}
+        ${thumbs}
+        <div class="product-card-body">
+          <h3 class="product-name">${escapeHtml(product.name)}</h3>
+          ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
+          <div class="product-controls">
+            <label class="sr-only" for="variety-${pid}">Choose a rate for ${escapeHtml(product.name)}</label>
+            <select id="variety-${pid}" class="variety-select">${options}</select>
+          </div>
+          <div class="booking-dates-row">
+            <label class="sr-only" for="start-${pid}">Start date</label>
+            <input id="start-${pid}" class="booking-start-input" type="date">
+            <label class="sr-only" for="end-${pid}">End date</label>
+            <input id="end-${pid}" class="booking-end-input" type="date">
+          </div>
+          <div class="booking-contact-fields">
+            <label class="sr-only" for="name-${pid}">Your name</label>
+            <input id="name-${pid}" class="booking-name-input" placeholder="Your name">
+            <label class="sr-only" for="phone-${pid}">Phone number</label>
+            <input id="phone-${pid}" class="booking-phone-input" placeholder="Phone number" inputmode="tel">
+            <label class="sr-only" for="notes-${pid}">Notes (optional)</label>
+            <textarea id="notes-${pid}" class="booking-notes-input" placeholder="Notes (optional)"></textarea>
+          </div>
+          <div class="product-actions">
+            <button type="button" class="btn btn-primary request-booking-btn" data-product-id="${pid}" data-product-name="${escapeHtml(product.name)}">
+              Request Booking
+            </button>
+          </div>
+          <p class="booking-request-status helper-text" id="booking-status-${pid}" role="status"></p>
+        </div>
+      </article>
+    `;
+  }
+
   return `
-    <article class="product-card" data-product-id="${escapeHtml(product.productId)}">
+    <article class="product-card" data-product-id="${pid}">
       ${media}
       ${thumbs}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
         <div class="product-controls">
-          <label class="sr-only" for="variety-${escapeHtml(product.productId)}">Choose an option for ${escapeHtml(product.name)}</label>
-          <select id="variety-${escapeHtml(product.productId)}" class="variety-select">${options}</select>
+          <label class="sr-only" for="variety-${pid}">Choose an option for ${escapeHtml(product.name)}</label>
+          <select id="variety-${pid}" class="variety-select">${options}</select>
         </div>
         <div class="product-actions">
-          <label class="sr-only" for="qty-${escapeHtml(product.productId)}">Quantity</label>
-          <input id="qty-${escapeHtml(product.productId)}" class="qty-input" type="number" min="1" value="1" inputmode="numeric">
-          <button type="button" class="btn btn-primary add-to-cart-btn" data-product-id="${escapeHtml(product.productId)}" data-product-name="${escapeHtml(product.name)}">
+          <label class="sr-only" for="qty-${pid}">Quantity</label>
+          <input id="qty-${pid}" class="qty-input" type="number" min="1" value="1" inputmode="numeric">
+          <button type="button" class="btn btn-primary add-to-cart-btn" data-product-id="${pid}" data-product-name="${escapeHtml(product.name)}">
             Add to Cart
           </button>
         </div>

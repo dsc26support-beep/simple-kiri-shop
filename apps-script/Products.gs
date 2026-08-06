@@ -72,6 +72,7 @@ function actionListTopProducts() {
           name: p.Name,
           description: p.Description,
           category: p.Category,
+          listingType: p.ListingType || 'goods',
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           storeSlug: owner.StoreSlug,
@@ -89,7 +90,10 @@ function actionListTopProducts() {
         product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
         return product;
       })
-      .filter(function (p) { return p.variants.length > 0; })
+      // Booking listings have no add-to-cart affordance, which this
+      // "trending products" carousel assumes every card has - excluded here
+      // rather than given a broken card.
+      .filter(function (p) { return p.listingType !== 'booking' && p.variants.length > 0; })
       .sort(function (a, b) { return b.views - a.views; })
       .slice(0, 20);
   });
@@ -250,6 +254,7 @@ function actionSearchProducts(params) {
           name: p.Name,
           description: p.Description,
           category: p.Category,
+          listingType: p.ListingType || 'goods',
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           storeSlug: owner.StoreSlug,
@@ -311,6 +316,7 @@ function actionListProducts(params) {
           name: p.Name,
           description: p.Description,
           category: p.Category,
+          listingType: p.ListingType || 'goods',
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           variants: productVariants
@@ -366,6 +372,7 @@ function actionListOwnerProducts(owner, body) {
       name: p.Name,
       description: p.Description,
       category: p.Category,
+      listingType: p.ListingType || 'goods',
       imageUrl: p.ImageUrl,
       imageUrl2: p.ImageUrl2,
       status: p.Status,
@@ -377,6 +384,8 @@ function actionListOwnerProducts(owner, body) {
   return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length });
 }
 
+var VALID_LISTING_TYPES = ['goods', 'booking'];
+
 function actionCreateOrUpdateProduct(owner, body) {
   var name = String(body.name || '').trim();
   if (!name) return fail('Product name is required');
@@ -386,6 +395,8 @@ function actionCreateOrUpdateProduct(owner, body) {
   if (descErr) return descErr;
   var categoryErr = capLength(body.category, 50, 'Category');
   if (categoryErr) return categoryErr;
+  if (body.listingType && VALID_LISTING_TYPES.indexOf(body.listingType) === -1) return fail('Invalid listing type');
+  var listingType = body.listingType === 'booking' ? 'booking' : 'goods';
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -404,6 +415,7 @@ function actionCreateOrUpdateProduct(owner, body) {
         Name: name,
         Description: body.description || '',
         Category: body.category || '',
+        ListingType: body.listingType !== undefined ? listingType : (existing.ListingType || 'goods'),
         ImageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.ImageUrl,
         ImageFileId: body.imageFileId !== undefined ? body.imageFileId : existing.ImageFileId,
         ImageUrl2: body.imageUrl2 !== undefined ? body.imageUrl2 : existing.ImageUrl2,
@@ -421,6 +433,7 @@ function actionCreateOrUpdateProduct(owner, body) {
         Name: name,
         Description: body.description || '',
         Category: body.category || '',
+        ListingType: listingType,
         ImageUrl: body.imageUrl || '',
         ImageFileId: body.imageFileId || '',
         ImageUrl2: body.imageUrl2 || '',

@@ -79,6 +79,9 @@ async function loadSimilarProducts() {
   const ownNames = currentProducts.map((p) => p.name);
   const similar = res.products
     .filter((p) => p.storeSlug !== currentSlug)
+    // Booking listings have no add-to-cart affordance, which
+    // renderBrowseProductCard's grid assumes every card has.
+    .filter((p) => p.listingType !== 'booking')
     .filter((p) => ownNames.some((name) => namesShareEquivalentWord(name, p.name)))
     .slice(0, 10);
   if (similar.length === 0) return;
@@ -103,6 +106,63 @@ function showAddingToCartState(btn) {
   }, 900);
 }
 
+// A booking request is a one-shot action per card (unlike Add to Cart,
+// which can repeat) - success leaves the button permanently disabled with a
+// "Requested" label rather than reverting after a timeout.
+async function onRequestBooking(btn) {
+  const productId = btn.dataset.productId;
+  const product = currentProducts.find((p) => p.productId === productId);
+  if (!product) return;
+
+  const statusEl = document.getElementById(`booking-status-${productId}`);
+  const select = document.getElementById(`variety-${productId}`);
+  const startInput = document.getElementById(`start-${productId}`);
+  const endInput = document.getElementById(`end-${productId}`);
+  const nameInput = document.getElementById(`name-${productId}`);
+  const phoneInput = document.getElementById(`phone-${productId}`);
+  const notesInput = document.getElementById(`notes-${productId}`);
+
+  const customerName = nameInput.value.trim();
+  const customerPhone = phoneInput.value.trim();
+  if (!customerName || !customerPhone) {
+    statusEl.textContent = 'Please enter your name and phone number.';
+    return;
+  }
+  if (!startInput.value || !endInput.value) {
+    statusEl.textContent = 'Please choose a start and end date.';
+    return;
+  }
+  if (startInput.value >= endInput.value) {
+    statusEl.textContent = 'End date must be after start date.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = 'Sending<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+  statusEl.textContent = '';
+
+  const res = await Api.post('createBookingRequest', {
+    storeSlug: currentSlug,
+    productId,
+    variantId: select.value,
+    startDate: startInput.value,
+    endDate: endInput.value,
+    customerName,
+    customerPhone,
+    notes: notesInput.value.trim()
+  });
+
+  if (!res.ok) {
+    statusEl.textContent = res.error || 'Could not send this booking request.';
+    btn.disabled = false;
+    btn.textContent = 'Request Booking';
+    return;
+  }
+
+  btn.textContent = 'Requested';
+  statusEl.textContent = 'Booking request sent — the vendor will confirm or decline.';
+}
+
 function wireProductEvents() {
   document.getElementById('product-list').addEventListener('click', (e) => {
     const thumbBtn = e.target.closest('.product-gallery-thumb');
@@ -112,6 +172,12 @@ function wireProductEvents() {
       if (track) track.scrollTo({ left: track.clientWidth * Number(thumbBtn.dataset.index), behavior: 'smooth' });
       card.querySelectorAll('.product-gallery-thumb').forEach((b) => b.classList.remove('active'));
       thumbBtn.classList.add('active');
+      return;
+    }
+
+    const bookingBtn = e.target.closest('.request-booking-btn');
+    if (bookingBtn) {
+      onRequestBooking(bookingBtn);
       return;
     }
 
