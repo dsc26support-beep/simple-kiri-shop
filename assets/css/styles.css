@@ -375,6 +375,15 @@ footer.site-footer .copyright {
   right: max(var(--space-3), env(safe-area-inset-right));
 }
 
+/* Cart button on store.html: 33% smaller, 50%-transparent background.
+   transform-origin keeps it anchored to the left/bottom edges as it shrinks,
+   rather than shrinking toward its center and drifting off position. */
+.floating-action-btn--cart {
+  transform: scale(0.67);
+  transform-origin: left bottom;
+  background: rgba(0, 63, 135, 0.5);
+}
+
 /*
  * Chat floating action button - circular, icon-only, distinct from the
  * pill/label style above on purpose (bottom-right circular chat bubble is
