@@ -375,13 +375,14 @@ footer.site-footer .copyright {
   right: max(var(--space-3), env(safe-area-inset-right));
 }
 
-/* Cart button on store.html: 33% smaller, 50%-transparent background.
-   transform-origin keeps it anchored to the left/bottom edges as it shrinks,
-   rather than shrinking toward its center and drifting off position. */
+/* Cart button on store.html: orange, 80%-transparent background, sized at
+   134% (100% bigger than the prior 67% size). transform-origin keeps it
+   anchored to the left/bottom edges as it scales, rather than scaling from
+   its center and drifting off position. */
 .floating-action-btn--cart {
-  transform: scale(0.67);
+  transform: scale(1.34);
   transform-origin: left bottom;
-  background: rgba(0, 63, 135, 0.5);
+  background: rgba(255, 165, 0, 0.2);
 }
 
 /*
