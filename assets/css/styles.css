@@ -375,14 +375,14 @@ footer.site-footer .copyright {
   right: max(var(--space-3), env(safe-area-inset-right));
 }
 
-/* Cart button on store.html: orange, 25%-transparent background, sized at
-   ~100.5% (25% smaller than the prior 134%). transform-origin keeps it
-   anchored to the left/bottom edges as it scales, rather than scaling from
-   its center and drifting off position. */
+/* Cart button on store.html: light blue (--color-blue-light, same hue the
+   chat FAB uses), 25%-transparent background, sized at ~100.5%. transform-
+   origin keeps it anchored to the left/bottom edges as it scales, rather
+   than scaling from its center and drifting off position. */
 .floating-action-btn--cart {
   transform: scale(1.005);
   transform-origin: left bottom;
-  background: rgba(255, 165, 0, 0.75);
+  background: rgba(91, 155, 213, 0.75); /* --color-blue-light */
 }
 
 /*
