@@ -385,6 +385,15 @@ footer.site-footer .copyright {
   background: rgba(91, 155, 213, 0.75); /* --color-blue-light */
 }
 
+/* "Continue Shopping" button on cart.html: 50% smaller, light blue
+   (#5b9bd5), 10%-transparent background. transform-origin keeps it anchored
+   to the left/bottom edges as it shrinks. */
+.floating-action-btn--continue-shopping {
+  transform: scale(0.5);
+  transform-origin: left bottom;
+  background: rgba(91, 155, 213, 0.9);
+}
+
 /*
  * Chat floating action button - circular, icon-only, distinct from the
  * pill/label style above on purpose (bottom-right circular chat bubble is
