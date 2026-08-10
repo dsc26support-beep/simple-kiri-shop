@@ -87,6 +87,36 @@ function initChatWindow() {
     localStorage.setItem('skiri_chat_lastseen_' + storeSlug, messageId);
   }
 
+  /**
+   * The header's name/avatar were static placeholders ("This Store" / "S")
+   * in the HTML with nothing ever wiring them up to the real store - fixed
+   * here by fetching the same cached public store-info endpoint the rest of
+   * the app already uses (Products.gs's actionGetStorePublicInfo), rather
+   * than depending on whatever the host page's own script (store.js/
+   * cart-page.js/checkout.js) happens to have loaded, since this file is
+   * shared across all three pages and should work self-contained.
+   */
+  async function loadVendorHeader() {
+    if (!storeSlug) return;
+    const res = await Api.get('getStorePublicInfo', { storeSlug });
+    if (!res.ok || !res.store) return;
+
+    const nameEl = document.getElementById('chat-window-vendor-name');
+    if (nameEl) nameEl.textContent = res.store.storeName || 'This Store';
+
+    const placeholder = document.getElementById('chat-vendor-avatar-placeholder');
+    if (!placeholder) return;
+    if (res.store.logoUrl) {
+      const img = document.createElement('img');
+      img.className = 'chat-vendor-avatar';
+      img.src = res.store.logoUrl;
+      img.alt = '';
+      placeholder.replaceWith(img);
+    } else {
+      placeholder.textContent = initials(res.store.storeName);
+    }
+  }
+
   function updateBadge(count) {
     if (!badge) return;
     if (count > 0) {
@@ -488,4 +518,5 @@ function initChatWindow() {
   });
 
   checkForUnreadMessages();
+  loadVendorHeader();
 }
