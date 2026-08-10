@@ -84,7 +84,7 @@ function renderBrowseProductCard(product, opts) {
       ${media}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <p class="helper-text">Sold by ${escapeHtml(product.storeName)}</p>
+        <p class="helper-text">${soldByVerb(product.category)} ${escapeHtml(product.storeName)}</p>
         ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
         ${renderDeliveryIcons({
           truck: product.storeDeliveryTruck,
@@ -235,6 +235,14 @@ function renderCategoryButtons(containerId) {
 // cart/checkout.
 const BOOKING_CATEGORIES = ['rentals', 'services'];
 function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
+
+// "Sold by" only makes sense for a goods listing that's actually purchased -
+// a Rentals/Services listing is booked, not sold, from someone.
+function soldByVerb(category) {
+  if (category === 'rentals') return 'Rent by';
+  if (category === 'services') return 'Service by';
+  return 'Sold by';
+}
 
 // Self-contained inline-SVG icons (no external icon library/CDN) - keep the
 // site working offline-first on limited mobile data.
