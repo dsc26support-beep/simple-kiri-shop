@@ -57,6 +57,7 @@ function initChatWindow() {
   let oldestBubble = null; // DOM node of the earliest rendered bubble - the prepend anchor
   let hasMoreBefore = false;
   let isLoadingEarlier = false;
+  let lastTypingSignalSentAt = 0;
 
   function scrollMessagesToBottom() {
     body.scrollTop = body.scrollHeight;
@@ -218,6 +219,34 @@ function initChatWindow() {
     loadingEl.innerHTML = '<span class="chat-spinner" aria-hidden="true"></span><span>Loading conversation…</span>';
   }
 
+  /**
+   * The three-dot bubble already existed in the HTML/CSS (used only as a
+   * DOM anchor for message inserts) - this is what actually drives it,
+   * fed by getConversation's otherPartyTyping flag on every load/poll.
+   * Only ever reflects the vendor's signal; nothing to show before the
+   * customer has an actual conversation.
+   */
+  function showTyping(isTyping) {
+    if (!typingEl) return;
+    typingEl.classList.toggle('hidden', !isTyping);
+    if (isTyping) scrollMessagesToBottom();
+  }
+
+  /**
+   * Fire-and-forget, debounced to at most once per ~2.5s while actively
+   * typing - matches TYPING_SIGNAL_TTL_SECONDS (6s) on the backend with
+   * margin, so continuous typing never has a visible gap where the vendor's
+   * dots flicker off between signals. Never awaited/surfaced - a failed
+   * typing signal isn't worth interrupting anything for.
+   */
+  function sendTypingSignal() {
+    if (!storeSlug || !customerToken) return;
+    const now = Date.now();
+    if (now - lastTypingSignalSentAt < 2500) return;
+    lastTypingSignalSentAt = now;
+    Api.post('setTyping', { storeSlug, customerToken }).catch(() => {});
+  }
+
   function updateLoadEarlierButton() {
     if (!loadEarlierBtn) return;
     if (hasMoreBefore) loadEarlierBtn.classList.remove('hidden');
@@ -248,6 +277,8 @@ function initChatWindow() {
       if (!isPoll) showLoadError();
       return false; // background polls fail silently and retry next interval
     }
+
+    showTyping(!!res.otherPartyTyping);
 
     if (!isPoll) {
       loadingEl.classList.add('hidden');
@@ -490,6 +521,7 @@ function initChatWindow() {
     input.style.height = Math.min(input.scrollHeight, 100) + 'px';
   }
   input.addEventListener('input', autoResizeInput);
+  input.addEventListener('input', sendTypingSignal);
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

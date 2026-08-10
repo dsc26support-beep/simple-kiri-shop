@@ -34,6 +34,19 @@ var CHAT_CONVERSATIONS_CACHE_TTL_SECONDS = 8;
 
 function chatMessagesCacheKey(conversationId) { return 'v1:chat:messages:' + conversationId; }
 function chatConversationsCacheKey(ownerId) { return 'v1:chat:conversations:' + ownerId; }
+
+/**
+ * "Is typing" is pure transient presence - nothing worth a Sheet row, and
+ * nothing that should survive longer than a few seconds. Backed by
+ * CacheService only, same as the rate-limit counters in Code.gs. TTL is
+ * intentionally longer than the client's typing-signal debounce interval
+ * (chat-window.js/owner-messages.js re-send every ~2.5s while actively
+ * typing) so continuous typing never has a visible gap where the flag
+ * expires between two signals.
+ */
+var TYPING_SIGNAL_TTL_SECONDS = 6;
+function typingCacheKey(conversationId, senderType) { return 'v1:chat:typing:' + conversationId + ':' + senderType; }
+function otherSenderType(senderType) { return senderType === 'vendor' ? 'customer' : 'vendor'; }
 // 'deleted'/'archived' are vendor-only housekeeping states (see
 // actionDeleteConversation/actionArchiveConversation below) - a soft delete,
 // consistent with every other "delete" in this codebase (archived products,
@@ -372,26 +385,61 @@ function resolveChatRequest(body, opts) {
 }
 
 /**
+ * Best-effort "new message" email nudge to the vendor, so they don't have
+ * to keep the dashboard open to notice a customer wrote in. This app has no
+ * mobile app and no push-notification service (Firebase Cloud Messaging,
+ * etc.) to send a real push to a phone - email is the closest equivalent
+ * available here, and in practice shows up as a phone notification for
+ * anyone with their store email on their phone's mail app. Throttled per
+ * CONVERSATION, not per message (same cooldown-key pattern as Products.gs's
+ * view/visit counters) - a customer sending several messages in a row
+ * should trigger one nudge, not one email per message.
+ */
+var CHAT_NEW_MESSAGE_EMAIL_COOLDOWN_SECONDS = 10 * 60;
+function notifyVendorOfNewMessage(conversation, previewText) {
+  var cache = CacheService.getScriptCache();
+  var cooldownKey = 'v1:chat:msgnotify:' + conversation.ConversationId;
+  if (cache.get(cooldownKey)) return;
+  try { cache.put(cooldownKey, '1', CHAT_NEW_MESSAGE_EMAIL_COOLDOWN_SECONDS); } catch (e) { /* best effort */ }
+
+  var owner = findRowById(getSheet('Owners'), 'OwnerId', conversation.OwnerId);
+  if (!owner || !owner.Email) return;
+
+  var customerLabel = conversation.CustomerName ? conversation.CustomerName : 'A customer';
+  sendAppEmail(
+    owner.Email,
+    'New message from ' + customerLabel + ' - ' + owner.StoreName,
+    customerLabel + ' just messaged your store "' + owner.StoreName + '":\n\n"' + previewText + '"\n\nOpen your Messages inbox to reply.'
+  );
+}
+
+/**
  * Public action. Sends a message from either side (see resolveChatRequest) -
  * creates the conversation on a customer's first message. Lock-guarded
- * around the find-or-create-then-append sequence, same as actionCreateOrder.
+ * around the find-or-create-then-append sequence, same as actionCreateOrder -
+ * released BEFORE the (slow, network-bound) notification email, so a vendor
+ * notification never holds up every other locked action across the app.
  */
 function actionSendMessage(body) {
   var resolved = resolveChatRequest(body, { createIfMissing: true });
   if (!resolved.ok) return fail(resolved.error);
 
+  var message;
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    var message = appendMessage(resolved.conversation, resolved.senderType, body.body);
-    if (!message) return fail('Message text is required');
-    return ok({
-      conversationId: resolved.conversation.ConversationId,
-      message: publicMessageFields(message)
-    });
+    message = appendMessage(resolved.conversation, resolved.senderType, body.body);
   } finally {
     lock.releaseLock();
   }
+  if (!message) return fail('Message text is required');
+
+  if (resolved.senderType === 'customer') notifyVendorOfNewMessage(resolved.conversation, message.Body);
+
+  return ok({
+    conversationId: resolved.conversation.ConversationId,
+    message: publicMessageFields(message)
+  });
 }
 
 /**
@@ -458,24 +506,27 @@ function actionSendChatImage(body) {
   var resolved = resolveChatRequest(body, { createIfMissing: true });
   if (!resolved.ok) return fail(resolved.error);
 
+  var message;
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
     var uploaded = uploadImage(bytes, mimeType, resolved.conversation.ConversationId + '_' + Date.now(), getChatImageFolder, 'chat');
 
-    var message = appendMessage(resolved.conversation, resolved.senderType, body.body, {
+    message = appendMessage(resolved.conversation, resolved.senderType, body.body, {
       imageUrl: uploaded.imageUrl,
       imageFileId: uploaded.imageFileId
-    });
-    if (!message) return fail('Could not send this image');
-
-    return ok({
-      conversationId: resolved.conversation.ConversationId,
-      message: publicMessageFields(message)
     });
   } finally {
     lock.releaseLock();
   }
+  if (!message) return fail('Could not send this image');
+
+  if (resolved.senderType === 'customer') notifyVendorOfNewMessage(resolved.conversation, message.Body || 'Sent a photo');
+
+  return ok({
+    conversationId: resolved.conversation.ConversationId,
+    message: publicMessageFields(message)
+  });
 }
 
 /**
@@ -502,11 +553,36 @@ function actionGetConversation(body) {
   if (resolved.senderType === 'vendor') markConversationReadByVendor(resolved.conversation.ConversationId);
   else markConversationReadByCustomer(resolved.conversation.ConversationId);
 
+  var otherPartyTyping = !!CacheService.getScriptCache().get(
+    typingCacheKey(resolved.conversation.ConversationId, otherSenderType(resolved.senderType))
+  );
+
   return ok({
     conversation: publicConversationFields(resolved.conversation),
     messages: page.messages.map(publicMessageFields),
-    hasMoreBefore: page.hasMoreBefore
+    hasMoreBefore: page.hasMoreBefore,
+    otherPartyTyping: otherPartyTyping
   });
+}
+
+/**
+ * Public action. Fire-and-forget presence signal - no lock (a single cache
+ * put has no read-modify-write race worth guarding, unlike every Sheet
+ * write in this codebase) and no Sheet access at all. No-ops (rather than
+ * erroring) when there's no conversation yet - a customer typing their
+ * first-ever message has no thread for the vendor to be polling on yet, so
+ * there's nothing to signal.
+ */
+function actionSetTyping(body) {
+  var resolved = resolveChatRequest(body, { createIfMissing: false });
+  if (!resolved.ok || !resolved.conversation) return ok({});
+
+  CacheService.getScriptCache().put(
+    typingCacheKey(resolved.conversation.ConversationId, resolved.senderType),
+    '1',
+    TYPING_SIGNAL_TTL_SECONDS
+  );
+  return ok({});
 }
 
 /**

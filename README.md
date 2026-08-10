@@ -158,6 +158,20 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    photos, kept in a separate Drive folder) are both set automatically the
    first time a photo is uploaded through each path.
 
+   **Chat: typing indicator and new-message email notifications.** Both
+   sides now see a "•••" typing indicator while the other is composing a
+   reply (a short-lived `CacheService` flag, refreshed every couple of
+   seconds while actively typing — nothing is written to the Sheet). When a
+   customer sends a message, the store's owner also gets an email
+   ("New message from ... — <Store>") so they notice even with the
+   dashboard closed — on a phone with that address in its mail app, this
+   generally shows up as a push notification, which is the closest thing to
+   real push messaging this app can offer without a dedicated mobile app or
+   a paid push service. Throttled to at most one email per conversation
+   every 10 minutes, so a burst of messages doesn't flood the vendor's
+   inbox. Uses the same `sendAppEmail` (Resend-or-MailApp) path as every
+   other email this app sends — no separate setup needed.
+
    **Optional — Cloudinary image hosting instead of Drive.** By default,
    product photos, store logos, and chat photos are all hosted on Google
    Drive (via the folders above) and hotlinked through a CDN-style URL. This

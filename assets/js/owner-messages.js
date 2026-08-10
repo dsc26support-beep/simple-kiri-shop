@@ -29,6 +29,7 @@ let conversationPollDelayMs = CONVERSATION_POLL_MIN_MS;
 let listPollTimer = null;
 let listPollDelayMs = LIST_POLL_MIN_MS;
 let selectedReplyImageFile = null;
+let lastTypingSignalSentAt = 0;
 
 async function init() {
   const owner = await Auth.guardOwnerAuth();
@@ -44,6 +45,7 @@ async function init() {
   document.getElementById('conversation-load-earlier-btn').addEventListener('click', loadEarlierConversationMessages);
   document.getElementById('reply-form').addEventListener('submit', onReplySubmit);
   document.getElementById('reply-input').addEventListener('input', autoResizeReplyInput);
+  document.getElementById('reply-input').addEventListener('input', sendTypingSignal);
   document.getElementById('reply-input').addEventListener('keydown', onReplyKeydown);
   document.addEventListener('visibilitychange', onVisibilityChange);
   wireReplyImageAttach();
@@ -186,11 +188,31 @@ function closeConversation() {
   activeOldestBubble = null;
   activeHasMoreBefore = false;
   updateLoadEarlierMessagesButton();
+  showTyping(false);
   stopConversationPolling();
   document.getElementById('messages-layout').classList.remove('has-open-conversation');
   document.getElementById('conversation-empty-state').classList.remove('hidden');
   document.getElementById('conversation-detail').classList.add('hidden');
   renderConversationList();
+}
+
+/**
+ * Sibling of #conversation-messages (not nested inside it - that element's
+ * innerHTML gets wiped wholesale on every initial load, which would delete
+ * a nested typing indicator along with it). Mirrors chat-window.js's
+ * showTyping/sendTypingSignal on the customer side.
+ */
+function showTyping(isTyping) {
+  const typingEl = document.getElementById('conversation-typing');
+  if (typingEl) typingEl.classList.toggle('hidden', !isTyping);
+}
+
+function sendTypingSignal() {
+  if (!activeConversationId) return;
+  const now = Date.now();
+  if (now - lastTypingSignalSentAt < 2500) return;
+  lastTypingSignalSentAt = now;
+  Api.post('setTyping', { token: Auth.getToken(), conversationId: activeConversationId }).catch(() => {});
 }
 
 function updateLoadEarlierMessagesButton() {
@@ -217,6 +239,8 @@ async function loadConversationMessages(opts) {
     if (!isPoll) document.getElementById('conversation-messages').innerHTML = '<p class="helper-text">Could not load messages.</p>';
     return false;
   }
+
+  showTyping(!!res.otherPartyTyping);
 
   const messagesEl = document.getElementById('conversation-messages');
   const messages = res.messages || [];
