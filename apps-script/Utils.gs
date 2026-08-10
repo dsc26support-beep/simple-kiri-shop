@@ -107,13 +107,15 @@ function getResendConfig() {
 }
 
 /** Returns true on a confirmed send, false on any failure (network, auth, Resend rejecting the request) - never throws, matching sendAppEmail's own best-effort contract. */
-function sendViaResend(to, subject, body, config) {
+function sendViaResend(to, subject, body, config, htmlBody) {
   try {
+    var payload = { from: config.fromEmail, to: [to], subject: subject, text: body };
+    if (htmlBody) payload.html = htmlBody;
     var response = UrlFetchApp.fetch('https://api.resend.com/emails', {
       method: 'post',
       contentType: 'application/json',
       headers: { Authorization: 'Bearer ' + config.apiKey },
-      payload: JSON.stringify({ from: config.fromEmail, to: [to], subject: subject, text: body }),
+      payload: JSON.stringify(payload),
       muteHttpExceptions: true
     });
     var result = JSON.parse(response.getContentText());
@@ -138,15 +140,42 @@ function sendViaResend(to, subject, body, config) {
  * "never surface an error" philosophy, same category of trade-off as
  * MailApp's own quota-exceeded already being swallowed silently.
  */
-function sendAppEmail(to, subject, body) {
+function sendAppEmail(to, subject, body, htmlBody) {
   var resendConfig = getResendConfig();
-  if (resendConfig && sendViaResend(to, subject, body, resendConfig)) return;
+  if (resendConfig && sendViaResend(to, subject, body, resendConfig, htmlBody)) return;
 
   try {
-    MailApp.sendEmail(to, subject, body);
+    if (htmlBody) {
+      MailApp.sendEmail(to, subject, body, { htmlBody: htmlBody });
+    } else {
+      MailApp.sendEmail(to, subject, body);
+    }
   } catch (e) {
     // best effort only
   }
+}
+
+/**
+ * Where this app is actually hosted (e.g. https://you.github.io/simple-kiri-shop),
+ * so a notification email can link back to a page on the live site (e.g. the
+ * vendor's Messages inbox) instead of just describing it in text. Optional -
+ * Script Property, blank by default - callers that build a link must treat
+ * '' as "no link available" and degrade to a plain-text-only email rather
+ * than emitting a broken/relative URL.
+ */
+function siteBaseUrl() {
+  var url = PropertiesService.getScriptProperties().getProperty('SITE_BASE_URL');
+  return url ? String(url).replace(/\/+$/, '') : '';
+}
+
+/** Minimal HTML-escaping for values interpolated into an email's htmlBody - this app has no HTML-templating layer, so this is deliberately just the 5 characters that matter for breaking out of text/attribute context. */
+function escapeHtmlForEmail(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**

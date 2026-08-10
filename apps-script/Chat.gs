@@ -419,10 +419,29 @@ function notifyVendorOfNewMessage(conversation, previewText) {
   if (!owner || !owner.Email) return;
 
   var customerLabel = conversation.CustomerName ? conversation.CustomerName : 'A customer';
+  var messagesUrl = siteBaseUrl() ? siteBaseUrl() + '/owner/messages.html' : '';
+
+  var body = customerLabel + ' just messaged your store "' + owner.StoreName + '":\n\n"' + previewText + '"\n\n' +
+    (messagesUrl ? 'Open your Messages inbox to reply: ' + messagesUrl : 'Open your Messages inbox to reply.');
+
+  // htmlBody adds a clickable "Open Messages" button so the notification
+  // (which on a phone with this address in its mail app is the closest
+  // thing to a push notification this app has) can jump straight into the
+  // dashboard instead of just describing where to go. Only built when
+  // SITE_BASE_URL is configured (see siteBaseUrl()) - otherwise sendAppEmail
+  // gets an empty htmlBody and just sends the plain-text version above,
+  // same as before this feature existed.
+  var htmlBody = messagesUrl
+    ? '<p>' + escapeHtmlForEmail(customerLabel) + ' just messaged your store "' + escapeHtmlForEmail(owner.StoreName) + '":</p>' +
+      '<p style="padding:12px;background:#f5f5f5;border-radius:6px;">' + escapeHtmlForEmail(previewText) + '</p>' +
+      '<p><a href="' + messagesUrl + '" style="display:inline-block;padding:10px 22px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">Open Messages</a></p>'
+    : '';
+
   sendAppEmail(
     owner.Email,
     'New message from ' + customerLabel + ' - ' + owner.StoreName,
-    customerLabel + ' just messaged your store "' + owner.StoreName + '":\n\n"' + previewText + '"\n\nOpen your Messages inbox to reply.'
+    body,
+    htmlBody
   );
 }
 

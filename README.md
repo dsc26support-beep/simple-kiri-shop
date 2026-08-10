@@ -161,6 +161,12 @@ Sheet and deploy the Apps Script backend under your own Google account first.
      can be. Defaults to `5242880` (5MB, the same ceiling as product photos)
      if unset — set this property to change the limit without editing code
      or redeploying.
+   - `SITE_BASE_URL` — optional, e.g. `https://you.github.io/simple-kiri-shop`
+     (no trailing slash needed either way). When set, the new-message
+     notification email (see below) includes an "Open Messages" button
+     linking straight to `owner/messages.html` on your live site. Leave it
+     unset and the email still sends, just without the button — nothing
+     breaks, there's just no link to click.
 
    `IMAGE_FOLDER_ID` (product/logo photos), `CHAT_IMAGE_FOLDER_ID` (chat
    photos), and `ID_LICENSE_FOLDER_ID` (vendor ID/license uploads — see
@@ -179,7 +185,11 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    a paid push service. Throttled to at most one email per conversation
    every 10 minutes, so a burst of messages doesn't flood the vendor's
    inbox. Uses the same `sendAppEmail` (Resend-or-MailApp) path as every
-   other email this app sends — no separate setup needed.
+   other email this app sends — no separate setup needed. If `SITE_BASE_URL`
+   is set (see above), the email also includes a clickable "Open Messages"
+   button that jumps straight to the dashboard's Messages page — otherwise
+   it's a plain-text email describing where to go, same as before this
+   button existed.
 
    **Optional — Cloudinary image hosting instead of Drive.** By default,
    product photos, store logos, and chat photos are all hosted on Google
