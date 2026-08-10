@@ -376,9 +376,9 @@ ${lines}
 
 Total: ${formatMoney(total)}
 
-Hi, I'd like to place this order. Could you please reply and let me know how you'd like me to arrange payment?${storeInfo.phone ? ' You can also reach me by phone/WhatsApp at ' + payload.customerPhone + ', or call/WhatsApp the store at ' + storeInfo.phone + '.' : ''}
+Hi, I'd like to place this order. Could you please reply and let me know how you'd like me to arrange payment?
 
-Thank you!
+Ko rabwa!
 `;
 }
 
