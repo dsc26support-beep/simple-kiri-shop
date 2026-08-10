@@ -107,10 +107,23 @@ function createConversation(owner, storeSlug, customerToken, customerName) {
  * open at once both sending a first message) should wrap it in
  * LockService.getScriptLock() itself, same as actionCreateOrder does around
  * its own multi-step Sheet sequence.
+ *
+ * Also backfills a still-blank CustomerName on an existing conversation the
+ * first time one is provided - covers a conversation started before names
+ * were collected (either before this feature existed, or the rare direct-
+ * API case where resolveChatRequest's new-conversation name requirement
+ * doesn't apply since the conversation already exists).
  */
 function findOrCreateConversation(owner, storeSlug, customerToken, customerName) {
   var existing = findConversation(storeSlug, customerToken);
-  if (existing) return existing;
+  if (existing) {
+    var trimmedName = String(customerName || '').trim();
+    if (trimmedName && !existing.CustomerName) {
+      updateRowFromObject(getSheet('Conversations'), existing.__row, { CustomerName: trimmedName });
+      existing.CustomerName = trimmedName;
+    }
+    return existing;
+  }
   return createConversation(owner, storeSlug, customerToken, customerName);
 }
 
@@ -421,6 +434,9 @@ function notifyVendorOfNewMessage(conversation, previewText) {
  * notification never holds up every other locked action across the app.
  */
 function actionSendMessage(body) {
+  var nameErr = capLength(body.customerName, 100, 'Name');
+  if (nameErr) return nameErr;
+
   var resolved = resolveChatRequest(body, { createIfMissing: true });
   if (!resolved.ok) return fail(resolved.error);
 
@@ -487,6 +503,9 @@ function getMaxChatImageBytes() {
  * the image.
  */
 function actionSendChatImage(body) {
+  var nameErr = capLength(body.customerName, 100, 'Name');
+  if (nameErr) return nameErr;
+
   var mimeType = body.mimeType;
   var imageBase64 = body.imageBase64;
   if (!mimeType || mimeType.indexOf('image/') !== 0) return fail('Only image uploads are allowed');

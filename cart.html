@@ -51,7 +51,16 @@
     </div>
 
     <div id="chat-window-body" class="chat-window-body">
-      <div id="chat-loading" class="chat-loading">
+      <div id="chat-name-gate" class="chat-name-gate hidden">
+        <p class="chat-name-gate-prompt">What's your name?</p>
+        <form id="chat-name-form" class="chat-name-form">
+          <label class="sr-only" for="chat-name-input">Your name</label>
+          <input id="chat-name-input" class="chat-name-input" type="text" placeholder="Your name" maxlength="100" required autocomplete="name">
+          <button type="submit" class="btn btn-primary">Continue</button>
+        </form>
+      </div>
+
+      <div id="chat-loading" class="chat-loading hidden">
         <span class="chat-spinner" aria-hidden="true"></span>
         <span>Loading conversation…</span>
       </div>

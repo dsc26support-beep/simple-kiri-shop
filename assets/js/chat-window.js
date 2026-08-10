@@ -31,6 +31,9 @@ function initChatWindow() {
 
   const closeBtn = document.getElementById('chat-window-close');
   const body = document.getElementById('chat-window-body');
+  const nameGateEl = document.getElementById('chat-name-gate');
+  const nameForm = document.getElementById('chat-name-form');
+  const nameInput = document.getElementById('chat-name-input');
   const loadingEl = document.getElementById('chat-loading');
   const messagesEl = document.getElementById('chat-messages');
   const typingEl = document.getElementById('chat-typing');
@@ -77,6 +80,19 @@ function initChatWindow() {
       localStorage.setItem(key, token);
     }
     return token;
+  }
+
+  /**
+   * The customer gives their name once per store, before the chat becomes
+   * usable - persisted the same way as customerToken, so it's remembered
+   * across visits rather than re-asked every time.
+   */
+  function getCustomerName() {
+    return storeSlug ? localStorage.getItem('skiri_chat_name_' + storeSlug) : null;
+  }
+
+  function setCustomerName(name) {
+    if (storeSlug) localStorage.setItem('skiri_chat_name_' + storeSlug, name);
   }
 
   function getLastSeenMessageId() {
@@ -375,7 +391,7 @@ function initChatWindow() {
     const bubble = appendMessage('chat-message--customer', text, { beforeTyping: true });
     bubble.classList.add('chat-message--sending');
 
-    const res = await Api.post('sendMessage', { storeSlug, customerToken, body: text });
+    const res = await Api.post('sendMessage', { storeSlug, customerToken, customerName: getCustomerName(), body: text });
 
     bubble.classList.remove('chat-message--sending');
     if (!res.ok) {
@@ -413,6 +429,7 @@ function initChatWindow() {
     const res = await Api.post('sendChatImage', {
       storeSlug,
       customerToken,
+      customerName: getCustomerName(),
       mimeType: compressed.mimeType,
       imageBase64: compressed.base64,
       body: caption || ''
@@ -467,13 +484,12 @@ function initChatWindow() {
     previewRemoveBtn.addEventListener('click', clearImageSelection);
   }
 
-  function openWindow() {
-    isOpen = true;
-    win.classList.add('chat-window--open');
-    win.setAttribute('aria-hidden', 'false');
-    fab.setAttribute('aria-expanded', 'true');
-    updateBadge(0); // opening it is reading it
-
+  /**
+   * The compose row/loading/messages are all gated behind giving a name
+   * first - startChatContent() is the normal openWindow() body, just
+   * deferred until a name is on file (immediately, if one already is).
+   */
+  function startChatContent() {
     if (!hasLoadedOnce) {
       hasLoadedOnce = true;
       resetLoadingSpinner();
@@ -484,6 +500,43 @@ function initChatWindow() {
 
     startPolling();
     setTimeout(() => input.focus(), 220); // after the open transition
+  }
+
+  function showNameGate() {
+    nameGateEl.classList.remove('hidden');
+    form.classList.add('hidden');
+  }
+
+  function hideNameGate() {
+    nameGateEl.classList.add('hidden');
+    form.classList.remove('hidden');
+  }
+
+  if (nameForm) {
+    nameForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      if (!name) return;
+      setCustomerName(name);
+      hideNameGate();
+      startChatContent();
+    });
+  }
+
+  function openWindow() {
+    isOpen = true;
+    win.classList.add('chat-window--open');
+    win.setAttribute('aria-hidden', 'false');
+    fab.setAttribute('aria-expanded', 'true');
+    updateBadge(0); // opening it is reading it
+
+    if (!getCustomerName()) {
+      showNameGate();
+      setTimeout(() => nameInput.focus(), 220);
+      return; // messages/polling wait until a name is given
+    }
+
+    startChatContent();
   }
 
   function closeWindow() {
