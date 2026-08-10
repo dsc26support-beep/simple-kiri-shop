@@ -106,6 +106,7 @@ function renderTrendingProductCard(product) {
           truck: product.storeDeliveryTruck,
           ship: product.storeDeliveryShip,
           airCargo: product.storeDeliveryAirCargo,
+          pickPay: product.storeDeliveryPickPay,
           truckCost: product.storeDeliveryTruckCost,
           shipCost: product.storeDeliveryShipCost,
           airCargoCost: product.storeDeliveryAirCargoCost

@@ -42,6 +42,7 @@ async function init() {
     truck: res.storeDeliveryTruck,
     ship: res.storeDeliveryShip,
     airCargo: res.storeDeliveryAirCargo,
+    pickPay: res.storeDeliveryPickPay,
     truckCost: res.storeDeliveryTruckCost,
     shipCost: res.storeDeliveryShipCost,
     airCargoCost: res.storeDeliveryAirCargoCost

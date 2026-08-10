@@ -89,6 +89,7 @@ function publicOwnerFields(owner) {
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
     deliveryShip: String(owner.DeliveryShip) === 'true',
     deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true',
+    deliveryPickPay: String(owner.DeliveryPickPay) === 'true',
     deliveryTruckCost: owner.DeliveryTruckCost === '' || owner.DeliveryTruckCost == null ? null : Number(owner.DeliveryTruckCost),
     deliveryShipCost: owner.DeliveryShipCost === '' || owner.DeliveryShipCost == null ? null : Number(owner.DeliveryShipCost),
     deliveryAirCargoCost: owner.DeliveryAirCargoCost === '' || owner.DeliveryAirCargoCost == null ? null : Number(owner.DeliveryAirCargoCost),

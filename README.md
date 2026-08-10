@@ -59,7 +59,7 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits | IdLicenseUrl | IdLicenseFileId`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryPickPay | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits | IdLicenseUrl | IdLicenseFileId`
 
    (The `ANZ_*`/`Teremo_*`/`PaymentNotes` columns are no longer used by the
    app — checkout no longer displays payment details, so Settings no longer
@@ -67,6 +67,10 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    have this sheet set up. `DeliveryTruckCost`/`DeliveryShipCost`/
    `DeliveryAirCargoCost` are per-method delivery prices — blank means "not
    set", `0` means free delivery and shows that method's icon in green.
+   `DeliveryPickPay` (in-person pickup, pay at the store) has no matching
+   cost column — it's always free, always shown with a green walking-person
+   icon, and unlike the other three methods it doesn't check the customer's
+   island/village at all — see "Delivery method eligibility" below.
    `Status` is now one of `active` / `standby` / `closed` — see "Store status"
    below. `Visits` is a running count of unique visitors who've opened that
    store's page — see "View/visit tracking" below. Leave it blank; the
@@ -131,7 +135,8 @@ Sheet and deploy the Apps Script backend under your own Google account first.
 
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
-   `DeliveryTruckCost`, `DeliveryShipCost`, `DeliveryAirCargoCost`, `Island`,
+   `DeliveryPickPay`, `DeliveryTruckCost`, `DeliveryShipCost`,
+   `DeliveryAirCargoCost`, `Island`,
    `Village`, `LogoUrl`, `LogoFileId`, `Visits`, `IdLicenseUrl`, and
    `IdLicenseFileId` columns to the end of `Owners`, add `ImageUrl2`,
    `ImageFileId2`, and `Views` to the end of `Products`, add `Island`,
@@ -416,12 +421,20 @@ subtotal of at least $500 (before delivery cost).
   - Ship and Air Cargo: to South Tarawa customers only.
   - No method reaches North Tarawa or a different outer island from here.
 
+**Pick & Pay is the one exception to all of the above.** It's in-person
+pickup — the customer collects the order and pays at the store directly —
+so it doesn't involve a delivery route at all. Whenever a store has it
+enabled (Settings → Delivery Methods), it's eligible for **any** customer
+location, with no island/village check. It's also always free (there's no
+cost field for it, unlike Truck/Ship/Air Cargo) and always shows with a
+green walking-person icon, since "free" is never in question for it.
+
 If zero delivery methods end up eligible, checkout shows why and the Place
 Order button stays disabled until the customer's location or cart changes.
 
 The chosen method's cost (set per-method in the store's own Settings, $0 =
-free) is added to the order's `Total` server-side — never trust a client to
-report its own delivery price.
+free; Pick & Pay is always $0) is added to the order's `Total` server-side —
+never trust a client to report its own delivery price.
 
 ## View/visit tracking (home page "Trending Products" / "Popular Stores")
 

@@ -1,9 +1,12 @@
 document.addEventListener('DOMContentLoaded', init);
 
+// pickPay has costId: null - it's always free (see helpers.js's
+// ALWAYS_FREE_DELIVERY_METHODS), so it never gets a cost input.
 const DELIVERY_BUTTONS = [
   { id: 'delivery-truck-btn', costId: 'delivery-truck-cost', method: 'truck', label: 'Truck' },
   { id: 'delivery-ship-btn', costId: 'delivery-ship-cost', method: 'ship', label: 'Ship' },
-  { id: 'delivery-aircargo-btn', costId: 'delivery-aircargo-cost', method: 'airCargo', label: 'Air Cargo' }
+  { id: 'delivery-aircargo-btn', costId: 'delivery-aircargo-cost', method: 'airCargo', label: 'Air Cargo' },
+  { id: 'delivery-pickpay-btn', costId: null, method: 'pickPay', label: 'Pick & Pay' }
 ];
 
 async function init() {
@@ -39,6 +42,7 @@ function fillForm(owner) {
     const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
     const pressed = !!owner[key];
     document.getElementById(id).setAttribute('aria-pressed', String(pressed));
+    if (!costId) return;
     const costInput = document.getElementById(costId);
     const cost = owner[key + 'Cost'];
     costInput.value = cost == null ? '' : cost;
@@ -128,11 +132,11 @@ function renderDeliveryToggleButtons() {
 function wireDeliveryToggles() {
   DELIVERY_BUTTONS.forEach(({ id, costId }) => {
     const btn = document.getElementById(id);
-    const costInput = document.getElementById(costId);
+    const costInput = costId ? document.getElementById(costId) : null;
     btn.addEventListener('click', () => {
       const pressed = btn.getAttribute('aria-pressed') === 'true';
       btn.setAttribute('aria-pressed', String(!pressed));
-      costInput.classList.toggle('hidden', pressed);
+      if (costInput) costInput.classList.toggle('hidden', pressed);
     });
   });
 }
@@ -216,7 +220,7 @@ async function onSaveSettings(e) {
     const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
     const pressed = document.getElementById(id).getAttribute('aria-pressed') === 'true';
     payload[key] = pressed;
-    if (pressed) {
+    if (pressed && costId) {
       const raw = document.getElementById(costId).value.trim();
       payload[key + 'Cost'] = raw === '' ? 0 : Math.max(0, parseFloat(raw) || 0);
     }

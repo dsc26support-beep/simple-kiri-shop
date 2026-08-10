@@ -60,6 +60,7 @@ function renderStoreCard(store) {
           truck: store.deliveryTruck,
           ship: store.deliveryShip,
           airCargo: store.deliveryAirCargo,
+          pickPay: store.deliveryPickPay,
           truckCost: store.deliveryTruckCost,
           shipCost: store.deliveryShipCost,
           airCargoCost: store.deliveryAirCargoCost

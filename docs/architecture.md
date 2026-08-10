@@ -299,7 +299,7 @@ deployments) lives in
 
 | Tab | Columns |
 |---|---|
-| **Owners** | `OwnerId, StoreName, StoreSlug, Username, PasswordHash, PasswordSalt, Email, Phone, ANZ_AccountName, ANZ_AccountNumber, ANZ_Branch, Teremo_Name, Teremo_Number, PaymentNotes, Status, CreatedAt, TwoFAEnabled, DeliveryTruck, DeliveryShip, DeliveryAirCargo, DeliveryTruckCost, DeliveryShipCost, DeliveryAirCargoCost, Island, Village, LogoUrl, LogoFileId, Visits, IdLicenseUrl, IdLicenseFileId` |
+| **Owners** | `OwnerId, StoreName, StoreSlug, Username, PasswordHash, PasswordSalt, Email, Phone, ANZ_AccountName, ANZ_AccountNumber, ANZ_Branch, Teremo_Name, Teremo_Number, PaymentNotes, Status, CreatedAt, TwoFAEnabled, DeliveryTruck, DeliveryShip, DeliveryAirCargo, DeliveryPickPay, DeliveryTruckCost, DeliveryShipCost, DeliveryAirCargoCost, Island, Village, LogoUrl, LogoFileId, Visits, IdLicenseUrl, IdLicenseFileId` |
 | **Products** | `ProductId, OwnerId, StoreSlug, Name, Description, Category, ImageUrl, ImageFileId, ImageUrl2, ImageFileId2, Status, SortOrder, CreatedAt, UpdatedAt, Views` |
 | **Variants** | `VariantId, ProductId, OwnerId, Label, Price, SKU, StockQty, Status` |
 | **Bookings** | `BookingId, OwnerId, StoreSlug, ProductId, ProductName, VariantId, RateLabel, RatePrice, CustomerName, CustomerPhone, CustomerEmail, Island, Village, Notes, StartDate, EndDate, Status, CreatedAt, UpdatedAt` |
@@ -406,7 +406,9 @@ that `OwnerId` before allowing a read or write.
    `Pending` row already conflicting with a `Confirmed` one is flagged
    (`overlapsConfirmed`) so the owner knows to decline it.
 5. `owner/settings.html` — store name/contact, delivery methods (Truck/Ship/Air
-   Cargo, each independently toggleable with its own price), island/village
+   Cargo, each independently toggleable with its own price, plus Pick & Pay -
+   in-person pickup, always free, no price field, eligible regardless of the
+   customer's island/village since it's not a delivery route), island/village
    location, store logo, an optional ID/license photo upload (never shown to
    customers — see Section 6's `IdLicenseUrl` note), password change, 2FA
    enable/disable, and store status.

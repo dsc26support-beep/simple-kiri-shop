@@ -29,6 +29,7 @@ function deliveryFlagsOf(owner) {
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
     deliveryShip: String(owner.DeliveryShip) === 'true',
     deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true',
+    deliveryPickPay: String(owner.DeliveryPickPay) === 'true',
     deliveryTruckCost: deliveryCostOf(owner.DeliveryTruckCost),
     deliveryShipCost: deliveryCostOf(owner.DeliveryShipCost),
     deliveryAirCargoCost: deliveryCostOf(owner.DeliveryAirCargoCost)
@@ -95,6 +96,7 @@ function actionListTopProducts() {
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
         product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
         product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+        product.storeDeliveryPickPay = String(owner.DeliveryPickPay) === 'true';
         product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
         product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
         product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
@@ -280,6 +282,7 @@ function actionSearchProducts(params) {
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
         product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
         product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+        product.storeDeliveryPickPay = String(owner.DeliveryPickPay) === 'true';
         product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
         product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
         product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
@@ -351,6 +354,7 @@ function actionListProducts(params) {
     out.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
     out.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
     out.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+    out.storeDeliveryPickPay = String(owner.DeliveryPickPay) === 'true';
     out.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
     out.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
     out.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
@@ -554,6 +558,7 @@ function actionUpdateOwnerProfile(owner, body) {
   if (body.deliveryTruck !== undefined) update.DeliveryTruck = body.deliveryTruck ? 'true' : 'false';
   if (body.deliveryShip !== undefined) update.DeliveryShip = body.deliveryShip ? 'true' : 'false';
   if (body.deliveryAirCargo !== undefined) update.DeliveryAirCargo = body.deliveryAirCargo ? 'true' : 'false';
+  if (body.deliveryPickPay !== undefined) update.DeliveryPickPay = body.deliveryPickPay ? 'true' : 'false';
 
   var costFieldMap = { deliveryTruckCost: 'DeliveryTruckCost', deliveryShipCost: 'DeliveryShipCost', deliveryAirCargoCost: 'DeliveryAirCargoCost' };
   Object.keys(costFieldMap).forEach(function (k) {

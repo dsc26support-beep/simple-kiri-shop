@@ -90,6 +90,7 @@ function renderBrowseProductCard(product, opts) {
           truck: product.storeDeliveryTruck,
           ship: product.storeDeliveryShip,
           airCargo: product.storeDeliveryAirCargo,
+          pickPay: product.storeDeliveryPickPay,
           truckCost: product.storeDeliveryTruckCost,
           shipCost: product.storeDeliveryShipCost,
           airCargoCost: product.storeDeliveryAirCargoCost
@@ -249,25 +250,33 @@ function soldByVerb(category) {
 const DELIVERY_ICON_SVG = {
   truck: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="14" height="10"></rect><path d="M15 10h4l3 3v4h-7z"></path><circle cx="6" cy="18" r="1.5"></circle><circle cx="17.5" cy="18" r="1.5"></circle></svg>',
   ship: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14h17l3 3-3 3H5l-3-3z"></path><rect x="4" y="10" width="5" height="4"></rect><path d="M6.5 10V5"></path><rect x="11" y="8" width="6" height="6"></rect><path d="M14 8v6M11 11h6"></path></svg>',
-  airCargo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v7"></path><path d="M12 9l9 5v2l-9-3-9 3v-2z"></path><path d="M9 19l3-2 3 2"></path><path d="M12 17v4"></path></svg>'
+  airCargo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v7"></path><path d="M12 9l9 5v2l-9-3-9 3v-2z"></path><path d="M9 19l3-2 3 2"></path><path d="M12 17v4"></path></svg>',
+  pickPay: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2"></circle><line x1="12" y1="6" x2="10.5" y2="13"></line><line x1="12" y1="8" x2="9" y2="11"></line><line x1="11" y1="8" x2="15" y2="10"></line><line x1="10.5" y1="13" x2="8" y2="20"></line><line x1="10.5" y1="13" x2="15" y2="19"></line></svg>'
 };
-const DELIVERY_ICON_LABELS = { truck: 'Truck delivery', ship: 'Ship delivery', airCargo: 'Air cargo delivery' };
+const DELIVERY_ICON_LABELS = { truck: 'Truck delivery', ship: 'Ship delivery', airCargo: 'Air cargo delivery', pickPay: 'Pick & Pay' };
+
+// Pick & Pay (in-person pickup, pay at the store) has no cost field at all -
+// unlike truck/ship/airCargo it's always free, so it always renders green
+// with a "Free" label rather than reading a *Cost flag.
+const ALWAYS_FREE_DELIVERY_METHODS = ['pickPay'];
 
 /**
- * flags: {truck, ship, airCargo} booleans, plus optional {truckCost,
- * shipCost, airCargoCost} numbers - renders 0-3 small labeled icons. A cost
- * of exactly 0 means free delivery for that method and turns its icon green;
- * a missing/null cost just omits the price from the label (store hasn't set
- * one yet).
+ * flags: {truck, ship, airCargo, pickPay} booleans, plus optional
+ * {truckCost, shipCost, airCargoCost} numbers - renders 0-4 small labeled
+ * icons. A cost of exactly 0 means free delivery for that method and turns
+ * its icon green; a missing/null cost just omits the price from the label
+ * (store hasn't set one yet). pickPay has no cost flag - see
+ * ALWAYS_FREE_DELIVERY_METHODS above.
  */
 function renderDeliveryIcons(flags) {
   flags = flags || {};
-  const methods = ['truck', 'ship', 'airCargo'].filter((m) => flags[m]);
+  const methods = ['truck', 'ship', 'airCargo', 'pickPay'].filter((m) => flags[m]);
   if (methods.length === 0) return '';
   return `<span class="delivery-icons">${methods
     .map((m) => {
-      const cost = flags[m + 'Cost'];
-      const isFree = cost === 0;
+      const alwaysFree = ALWAYS_FREE_DELIVERY_METHODS.indexOf(m) !== -1;
+      const cost = alwaysFree ? 0 : flags[m + 'Cost'];
+      const isFree = alwaysFree || cost === 0;
       const priceText = cost == null ? '' : cost === 0 ? ' — Free' : ` — ${formatMoney(cost)}`;
       const label = DELIVERY_ICON_LABELS[m] + priceText;
       return `<span class="delivery-icon${isFree ? ' delivery-icon-free' : ''}" role="img" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${DELIVERY_ICON_SVG[m]}</span>`;

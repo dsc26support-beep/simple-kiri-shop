@@ -53,6 +53,7 @@ async function init() {
     truck: storeInfo.deliveryTruck,
     ship: storeInfo.deliveryShip,
     airCargo: storeInfo.deliveryAirCargo,
+    pickPay: storeInfo.deliveryPickPay,
     truckCost: storeInfo.deliveryTruckCost,
     shipCost: storeInfo.deliveryShipCost,
     airCargoCost: storeInfo.deliveryAirCargoCost
@@ -187,6 +188,10 @@ function customerVillageMatchesTruckList(customerVillage) {
  *    lets them reach off-island at all; air never available.
  *  - Any other (outer island) vendor: truck only to their own same island;
  *    ship and air only to South Tarawa.
+ *
+ * Pick & Pay (in-person pickup, always free) is eligible for any customer
+ * location whenever the vendor has it enabled - it doesn't involve a
+ * delivery route, so none of the island/village logic above applies to it.
  */
 function computeEligibleDeliveryMethods(subtotal) {
   if (!storeInfo) return [];
@@ -213,6 +218,8 @@ function computeEligibleDeliveryMethods(subtotal) {
     if (storeInfo.deliveryAirCargo && customerIsland === 'South Tarawa') eligible.push('airCargo');
   }
 
+  if (storeInfo.deliveryPickPay) eligible.push('pickPay');
+
   return eligible;
 }
 
@@ -220,6 +227,14 @@ function updateDeliveryMethods() {
   if (!storeInfo) return;
   const subtotal = Cart.getTotal(currentSlug);
   renderDeliveryMethodOptions(computeEligibleDeliveryMethods(subtotal));
+}
+
+// storeInfo's cost fields are named deliveryTruckCost/deliveryShipCost/
+// deliveryAirCargoCost (see publicOwnerFields in Auth.gs) - not
+// "<method>Cost". pickPay has no cost field at all since it's always free.
+function deliveryCostOf(m) {
+  if (m === 'pickPay') return 0;
+  return storeInfo['delivery' + m[0].toUpperCase() + m.slice(1) + 'Cost'];
 }
 
 function renderDeliveryMethodOptions(eligible) {
@@ -245,7 +260,7 @@ function renderDeliveryMethodOptions(eligible) {
 
   container.innerHTML = eligible
     .map((m, i) => {
-      const cost = storeInfo[m + 'Cost'];
+      const cost = deliveryCostOf(m);
       const priceText = cost == null ? '' : cost === 0 ? ' — Free' : ` — ${formatMoney(cost)}`;
       const checked = previousValue ? m === previousValue : i === 0;
       return `
@@ -264,7 +279,8 @@ function renderDeliveryMethodOptions(eligible) {
 function updateReviewTotal() {
   const subtotal = Cart.getTotal(currentSlug);
   const selected = document.querySelector('input[name="deliveryMethod"]:checked');
-  const deliveryCost = selected && storeInfo && storeInfo[selected.value + 'Cost'] != null ? storeInfo[selected.value + 'Cost'] : 0;
+  const cost = selected && storeInfo ? deliveryCostOf(selected.value) : null;
+  const deliveryCost = cost != null ? cost : 0;
   document.getElementById('review-total').textContent = formatMoney(subtotal + deliveryCost);
 }
 
@@ -406,7 +422,8 @@ function showConfirmation(orderResult, payload) {
 }
 
 function showFallbackConfirmation(payload, cart) {
-  const deliveryCost = payload.deliveryMethod && storeInfo && storeInfo[payload.deliveryMethod + 'Cost'] != null ? storeInfo[payload.deliveryMethod + 'Cost'] : 0;
+  const fallbackCost = payload.deliveryMethod && storeInfo ? deliveryCostOf(payload.deliveryMethod) : null;
+  const deliveryCost = fallbackCost != null ? fallbackCost : 0;
   const total = Cart.getTotal(currentSlug) + deliveryCost;
   const summaryText = buildSummaryText(null, payload, cart, total);
   // Reuse the confirmation section as a manual fallback if the API call failed.
