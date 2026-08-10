@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/owner.css">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Settings</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="orders.html">Orders</a></li>
+          <li><a href="bookings.html">Bookings</a></li>
+          <li><a href="messages.html">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden">0</span></a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Store Settings</h1>
+
+      <form id="settings-form">
+        <h2>Store Details</h2>
+        <div class="field">
+          <label for="store-name">Store Name</label>
+          <input id="store-name" required>
+        </div>
+        <div class="field">
+          <label for="contact-email">Contact Email</label>
+          <input id="contact-email" type="email">
+        </div>
+        <div class="field">
+          <label for="contact-phone">Contact Phone (used for WhatsApp order sharing)</label>
+          <input id="contact-phone" type="tel">
+        </div>
+
+        <h2>Store Logo</h2>
+        <div class="field">
+          <label for="logo-image-input">Logo Image</label>
+          <img id="logo-preview" class="image-upload-preview hidden" alt="Store logo preview">
+          <input type="file" id="logo-image-input" accept="image/*">
+          <p id="logo-upload-status" class="helper-text"></p>
+        </div>
+
+        <h2>ID / License (Optional)</h2>
+        <p class="helper-text">Upload a photo of your ID or business license. This is private — it's never shown to customers or on your store page, only visible to you here.</p>
+        <div class="field">
+          <label for="idlicense-image-input">ID / License Photo</label>
+          <img id="idlicense-preview" class="image-upload-preview hidden" alt="ID/License preview">
+          <input type="file" id="idlicense-image-input" accept="image/*">
+          <p id="idlicense-upload-status" class="helper-text"></p>
+        </div>
+
+        <h2>Delivery Methods</h2>
+        <p class="helper-text">Select all the ways you can deliver orders — these show as icons next to your store name. Set a cost for each ($0 = free delivery, shown with a green icon).</p>
+        <div class="delivery-toggle-group" id="delivery-toggle-group" role="group" aria-label="Delivery methods">
+          <div class="delivery-method-row">
+            <button type="button" class="delivery-toggle-btn" id="delivery-truck-btn" data-method="truck" aria-pressed="false"></button>
+            <label class="sr-only" for="delivery-truck-cost">Truck delivery cost</label>
+            <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-truck-cost" placeholder="Cost ($0 = free)">
+          </div>
+          <div class="delivery-method-row">
+            <button type="button" class="delivery-toggle-btn" id="delivery-ship-btn" data-method="ship" aria-pressed="false"></button>
+            <label class="sr-only" for="delivery-ship-cost">Ship delivery cost</label>
+            <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-ship-cost" placeholder="Cost ($0 = free)">
+          </div>
+          <div class="delivery-method-row">
+            <button type="button" class="delivery-toggle-btn" id="delivery-aircargo-btn" data-method="airCargo" aria-pressed="false"></button>
+            <label class="sr-only" for="delivery-aircargo-cost">Air cargo delivery cost</label>
+            <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-aircargo-cost" placeholder="Cost ($0 = free)">
+          </div>
+        </div>
+
+        <h2>Location</h2>
+        <div class="field">
+          <label for="settings-island">Island</label>
+          <select id="settings-island">
+            <option value="">Select an island…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="settings-village">Village</label>
+          <select id="settings-village">
+            <option value="">Select an island first…</option>
+          </select>
+          <p class="helper-text">This village list is a first draft — pick "Other" if yours isn't listed.</p>
+        </div>
+        <div class="field hidden" id="settings-village-other-field">
+          <label for="settings-village-other">Village Name</label>
+          <input id="settings-village-other" type="text">
+        </div>
+
+        <p id="settings-error" class="form-error" role="alert"></p>
+        <p id="settings-success" class="form-success" role="status"></p>
+        <button type="submit" id="save-settings-btn" class="btn btn-primary">Save Settings</button>
+      </form>
+
+      <form id="password-form" style="margin-top:2.5rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
+        <h2>Change Password</h2>
+        <div class="field">
+          <label for="new-password">New Password</label>
+          <input id="new-password" type="password" minlength="8" autocomplete="new-password">
+          <p class="helper-text">At least 8 characters. Leave blank to keep your current password.</p>
+        </div>
+        <p id="password-error" class="form-error" role="alert"></p>
+        <p id="password-success" class="form-success" role="status"></p>
+        <button type="submit" class="btn">Update Password</button>
+      </form>
+
+      <div id="twofa-section" style="margin-top:2.5rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
+        <h2>Two-Factor Authentication</h2>
+        <p id="twofa-status" class="helper-text">Checking status…</p>
+
+        <button type="button" id="twofa-enable-btn" class="btn hidden">Enable 2FA</button>
+        <button type="button" id="twofa-disable-btn" class="btn btn-danger hidden">Disable 2FA</button>
+
+        <form id="twofa-confirm-form" class="hidden" style="margin-top:1rem;">
+          <input type="hidden" id="twofa-verify-token">
+          <p class="helper-text">We emailed you a 6-digit code. Enter it below to turn on 2FA.</p>
+          <div class="field">
+            <label for="twofa-confirm-code">Verification Code</label>
+            <input id="twofa-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+          </div>
+          <p id="twofa-confirm-error" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary">Confirm &amp; Enable</button>
+          <button type="button" id="twofa-cancel-btn" class="btn">Cancel</button>
+        </form>
+
+        <p id="twofa-action-error" class="form-error" role="alert"></p>
+        <p id="twofa-action-success" class="form-success" role="status"></p>
+      </div>
+
+      <div id="store-status-section" style="margin-top:2.5rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
+        <h2>Store Status</h2>
+        <p id="store-status-current" class="helper-text"></p>
+        <p class="helper-text">Standby hides your store from customers but you can still log in and switch it back at any time. Deleting also hides it and signs you out for good from here on — your data stays safely on file, so contact us if you ever need it restored.</p>
+        <button type="button" id="store-status-standby-btn" class="btn">Pause Store (Standby)</button>
+        <button type="button" id="store-status-reactivate-btn" class="btn btn-primary hidden">Reactivate Store</button>
+        <button type="button" id="store-status-delete-btn" class="btn btn-danger">Delete Store</button>
+        <p id="store-status-error" class="form-error" role="alert"></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Mwakete — Store Owner Portal</p>
+      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/cookie-consent.js"></script>
+  <script src="../assets/js/kiribati-locations.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/owner-nav.js"></script>
+  <script src="../assets/js/owner-settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mwakete</title>
+  <meta name="description" content="Shop from local Kiribati stores online — order online, the store will contact you to arrange payment.">
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-top-row">
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="owner/login.html?tab=register">Create Store</a></li>
+        </ul>
+      </nav>
+      <img src="assets/img/favicon.svg" alt="Mwakete" class="header-logo-mark">
+    </div>
+    <div class="container site-branding">
+      <p class="site-title">Mwakete</p>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="container">
+        <form id="search-form" class="search-box" role="search">
+          <label class="sr-only" for="search-input">Search products</label>
+          <input id="search-input" type="search" placeholder="Search products (e.g. rice, t-shirt)">
+          <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="categories" aria-labelledby="categories-heading">
+      <div class="container">
+        <h2 id="categories-heading" class="sr-only">Shop by category</h2>
+        <div class="category-buttons" id="category-buttons"></div>
+      </div>
+    </section>
+
+    <section class="trending-products" aria-labelledby="trending-products-heading">
+      <div class="container">
+        <h2 id="trending-products-heading">Trending Products</h2>
+        <p id="trending-products-status" class="helper-text" role="status">Loading…</p>
+        <div id="trending-products-list" class="carousel-row"></div>
+      </div>
+    </section>
+
+    <section class="trending-stores" aria-labelledby="trending-stores-heading">
+      <div class="container">
+        <h2 id="trending-stores-heading">Popular Stores</h2>
+        <p id="trending-stores-status" class="helper-text" role="status">Loading…</p>
+        <div id="trending-stores-list" class="logo-carousel"></div>
+      </div>
+    </section>
+
+    <noscript><div class="container"><p>Please enable JavaScript in your browser to search and shop.</p></div></noscript>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>All payments is arranged between Customer and Seller</p>
+      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/helpers.js"></script>
+  <script src="assets/js/cookie-consent.js"></script>
+  <script src="assets/js/home.js"></script>
+</body>
+</html>

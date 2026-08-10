@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Store Owner Login — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/owner.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container">
+      <div>
+        <p class="site-tagline">Store Owner Portal</p>
+      </div>
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="container">
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab" id="tab-login" role="tab" aria-selected="true" aria-controls="login-form">Log In</button>
+          <button type="button" class="auth-tab" id="tab-register" role="tab" aria-selected="false" aria-controls="register-form">Register Store</button>
+        </div>
+
+        <p id="session-message" class="helper-text"></p>
+
+        <form id="login-form" role="tabpanel">
+          <div class="field">
+            <label for="login-username">Username</label>
+            <input id="login-username" name="username" type="text" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+          </div>
+          <p id="login-error" class="form-error" role="alert"></p>
+          <button type="submit" id="login-submit-btn" class="btn btn-primary btn-block">Log In</button>
+          <p class="helper-text" style="text-align:center; margin-top:0.75rem;"><a href="forgot-password.html">Forgot your password?</a></p>
+        </form>
+
+        <form id="twofa-form" class="hidden" role="tabpanel">
+          <input type="hidden" id="twofa-pending-token">
+          <p class="helper-text">We emailed you a 6-digit code. Enter it below to finish logging in.</p>
+          <div class="field">
+            <label for="twofa-code">Verification Code</label>
+            <input id="twofa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+          </div>
+          <p id="twofa-error" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary btn-block">Verify &amp; Log In</button>
+        </form>
+
+        <form id="register-form" class="hidden" role="tabpanel">
+          <div class="field">
+            <label for="register-store-name">Store Name</label>
+            <input id="register-store-name" name="storeName" type="text" required>
+          </div>
+          <div class="field">
+            <label for="register-username">Username</label>
+            <input id="register-username" name="username" type="text" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="register-password">Password</label>
+            <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+            <p class="helper-text">At least 8 characters.</p>
+          </div>
+          <div class="field">
+            <label for="register-email">Contact Email</label>
+            <input id="register-email" name="email" type="email" autocomplete="email" required>
+            <p class="helper-text">Customers' orders will be emailed here, so make sure it's one you check.</p>
+          </div>
+          <div class="field">
+            <label for="register-phone">Contact Phone</label>
+            <input id="register-phone" name="phone" type="tel" autocomplete="tel" required>
+            <p class="helper-text">Shown to customers as a backup way to reach you (e.g. WhatsApp).</p>
+          </div>
+          <p id="register-error" class="form-error" role="alert"></p>
+          <button type="submit" id="register-submit-btn" class="btn btn-primary btn-block">Create Store Account</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Store owner accounts are for managing your own products and orders only.</p>
+      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/cookie-consent.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/owner-login.js"></script>
+</body>
+</html>

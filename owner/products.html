@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Products — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/owner.css">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Products</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="orders.html">Orders</a></li>
+          <li><a href="bookings.html">Bookings</a></li>
+          <li><a href="messages.html">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden">0</span></a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Your Products</h1>
+      <p><button type="button" id="add-product-btn" class="btn btn-primary">+ Add New Product</button></p>
+      <p id="products-status" class="helper-text" role="status"></p>
+      <div id="owner-product-list" class="owner-product-list"></div>
+      <p class="load-more-row"><button type="button" id="products-load-more" class="btn btn-small hidden">Load More Products</button></p>
+
+      <section id="product-form-section" class="hidden" aria-labelledby="product-form-heading" style="margin-top:2rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
+        <h2 id="product-form-heading">Add Product</h2>
+        <form id="product-form">
+          <input type="hidden" id="product-id" value="">
+
+          <div class="field">
+            <label for="product-name">Product Name</label>
+            <input id="product-name" required>
+          </div>
+          <div class="field">
+            <label for="product-description">Description</label>
+            <textarea id="product-description"></textarea>
+          </div>
+          <div class="field">
+            <label for="product-category">Category</label>
+            <select id="product-category">
+              <option value="general">General</option>
+              <option value="pantry">Pantry / Food</option>
+              <option value="clothing">Clothing</option>
+              <option value="household">Household</option>
+              <option value="electronics">Electronics</option>
+              <option value="rentals">Rentals (customers request dates — cars, equipment, etc.)</option>
+              <option value="services">Services (customers request dates — bookings, appointments, etc.)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="product-status">Status</label>
+            <select id="product-status">
+              <option value="active">Active (visible to customers)</option>
+              <option value="hidden">Hidden (not visible to customers)</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label id="varieties-label">Varieties &amp; Prices</label>
+            <div id="variant-rows"></div>
+            <button type="button" id="add-variant-btn" class="btn btn-small">+ Add Variety</button>
+          </div>
+
+          <div class="field">
+            <label for="product-image-input">Product Photo 1</label>
+            <img id="image-preview" class="image-upload-preview hidden" alt="Selected product photo preview">
+            <input type="file" id="product-image-input" accept="image/*">
+          </div>
+          <div class="field">
+            <label for="product-image-input-2">Product Photo 2 (optional)</label>
+            <img id="image-preview-2" class="image-upload-preview hidden" alt="Selected second product photo preview">
+            <input type="file" id="product-image-input-2" accept="image/*">
+            <p class="helper-text">Up to 2 photos per product, max 5MB each. On a phone, this will offer to take a new photo or choose one from your gallery.</p>
+          </div>
+
+          <p id="product-form-error" class="form-error" role="alert"></p>
+          <button type="submit" id="save-product-btn" class="btn btn-primary">Save Product</button>
+          <button type="button" id="cancel-product-btn" class="btn">Cancel</button>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Mwakete — Store Owner Portal</p>
+      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/cookie-consent.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/owner-nav.js"></script>
+  <script src="../assets/js/owner-products.js"></script>
+</body>
+</html>

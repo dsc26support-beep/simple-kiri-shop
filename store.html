@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Store — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-top-row">
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="container store-branding">
+      <div class="store-branding-info">
+        <p class="site-tagline" id="store-name-tagline">Loading store…</p>
+        <p class="store-phone hidden" id="store-phone-line"></p>
+        <span id="store-delivery-icons"></span>
+      </div>
+      <img id="store-logo-img" class="store-logo hidden" alt="">
+    </div>
+  </header>
+
+  <a id="cart-link" class="floating-action-btn floating-action-btn--left floating-action-btn--cart" href="cart.html" aria-label="View cart">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+    <span>Cart (<span id="cart-count">0</span>)</span>
+  </a>
+
+  <button type="button" id="chat-fab" class="floating-action-btn floating-action-btn--right chat-fab-btn" aria-label="Chat with this store">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+    <span id="chat-unread-badge" class="chat-unread-badge hidden">0</span>
+  </button>
+
+  <div id="chat-window" class="chat-window" role="dialog" aria-labelledby="chat-window-vendor-name">
+    <div class="chat-window-header">
+      <div id="chat-vendor-avatar-placeholder" class="chat-vendor-avatar-placeholder" aria-hidden="true">S</div>
+      <div class="chat-vendor-info">
+        <p id="chat-window-vendor-name" class="chat-vendor-name">This Store</p>
+        <p class="chat-vendor-status"><span class="chat-status-dot" aria-hidden="true"></span>Online</p>
+      </div>
+      <button type="button" id="chat-window-close" class="chat-window-close" aria-label="Close chat">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>
+      </button>
+    </div>
+
+    <div id="chat-window-body" class="chat-window-body">
+      <div id="chat-name-gate" class="chat-name-gate hidden">
+        <p class="chat-name-gate-prompt">What's your name?</p>
+        <form id="chat-name-form" class="chat-name-form">
+          <label class="sr-only" for="chat-name-input">Your name</label>
+          <input id="chat-name-input" class="chat-name-input" type="text" placeholder="Your name" maxlength="100" required autocomplete="name">
+          <button type="submit" class="btn btn-primary">Continue</button>
+        </form>
+      </div>
+
+      <div id="chat-loading" class="chat-loading hidden">
+        <span class="chat-spinner" aria-hidden="true"></span>
+        <span>Loading conversation…</span>
+      </div>
+
+      <div id="chat-messages" class="chat-messages hidden">
+        <button type="button" id="chat-load-earlier-btn" class="chat-load-earlier-btn btn btn-small hidden">Load earlier messages</button>
+        <div id="chat-typing" class="chat-typing hidden" aria-live="polite">
+          <span class="chat-typing-dot"></span>
+          <span class="chat-typing-dot"></span>
+          <span class="chat-typing-dot"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="chat-image-preview" class="chat-image-preview hidden">
+      <img id="chat-image-preview-img" alt="Selected photo preview">
+      <button type="button" id="chat-image-preview-remove" class="chat-image-preview-remove" aria-label="Remove selected photo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>
+      </button>
+    </div>
+
+    <form id="chat-window-form" class="chat-window-input-row">
+      <button type="button" id="chat-attach-btn" class="chat-attach-btn" aria-label="Attach a photo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+      </button>
+      <input type="file" id="chat-image-input" accept="image/*" class="hidden" aria-hidden="true">
+      <textarea id="chat-message-input" class="chat-message-input" placeholder="Type a message…" rows="1" aria-label="Type a message"></textarea>
+      <button type="submit" id="chat-send-btn" class="chat-send-btn" aria-label="Send message">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4 20-7z"></path></svg>
+      </button>
+    </form>
+  </div>
+
+  <main id="main">
+    <section aria-labelledby="products-heading">
+      <div class="container">
+        <h1 id="products-heading">Products</h1>
+        <p id="products-status" class="helper-text" role="status">Loading products…</p>
+        <div id="product-list" class="product-grid"></div>
+        <p id="cart-feedback" class="form-success" aria-live="polite"></p>
+        <noscript><p>Please enable JavaScript to shop with us.</p></noscript>
+      </div>
+    </section>
+
+    <section id="similar-section" class="hidden" aria-labelledby="similar-heading">
+      <div class="container">
+        <h2 id="similar-heading">Similar Products</h2>
+        <div id="similar-products-list" class="similar-products-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>All payments is arranged between Customer and Seller</p>
+      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/helpers.js"></script>
+  <script src="assets/js/cookie-consent.js"></script>
+  <script src="assets/js/chat-window.js"></script>
+  <script src="assets/js/cart.js"></script>
+  <script src="assets/js/product-card.js"></script>
+  <script src="assets/js/store.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>All Stores — Mwakete</title>
+  <meta name="description" content="Browse all local Kiribati stores on Mwakete.">
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container">
+      <div>
+        <p class="site-tagline">All Stores</p>
+      </div>
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="owner/login.html?tab=register">Create Store</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="stores" aria-labelledby="stores-heading">
+      <div class="container">
+        <h1 id="stores-heading">All Stores</h1>
+        <p id="stores-status" class="helper-text" role="status">Loading stores…</p>
+        <div id="store-list" class="store-grid"></div>
+        <p class="load-more-row"><button type="button" id="stores-load-more" class="btn btn-small hidden">Load More Stores</button></p>
+        <noscript><p>Please enable JavaScript in your browser to browse stores.</p></noscript>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>All payments is arranged between Customer and Seller</p>
+      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/helpers.js"></script>
+  <script src="assets/js/cookie-consent.js"></script>
+  <script src="assets/js/directory.js"></script>
+</body>
+</html>

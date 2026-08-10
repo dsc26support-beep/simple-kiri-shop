@@ -1,0 +1,91 @@
+// Shared storefront product-card renderer, used by store.html.
+function renderProductCard(product) {
+  const options = product.variants
+    .map((v) => `<option value="${v.variantId}" data-price="${v.price}">${escapeHtml(v.label)} — ${formatMoney(v.price)}</option>`)
+    .join('');
+
+  const media =
+    product.imageUrl && product.imageUrl2
+      ? `<div class="product-gallery-track">
+          <img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy">
+          <img class="product-image" src="${escapeHtml(product.imageUrl2)}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy">
+        </div>`
+      : product.imageUrl
+      ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
+      : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
+
+  const thumbs =
+    product.imageUrl && product.imageUrl2
+      ? `<div class="product-gallery-thumbs">
+          <button type="button" class="product-gallery-thumb active" data-index="0"><img src="${escapeHtml(product.imageUrl)}" alt="Photo 1 of ${escapeHtml(product.name)}"></button>
+          <button type="button" class="product-gallery-thumb" data-index="1"><img src="${escapeHtml(product.imageUrl2)}" alt="Photo 2 of ${escapeHtml(product.name)}"></button>
+        </div>`
+      : '';
+
+  const pid = escapeHtml(product.productId);
+
+  if (isBookingCategory(product.category)) {
+    const availabilityBadge =
+      product.available === false
+        ? '<span class="availability-badge availability-badge--unavailable">Booked today</span>'
+        : product.available === true
+        ? '<span class="availability-badge availability-badge--available">Available</span>'
+        : '';
+    return `
+      <article class="product-card" data-product-id="${pid}">
+        ${media}
+        ${thumbs}
+        <div class="product-card-body">
+          <h3 class="product-name">${escapeHtml(product.name)} ${availabilityBadge}</h3>
+          ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
+          <div class="product-controls">
+            <label class="sr-only" for="variety-${pid}">Choose a rate for ${escapeHtml(product.name)}</label>
+            <select id="variety-${pid}" class="variety-select">${options}</select>
+          </div>
+          <div class="booking-dates-row">
+            <label class="sr-only" for="start-${pid}">Start date</label>
+            <input id="start-${pid}" class="booking-start-input" type="date">
+            <label class="sr-only" for="end-${pid}">End date</label>
+            <input id="end-${pid}" class="booking-end-input" type="date">
+          </div>
+          <div class="booking-contact-fields">
+            <label class="sr-only" for="name-${pid}">Your name</label>
+            <input id="name-${pid}" class="booking-name-input" placeholder="Your name">
+            <label class="sr-only" for="phone-${pid}">Phone number</label>
+            <input id="phone-${pid}" class="booking-phone-input" placeholder="Phone number" inputmode="tel">
+            <label class="sr-only" for="notes-${pid}">Notes (optional)</label>
+            <textarea id="notes-${pid}" class="booking-notes-input" placeholder="Notes (optional)"></textarea>
+          </div>
+          <div class="product-actions">
+            <button type="button" class="btn btn-primary request-booking-btn" data-product-id="${pid}" data-product-name="${escapeHtml(product.name)}">
+              Request Booking
+            </button>
+          </div>
+          <p class="booking-request-status helper-text" id="booking-status-${pid}" role="status"></p>
+        </div>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="product-card" data-product-id="${pid}">
+      ${media}
+      ${thumbs}
+      <div class="product-card-body">
+        <h3 class="product-name">${escapeHtml(product.name)}</h3>
+        ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
+        <div class="product-controls">
+          <label class="sr-only" for="variety-${pid}">Choose an option for ${escapeHtml(product.name)}</label>
+          <select id="variety-${pid}" class="variety-select">${options}</select>
+        </div>
+        <div class="product-actions">
+          <label class="sr-only" for="qty-${pid}">Quantity</label>
+          <input id="qty-${pid}" class="qty-input" type="number" min="1" value="1" inputmode="numeric">
+          <button type="button" class="btn btn-primary add-to-cart-btn" data-product-id="${pid}" data-product-name="${escapeHtml(product.name)}">
+            Add to Cart
+          </button>
+        </div>
+      </div>
+    </article>
+  `;
+}

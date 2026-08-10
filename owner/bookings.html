@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bookings — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/owner.css">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Bookings</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="orders.html">Orders</a></li>
+          <li><a href="bookings.html">Bookings</a></li>
+          <li><a href="messages.html">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden">0</span></a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Bookings</h1>
+      <p id="bookings-status" class="helper-text" role="status"></p>
+      <div id="booking-list"></div>
+      <p class="load-more-row"><button type="button" id="bookings-load-more" class="btn btn-small hidden">Load More Bookings</button></p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Mwakete — Store Owner Portal</p>
+      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/cookie-consent.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/owner-nav.js"></script>
+  <script src="../assets/js/owner-bookings.js"></script>
+</body>
+</html>

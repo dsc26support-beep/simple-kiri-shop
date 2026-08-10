@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/owner.css">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Dashboard</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="orders.html">Orders</a></li>
+          <li><a href="bookings.html">Bookings</a></li>
+          <li><a href="messages.html">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden">0</span></a></li>
+          <li><a href="settings.html">Settings</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Welcome<span id="welcome-name"></span></h1>
+      <p><a id="storefront-link" href="#" target="_blank" rel="noopener">View my public storefront →</a></p>
+
+      <div class="dashboard-cards">
+        <div class="dashboard-card">
+          <span class="metric" id="metric-products">–</span>
+          <span>Active Products</span>
+        </div>
+        <div class="dashboard-card">
+          <span class="metric" id="metric-orders">–</span>
+          <span>Total Orders</span>
+        </div>
+        <div class="dashboard-card">
+          <span class="metric" id="metric-pending">–</span>
+          <span>Pending Payment</span>
+        </div>
+      </div>
+
+      <p><a class="btn btn-primary" href="products.html">Manage Products</a>
+      <a class="btn" href="orders.html">View Orders</a></p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Mwakete — Store Owner Portal</p>
+      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/helpers.js"></script>
+  <script src="../assets/js/cookie-consent.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/owner-nav.js"></script>
+  <script src="../assets/js/owner-dashboard.js"></script>
+</body>
+</html>

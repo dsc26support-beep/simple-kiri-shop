@@ -1,0 +1,612 @@
+/* Store-owner dashboard — builds on styles.css */
+
+.owner-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.owner-topbar {
+  background: var(--color-blue);
+  color: #fff;
+  padding: var(--space-2) 0;
+  position: relative;
+}
+
+.owner-topbar .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.owner-topbar a {
+  color: #fff;
+}
+
+.owner-nav ul {
+  list-style: none;
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.owner-nav a {
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.owner-main {
+  flex: 1;
+  padding: var(--space-4) 0 var(--space-5);
+}
+
+.auth-card {
+  max-width: 420px;
+  margin: var(--space-5) auto;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-3);
+}
+
+.auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: var(--space-2);
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  min-height: 44px;
+}
+
+.auth-tab[aria-selected="true"] {
+  border-bottom-color: var(--color-blue);
+  color: var(--color-blue);
+}
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+@media (min-width: 600px) {
+  .dashboard-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dashboard-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.dashboard-card .metric {
+  font-size: 1.75rem;
+  font-weight: 700;
+  display: block;
+}
+
+.owner-product-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.owner-product-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+}
+
+.owner-product-row img,
+.owner-product-row .placeholder-swatch {
+  width: 64px;
+  height: 64px;
+  aspect-ratio: auto;
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.owner-product-row .row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.owner-product-row .row-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--color-bg-alt);
+  color: var(--color-muted);
+}
+
+.status-badge.status-active,
+.status-badge.status-paid,
+.status-badge.status-fulfilled,
+.status-badge.status-confirmed,
+.status-badge.status-open {
+  background: #e3f4e6;
+  color: var(--color-success);
+}
+
+.status-badge.status-pending,
+.status-badge.status-pending-payment {
+  background: #fff4d6;
+  color: #8a6100;
+}
+
+.status-badge.status-cancelled,
+.status-badge.status-declined,
+.status-badge.status-archived {
+  background: #fbe4e2;
+  color: var(--color-danger);
+}
+
+.variant-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  margin-bottom: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.variant-row .field {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 120px;
+}
+
+.image-upload-preview {
+  width: 140px;
+  height: 140px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--space-2);
+  background: var(--color-bg-alt);
+}
+
+.order-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.order-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-2) 0;
+  font-size: 0.92rem;
+}
+
+.order-card dt {
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.order-card dd {
+  margin: 0;
+}
+
+.delivery-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.delivery-method-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.delivery-cost-input {
+  max-width: 10em;
+}
+
+.delivery-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.6em 1em;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+}
+
+.delivery-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.delivery-toggle-btn[aria-pressed="true"] {
+  border-color: var(--color-blue);
+  background: var(--color-blue);
+  color: #fff;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 2.75em;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.4em;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0.4em;
+  min-height: auto;
+  cursor: pointer;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* .btn-saving-dots / .btn-adding animation now lives in styles.css so
+   customer-facing pages (e.g. Add to Cart) can use it too. */
+
+/* Nav "Messages" unread badge, loaded once per page by owner-nav.js. */
+.nav-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.nav-unread-badge.hidden {
+  display: none;
+}
+
+/*
+ * Vendor chat dashboard (owner/messages.html) - a two-pane inbox layout.
+ * Both panes stack full-width on mobile (list first, then the detail pane
+ * once a conversation is opened, via .has-open-conversation); side-by-side
+ * from 800px up, where the back button becomes unnecessary and hides.
+ */
+.messages-layout {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 65vh;
+}
+
+@media (min-width: 800px) {
+  .messages-layout {
+    flex-direction: row;
+    height: 70vh;
+  }
+}
+
+.conversation-list-pane {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.messages-layout.has-open-conversation .conversation-list-pane {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .conversation-list-pane {
+    width: 320px;
+    flex: 0 0 320px;
+    border-bottom: none;
+    border-right: 1px solid var(--color-border);
+    height: 100%;
+  }
+
+  .messages-layout.has-open-conversation .conversation-list-pane {
+    display: flex;
+  }
+}
+
+.conversation-search-row {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+
+.conversation-search-row input {
+  width: 100%;
+}
+
+.conversation-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.conversation-list-load-more {
+  flex: 0 0 auto;
+  margin: var(--space-2);
+}
+
+.conversation-list-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--color-border);
+  background: #fff;
+  cursor: pointer;
+}
+
+.conversation-list-item:hover,
+.conversation-list-item:focus-visible {
+  background: var(--color-bg-alt);
+}
+
+.conversation-list-item.is-active {
+  background: var(--color-bg-alt);
+  border-left-color: var(--color-blue);
+}
+
+.conversation-list-item.is-unread .conversation-item-name,
+.conversation-list-item.is-unread .conversation-item-preview {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.conversation-item-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.conversation-item-name {
+  font-size: 0.92rem;
+}
+
+.conversation-item-unread-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--color-blue);
+  vertical-align: middle;
+}
+
+.conversation-item-time {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.conversation-item-preview {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-detail-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.conversation-empty-state {
+  margin: auto;
+  padding: var(--space-4);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.conversation-detail.hidden,
+.conversation-empty-state.hidden {
+  display: none;
+}
+
+.conversation-detail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.conversation-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+
+.conversation-back-btn {
+  display: flex;
+  flex: 0 0 auto;
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+@media (min-width: 800px) {
+  .conversation-back-btn {
+    display: none;
+  }
+}
+
+.conversation-detail-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.conversation-detail-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+
+.conversation-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-bg-alt);
+}
+
+/*
+ * .chat-message (shape/animation) comes from styles.css - these two
+ * modifiers are the vendor-dashboard's own perspective on it ("mine" vs
+ * "theirs"), distinct from styles.css's customer-facing --customer/--vendor
+ * pair, since here the VENDOR is the one sending, not receiving.
+ */
+.chat-message--mine {
+  align-self: flex-end;
+  background: var(--color-blue);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message--theirs {
+  align-self: flex-start;
+  background: #fff;
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: 4px;
+}
+
+.conversation-reply-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+
+.conversation-reply-input {
+  flex: 1 1 auto;
+  resize: none;
+  max-height: 100px;
+  padding: 0.6em 0.9em;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--color-ink);
+  background: var(--color-bg);
+}
+
+.conversation-reply-input:focus-visible {
+  outline: 2px solid var(--color-blue-light);
+  outline-offset: 1px;
+}
+
+.conversation-send-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-blue);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+
+.conversation-send-btn:hover {
+  background: var(--color-ink);
+}
+
+.conversation-send-btn:active {
+  transform: scale(0.9);
+}
+
+.conversation-send-btn:focus-visible {
+  outline: 3px solid var(--color-blue-light);
+  outline-offset: 2px;
+}
