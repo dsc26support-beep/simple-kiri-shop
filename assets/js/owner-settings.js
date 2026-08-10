@@ -18,6 +18,7 @@ async function init() {
   wireLocationFields();
   wirePasswordToggle('new-password');
   document.getElementById('logo-image-input').addEventListener('change', onLogoFileChange);
+  document.getElementById('idlicense-image-input').addEventListener('change', onIdLicenseFileChange);
 
   fillForm(owner);
   renderTwoFAStatus(owner);
@@ -52,6 +53,12 @@ function fillForm(owner) {
     logoPreview.src = owner.logoUrl;
     logoPreview.classList.remove('hidden');
   }
+
+  const idLicensePreview = document.getElementById('idlicense-preview');
+  if (owner.idLicenseUrl) {
+    idLicensePreview.src = owner.idLicenseUrl;
+    idLicensePreview.classList.remove('hidden');
+  }
 }
 
 async function onLogoFileChange(e) {
@@ -75,6 +82,35 @@ async function onLogoFileChange(e) {
 
     const owner = Auth.getOwner();
     owner.logoUrl = res.logoUrl;
+    Auth.saveSession(Auth.getToken(), owner);
+
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  } catch (err) {
+    statusEl.textContent = 'Could not process that image.';
+  }
+}
+
+async function onIdLicenseFileChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('idlicense-upload-status');
+  const preview = document.getElementById('idlicense-preview');
+  statusEl.textContent = 'Uploading…';
+
+  try {
+    const { base64, mimeType } = await compressImage(file, 1024, 0.85);
+    const res = await Api.post('uploadOwnerIdLicense', { token: Auth.getToken(), imageBase64: base64, mimeType });
+    if (!res.ok) {
+      statusEl.textContent = res.error || 'Could not upload that photo.';
+      return;
+    }
+    preview.src = res.idLicenseUrl;
+    preview.classList.remove('hidden');
+    statusEl.textContent = 'Uploaded.';
+
+    const owner = Auth.getOwner();
+    owner.idLicenseUrl = res.idLicenseUrl;
     Auth.saveSession(Auth.getToken(), owner);
 
     setTimeout(() => { statusEl.textContent = ''; }, 3000);

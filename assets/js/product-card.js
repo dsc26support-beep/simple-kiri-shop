@@ -24,13 +24,19 @@ function renderProductCard(product) {
 
   const pid = escapeHtml(product.productId);
 
-  if (product.listingType === 'booking') {
+  if (isBookingCategory(product.category)) {
+    const availabilityBadge =
+      product.available === false
+        ? '<span class="availability-badge availability-badge--unavailable">Booked today</span>'
+        : product.available === true
+        ? '<span class="availability-badge availability-badge--available">Available</span>'
+        : '';
     return `
       <article class="product-card" data-product-id="${pid}">
         ${media}
         ${thumbs}
         <div class="product-card-body">
-          <h3 class="product-name">${escapeHtml(product.name)}</h3>
+          <h3 class="product-name">${escapeHtml(product.name)} ${availabilityBadge}</h3>
           ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
           <div class="product-controls">
             <label class="sr-only" for="variety-${pid}">Choose a rate for ${escapeHtml(product.name)}</label>

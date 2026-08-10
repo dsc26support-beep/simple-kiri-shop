@@ -21,6 +21,7 @@ var PUBLIC_POST_ACTIONS = [
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
   'createProduct', 'updateProduct', 'deleteProduct', 'uploadProductImage', 'uploadStoreLogo',
+  'uploadOwnerIdLicense',
   'listOwnerOrders', 'updateOrderStatus', 'setStoreStatus',
   'listOwnerBookings', 'updateBookingStatus',
   'enable2FARequest', 'confirm2FASetup', 'disable2FA',
@@ -145,6 +146,7 @@ function doPost(e) {
         case 'deleteProduct': return jsonOut(actionDeleteProduct(owner, body));
         case 'uploadProductImage': return jsonOut(actionUploadProductImage(owner, body));
         case 'uploadStoreLogo': return jsonOut(actionUploadStoreLogo(owner, body));
+        case 'uploadOwnerIdLicense': return jsonOut(actionUploadOwnerIdLicense(owner, body));
         case 'listOwnerOrders': return jsonOut(actionListOwnerOrders(owner, body));
         case 'updateOrderStatus': return jsonOut(actionUpdateOrderStatus(owner, body));
         case 'setStoreStatus': return jsonOut(actionSetStoreStatus(owner, body));

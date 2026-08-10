@@ -219,6 +219,8 @@ const CATEGORIES = [
   { id: 'clothing', label: 'Clothing' },
   { id: 'household', label: 'Household' },
   { id: 'electronics', label: 'Electronics' },
+  { id: 'rentals', label: 'Rentals' },
+  { id: 'services', label: 'Services' },
   { id: 'general', label: 'General' }
 ];
 
@@ -227,6 +229,12 @@ function renderCategoryButtons(containerId) {
     (c) => `<a class="btn category-btn" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
   ).join('');
 }
+
+// Kept in sync with apps-script/Products.gs's BOOKING_CATEGORIES - a
+// Rentals/Services listing gets the date-range request flow instead of
+// cart/checkout.
+const BOOKING_CATEGORIES = ['rentals', 'services'];
+function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
 
 // Self-contained inline-SVG icons (no external icon library/CDN) - keep the
 // site working offline-first on limited mobile data.

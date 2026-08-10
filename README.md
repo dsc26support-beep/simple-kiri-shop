@@ -59,7 +59,7 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits | IdLicenseUrl | IdLicenseFileId`
 
    (The `ANZ_*`/`Teremo_*`/`PaymentNotes` columns are no longer used by the
    app — checkout no longer displays payment details, so Settings no longer
@@ -70,27 +70,31 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `Status` is now one of `active` / `standby` / `closed` — see "Store status"
    below. `Visits` is a running count of unique visitors who've opened that
    store's page — see "View/visit tracking" below. Leave it blank; the
-   script manages it.)
+   script manages it. `IdLicenseUrl`/`IdLicenseFileId` hold an optional
+   vendor ID/license photo — see "Booking listings" below for how it's
+   uploaded and why it's kept out of every public response.)
 
    **Products**
-   `ProductId | OwnerId | StoreSlug | Name | Description | Category | ListingType | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt | Views`
+   `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt | Views`
 
    (`ImageUrl2`/`ImageFileId2` hold an optional second product photo — each
    product supports up to 2 photos, shown as a swipeable carousel on the
    storefront. `Views` is a running count of unique visitors who've seen
    that product's card anywhere on the site — see "View/visit tracking"
-   below. Leave it blank; the script manages it. `ListingType` is `goods`
-   (the default — customers add it to a cart and checkout) or `booking` —
-   see "Booking listings" below. A blank cell is treated as `goods`.)
+   below. Leave it blank; the script manages it. `Category` being `rentals`
+   or `services` is what makes a listing a booking listing — see "Booking
+   listings" below. There is no separate listing-type field; any other
+   category value is a regular add-to-cart/checkout `goods` listing.)
 
    **Variants**
    `VariantId | ProductId | OwnerId | Label | Price | SKU | StockQty | Status`
 
-   (For a `booking`-type product, each variant is a rate rather than a size/
-   pack — e.g. `Per Night` / `Per Day` / `Per Trip`.)
+   (For a booking listing — `Category` is `rentals` or `services` — each
+   variant is a rate rather than a size/pack — e.g. `Per Night` / `Per Day` /
+   `Per Trip`.)
 
-   **Bookings** (date-range requests against a `booking`-type Product — see
-   "Booking listings" below)
+   **Bookings** (date-range requests against a `rentals`/`services`-category
+   Product — see "Booking listings" below)
    `BookingId | OwnerId | StoreSlug | ProductId | ProductName | VariantId | RateLabel | RatePrice | CustomerName | CustomerPhone | CustomerEmail | Island | Village | Notes | StartDate | EndDate | Status | CreatedAt | UpdatedAt`
 
    (`ProductName`/`RateLabel`/`RatePrice` are snapshotted at request time, so
@@ -128,16 +132,20 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
    `DeliveryTruckCost`, `DeliveryShipCost`, `DeliveryAirCargoCost`, `Island`,
-   `Village`, `LogoUrl`, `LogoFileId`, and `Visits` columns to the end of
-   `Owners`, add `ImageUrl2`, `ImageFileId2`, and `Views` to the end of
-   `Products`, add `Island`, `Village`, `DeliveryMethod`, `DeliveryCost`, and
-   `NoEmailReminderSent` to the end of `Orders`, add `ImageUrl` and
-   `ImageFileId` to the end of `Messages` (photo attachments in chat), add
-   `ListingType` to the end of `Products` (see "Booking listings" below —
-   every existing row is treated as `goods` until you set it), add the new
-   `Bookings` tab (see its column list above), and add the new `TwoFACodes`,
-   `AbandonedCarts`, `Conversations`, and `Messages` tabs — everything else
-   stays the same.
+   `Village`, `LogoUrl`, `LogoFileId`, `Visits`, `IdLicenseUrl`, and
+   `IdLicenseFileId` columns to the end of `Owners`, add `ImageUrl2`,
+   `ImageFileId2`, and `Views` to the end of `Products`, add `Island`,
+   `Village`, `DeliveryMethod`, `DeliveryCost`, and `NoEmailReminderSent` to
+   the end of `Orders`, add `ImageUrl` and `ImageFileId` to the end of
+   `Messages` (photo attachments in chat), add the new `Bookings` tab (see
+   its column list above), and add the new `TwoFACodes`, `AbandonedCarts`,
+   `Conversations`, and `Messages` tabs — everything else stays the same.
+
+   (If your `Products` tab still has a `ListingType` column from an earlier
+   version of this feature, it's no longer read or written — you can leave
+   it in place harmlessly or delete it. Booking-ness is now driven entirely
+   by `Category` being `rentals` or `services` — see "Booking listings"
+   below.)
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
@@ -154,8 +162,9 @@ Sheet and deploy the Apps Script backend under your own Google account first.
      if unset — set this property to change the limit without editing code
      or redeploying.
 
-   `IMAGE_FOLDER_ID` (product/logo photos) and `CHAT_IMAGE_FOLDER_ID` (chat
-   photos, kept in a separate Drive folder) are both set automatically the
+   `IMAGE_FOLDER_ID` (product/logo photos), `CHAT_IMAGE_FOLDER_ID` (chat
+   photos), and `ID_LICENSE_FOLDER_ID` (vendor ID/license uploads — see
+   "Booking listings" below) each get their own Drive folder, set automatically the
    first time a photo is uploaded through each path.
 
    **Chat: typing indicator and new-message email notifications.** Both
@@ -292,11 +301,13 @@ Abandoned carts older than ~12 months are deleted outright by the same
 sweep (no archive tab, no opt-in) — nothing in this app ever displays
 historical abandoned-cart data to anyone, so there's nothing to preserve.
 
-## Booking listings (rental cars, hotels, tours, etc.)
+## Booking listings (rental cars, hotels, tours, services, etc.)
 
 Alongside regular `goods` products (add to cart, checkout), a vendor can
-create a `booking`-type listing — Settings → the "Listing Type" dropdown when
-adding/editing a product. A booking listing skips cart/checkout entirely:
+create a booking listing simply by picking **Category → Rentals** or
+**Category → Services** when adding/editing a product — there is no
+separate "Listing Type" field; the category itself determines the
+behavior. A booking listing skips cart/checkout entirely:
 
 1. The customer picks a rate (a Variant, e.g. "Per Night"), a start/end date,
    and submits a booking request directly from the store page.
@@ -320,9 +331,38 @@ the same listing was just confirmed for an overlapping range. If a Pending
 request already conflicts with a Confirmed one, the owner's Bookings page
 flags it so the vendor knows to decline it instead.
 
+**Today's availability status.** Every `Rentals`/`Services` listing shown to
+customers (store page, search results) carries an `available` flag — an
+"Available" or "Booked today" badge next to the listing name — worked out
+from whether any `Confirmed` booking on that listing covers today's date
+(`unavailableProductIdsToday` in `apps-script/Bookings.gs`). This is a
+same-day convenience indicator only; it doesn't stop a customer requesting a
+future date range, and the real guarantee against overlapping confirmations
+is the lock-guarded check above, not this badge. If a store never created
+the optional `Bookings` tab, every booking listing simply shows as
+available rather than the page failing to load.
+
 Booking listings are excluded from the home page "Trending Products"
 carousel and store pages' "Similar Products" row, since both assume an
 add-to-cart affordance a booking listing doesn't have.
+
+**Optional vendor ID/License upload.** In Settings, a vendor can optionally
+upload a photo of an ID or business license (`uploadOwnerIdLicense` action,
+`apps-script/Images.gs`, mirroring the existing store-logo upload). It's
+stored in its own Drive folder (`ID_LICENSE_FOLDER_ID` Script Property,
+created automatically on first upload, or the `id-license` Cloudinary
+subfolder if Cloudinary is configured) and in the `IdLicenseUrl`/
+`IdLicenseFileId` `Owners` columns. This field is deliberately kept out of
+`publicOwnerFields` (`apps-script/Auth.gs`) — the single shape every public
+action uses — so it's added explicitly, only on the vendor's own
+authenticated `getOwnerProfile` response, and never appears on the store
+page, product listings, or anywhere a customer can see. That said, this app
+has no authenticated-file-serving mechanism anywhere — the Drive fallback
+path sets `ANYONE_WITH_LINK` view access like every other photo in this app
+(see `uploadImage` in `apps-script/Utils.gs`) — so anyone who somehow
+obtained the exact URL could still view the document. Worth the vendor
+knowing before uploading a personal ID, even though the URL is never shown
+or linked anywhere but their own Settings page.
 
 ## Store status (Settings → Store Status)
 

@@ -81,7 +81,7 @@ async function loadSimilarProducts() {
     .filter((p) => p.storeSlug !== currentSlug)
     // Booking listings have no add-to-cart affordance, which
     // renderBrowseProductCard's grid assumes every card has.
-    .filter((p) => p.listingType !== 'booking')
+    .filter((p) => !isBookingCategory(p.category))
     .filter((p) => ownNames.some((name) => namesShareEquivalentWord(name, p.name)))
     .slice(0, 10);
   if (similar.length === 0) return;

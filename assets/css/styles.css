@@ -1246,6 +1246,8 @@ legend {
 .placeholder-swatch.category-household { background: #4a5568; }
 .placeholder-swatch.category-electronics { background: #2a6f97; }
 .placeholder-swatch.category-general { background: var(--color-blue); }
+.placeholder-swatch.category-rentals { background: #b45309; }
+.placeholder-swatch.category-services { background: #166534; }
 
 .product-card-body {
   padding: var(--space-3);
@@ -1495,6 +1497,25 @@ legend {
 
 /* Booking listings (rental cars, hotels, tours, etc.) - date-range request
    in place of the qty/add-to-cart controls goods listings use. */
+
+.availability-badge {
+  display: inline-block;
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.availability-badge--available {
+  background: #e3f4e6;
+  color: var(--color-success);
+}
+
+.availability-badge--unavailable {
+  background: #fff4d6;
+  color: #8a6100;
+}
 
 .booking-dates-row {
   display: flex;

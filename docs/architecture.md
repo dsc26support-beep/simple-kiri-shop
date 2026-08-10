@@ -198,17 +198,19 @@ response is `{ok:true, ...}` or `{ok:false, error}`.
   view/visit counters, cross-store search, and the cached public read actions
   (`listStores`, `listProducts`, `getStorePublicInfo`, `listTopProducts`,
   `listTopStores`).
-- **`Bookings.gs`** — booking-listing requests (`ListingType === 'booking'`) and their
-  confirm/decline lifecycle. The no-double-booking guarantee lives here:
-  `actionUpdateBookingStatus` re-checks for an overlapping already-`Confirmed`
-  booking on the same listing inside a `LockService` lock before allowing a confirm
-  to go through — the same lock-guarded check-then-write pattern `Orders.gs` uses
-  for its own price/stock re-validation.
+- **`Bookings.gs`** — booking-listing requests (`isBookingCategory(Category)`, true for
+  `rentals`/`services`) and their confirm/decline lifecycle. The no-double-booking
+  guarantee lives here: `actionUpdateBookingStatus` re-checks for an overlapping
+  already-`Confirmed` booking on the same listing inside a `LockService` lock before
+  allowing a confirm to go through — the same lock-guarded check-then-write pattern
+  `Orders.gs` uses for its own price/stock re-validation. Also owns
+  `unavailableProductIdsToday()`, the today-availability lookup `Products.gs` calls
+  to attach an `available` flag to booking listings in public responses.
 - **`Orders.gs`** — order creation (server-recomputed pricing, `LockService`-guarded,
   authoritative delivery-eligibility re-check) and owner order management.
-- **`Images.gs`** — product photo (up to 2 per product) and store logo upload to
-  Drive; every endpoint here requires a valid owner token, or the Drive folder
-  becomes open anonymous file hosting.
+- **`Images.gs`** — product photo (up to 2 per product), store logo, and optional
+  vendor ID/license photo upload to Drive; every endpoint here requires a valid
+  owner token, or the Drive folder becomes open anonymous file hosting.
 - **`Reminders.gs`** — abandoned-cart capture (`saveAbandonedCart`) and the hourly
   `runReminderSweep()` sweep. This function is **not** reachable through
   `Code.gs`'s router — it only runs if manually wired to a time-driven trigger in
@@ -297,8 +299,8 @@ deployments) lives in
 
 | Tab | Columns |
 |---|---|
-| **Owners** | `OwnerId, StoreName, StoreSlug, Username, PasswordHash, PasswordSalt, Email, Phone, ANZ_AccountName, ANZ_AccountNumber, ANZ_Branch, Teremo_Name, Teremo_Number, PaymentNotes, Status, CreatedAt, TwoFAEnabled, DeliveryTruck, DeliveryShip, DeliveryAirCargo, DeliveryTruckCost, DeliveryShipCost, DeliveryAirCargoCost, Island, Village, LogoUrl, LogoFileId, Visits` |
-| **Products** | `ProductId, OwnerId, StoreSlug, Name, Description, Category, ListingType, ImageUrl, ImageFileId, ImageUrl2, ImageFileId2, Status, SortOrder, CreatedAt, UpdatedAt, Views` |
+| **Owners** | `OwnerId, StoreName, StoreSlug, Username, PasswordHash, PasswordSalt, Email, Phone, ANZ_AccountName, ANZ_AccountNumber, ANZ_Branch, Teremo_Name, Teremo_Number, PaymentNotes, Status, CreatedAt, TwoFAEnabled, DeliveryTruck, DeliveryShip, DeliveryAirCargo, DeliveryTruckCost, DeliveryShipCost, DeliveryAirCargoCost, Island, Village, LogoUrl, LogoFileId, Visits, IdLicenseUrl, IdLicenseFileId` |
+| **Products** | `ProductId, OwnerId, StoreSlug, Name, Description, Category, ImageUrl, ImageFileId, ImageUrl2, ImageFileId2, Status, SortOrder, CreatedAt, UpdatedAt, Views` |
 | **Variants** | `VariantId, ProductId, OwnerId, Label, Price, SKU, StockQty, Status` |
 | **Bookings** | `BookingId, OwnerId, StoreSlug, ProductId, ProductName, VariantId, RateLabel, RatePrice, CustomerName, CustomerPhone, CustomerEmail, Island, Village, Notes, StartDate, EndDate, Status, CreatedAt, UpdatedAt` |
 | **Orders** | `OrderId, OwnerId, StoreSlug, CustomerName, CustomerPhone, CustomerEmail, Island, Village, DeliveryAddress, DeliveryMethod, DeliveryCost, Notes, PaymentMethod, PaymentReference, ItemsJson, ItemsSummary, Subtotal, Total, Status, CreatedAt, UpdatedAt, NoEmailReminderSent` |
@@ -315,12 +317,22 @@ Notes:
 - `Orders.ItemsJson` is an immutable snapshot of exactly what was bought and at what
   price, recomputed server-side at order time — never trust the client's submitted
   price.
-- `Products.ListingType` (`goods` default, or `booking`) splits the catalog into two
-  demand paths: `goods` listings use `Variants` + cart/checkout as always; `booking`
-  listings (rental cars, hotels, tours) still use `Variants` as their rate options,
-  but customers submit a date-range request into `Bookings` instead — no cart, no
+- `Products.Category` being `rentals` or `services` (`isBookingCategory()` in
+  `Products.gs`) splits the catalog into two demand paths — there's no separate
+  listing-type field. Any other category is a `goods` listing: `Variants` +
+  cart/checkout as always. A `rentals`/`services` listing (rental cars, hotels,
+  tours, professional services) still uses `Variants` as its rate options, but
+  customers submit a date-range request into `Bookings` instead — no cart, no
   checkout. `Bookings.ProductName`/`RateLabel`/`RatePrice` are snapshotted the same
-  way `Orders.ItemsJson` is, for the same reason.
+  way `Orders.ItemsJson` is, for the same reason. Public responses for a
+  `rentals`/`services` listing also carry an `available` boolean, derived from
+  whether a `Confirmed` booking on that listing covers today (see
+  `unavailableProductIdsToday()` in `Bookings.gs`).
+- `Owners.IdLicenseUrl`/`IdLicenseFileId` hold an optional vendor ID/license photo
+  (`uploadOwnerIdLicense` action, `Images.gs`). Deliberately excluded from
+  `publicOwnerFields()` (`Auth.gs`) — the shared shape every public action returns —
+  and instead added explicitly only on the vendor's own authenticated
+  `getOwnerProfile` response, so it never reaches a customer-facing page.
 - Soft deletes throughout: a product's `Status` becomes `archived` (never removed), a
   variant dropped from an edit becomes `Status: deleted`, and a store's `Status`
   moves through `active` / `standby` / `closed` — no row is ever hard-deleted by the
@@ -384,8 +396,8 @@ that `OwnerId` before allowing a read or write.
 4. `owner/orders.html` — lists this owner's orders newest-first, lets the owner
    update each order's `Status` (`Pending Payment` → `Paid` → `Fulfilled`, or
    `Cancelled`).
-4b. `owner/bookings.html` — for `booking`-type listings only (Section 3 note on
-   `ListingType`). Lists booking requests newest-first; the owner confirms or
+4b. `owner/bookings.html` — for `Rentals`/`Services`-category listings only (Section 3
+   note on `isBookingCategory()`). Lists booking requests newest-first; the owner confirms or
    declines a `Pending` one, or cancels a `Confirmed` one — no other transition is
    allowed (unlike Orders' any-status-to-any-status update, this is enforced
    server-side via an explicit transition table). Confirming re-checks, inside a
@@ -395,7 +407,9 @@ that `OwnerId` before allowing a read or write.
    (`overlapsConfirmed`) so the owner knows to decline it.
 5. `owner/settings.html` — store name/contact, delivery methods (Truck/Ship/Air
    Cargo, each independently toggleable with its own price), island/village
-   location, store logo, password change, 2FA enable/disable, and store status.
+   location, store logo, an optional ID/license photo upload (never shown to
+   customers — see Section 6's `IdLicenseUrl` note), password change, 2FA
+   enable/disable, and store status.
 
 **Store status** is a 3-state soft-delete, set from Settings:
 - **active** — normal, visible to customers, owner can log in.
@@ -436,17 +450,18 @@ No accounts. A customer's entire "identity" is `localStorage` on their own devic
    visitor (deduped via a `localStorage` set), batched into one POST per page load,
    and drive the home page's Trending Products / Popular Stores carousels
    (`listTopProducts` / `listTopStores`, top 20 by count).
-7. **Booking listings** (`Products.ListingType === 'booking'`) skip steps 2-4 above
-   entirely — no cart, no checkout. On `store.html`, such a listing renders a rate
-   picker, a start/end date pair, and a "Request Booking" button instead of
-   qty/Add to Cart; submitting calls `createBookingRequest` directly. The request is
-   rejected up front if it overlaps a booking already `Confirmed` for that listing,
-   but two customers *can* both have overlapping `Pending` requests — the vendor
-   resolves that by confirming one (Section 8, step 4b). **No double bookings is a
-   hard guarantee, not just a request-time check**: it's enforced again inside a
-   `LockService` lock at the moment a `Pending` booking is confirmed, which is the
-   only point two requests could otherwise race each other into both being
-   Confirmed.
+7. **Booking listings** (`Category` is `rentals` or `services` — `isBookingCategory()`
+   in `Products.gs`) skip steps 2-4 above entirely — no cart, no checkout. On
+   `store.html`, such a listing renders a rate picker, a start/end date pair, an
+   "Available"/"Booked today" badge (from the `available` field — see Section 6),
+   and a "Request Booking" button instead of qty/Add to Cart; submitting calls
+   `createBookingRequest` directly. The request is rejected up front if it overlaps a
+   booking already `Confirmed` for that listing, but two customers *can* both have
+   overlapping `Pending` requests — the vendor resolves that by confirming one
+   (Section 8, step 4b). **No double bookings is a hard guarantee, not just a
+   request-time check**: it's enforced again inside a `LockService` lock at the
+   moment a `Pending` booking is confirmed, which is the only point two requests
+   could otherwise race each other into both being Confirmed.
 
 ---
 

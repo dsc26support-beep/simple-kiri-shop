@@ -93,3 +93,72 @@ function actionUploadStoreLogo(owner, body) {
   invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v1:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
   return ok({ logoUrl: uploaded.imageUrl });
 }
+
+/**
+ * ID/License documents get their own Drive folder (like chat images do),
+ * separate from product/logo photos, so they're easy to find/manage
+ * independently.
+ *
+ * IMPORTANT CAVEAT, documented here and in README.md: this reuses the same
+ * uploadImage() pipeline as every other photo in this app, which for the
+ * Drive fallback path sets ANYONE_WITH_LINK view access (see Utils.gs's
+ * uploadImage) - there is no authenticated-file-serving mechanism anywhere
+ * in this app. The resulting URL is never shown in any customer- or
+ * vendor-facing UI except the owner's own Settings page (see
+ * actionGetOwnerProfile's comment on why it's kept out of
+ * publicOwnerFields), but anyone who somehow obtained the exact URL could
+ * still view the document. Same trust model this app already accepts for
+ * product photos and store logos, just with materially higher stakes for a
+ * personal ID document - worth the vendor knowing before they upload one.
+ */
+function getIdLicenseFolder() {
+  var props = PropertiesService.getScriptProperties();
+  var folderId = props.getProperty('ID_LICENSE_FOLDER_ID');
+  if (folderId) {
+    try {
+      return DriveApp.getFolderById(folderId);
+    } catch (e) {
+      // stored id no longer valid, fall through and recreate
+    }
+  }
+  var folder = DriveApp.createFolder('Mwakete ID License Documents');
+  props.setProperty('ID_LICENSE_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+/** Protected, optional. Vendor-only upload of an ID/License photo - never exposed in any public response, see actionGetOwnerProfile. */
+function actionUploadOwnerIdLicense(owner, body) {
+  var mimeType = body.mimeType;
+  var imageBase64 = body.imageBase64;
+
+  if (!mimeType || mimeType.indexOf('image/') !== 0) return fail('Only image uploads are allowed');
+  if (!imageBase64) return fail('No image data received');
+
+  var bytes;
+  try {
+    bytes = Utilities.base64Decode(imageBase64);
+  } catch (e) {
+    return fail('Invalid image data');
+  }
+  if (bytes.length > MAX_IMAGE_BYTES) return fail('Image is too large (max 5MB) - please choose a smaller photo');
+
+  var ownersSheet = getSheet('Owners');
+  var ownerRow = findRowById(ownersSheet, 'OwnerId', owner.OwnerId);
+  if (!ownerRow) return fail('Store account not found');
+
+  var uploaded = uploadImage(bytes, mimeType, 'idlicense_' + owner.OwnerId + '_' + Date.now(), getIdLicenseFolder, 'id-license');
+  var oldFileId = ownerRow.IdLicenseFileId;
+
+  updateRowFromObject(ownersSheet, ownerRow.__row, {
+    IdLicenseUrl: uploaded.imageUrl,
+    IdLicenseFileId: uploaded.imageFileId
+  });
+
+  if (oldFileId) deleteStoredImage(oldFileId);
+
+  // No cache invalidation here, unlike the logo upload above - IdLicenseUrl
+  // is never part of any cached public response
+  // (v1:listStores/listProducts/storeInfo/topStores), so there's nothing
+  // stale to clear.
+  return ok({ idLicenseUrl: uploaded.imageUrl });
+}

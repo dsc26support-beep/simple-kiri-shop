@@ -9,6 +9,17 @@ function getOwnerBySlug(slug) {
   return sheetToObjects(getSheet('Owners')).filter(function (o) { return o.StoreSlug === slug; })[0] || null;
 }
 
+/**
+ * Booking-ness now lives entirely in Category, replacing the earlier
+ * separate ListingType field - one fewer thing for a vendor to set
+ * correctly, and "Rentals"/"Services" already describe the business, so a
+ * second field asking the same question again was redundant. A listing in
+ * either category gets the date-range request flow (Bookings.gs) instead
+ * of cart/checkout; every other category is a normal goods listing.
+ */
+var BOOKING_CATEGORIES = ['rentals', 'services'];
+function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
+
 function deliveryCostOf(rawCost) {
   return rawCost === '' || rawCost == null ? null : Number(rawCost);
 }
@@ -72,7 +83,6 @@ function actionListTopProducts() {
           name: p.Name,
           description: p.Description,
           category: p.Category,
-          listingType: p.ListingType || 'goods',
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           storeSlug: owner.StoreSlug,
@@ -93,7 +103,7 @@ function actionListTopProducts() {
       // Booking listings have no add-to-cart affordance, which this
       // "trending products" carousel assumes every card has - excluded here
       // rather than given a broken card.
-      .filter(function (p) { return p.listingType !== 'booking' && p.variants.length > 0; })
+      .filter(function (p) { return !isBookingCategory(p.category) && p.variants.length > 0; })
       .sort(function (a, b) { return b.views - a.views; })
       .slice(0, 20);
   });
@@ -234,7 +244,7 @@ function actionSearchProducts(params) {
 
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
 
-    return sheetToObjects(getSheet('Products'))
+    var matched = sheetToObjects(getSheet('Products'))
       .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
       .filter(function (p) {
         if (category && p.Category !== category) return false;
@@ -243,7 +253,11 @@ function actionSearchProducts(params) {
           if (haystack.indexOf(q) === -1) return false;
         }
         return true;
-      })
+      });
+
+    var unavailableIds = unavailableProductIdsToday(matched.filter(function (p) { return isBookingCategory(p.Category); }).map(function (p) { return p.ProductId; }));
+
+    return matched
       .map(function (p) {
         var owner = ownersById[p.OwnerId];
         var productVariants = variants
@@ -254,7 +268,6 @@ function actionSearchProducts(params) {
           name: p.Name,
           description: p.Description,
           category: p.Category,
-          listingType: p.ListingType || 'goods',
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           storeSlug: owner.StoreSlug,
@@ -263,6 +276,7 @@ function actionSearchProducts(params) {
           storeLogoUrl: owner.LogoUrl,
           variants: productVariants
         };
+        if (isBookingCategory(p.Category)) product.available = !unavailableIds[p.ProductId];
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
         product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
         product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
@@ -304,6 +318,7 @@ function actionListProducts(params) {
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) {
       return v.OwnerId === owner.OwnerId && v.Status === 'active';
     });
+    var unavailableIds = unavailableProductIdsToday(products.filter(function (p) { return isBookingCategory(p.Category); }).map(function (p) { return p.ProductId; }));
 
     var result = products
       .sort(function (a, b) { return (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0); })
@@ -311,16 +326,17 @@ function actionListProducts(params) {
         var productVariants = variants
           .filter(function (v) { return v.ProductId === p.ProductId; })
           .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
-        return {
+        var product = {
           productId: p.ProductId,
           name: p.Name,
           description: p.Description,
           category: p.Category,
-          listingType: p.ListingType || 'goods',
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           variants: productVariants
         };
+        if (isBookingCategory(p.Category)) product.available = !unavailableIds[p.ProductId];
+        return product;
       })
       .filter(function (p) { return p.variants.length > 0; });
 
@@ -372,7 +388,6 @@ function actionListOwnerProducts(owner, body) {
       name: p.Name,
       description: p.Description,
       category: p.Category,
-      listingType: p.ListingType || 'goods',
       imageUrl: p.ImageUrl,
       imageUrl2: p.ImageUrl2,
       status: p.Status,
@@ -384,8 +399,6 @@ function actionListOwnerProducts(owner, body) {
   return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length });
 }
 
-var VALID_LISTING_TYPES = ['goods', 'booking'];
-
 function actionCreateOrUpdateProduct(owner, body) {
   var name = String(body.name || '').trim();
   if (!name) return fail('Product name is required');
@@ -395,8 +408,6 @@ function actionCreateOrUpdateProduct(owner, body) {
   if (descErr) return descErr;
   var categoryErr = capLength(body.category, 50, 'Category');
   if (categoryErr) return categoryErr;
-  if (body.listingType && VALID_LISTING_TYPES.indexOf(body.listingType) === -1) return fail('Invalid listing type');
-  var listingType = body.listingType === 'booking' ? 'booking' : 'goods';
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -415,7 +426,6 @@ function actionCreateOrUpdateProduct(owner, body) {
         Name: name,
         Description: body.description || '',
         Category: body.category || '',
-        ListingType: body.listingType !== undefined ? listingType : (existing.ListingType || 'goods'),
         ImageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.ImageUrl,
         ImageFileId: body.imageFileId !== undefined ? body.imageFileId : existing.ImageFileId,
         ImageUrl2: body.imageUrl2 !== undefined ? body.imageUrl2 : existing.ImageUrl2,
@@ -433,7 +443,6 @@ function actionCreateOrUpdateProduct(owner, body) {
         Name: name,
         Description: body.description || '',
         Category: body.category || '',
-        ListingType: listingType,
         ImageUrl: body.imageUrl || '',
         ImageFileId: body.imageFileId || '',
         ImageUrl2: body.imageUrl2 || '',
@@ -504,8 +513,17 @@ function actionDeleteProduct(owner, body) {
   return ok({});
 }
 
+/**
+ * publicOwnerFields (Auth.gs) is also used by PUBLIC actions
+ * (actionGetStorePublicInfo, the store object embedded in actionCreateOrder's
+ * response) - idLicenseUrl must never go in there. It's added here instead,
+ * directly on this PROTECTED action's response, so only the owner viewing
+ * their own profile ever sees it.
+ */
 function actionGetOwnerProfile(owner) {
-  return ok({ owner: publicOwnerFields(owner) });
+  var fields = publicOwnerFields(owner);
+  fields.idLicenseUrl = owner.IdLicenseUrl || '';
+  return ok({ owner: fields });
 }
 
 function actionUpdateOwnerProfile(owner, body) {

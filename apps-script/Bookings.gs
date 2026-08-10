@@ -36,6 +36,35 @@ function validateBookingDates(startDate, endDate) {
 }
 
 /**
+ * Which of the given booking-category productIds have a Confirmed booking
+ * covering "today" - drives the simple Available/Unavailable badge shown on
+ * a listing card so a customer doesn't have to open the date picker just to
+ * find out it's booked right now. Uses getSheetByName directly (not
+ * getSheet(), which throws) since a store with zero booking-category
+ * listings may never have created a Bookings tab at all - this must degrade
+ * to "no availability data" rather than break the entire product listing
+ * response over a tab that isn't relevant to that store yet. Only ever
+ * called with an already-narrowed productIds list (booking-category
+ * products already loaded by the caller), so this never scans Bookings for
+ * a store with nothing to check.
+ */
+function unavailableProductIdsToday(productIds) {
+  var unavailable = {};
+  if (!productIds || productIds.length === 0) return unavailable;
+  var sheet = SpreadsheetApp.getActive().getSheetByName('Bookings');
+  if (!sheet) return unavailable;
+
+  var todayStr = new Date().toISOString().slice(0, 10);
+  var tomorrowStr = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  sheetToObjects(sheet).forEach(function (b) {
+    if (b.Status !== 'Confirmed') return;
+    if (productIds.indexOf(b.ProductId) === -1) return;
+    if (datesOverlap(todayStr, tomorrowStr, b.StartDate, b.EndDate)) unavailable[b.ProductId] = true;
+  });
+  return unavailable;
+}
+
+/**
  * Unauthenticated, like actionCreateOrder - prices/rate details are always
  * re-derived server-side from the live Variants row, never trusted from the
  * client. No dedicated rate limiter (unlike chat's checkChatRateLimit): this
@@ -74,7 +103,7 @@ function actionCreateBookingRequest(body) {
     var product = sheetToObjects(getSheet('Products')).filter(function (p) {
       return p.ProductId === body.productId && p.OwnerId === owner.OwnerId && p.Status === 'active';
     })[0];
-    if (!product || String(product.ListingType) !== 'booking') return fail('This listing is not available for booking');
+    if (!product || !isBookingCategory(product.Category)) return fail('This listing is not available for booking');
 
     var variant = sheetToObjects(getSheet('Variants')).filter(function (v) {
       return v.VariantId === body.variantId && v.ProductId === product.ProductId && v.Status === 'active';
