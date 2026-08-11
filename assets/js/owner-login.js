@@ -133,5 +133,9 @@ async function onRegister(e) {
   }
 
   Auth.saveSession(res.token, res.owner);
-  window.location.href = 'dashboard.html';
+  // Straight to Settings, not the dashboard - a fresh account has no logo,
+  // delivery methods, or location set yet, and settings.html's own
+  // required-field validation walks the new owner through finishing that
+  // profile (it redirects on to the dashboard once they save successfully).
+  window.location.href = 'settings.html';
 }
