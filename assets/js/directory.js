@@ -10,22 +10,53 @@ document.addEventListener('DOMContentLoaded', init);
 const STORE_PAGE_SIZE = 20;
 let storesLoadedLimit = STORE_PAGE_SIZE;
 let storesHasMore = false;
+let storesQuery = '';
 
 async function init() {
   document.getElementById('stores-load-more').addEventListener('click', onLoadMore);
+  wireStoresSearch();
   await loadStores();
+}
+
+// Live-filters as the customer types (debounced), same as any other search
+// box on the site - Enter/Search button also works but isn't required.
+function wireStoresSearch() {
+  const form = document.getElementById('stores-search-form');
+  const input = document.getElementById('stores-search-input');
+  let debounceTimer = null;
+
+  function runSearch() {
+    storesQuery = input.value.trim();
+    storesLoadedLimit = STORE_PAGE_SIZE;
+    loadStores();
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearTimeout(debounceTimer);
+    runSearch();
+  });
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runSearch, 300);
+  });
 }
 
 async function loadStores() {
   const statusEl = document.getElementById('stores-status');
-  const res = await Api.get('listStores', { limit: storesLoadedLimit });
+  const res = await Api.get('listStores', { limit: storesLoadedLimit, q: storesQuery });
   if (!res.ok) {
     statusEl.textContent = res.error || 'Could not load stores right now. Please try again later.';
     return;
   }
 
   if (res.stores.length === 0) {
-    statusEl.textContent = 'No stores are open yet — check back soon.';
+    statusEl.textContent = storesQuery
+      ? `No stores match "${storesQuery}" — try a different island or village.`
+      : 'No stores are open yet — check back soon.';
+    document.getElementById('store-list').innerHTML = '';
+    document.getElementById('stores-load-more').classList.add('hidden');
     return;
   }
 

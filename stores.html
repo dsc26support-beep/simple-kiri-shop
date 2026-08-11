@@ -28,7 +28,12 @@
   <main id="main">
     <section id="stores" aria-labelledby="stores-heading">
       <div class="container">
-        <h1 id="stores-heading">All Stores</h1>
+        <h1 id="stores-heading" class="sr-only">All Stores</h1>
+        <form id="stores-search-form" class="search-box" role="search">
+          <label class="sr-only" for="stores-search-input">Search all stores</label>
+          <input id="stores-search-input" type="search" placeholder="Search All Stores (e.g. Betio or Beru)">
+          <button type="submit" class="btn btn-primary">Search</button>
+        </form>
         <p id="stores-status" class="helper-text" role="status">Loading stores…</p>
         <div id="store-list" class="store-grid"></div>
         <p class="load-more-row"><button type="button" id="stores-load-more" class="btn btn-small hidden">Load More Stores</button></p>

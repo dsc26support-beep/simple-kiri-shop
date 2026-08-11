@@ -56,10 +56,23 @@ function actionListStores(params) {
         return store;
       });
   });
+
+  // Filtering happens after the cache read, on the one full cached list -
+  // every query shares the same 60s cache entry instead of minting a new
+  // cache key per search string, and the query never affects the eligible
+  // page-size cap below.
+  var q = String(params.q || '').trim().toLowerCase();
+  var filtered = q
+    ? all.filter(function (s) {
+        var haystack = (s.storeName + ' ' + (s.island || '') + ' ' + (s.village || '')).toLowerCase();
+        return haystack.indexOf(q) !== -1;
+      })
+    : all;
+
   var limit = clampPageSize(params.limit, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE);
   var offset = Math.max(0, Number(params.offset) || 0);
-  var page = all.slice(offset, offset + limit);
-  return ok({ stores: page, total: all.length, hasMore: offset + limit < all.length });
+  var page = filtered.slice(offset, offset + limit);
+  return ok({ stores: page, total: filtered.length, hasMore: offset + limit < filtered.length });
 }
 
 /** Top 20 active products by view count, for the home page "trending" carousel. */
