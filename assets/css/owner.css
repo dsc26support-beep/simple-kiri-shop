@@ -95,6 +95,25 @@
   text-align: center;
 }
 
+/* Products/Orders/Bookings/Messages moved here from the top nav - one row
+   of equal-width buttons on desktop, wrapping to two columns on mobile. */
+.dashboard-quick-links {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  max-width: 40rem;
+}
+
+@media (min-width: 600px) {
+  .dashboard-quick-links {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dashboard-quick-links .btn {
+  position: relative;
+}
+
 .dashboard-card .metric {
   font-size: 1.75rem;
   font-weight: 700;

@@ -1097,6 +1097,11 @@ footer.site-footer .copyright {
   color: #fff;
 }
 
+.btn-light-blue {
+  background: var(--color-blue-light);
+  color: #fff;
+}
+
 .btn-adding {
   background: var(--color-blue-light) !important;
   opacity: 1;
