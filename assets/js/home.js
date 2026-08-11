@@ -96,7 +96,7 @@ function renderTrendingProductCard(product) {
   // mobile (a bare placeholder-swatch is aria-hidden, so without this the
   // link would otherwise have no accessible name at all there).
   return `
-    <a class="trending-product-card" href="store.html?store=${encodeURIComponent(product.storeSlug)}" data-product-id="${escapeHtml(product.productId)}" aria-label="${escapeHtml(product.name)}, sold by ${escapeHtml(product.storeName)}">
+    <a class="trending-product-card" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" data-product-id="${escapeHtml(product.productId)}" aria-label="${escapeHtml(product.name)}, sold by ${escapeHtml(product.storeName)}">
       ${media}
       <div class="trending-product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>

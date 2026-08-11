@@ -63,6 +63,21 @@ async function init() {
   wireProductEvents();
   wireGalleryScrollSync();
   loadSimilarProducts();
+  scrollToRequestedProduct();
+}
+
+// Trending-product cards on the home page link here with ?product=<id> so a
+// customer landing on a store with many listings sees the exact item they
+// clicked, not just the top of the catalog - then finds "Similar Products"
+// naturally below it, same as any other visit to this page.
+function scrollToRequestedProduct() {
+  const productId = getQueryParam('product');
+  if (!productId) return;
+  const card = document.querySelector(`.product-card[data-product-id="${CSS.escape(productId)}"]`);
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.add('product-highlight');
+  card.addEventListener('animationend', () => card.classList.remove('product-highlight'), { once: true });
 }
 
 async function loadSimilarProducts() {

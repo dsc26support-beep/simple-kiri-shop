@@ -1222,6 +1222,26 @@ legend {
   background: #fff;
 }
 
+/* Marks the exact product a customer arrived at via a trending-product link
+   (?product=<id> on store.html) so it's clear which card they clicked,
+   since it may not be the first one on the page. Self-clears via
+   animationend in store.js - no JS timer needed. */
+.product-highlight {
+  animation: product-highlight-pulse 2.2s ease-out;
+}
+
+@keyframes product-highlight-pulse {
+  0% { box-shadow: 0 0 0 3px var(--color-blue-light); }
+  70% { box-shadow: 0 0 0 3px var(--color-blue-light); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-highlight {
+    animation: none;
+  }
+}
+
 .product-image {
   width: 100%;
   aspect-ratio: 4 / 3;
