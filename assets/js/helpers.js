@@ -214,15 +214,17 @@ function initials(name) {
     .toUpperCase();
 }
 
-// Kept in sync with the category <select> options in owner/products.html.
+// Customer-facing quick-filter buttons (home page + search.html). A subset
+// of the category <select> options in owner/products.html - "General" is
+// still a valid category a vendor can pick, it just doesn't get its own
+// browse button here.
 const CATEGORIES = [
   { id: 'pantry', label: 'Pantry / Food' },
   { id: 'clothing', label: 'Clothing' },
   { id: 'household', label: 'Household' },
   { id: 'electronics', label: 'Electronics' },
   { id: 'rentals', label: 'Rentals' },
-  { id: 'services', label: 'Services' },
-  { id: 'general', label: 'General' }
+  { id: 'services', label: 'Services' }
 ];
 
 function renderCategoryButtons(containerId) {
