@@ -100,7 +100,6 @@ function renderTrendingProductCard(product) {
       ${media}
       <div class="trending-product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <p class="helper-text">Sold by ${escapeHtml(product.storeName)}</p>
         ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
         ${renderDeliveryIcons({
           truck: product.storeDeliveryTruck,
