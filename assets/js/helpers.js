@@ -6,11 +6,12 @@ function formatMoney(amount) {
 // small/cached read can take a few seconds - a loading message that never
 // changes reads as "frozen" past that point. Stage two exists purely to
 // reassure the customer/vendor the page is still working, not stuck. The
-// "..." in both stages is the same animated bouncing-dot markup used for
-// button loading states (.btn-saving-dots in styles.css) rather than
-// static periods, so it visibly moves instead of just sitting there.
+// "..." in both stages is animated, bouncing-and-color-cycling dot markup
+// (.loading-dots in styles.css - a distinct class from the plain
+// currentColor .btn-saving-dots used for button "Saving…" states) rather
+// than static periods, so it visibly moves instead of just sitting there.
 const LOADING_MESSAGE_STAGE2_DELAY_MS = 3000;
-const LOADING_DOTS_HTML = '<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+const LOADING_DOTS_HTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
 
 /**
  * Sets el's content to "Loading" + moving dots immediately, then to
