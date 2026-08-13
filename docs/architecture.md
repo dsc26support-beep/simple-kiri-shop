@@ -197,7 +197,10 @@ response is `{ok:true, ...}` or `{ok:false, error}`.
 - **`Products.gs`** — store directory, product/variant CRUD, owner profile updates,
   view/visit counters, cross-store search, and the cached public read actions
   (`listStores`, `listProducts`, `getStorePublicInfo`, `listTopProducts`,
-  `listTopStores`).
+  `listTopStores`). `getHomePageData` returns the same `listTopProducts` +
+  `listTopStores` results in one response — the home page uses it instead of
+  the two separate actions so it only pays Apps Script's per-request
+  execution-startup overhead once, not twice.
 - **`Bookings.gs`** — booking-listing requests (`isBookingCategory(Category)`, true for
   `rentals`/`services`) and their confirm/decline lifecycle. The no-double-booking
   guarantee lives here: `actionUpdateBookingStatus` re-checks for an overlapping
@@ -242,6 +245,7 @@ POST body (`body.token`), validated by `requireAuth()` before the handler runs.
 | `searchProducts` | `actionSearchProducts(params)` | Products.gs |
 | `listTopProducts` | `actionListTopProducts()` | Products.gs |
 | `listTopStores` | `actionListTopStores()` | Products.gs |
+| `getHomePageData` | `actionGetHomePageData()` | Products.gs |
 
 ### Public POST (`PUBLIC_POST_ACTIONS`, no token required)
 

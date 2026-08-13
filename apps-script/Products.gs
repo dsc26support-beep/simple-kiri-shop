@@ -76,8 +76,8 @@ function actionListStores(params) {
 }
 
 /** Top 20 active products by view count, for the home page "trending" carousel. */
-function actionListTopProducts() {
-  var results = getCached('v1:topProducts', 300, function () {
+function getTopProductsCached() {
+  return getCached('v1:topProducts', 300, function () {
     var ownersById = {};
     sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return o.Status === 'active'; })
@@ -122,13 +122,15 @@ function actionListTopProducts() {
       .sort(function (a, b) { return b.views - a.views; })
       .slice(0, 20);
   });
+}
 
-  return ok({ products: results });
+function actionListTopProducts() {
+  return ok({ products: getTopProductsCached() });
 }
 
 /** Top 20 active stores by visit count, for the home page "popular stores" logo carousel. */
-function actionListTopStores() {
-  var stores = getCached('v1:topStores', 300, function () {
+function getTopStoresCached() {
+  return getCached('v1:topStores', 300, function () {
     return sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return o.Status === 'active'; })
       .map(function (o) {
@@ -147,7 +149,24 @@ function actionListTopStores() {
       .sort(function (a, b) { return b.visits - a.visits; })
       .slice(0, 20);
   });
-  return ok({ stores: stores });
+}
+
+function actionListTopStores() {
+  return ok({ stores: getTopStoresCached() });
+}
+
+/**
+ * The home page's "Trending Products" and "Popular Stores" sections used to
+ * be two separate round trips to the Apps Script backend - each one pays
+ * Apps Script's own per-request execution-startup overhead, which is the
+ * dominant cost for a small/cached read like this (not the Sheets read
+ * itself). Combining them into one response halves that fixed tax on the
+ * highest-traffic page in the app. Both halves still read through the same
+ * 300s caches as their standalone actions, so nothing about caching
+ * behavior changes - this only cuts the network round trip.
+ */
+function actionGetHomePageData() {
+  return ok({ products: getTopProductsCached(), stores: getTopStoresCached() });
 }
 
 /**

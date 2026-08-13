@@ -92,6 +92,7 @@ function doGet(e) {
       case 'searchProducts': return jsonOut(actionSearchProducts(params));
       case 'listTopProducts': return jsonOut(actionListTopProducts());
       case 'listTopStores': return jsonOut(actionListTopStores());
+      case 'getHomePageData': return jsonOut(actionGetHomePageData());
       default: return jsonOut(fail('Unknown action: ' + params.action));
     }
   } catch (err) {
