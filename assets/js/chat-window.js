@@ -53,6 +53,12 @@ function initChatWindow() {
   let isOpen = false;
   let hasLoadedOnce = false;
   let lastMessageId = null;
+  // Belt-and-suspenders against ever rendering the same message twice -
+  // the server's own sinceMessageId lookup can't always place the client's
+  // cursor (see listMessagesForConversation in Chat.gs), so this is the
+  // one place that reliably prevents a duplicate bubble no matter why an
+  // overlap happened.
+  const renderedMessageIds = new Set();
   let pollTimer = null;
   let pollDelayMs = CHAT_POLL_MIN_MS;
   let selectedImageFile = null;
@@ -309,7 +315,11 @@ function initChatWindow() {
       return false;
     }
 
+    let appendedAny = false;
     messages.forEach((m) => {
+      if (renderedMessageIds.has(m.messageId)) return; // already on screen - see renderedMessageIds' comment above
+      renderedMessageIds.add(m.messageId);
+      appendedAny = true;
       const senderClass = m.senderType === 'vendor' ? 'chat-message--vendor' : 'chat-message--customer';
       const bubble = appendMessage(senderClass, m.body, { beforeTyping: true, imageUrl: m.imageUrl || null });
       if (!oldestBubble) oldestBubble = bubble; // first message ever rendered in this session becomes the initial "load earlier" anchor
@@ -317,7 +327,7 @@ function initChatWindow() {
     lastMessageId = messages[messages.length - 1].messageId;
     if (!oldestMessageId) oldestMessageId = messages[0].messageId; // only the very first load establishes the oldest boundary - later appends are always newer
     setLastSeenMessageId(lastMessageId); // panel is open while this runs, so this counts as "seen"
-    return true;
+    return appendedAny;
   }
 
   /**
@@ -347,6 +357,7 @@ function initChatWindow() {
     const messages = res.messages || [];
     const anchor = oldestBubble || typingEl;
     messages.forEach((m, i) => {
+      renderedMessageIds.add(m.messageId);
       const senderClass = m.senderType === 'vendor' ? 'chat-message--vendor' : 'chat-message--customer';
       const bubble = appendMessage(senderClass, m.body, { insertBeforeEl: anchor, imageUrl: m.imageUrl || null });
       if (i === 0) oldestBubble = bubble; // messages arrive oldest-first, so the first one processed is the new earliest
@@ -399,6 +410,7 @@ function initChatWindow() {
       return;
     }
     lastMessageId = res.message.messageId;
+    renderedMessageIds.add(lastMessageId); // already on screen (the optimistic bubble above) - a later poll returning it too must not duplicate it
     setLastSeenMessageId(lastMessageId);
     pollDelayMs = CHAT_POLL_MIN_MS; // sending is activity too - a reply might come back quickly, so resume fast polling rather than waiting out a backed-off interval
   }
@@ -441,6 +453,7 @@ function initChatWindow() {
       return;
     }
     lastMessageId = res.message.messageId;
+    renderedMessageIds.add(lastMessageId); // see sendMessage's identical guard
     setLastSeenMessageId(lastMessageId);
     pollDelayMs = CHAT_POLL_MIN_MS; // see sendMessage's identical reset
   }

@@ -22,6 +22,10 @@ let activeLastMessageId = null;
 let activeOldestMessageId = null;
 let activeOldestBubble = null;
 let activeHasMoreBefore = false;
+// Belt-and-suspenders against ever rendering the same message twice - see
+// chat-window.js's identical renderedMessageIds for why. Reset whenever the
+// open conversation changes (openConversation/closeConversation).
+let renderedMessageIds = new Set();
 let isLoadingEarlierMessages = false;
 let searchQuery = '';
 let conversationPollTimer = null;
@@ -160,6 +164,7 @@ async function openConversation(conversationId) {
   activeOldestMessageId = null;
   activeOldestBubble = null;
   activeHasMoreBefore = false;
+  renderedMessageIds = new Set();
   updateLoadEarlierMessagesButton();
 
   document.getElementById('messages-layout').classList.add('has-open-conversation');
@@ -187,6 +192,7 @@ function closeConversation() {
   activeOldestMessageId = null;
   activeOldestBubble = null;
   activeHasMoreBefore = false;
+  renderedMessageIds = new Set();
   updateLoadEarlierMessagesButton();
   showTyping(false);
   stopConversationPolling();
@@ -249,7 +255,11 @@ async function loadConversationMessages(opts) {
     activeHasMoreBefore = !!res.hasMoreBefore;
     updateLoadEarlierMessagesButton();
   }
+  let appendedAny = false;
   messages.forEach((m) => {
+    if (renderedMessageIds.has(m.messageId)) return; // already on screen - see renderedMessageIds' comment near its declaration
+    renderedMessageIds.add(m.messageId);
+    appendedAny = true;
     const bubble = appendConversationMessage(m);
     if (!activeOldestBubble) activeOldestBubble = bubble; // first message rendered this session becomes the "load earlier" anchor
   });
@@ -257,7 +267,7 @@ async function loadConversationMessages(opts) {
     activeLastMessageId = messages[messages.length - 1].messageId;
     if (!activeOldestMessageId) activeOldestMessageId = messages[0].messageId;
   }
-  return messages.length > 0;
+  return appendedAny;
 }
 
 /** Pages backward into older history for the open conversation - same prepend-and-preserve-scroll approach as chat-window.js's loadEarlierMessages(), just against #conversation-messages directly since that element is its own scroll container here (unlike the customer widget's separate scrolling wrapper). */
@@ -282,6 +292,7 @@ async function loadEarlierConversationMessages() {
   const messages = res.messages || [];
   const anchor = activeOldestBubble || messagesEl.firstChild;
   messages.forEach((m, i) => {
+    renderedMessageIds.add(m.messageId);
     const bubble = appendConversationMessage(m, { insertBeforeEl: anchor });
     if (i === 0) activeOldestBubble = bubble;
   });
@@ -352,6 +363,7 @@ async function sendReply(text) {
   }
 
   activeLastMessageId = res.message.messageId;
+  renderedMessageIds.add(activeLastMessageId); // already on screen (the optimistic bubble above) - a later poll returning it too must not duplicate it
   conversationPollDelayMs = CONVERSATION_POLL_MIN_MS; // sending is activity too - resume fast polling rather than waiting out a backed-off interval
   const conv = ownerConversations.find((c) => c.conversationId === activeConversationId);
   if (conv) {
@@ -397,6 +409,7 @@ async function sendReplyCompressedImage(compressed, caption) {
   }
 
   activeLastMessageId = res.message.messageId;
+  renderedMessageIds.add(activeLastMessageId); // see sendReply's identical guard
   conversationPollDelayMs = CONVERSATION_POLL_MIN_MS; // see sendReply's identical reset
   const conv = ownerConversations.find((c) => c.conversationId === activeConversationId);
   if (conv) {
