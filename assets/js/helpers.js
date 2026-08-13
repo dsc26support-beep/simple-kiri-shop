@@ -59,10 +59,12 @@ function getQueryParam(name) {
 
 /**
  * Shared "browse" card for a product from someone else's context (search
- * results, similar products, the home page trending carousel) - image,
- * name, store, delivery icons, price, and a link into that store. Distinct
- * from renderProductCard in product-card.js, which is the full add-to-cart
- * card shown on a store's own page.
+ * results, similar products) - image, name, store, delivery icons, price,
+ * and a link straight to that product on its store page (store.html's
+ * ?product= param triggers the same scroll-to-and-highlight redirect the
+ * home page trending carousel uses), not just the store's front page.
+ * Distinct from renderProductCard in product-card.js, which is the full
+ * add-to-cart card shown on a store's own page.
  */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
@@ -96,7 +98,7 @@ function renderBrowseProductCard(product, opts) {
           airCargoCost: product.storeDeliveryAirCargoCost
         })}
         <strong>${priceText}</strong>
-        <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">${escapeHtml(linkLabel)}</a>
+        <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}">${escapeHtml(linkLabel)}</a>
       </div>
     </article>
   `;
