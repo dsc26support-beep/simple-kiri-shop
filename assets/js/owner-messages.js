@@ -80,7 +80,7 @@ async function loadConversations(opts) {
   const res = await Api.post('getVendorConversations', params);
   if (stopLoading) stopLoading();
   if (!res.ok) {
-    if (!isPoll) statusEl.textContent = res.error || 'Could not load conversations.';
+    if (!isPoll) showLoadFailedMessage(statusEl);
     return; // a background poll failing stays silent and just retries next interval
   }
 
@@ -250,7 +250,7 @@ async function loadConversationMessages(opts) {
   const res = await Api.post('getConversation', params);
   if (stopLoading) stopLoading();
   if (!res.ok) {
-    if (!isPoll) messagesEl.innerHTML = '<p class="helper-text">Could not load messages.</p>';
+    if (!isPoll) messagesEl.innerHTML = '<p class="helper-text">' + loadFailedMessageHtml() + '</p>';
     return false;
   }
 

@@ -29,7 +29,7 @@ async function loadBookings(opts) {
   const res = await Api.post('listOwnerBookings', { token: Auth.getToken(), limit });
   stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load bookings.';
+    showLoadFailedMessage(statusEl);
     return;
   }
   ownerBookings = res.bookings;

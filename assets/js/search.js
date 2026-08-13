@@ -37,7 +37,7 @@ async function runSearch(q, category) {
   const res = await Api.get('searchProducts', { q, category });
   stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load results right now.';
+    showLoadFailedMessage(statusEl);
     return;
   }
 

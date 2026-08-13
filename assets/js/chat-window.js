@@ -237,7 +237,7 @@ function initChatWindow() {
     stopChatLoadingMessage();
     loadingEl.innerHTML = '';
     const msg = document.createElement('span');
-    msg.textContent = "Couldn't load messages.";
+    msg.innerHTML = loadFailedMessageHtml();
     const retry = document.createElement('button');
     retry.type = 'button';
     retry.className = 'btn btn-small';

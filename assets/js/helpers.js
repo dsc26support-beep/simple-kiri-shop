@@ -31,6 +31,21 @@ function startLoadingMessage(el) {
   };
 }
 
+// The failed state deliberately looks different from the loading state,
+// not just says something different - static (no bounce) and one plain
+// currentColor (not cycling red/gold/purple), so it reads at a glance as
+// "this stopped trying," distinct from "still working."
+const STATIC_DOTS_HTML = '<span class="static-dots"><span></span><span></span><span></span></span>';
+
+function loadFailedMessageHtml() {
+  return 'Refresh page' + STATIC_DOTS_HTML;
+}
+
+function showLoadFailedMessage(el) {
+  if (!el) return;
+  el.innerHTML = loadFailedMessageHtml();
+}
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = String(str == null ? '' : str);

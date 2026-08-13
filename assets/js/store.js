@@ -21,7 +21,7 @@ async function init() {
   const res = await Api.get('listProducts', { storeSlug: currentSlug });
   stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load this store.';
+    showLoadFailedMessage(statusEl);
     return;
   }
 

@@ -28,8 +28,8 @@ async function loadHomePageData() {
   stopProductsLoading();
   stopStoresLoading();
   if (!res.ok) {
-    productsStatusEl.textContent = res.error || '';
-    storesStatusEl.textContent = res.error || '';
+    showLoadFailedMessage(productsStatusEl);
+    showLoadFailedMessage(storesStatusEl);
     return;
   }
   renderTrendingProducts(res.products);

@@ -49,7 +49,7 @@ async function loadStores() {
   const res = await Api.get('listStores', { limit: storesLoadedLimit, q: storesQuery });
   stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load stores right now. Please try again later.';
+    showLoadFailedMessage(statusEl);
     return;
   }
 

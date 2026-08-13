@@ -39,7 +39,7 @@ async function loadProducts(opts) {
   const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit });
   stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load your products.';
+    showLoadFailedMessage(statusEl);
     return;
   }
   ownerProducts = res.products;

@@ -1207,6 +1207,27 @@ footer.site-footer .copyright {
   67%, 100% { background: #8b5cf6; }
 }
 
+/*
+ * "Refresh page" failed-state dots (loadFailedMessageHtml in helpers.js) -
+ * deliberately the opposite of .loading-dots: no animation, one plain
+ * currentColor, so a failed load reads as "stopped," not "still working."
+ */
+.static-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 0.3em;
+  vertical-align: middle;
+}
+
+.static-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
 .btn-danger {
   background: #fff;
   color: var(--color-danger);

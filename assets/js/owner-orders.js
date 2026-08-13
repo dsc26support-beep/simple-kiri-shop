@@ -31,7 +31,7 @@ async function loadOrders(opts) {
   const res = await Api.post('listOwnerOrders', { token: Auth.getToken(), limit });
   stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load orders.';
+    showLoadFailedMessage(statusEl);
     return;
   }
   ownerOrders = res.orders;
