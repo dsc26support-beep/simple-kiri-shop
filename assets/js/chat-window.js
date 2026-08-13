@@ -562,12 +562,44 @@ function initChatWindow() {
     });
   }
 
+  /**
+   * .chat-window is `position: fixed` sized off `100vh`/`max-height`, which
+   * on mobile reflects the *layout* viewport - the on-screen keyboard
+   * shrinks the *visual* viewport instead, so without this the input row at
+   * the bottom of the panel ends up hidden underneath the keyboard rather
+   * than pushed up above it. window.innerHeight - visualViewport.height is
+   * the keyboard's own pixel height (0 when it's closed, regardless of page
+   * scroll position - unlike visualViewport.offsetTop, which shifts on
+   * scroll too and would cause the panel to jitter for the wrong reason).
+   * Shifting `bottom` by that amount and capping `max-height` to what's
+   * actually still visible keeps the whole panel - including the input
+   * row - on screen above the keyboard. Inline styles are cleared (falling
+   * back to the CSS defaults) the moment the keyboard closes again.
+   */
+  function adjustForOnscreenKeyboard() {
+    if (!isOpen || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const keyboardHeight = Math.max(0, window.innerHeight - vv.height);
+    if (keyboardHeight > 0) {
+      win.style.bottom = `${keyboardHeight}px`;
+      win.style.maxHeight = `${Math.max(200, vv.height - 16)}px`;
+    } else {
+      win.style.bottom = '';
+      win.style.maxHeight = '';
+    }
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', adjustForOnscreenKeyboard);
+  }
+
   function openWindow() {
     isOpen = true;
     win.classList.add('chat-window--open');
     win.setAttribute('aria-hidden', 'false');
     fab.setAttribute('aria-expanded', 'true');
     updateBadge(0); // opening it is reading it
+    adjustForOnscreenKeyboard(); // covers the rare case the keyboard is already up (e.g. re-focus after a fast reopen)
 
     if (!getCustomerName()) {
       showNameGate();
@@ -583,6 +615,8 @@ function initChatWindow() {
     win.classList.remove('chat-window--open');
     win.setAttribute('aria-hidden', 'true');
     fab.setAttribute('aria-expanded', 'false');
+    win.style.bottom = '';
+    win.style.maxHeight = '';
     stopPolling();
     fab.focus();
   }
