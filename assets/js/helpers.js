@@ -293,6 +293,25 @@ const EYE_ICON_SVG =
 const EYE_OFF_ICON_SVG =
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.8 21.8 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-2.94 4.06M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><path d="M1 1l22 22"></path></svg>';
 
+const PHONE_ICON_SVG =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+
+const MESSENGER_ICON_SVG =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.15 2 11.25c0 2.9 1.44 5.49 3.7 7.19V22l3.38-1.86c.9.25 1.86.38 2.92.38 5.52 0 10-4.15 10-9.27S17.52 2 12 2z"></path><path d="M7 13.5l3.5-3.5 2.5 2.5 3.5-3.5"></path></svg>';
+
+/**
+ * A vendor's Messenger field can be a bare username ("my.store.page"), an
+ * @handle, or a full URL they pasted themselves - normalize all three into
+ * a clickable https://m.me/... link (or pass an already-full URL through
+ * unchanged) rather than assuming one particular input format.
+ */
+function messengerUrl(handle) {
+  const trimmed = String(handle || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return 'https://m.me/' + encodeURIComponent(trimmed.replace(/^@/, '').replace(/^m\.me\//i, ''));
+}
+
 /**
  * Wraps a password input with a show/hide toggle button. Safe to call once
  * per password field at page init - no-ops if the input isn't found.

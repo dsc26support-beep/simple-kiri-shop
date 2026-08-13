@@ -359,6 +359,7 @@ function actionListProducts(params) {
     var out = {
       storeName: owner.StoreName,
       storePhone: owner.Phone,
+      storeMessenger: owner.Messenger,
       storeLogoUrl: owner.LogoUrl,
       storeIsland: owner.Island,
       storeVillage: owner.Village,
@@ -556,6 +557,11 @@ function actionUpdateOwnerProfile(owner, body) {
     var phoneErr = capLength(body.phone, 30, 'Phone number');
     if (phoneErr) return phoneErr;
     update.Phone = body.phone;
+  }
+  if (body.messenger !== undefined) {
+    var messengerErr = capLength(body.messenger, 100, 'Facebook Messenger');
+    if (messengerErr) return messengerErr;
+    update.Messenger = body.messenger;
   }
   if (body.island !== undefined) {
     var islandErr = capLength(body.island, 100, 'Island');

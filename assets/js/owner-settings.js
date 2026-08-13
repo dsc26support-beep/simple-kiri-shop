@@ -37,6 +37,7 @@ function fillForm(owner) {
   document.getElementById('store-name').value = owner.storeName || '';
   document.getElementById('contact-email').value = owner.email || '';
   document.getElementById('contact-phone').value = owner.phone || '';
+  document.getElementById('contact-messenger').value = owner.messenger || '';
 
   DELIVERY_BUTTONS.forEach(({ id, costId, method }) => {
     const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
@@ -270,6 +271,7 @@ async function onSaveSettings(e) {
     storeName: document.getElementById('store-name').value.trim(),
     email: document.getElementById('contact-email').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
+    messenger: document.getElementById('contact-messenger').value.trim(),
     island: document.getElementById('settings-island').value,
     village: village
   };

@@ -111,6 +111,7 @@ async function onRegister(e) {
   const password = document.getElementById('register-password').value;
   const email = document.getElementById('register-email').value.trim();
   const phone = document.getElementById('register-phone').value.trim();
+  const messenger = document.getElementById('register-messenger').value.trim();
 
   if (!email) {
     errorEl.textContent = 'Contact email is required — that\'s where customer orders will be sent.';
@@ -124,7 +125,7 @@ async function onRegister(e) {
   const submitBtn = document.getElementById('register-submit-btn');
   setButtonBusy(submitBtn, 'Creating', 'Create Store Account');
 
-  const res = await Api.post('registerOwner', { storeName, username, password, email, phone });
+  const res = await Api.post('registerOwner', { storeName, username, password, email, phone, messenger });
 
   if (!res.ok) {
     setButtonIdle(submitBtn);

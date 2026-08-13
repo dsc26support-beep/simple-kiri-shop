@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', init);
 
 let currentProducts = [];
 let currentSlug = null;
+let currentStorePhone = null;
+let currentStoreMessenger = null;
 
 async function init() {
   currentSlug = getQueryParam('store');
@@ -31,6 +33,9 @@ async function init() {
     logoImg.alt = res.storeName;
     logoImg.classList.remove('hidden');
   }
+
+  currentStorePhone = res.storePhone || null;
+  currentStoreMessenger = res.storeMessenger || null;
 
   const phoneLine = document.getElementById('store-phone-line');
   if (res.storePhone) {
@@ -229,6 +234,27 @@ async function onRequestBooking(btn) {
 
   btn.textContent = 'Requested';
   statusEl.textContent = 'Booking request sent — the vendor will confirm or decline.';
+  renderBookingVendorContact(productId);
+}
+
+// Shown once a booking request succeeds, alongside the "vendor will
+// confirm or decline" status - waiting on the vendor shouldn't mean the
+// customer has no way to reach them in the meantime.
+function renderBookingVendorContact(productId) {
+  const contactEl = document.getElementById(`booking-contact-${productId}`);
+  if (!contactEl) return;
+
+  const buttons = [];
+  if (currentStorePhone) {
+    buttons.push(`<a class="btn btn-call" href="tel:${escapeHtml(currentStorePhone)}">${PHONE_ICON_SVG}Call Now</a>`);
+  }
+  if (currentStoreMessenger) {
+    buttons.push(`<a class="btn btn-messenger" href="${escapeHtml(messengerUrl(currentStoreMessenger))}" target="_blank" rel="noopener">${MESSENGER_ICON_SVG}Messenger</a>`);
+  }
+  if (buttons.length === 0) return;
+
+  contactEl.innerHTML = buttons.join('');
+  contactEl.classList.remove('hidden');
 }
 
 function wireProductEvents() {

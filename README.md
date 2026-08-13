@@ -59,12 +59,18 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryPickPay | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits | IdLicenseUrl | IdLicenseFileId`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | Messenger | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryPickPay | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits | IdLicenseUrl | IdLicenseFileId`
 
    (The `ANZ_*`/`Teremo_*`/`PaymentNotes` columns are no longer used by the
    app — checkout no longer displays payment details, so Settings no longer
    reads/writes them — but they're harmless to leave in place if you already
-   have this sheet set up. `DeliveryTruckCost`/`DeliveryShipCost`/
+   have this sheet set up. `Messenger` is an optional Facebook Messenger
+   username/handle or full profile link, settable at registration or later
+   in Settings — a bare handle is normalized into `https://m.me/<handle>`
+   at render time, a pasted full URL is used as-is. It's blank by default,
+   and only shown to a customer once they submit a booking request, next to
+   a "Call Now" button built from `Phone` — see "Booking listings" below.
+   `DeliveryTruckCost`/`DeliveryShipCost`/
    `DeliveryAirCargoCost` are per-method delivery prices — blank means "not
    set", `0` means free delivery and shows that method's icon in green.
    `DeliveryPickPay` (in-person pickup, pay at the store) has no matching
@@ -137,8 +143,8 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
    `DeliveryPickPay`, `DeliveryTruckCost`, `DeliveryShipCost`,
    `DeliveryAirCargoCost`, `Island`,
-   `Village`, `LogoUrl`, `LogoFileId`, `Visits`, `IdLicenseUrl`, and
-   `IdLicenseFileId` columns to the end of `Owners`, add `ImageUrl2`,
+   `Village`, `LogoUrl`, `LogoFileId`, `Visits`, `IdLicenseUrl`,
+   `IdLicenseFileId`, and `Messenger` columns to the end of `Owners`, add `ImageUrl2`,
    `ImageFileId2`, and `Views` to the end of `Products`, add `Island`,
    `Village`, `DeliveryMethod`, `DeliveryCost`, and `NoEmailReminderSent` to
    the end of `Orders`, add `ImageUrl` and `ImageFileId` to the end of

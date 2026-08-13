@@ -1567,6 +1567,26 @@ legend {
   margin-top: var(--space-1);
 }
 
+.booking-vendor-contact {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.booking-vendor-contact .btn {
+  flex: 1 1 0;
+}
+
+.btn-call {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.btn-messenger {
+  background: #0084ff;
+  color: #fff;
+}
+
 /* Store directory */
 
 .store-grid {
