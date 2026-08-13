@@ -5,23 +5,25 @@ function formatMoney(amount) {
 // Apps Script's own per-request execution-startup overhead means even a
 // small/cached read can take a few seconds - a loading message that never
 // changes reads as "frozen" past that point. Stage two exists purely to
-// reassure the customer/vendor the page is still working, not stuck.
+// reassure the customer/vendor the page is still working, not stuck. The
+// "..." in both stages is the same animated bouncing-dot markup used for
+// button loading states (.btn-saving-dots in styles.css) rather than
+// static periods, so it visibly moves instead of just sitting there.
 const LOADING_MESSAGE_STAGE2_DELAY_MS = 3000;
-const LOADING_MESSAGE_STAGE1_TEXT = '(Loading...)';
-const LOADING_MESSAGE_STAGE2_TEXT = 'Please wait...';
+const LOADING_DOTS_HTML = '<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
 
 /**
- * Sets el's text to "(Loading...)" immediately, then to "Please wait..."
- * after LOADING_MESSAGE_STAGE2_DELAY_MS if it's still going. Returns a
- * stop() function - callers MUST call it as soon as the request settles
- * (success or failure), before setting el's real text, so stage two never
- * fires after the real content is already showing.
+ * Sets el's content to "Loading" + moving dots immediately, then to
+ * "Please wait" + moving dots after LOADING_MESSAGE_STAGE2_DELAY_MS if it's
+ * still going. Returns a stop() function - callers MUST call it as soon as
+ * the request settles (success or failure), before setting el's real text,
+ * so stage two never fires after the real content is already showing.
  */
 function startLoadingMessage(el) {
   if (!el) return () => {};
-  el.textContent = LOADING_MESSAGE_STAGE1_TEXT;
+  el.innerHTML = 'Loading' + LOADING_DOTS_HTML;
   const timer = setTimeout(() => {
-    el.textContent = LOADING_MESSAGE_STAGE2_TEXT;
+    el.innerHTML = 'Please wait' + LOADING_DOTS_HTML;
   }, LOADING_MESSAGE_STAGE2_DELAY_MS);
   return function stopLoadingMessage() {
     clearTimeout(timer);
