@@ -302,6 +302,83 @@ const PHONE_ICON_SVG =
 const MESSENGER_ICON_SVG =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.15 2 11.25c0 2.9 1.44 5.49 3.7 7.19V22l3.38-1.86c.9.25 1.86.38 2.92.38 5.52 0 10-4.15 10-9.27S17.52 2 12 2z"></path><path d="M7 13.5l3.5-3.5 2.5 2.5 3.5-3.5"></path></svg>';
 
+const CHAT_NOTIFICATION_ICON_SVG =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>';
+
+/**
+ * A short, distinct two-note chime for new chat messages - synthesized via
+ * Web Audio API rather than an embedded audio file (nothing to host/
+ * license, stays tiny). Deliberately not a generic system "beep": a quick
+ * rising perfect-fifth pluck (E6 -> B6) with a fast decay, chosen to read
+ * as "chat message" without being jarring if it fires while browsing.
+ * Silently no-ops if Web Audio is unavailable or blocked (e.g. the
+ * browser's autoplay policy hasn't seen a user gesture yet on this page) -
+ * the visual toast still gets the point across either way.
+ */
+function playChatNotificationSound() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    [
+      { freq: 1318.51, start: 0, dur: 0.13 }, // E6
+      { freq: 1975.53, start: 0.09, dur: 0.2 } // B6
+    ].forEach(({ freq, start, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now + start);
+      gain.gain.linearRampToValueAtTime(0.2, now + start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + start);
+      osc.stop(now + start + dur + 0.02);
+    });
+
+    setTimeout(() => ctx.close().catch(() => {}), 500);
+  } catch (e) {
+    // Web Audio unsupported/blocked - nothing to do, see comment above.
+  }
+}
+
+const CHAT_TOAST_AUTO_DISMISS_MS = 5000;
+
+/**
+ * A brief top-of-screen popup for a new chat message - deliberately
+ * top-anchored, since both the chat FAB and the chat window itself are
+ * bottom-anchored (see .chat-fab-btn/.chat-window in styles.css), so a
+ * notification never visually collides with the thing it's about.
+ * Auto-dismisses; clicking it runs onClick (typically "open/focus the
+ * relevant conversation") and dismisses early.
+ */
+function showChatNotificationToast(text, onClick) {
+  const toast = document.createElement('div');
+  toast.className = 'chat-notification-toast';
+  toast.setAttribute('role', 'status');
+  toast.innerHTML = `<span class="chat-notification-toast-icon">${CHAT_NOTIFICATION_ICON_SVG}</span><span>${escapeHtml(text)}</span>`;
+
+  let dismissed = false;
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
+    toast.classList.remove('chat-notification-toast--visible');
+    setTimeout(() => toast.remove(), 250);
+  }
+
+  toast.addEventListener('click', () => {
+    if (onClick) onClick();
+    dismiss();
+  });
+
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('chat-notification-toast--visible'));
+  setTimeout(dismiss, CHAT_TOAST_AUTO_DISMISS_MS);
+}
+
 /**
  * A vendor's Messenger field can be a bare username ("my.store.page"), an
  * @handle, or a full URL they pasted themselves - normalize all three into

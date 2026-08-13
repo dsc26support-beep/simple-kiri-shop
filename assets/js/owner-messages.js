@@ -256,10 +256,14 @@ async function loadConversationMessages(opts) {
     updateLoadEarlierMessagesButton();
   }
   let appendedAny = false;
+  let newCustomerMessageCount = 0;
   messages.forEach((m) => {
     if (renderedMessageIds.has(m.messageId)) return; // already on screen - see renderedMessageIds' comment near its declaration
     renderedMessageIds.add(m.messageId);
     appendedAny = true;
+    // Only a poll represents a message genuinely arriving "live" - see
+    // chat-window.js's identical reasoning at its own newVendorMessageCount.
+    if (isPoll && m.senderType === 'customer') newCustomerMessageCount++;
     const bubble = appendConversationMessage(m);
     if (!activeOldestBubble) activeOldestBubble = bubble; // first message rendered this session becomes the "load earlier" anchor
   });
@@ -267,6 +271,15 @@ async function loadConversationMessages(opts) {
     activeLastMessageId = messages[messages.length - 1].messageId;
     if (!activeOldestMessageId) activeOldestMessageId = messages[0].messageId;
   }
+
+  if (newCustomerMessageCount > 0) {
+    playChatNotificationSound();
+    const conv = ownerConversations.find((c) => c.conversationId === activeConversationId);
+    const customerName = (conv && conv.customerName) || 'the customer';
+    const text = newCustomerMessageCount === 1 ? `New message from ${customerName}` : `${newCustomerMessageCount} new messages from ${customerName}`;
+    showChatNotificationToast(text, () => document.getElementById('reply-input').focus());
+  }
+
   return appendedAny;
 }
 
@@ -555,7 +568,24 @@ function stopConversationPolling() {
 async function listPollTick() {
   if (document.visibilityState === 'visible') {
     const beforeCount = ownerConversations.length;
+    // A conversation the customer is currently viewing (activeConversationId)
+    // is covered by loadConversationMessages' own notification above -
+    // notifying about it again here would double-fire for the same message.
+    const previouslyUnreadIds = new Set(ownerConversations.filter((c) => c.unreadByVendor).map((c) => c.conversationId));
     await loadConversations({ isPoll: true });
+
+    const newlyUnread = ownerConversations.filter(
+      (c) => c.unreadByVendor && c.conversationId !== activeConversationId && !previouslyUnreadIds.has(c.conversationId)
+    );
+    if (newlyUnread.length > 0) {
+      playChatNotificationSound();
+      const text =
+        newlyUnread.length === 1
+          ? `New message from ${newlyUnread[0].customerName || 'a customer'}`
+          : `${newlyUnread.length} new messages`;
+      showChatNotificationToast(text, () => openConversation(newlyUnread[0].conversationId));
+    }
+
     // A changed count (new conversation arrived, or one dropped out somehow)
     // counts as activity; an identical-shaped refresh does not - a truly
     // idle inbox is the common case this backoff is meant to save requests on.

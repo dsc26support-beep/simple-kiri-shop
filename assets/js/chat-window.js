@@ -67,6 +67,7 @@ function initChatWindow() {
   let hasMoreBefore = false;
   let isLoadingEarlier = false;
   let lastTypingSignalSentAt = 0;
+  let vendorStoreName = 'This Store'; // set by loadVendorHeader() once it resolves; used in notification toast text
 
   function scrollMessagesToBottom() {
     body.scrollTop = body.scrollHeight;
@@ -124,8 +125,9 @@ function initChatWindow() {
     const res = await Api.get('getStorePublicInfo', { storeSlug });
     if (!res.ok || !res.store) return;
 
+    vendorStoreName = res.store.storeName || 'This Store';
     const nameEl = document.getElementById('chat-window-vendor-name');
-    if (nameEl) nameEl.textContent = res.store.storeName || 'This Store';
+    if (nameEl) nameEl.textContent = vendorStoreName;
 
     const placeholder = document.getElementById('chat-vendor-avatar-placeholder');
     if (!placeholder) return;
@@ -168,6 +170,15 @@ function initChatWindow() {
 
     const newFromVendor = (res.messages || []).filter((m) => m.senderType === 'vendor');
     updateBadge(newFromVendor.length);
+
+    if (newFromVendor.length > 0) {
+      playChatNotificationSound();
+      const text =
+        newFromVendor.length === 1
+          ? `New message from ${vendorStoreName}`
+          : `${newFromVendor.length} new messages from ${vendorStoreName}`;
+      showChatNotificationToast(text, () => { if (!isOpen) fab.click(); });
+    }
   }
 
   function clearEmptyState() {
@@ -316,10 +327,15 @@ function initChatWindow() {
     }
 
     let appendedAny = false;
+    let newVendorMessageCount = 0;
     messages.forEach((m) => {
       if (renderedMessageIds.has(m.messageId)) return; // already on screen - see renderedMessageIds' comment above
       renderedMessageIds.add(m.messageId);
       appendedAny = true;
+      // Only a poll represents a message genuinely arriving "live" - the
+      // initial load is just history the customer is about to see on
+      // screen already, not something worth a popup+sound for.
+      if (isPoll && m.senderType === 'vendor') newVendorMessageCount++;
       const senderClass = m.senderType === 'vendor' ? 'chat-message--vendor' : 'chat-message--customer';
       const bubble = appendMessage(senderClass, m.body, { beforeTyping: true, imageUrl: m.imageUrl || null });
       if (!oldestBubble) oldestBubble = bubble; // first message ever rendered in this session becomes the initial "load earlier" anchor
@@ -327,6 +343,16 @@ function initChatWindow() {
     lastMessageId = messages[messages.length - 1].messageId;
     if (!oldestMessageId) oldestMessageId = messages[0].messageId; // only the very first load establishes the oldest boundary - later appends are always newer
     setLastSeenMessageId(lastMessageId); // panel is open while this runs, so this counts as "seen"
+
+    if (newVendorMessageCount > 0) {
+      playChatNotificationSound();
+      const text =
+        newVendorMessageCount === 1
+          ? `New message from ${vendorStoreName}`
+          : `${newVendorMessageCount} new messages from ${vendorStoreName}`;
+      showChatNotificationToast(text, scrollMessagesToBottom);
+    }
+
     return appendedAny;
   }
 
@@ -615,6 +641,8 @@ function initChatWindow() {
     sendMessage(text);
   });
 
-  checkForUnreadMessages();
-  loadVendorHeader();
+  // loadVendorHeader() sets vendorStoreName, used in checkForUnreadMessages'
+  // notification toast text - chained rather than fired in parallel so that
+  // toast never has to fall back to the generic "This Store" placeholder.
+  loadVendorHeader().then(checkForUnreadMessages);
 }
