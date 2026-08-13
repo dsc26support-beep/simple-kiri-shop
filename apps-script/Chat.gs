@@ -274,9 +274,16 @@ function getConversationMessagesRaw(conversationId) {
  *    the polling-delta cursor. Deliberately unbounded (no limit applied) -
  *    a real gap between two polls a few seconds apart is always small, and
  *    truncating it would silently drop a message from the live view.
- *    Falls back to the full list if the cursor doesn't match anything (a
- *    stale/invalid cursor), the same defensive-fallback style used
- *    elsewhere in this codebase (e.g. malformed ItemsJson in Orders.gs).
+ *    An unrecognized cursor (stale cache read racing a very recent write,
+ *    or any other transient mismatch) returns an empty delta, NOT the full
+ *    list - a polling client (chat-window.js/owner-messages.js) treats
+ *    every message in this response as brand new and appends it without
+ *    deduping, so "fall back to everything" silently re-renders the whole
+ *    conversation on top of what's already on screen. Missing a message
+ *    this way is self-healing (the cache TTL is short, so the very next
+ *    poll a few seconds later almost always resolves the same cursor
+ *    correctly and picks up anything skipped); duplicating the whole
+ *    thread is not.
  *  - opts.beforeMessageId: up to opts.limit messages immediately before
  *    that message - "load earlier history," paging backward.
  *  - neither: the most recent opts.limit messages - the initial-load page,
@@ -291,7 +298,7 @@ function listMessagesForConversation(conversationId, opts) {
 
   if (opts.sinceMessageId) {
     var sinceIndex = all.findIndex(function (m) { return m.MessageId === opts.sinceMessageId; });
-    return { messages: sinceIndex === -1 ? all : all.slice(sinceIndex + 1), hasMoreBefore: false };
+    return { messages: sinceIndex === -1 ? [] : all.slice(sinceIndex + 1), hasMoreBefore: false };
   }
 
   var limit = clampPageSize(opts.limit, DEFAULT_MESSAGE_PAGE_SIZE, MAX_MESSAGE_PAGE_SIZE);

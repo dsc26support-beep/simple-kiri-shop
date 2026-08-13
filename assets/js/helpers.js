@@ -59,10 +59,15 @@ function getQueryParam(name) {
 
 /**
  * Shared "browse" card for a product from someone else's context (search
- * results, similar products, the home page trending carousel) - image,
- * name, store, delivery icons, price, and a link into that store. Distinct
- * from renderProductCard in product-card.js, which is the full add-to-cart
- * card shown on a store's own page.
+ * results, similar products) - image, name, store, delivery icons, price,
+ * and a link straight to that product on its store page (store.html's
+ * ?product= param triggers the same scroll-to-and-highlight redirect the
+ * home page trending carousel uses), not just the store's front page. The
+ * whole card is that link (same pattern as the home page's
+ * trending-product-card), not just the "View" button at the bottom, so
+ * clicking anywhere on a similar/search-result product jumps straight to
+ * it. Distinct from renderProductCard in product-card.js, which is the
+ * full add-to-cart card shown on a store's own page.
  */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
@@ -80,24 +85,25 @@ function renderBrowseProductCard(product, opts) {
       : formatMoney(prices[0]);
 
   return `
-    <article class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}">
+    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml((soldByVerb(product.category) + ' ' + product.storeName).toLowerCase())}">
       ${media}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <p class="helper-text">Sold by ${escapeHtml(product.storeName)}</p>
+        <p class="helper-text">${soldByVerb(product.category)} ${escapeHtml(product.storeName)}</p>
         ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
         ${renderDeliveryIcons({
           truck: product.storeDeliveryTruck,
           ship: product.storeDeliveryShip,
           airCargo: product.storeDeliveryAirCargo,
+          pickPay: product.storeDeliveryPickPay,
           truckCost: product.storeDeliveryTruckCost,
           shipCost: product.storeDeliveryShipCost,
           airCargoCost: product.storeDeliveryAirCargoCost
         })}
         <strong>${priceText}</strong>
-        <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}">${escapeHtml(linkLabel)}</a>
+        <span class="btn btn-primary" aria-hidden="true">${escapeHtml(linkLabel)}</span>
       </div>
-    </article>
+    </a>
   `;
 }
 
@@ -213,15 +219,17 @@ function initials(name) {
     .toUpperCase();
 }
 
-// Kept in sync with the category <select> options in owner/products.html.
+// Customer-facing quick-filter buttons (home page + search.html). A subset
+// of the category <select> options in owner/products.html - "General" is
+// still a valid category a vendor can pick, it just doesn't get its own
+// browse button here.
 const CATEGORIES = [
   { id: 'pantry', label: 'Pantry / Food' },
   { id: 'clothing', label: 'Clothing' },
   { id: 'household', label: 'Household' },
   { id: 'electronics', label: 'Electronics' },
   { id: 'rentals', label: 'Rentals' },
-  { id: 'services', label: 'Services' },
-  { id: 'general', label: 'General' }
+  { id: 'services', label: 'Services' }
 ];
 
 function renderCategoryButtons(containerId) {
@@ -236,30 +244,46 @@ function renderCategoryButtons(containerId) {
 const BOOKING_CATEGORIES = ['rentals', 'services'];
 function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
 
+// "Sold by" only makes sense for a goods listing that's actually purchased -
+// a Rentals/Services listing is booked, not sold, from someone.
+function soldByVerb(category) {
+  if (category === 'rentals') return 'Rent by';
+  if (category === 'services') return 'Service by';
+  return 'Sold by';
+}
+
 // Self-contained inline-SVG icons (no external icon library/CDN) - keep the
 // site working offline-first on limited mobile data.
 const DELIVERY_ICON_SVG = {
   truck: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="14" height="10"></rect><path d="M15 10h4l3 3v4h-7z"></path><circle cx="6" cy="18" r="1.5"></circle><circle cx="17.5" cy="18" r="1.5"></circle></svg>',
   ship: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14h17l3 3-3 3H5l-3-3z"></path><rect x="4" y="10" width="5" height="4"></rect><path d="M6.5 10V5"></path><rect x="11" y="8" width="6" height="6"></rect><path d="M14 8v6M11 11h6"></path></svg>',
-  airCargo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v7"></path><path d="M12 9l9 5v2l-9-3-9 3v-2z"></path><path d="M9 19l3-2 3 2"></path><path d="M12 17v4"></path></svg>'
+  airCargo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v7"></path><path d="M12 9l9 5v2l-9-3-9 3v-2z"></path><path d="M9 19l3-2 3 2"></path><path d="M12 17v4"></path></svg>',
+  pickPay: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2"></circle><line x1="12" y1="6" x2="10.5" y2="13"></line><line x1="12" y1="8" x2="9" y2="11"></line><line x1="11" y1="8" x2="15" y2="10"></line><line x1="10.5" y1="13" x2="8" y2="20"></line><line x1="10.5" y1="13" x2="15" y2="19"></line></svg>'
 };
-const DELIVERY_ICON_LABELS = { truck: 'Truck delivery', ship: 'Ship delivery', airCargo: 'Air cargo delivery' };
+const DELIVERY_ICON_LABELS = { truck: 'Truck delivery', ship: 'Ship delivery', airCargo: 'Air cargo delivery', pickPay: 'Pick & Pay' };
+
+// Pick & Pay (in-person pickup, pay at the store) has no cost field at all -
+// unlike truck/ship/airCargo it's always free, so it always renders green
+// with a "Free" label rather than reading a *Cost flag.
+const ALWAYS_FREE_DELIVERY_METHODS = ['pickPay'];
 
 /**
- * flags: {truck, ship, airCargo} booleans, plus optional {truckCost,
- * shipCost, airCargoCost} numbers - renders 0-3 small labeled icons. A cost
- * of exactly 0 means free delivery for that method and turns its icon green;
- * a missing/null cost just omits the price from the label (store hasn't set
- * one yet).
+ * flags: {truck, ship, airCargo, pickPay} booleans, plus optional
+ * {truckCost, shipCost, airCargoCost} numbers - renders 0-4 small labeled
+ * icons. A cost of exactly 0 means free delivery for that method and turns
+ * its icon green; a missing/null cost just omits the price from the label
+ * (store hasn't set one yet). pickPay has no cost flag - see
+ * ALWAYS_FREE_DELIVERY_METHODS above.
  */
 function renderDeliveryIcons(flags) {
   flags = flags || {};
-  const methods = ['truck', 'ship', 'airCargo'].filter((m) => flags[m]);
+  const methods = ['truck', 'ship', 'airCargo', 'pickPay'].filter((m) => flags[m]);
   if (methods.length === 0) return '';
   return `<span class="delivery-icons">${methods
     .map((m) => {
-      const cost = flags[m + 'Cost'];
-      const isFree = cost === 0;
+      const alwaysFree = ALWAYS_FREE_DELIVERY_METHODS.indexOf(m) !== -1;
+      const cost = alwaysFree ? 0 : flags[m + 'Cost'];
+      const isFree = alwaysFree || cost === 0;
       const priceText = cost == null ? '' : cost === 0 ? ' — Free' : ` — ${formatMoney(cost)}`;
       const label = DELIVERY_ICON_LABELS[m] + priceText;
       return `<span class="delivery-icon${isFree ? ' delivery-icon-free' : ''}" role="img" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${DELIVERY_ICON_SVG[m]}</span>`;
@@ -271,6 +295,102 @@ const EYE_ICON_SVG =
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
 const EYE_OFF_ICON_SVG =
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.8 21.8 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-2.94 4.06M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><path d="M1 1l22 22"></path></svg>';
+
+const PHONE_ICON_SVG =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+
+const MESSENGER_ICON_SVG =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.15 2 11.25c0 2.9 1.44 5.49 3.7 7.19V22l3.38-1.86c.9.25 1.86.38 2.92.38 5.52 0 10-4.15 10-9.27S17.52 2 12 2z"></path><path d="M7 13.5l3.5-3.5 2.5 2.5 3.5-3.5"></path></svg>';
+
+const CHAT_NOTIFICATION_ICON_SVG =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>';
+
+/**
+ * A short, distinct two-note chime for new chat messages - synthesized via
+ * Web Audio API rather than an embedded audio file (nothing to host/
+ * license, stays tiny). Deliberately not a generic system "beep": a quick
+ * rising perfect-fifth pluck (E6 -> B6) with a fast decay, chosen to read
+ * as "chat message" without being jarring if it fires while browsing.
+ * Silently no-ops if Web Audio is unavailable or blocked (e.g. the
+ * browser's autoplay policy hasn't seen a user gesture yet on this page) -
+ * the visual toast still gets the point across either way.
+ */
+function playChatNotificationSound() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    [
+      { freq: 1318.51, start: 0, dur: 0.13 }, // E6
+      { freq: 1975.53, start: 0.09, dur: 0.2 } // B6
+    ].forEach(({ freq, start, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now + start);
+      gain.gain.linearRampToValueAtTime(0.2, now + start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + start);
+      osc.stop(now + start + dur + 0.02);
+    });
+
+    setTimeout(() => ctx.close().catch(() => {}), 500);
+  } catch (e) {
+    // Web Audio unsupported/blocked - nothing to do, see comment above.
+  }
+}
+
+const CHAT_TOAST_AUTO_DISMISS_MS = 5000;
+
+/**
+ * A brief top-of-screen popup for a new chat message - deliberately
+ * top-anchored, since both the chat FAB and the chat window itself are
+ * bottom-anchored (see .chat-fab-btn/.chat-window in styles.css), so a
+ * notification never visually collides with the thing it's about.
+ * Auto-dismisses; clicking it runs onClick (typically "open/focus the
+ * relevant conversation") and dismisses early.
+ */
+function showChatNotificationToast(text, onClick) {
+  const toast = document.createElement('div');
+  toast.className = 'chat-notification-toast';
+  toast.setAttribute('role', 'status');
+  toast.innerHTML = `<span class="chat-notification-toast-icon">${CHAT_NOTIFICATION_ICON_SVG}</span><span>${escapeHtml(text)}</span>`;
+
+  let dismissed = false;
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
+    toast.classList.remove('chat-notification-toast--visible');
+    setTimeout(() => toast.remove(), 250);
+  }
+
+  toast.addEventListener('click', () => {
+    if (onClick) onClick();
+    dismiss();
+  });
+
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('chat-notification-toast--visible'));
+  setTimeout(dismiss, CHAT_TOAST_AUTO_DISMISS_MS);
+}
+
+/**
+ * A vendor's Messenger field can be a bare username ("my.store.page"), an
+ * @handle, or a full URL they pasted themselves - normalize all three into
+ * a clickable https://m.me/... link (or pass an already-full URL through
+ * unchanged) rather than assuming one particular input format.
+ */
+function messengerUrl(handle) {
+  const trimmed = String(handle || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return 'https://m.me/' + encodeURIComponent(trimmed.replace(/^@/, '').replace(/^m\.me\//i, ''));
+}
 
 /**
  * Wraps a password input with a show/hide toggle button. Safe to call once

@@ -62,6 +62,7 @@ function renderProductCard(product) {
             </button>
           </div>
           <p class="booking-request-status helper-text" id="booking-status-${pid}" role="status"></p>
+          <div class="booking-vendor-contact hidden" id="booking-contact-${pid}"></div>
         </div>
       </article>
     `;

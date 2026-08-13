@@ -53,6 +53,12 @@ function initChatWindow() {
   let isOpen = false;
   let hasLoadedOnce = false;
   let lastMessageId = null;
+  // Belt-and-suspenders against ever rendering the same message twice -
+  // the server's own sinceMessageId lookup can't always place the client's
+  // cursor (see listMessagesForConversation in Chat.gs), so this is the
+  // one place that reliably prevents a duplicate bubble no matter why an
+  // overlap happened.
+  const renderedMessageIds = new Set();
   let pollTimer = null;
   let pollDelayMs = CHAT_POLL_MIN_MS;
   let selectedImageFile = null;
@@ -61,6 +67,7 @@ function initChatWindow() {
   let hasMoreBefore = false;
   let isLoadingEarlier = false;
   let lastTypingSignalSentAt = 0;
+  let vendorStoreName = 'This Store'; // set by loadVendorHeader() once it resolves; used in notification toast text
 
   function scrollMessagesToBottom() {
     body.scrollTop = body.scrollHeight;
@@ -118,8 +125,9 @@ function initChatWindow() {
     const res = await Api.get('getStorePublicInfo', { storeSlug });
     if (!res.ok || !res.store) return;
 
+    vendorStoreName = res.store.storeName || 'This Store';
     const nameEl = document.getElementById('chat-window-vendor-name');
-    if (nameEl) nameEl.textContent = res.store.storeName || 'This Store';
+    if (nameEl) nameEl.textContent = vendorStoreName;
 
     const placeholder = document.getElementById('chat-vendor-avatar-placeholder');
     if (!placeholder) return;
@@ -162,6 +170,15 @@ function initChatWindow() {
 
     const newFromVendor = (res.messages || []).filter((m) => m.senderType === 'vendor');
     updateBadge(newFromVendor.length);
+
+    if (newFromVendor.length > 0) {
+      playChatNotificationSound();
+      const text =
+        newFromVendor.length === 1
+          ? `New message from ${vendorStoreName}`
+          : `${newFromVendor.length} new messages from ${vendorStoreName}`;
+      showChatNotificationToast(text, () => { if (!isOpen) fab.click(); });
+    }
   }
 
   function clearEmptyState() {
@@ -309,7 +326,16 @@ function initChatWindow() {
       return false;
     }
 
+    let appendedAny = false;
+    let newVendorMessageCount = 0;
     messages.forEach((m) => {
+      if (renderedMessageIds.has(m.messageId)) return; // already on screen - see renderedMessageIds' comment above
+      renderedMessageIds.add(m.messageId);
+      appendedAny = true;
+      // Only a poll represents a message genuinely arriving "live" - the
+      // initial load is just history the customer is about to see on
+      // screen already, not something worth a popup+sound for.
+      if (isPoll && m.senderType === 'vendor') newVendorMessageCount++;
       const senderClass = m.senderType === 'vendor' ? 'chat-message--vendor' : 'chat-message--customer';
       const bubble = appendMessage(senderClass, m.body, { beforeTyping: true, imageUrl: m.imageUrl || null });
       if (!oldestBubble) oldestBubble = bubble; // first message ever rendered in this session becomes the initial "load earlier" anchor
@@ -317,7 +343,17 @@ function initChatWindow() {
     lastMessageId = messages[messages.length - 1].messageId;
     if (!oldestMessageId) oldestMessageId = messages[0].messageId; // only the very first load establishes the oldest boundary - later appends are always newer
     setLastSeenMessageId(lastMessageId); // panel is open while this runs, so this counts as "seen"
-    return true;
+
+    if (newVendorMessageCount > 0) {
+      playChatNotificationSound();
+      const text =
+        newVendorMessageCount === 1
+          ? `New message from ${vendorStoreName}`
+          : `${newVendorMessageCount} new messages from ${vendorStoreName}`;
+      showChatNotificationToast(text, scrollMessagesToBottom);
+    }
+
+    return appendedAny;
   }
 
   /**
@@ -347,6 +383,7 @@ function initChatWindow() {
     const messages = res.messages || [];
     const anchor = oldestBubble || typingEl;
     messages.forEach((m, i) => {
+      renderedMessageIds.add(m.messageId);
       const senderClass = m.senderType === 'vendor' ? 'chat-message--vendor' : 'chat-message--customer';
       const bubble = appendMessage(senderClass, m.body, { insertBeforeEl: anchor, imageUrl: m.imageUrl || null });
       if (i === 0) oldestBubble = bubble; // messages arrive oldest-first, so the first one processed is the new earliest
@@ -399,6 +436,7 @@ function initChatWindow() {
       return;
     }
     lastMessageId = res.message.messageId;
+    renderedMessageIds.add(lastMessageId); // already on screen (the optimistic bubble above) - a later poll returning it too must not duplicate it
     setLastSeenMessageId(lastMessageId);
     pollDelayMs = CHAT_POLL_MIN_MS; // sending is activity too - a reply might come back quickly, so resume fast polling rather than waiting out a backed-off interval
   }
@@ -441,6 +479,7 @@ function initChatWindow() {
       return;
     }
     lastMessageId = res.message.messageId;
+    renderedMessageIds.add(lastMessageId); // see sendMessage's identical guard
     setLastSeenMessageId(lastMessageId);
     pollDelayMs = CHAT_POLL_MIN_MS; // see sendMessage's identical reset
   }
@@ -523,12 +562,44 @@ function initChatWindow() {
     });
   }
 
+  /**
+   * .chat-window is `position: fixed` sized off `100vh`/`max-height`, which
+   * on mobile reflects the *layout* viewport - the on-screen keyboard
+   * shrinks the *visual* viewport instead, so without this the input row at
+   * the bottom of the panel ends up hidden underneath the keyboard rather
+   * than pushed up above it. window.innerHeight - visualViewport.height is
+   * the keyboard's own pixel height (0 when it's closed, regardless of page
+   * scroll position - unlike visualViewport.offsetTop, which shifts on
+   * scroll too and would cause the panel to jitter for the wrong reason).
+   * Shifting `bottom` by that amount and capping `max-height` to what's
+   * actually still visible keeps the whole panel - including the input
+   * row - on screen above the keyboard. Inline styles are cleared (falling
+   * back to the CSS defaults) the moment the keyboard closes again.
+   */
+  function adjustForOnscreenKeyboard() {
+    if (!isOpen || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const keyboardHeight = Math.max(0, window.innerHeight - vv.height);
+    if (keyboardHeight > 0) {
+      win.style.bottom = `${keyboardHeight}px`;
+      win.style.maxHeight = `${Math.max(200, vv.height - 16)}px`;
+    } else {
+      win.style.bottom = '';
+      win.style.maxHeight = '';
+    }
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', adjustForOnscreenKeyboard);
+  }
+
   function openWindow() {
     isOpen = true;
     win.classList.add('chat-window--open');
     win.setAttribute('aria-hidden', 'false');
     fab.setAttribute('aria-expanded', 'true');
     updateBadge(0); // opening it is reading it
+    adjustForOnscreenKeyboard(); // covers the rare case the keyboard is already up (e.g. re-focus after a fast reopen)
 
     if (!getCustomerName()) {
       showNameGate();
@@ -544,6 +615,8 @@ function initChatWindow() {
     win.classList.remove('chat-window--open');
     win.setAttribute('aria-hidden', 'true');
     fab.setAttribute('aria-expanded', 'false');
+    win.style.bottom = '';
+    win.style.maxHeight = '';
     stopPolling();
     fab.focus();
   }
@@ -602,6 +675,8 @@ function initChatWindow() {
     sendMessage(text);
   });
 
-  checkForUnreadMessages();
-  loadVendorHeader();
+  // loadVendorHeader() sets vendorStoreName, used in checkForUnreadMessages'
+  // notification toast text - chained rather than fired in parallel so that
+  // toast never has to fall back to the generic "This Store" placeholder.
+  loadVendorHeader().then(checkForUnreadMessages);
 }

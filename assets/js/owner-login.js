@@ -111,6 +111,7 @@ async function onRegister(e) {
   const password = document.getElementById('register-password').value;
   const email = document.getElementById('register-email').value.trim();
   const phone = document.getElementById('register-phone').value.trim();
+  const messenger = document.getElementById('register-messenger').value.trim();
 
   if (!email) {
     errorEl.textContent = 'Contact email is required — that\'s where customer orders will be sent.';
@@ -124,7 +125,7 @@ async function onRegister(e) {
   const submitBtn = document.getElementById('register-submit-btn');
   setButtonBusy(submitBtn, 'Creating', 'Create Store Account');
 
-  const res = await Api.post('registerOwner', { storeName, username, password, email, phone });
+  const res = await Api.post('registerOwner', { storeName, username, password, email, phone, messenger });
 
   if (!res.ok) {
     setButtonIdle(submitBtn);
@@ -133,5 +134,9 @@ async function onRegister(e) {
   }
 
   Auth.saveSession(res.token, res.owner);
-  window.location.href = 'dashboard.html';
+  // Straight to Settings, not the dashboard - a fresh account has no logo,
+  // delivery methods, or location set yet, and settings.html's own
+  // required-field validation walks the new owner through finishing that
+  // profile (it redirects on to the dashboard once they save successfully).
+  window.location.href = 'settings.html';
 }

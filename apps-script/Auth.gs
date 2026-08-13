@@ -82,6 +82,7 @@ function publicOwnerFields(owner) {
     storeSlug: owner.StoreSlug,
     email: owner.Email,
     phone: owner.Phone,
+    messenger: owner.Messenger,
     logoUrl: owner.LogoUrl,
     island: owner.Island,
     village: owner.Village,
@@ -89,6 +90,7 @@ function publicOwnerFields(owner) {
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
     deliveryShip: String(owner.DeliveryShip) === 'true',
     deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true',
+    deliveryPickPay: String(owner.DeliveryPickPay) === 'true',
     deliveryTruckCost: owner.DeliveryTruckCost === '' || owner.DeliveryTruckCost == null ? null : Number(owner.DeliveryTruckCost),
     deliveryShipCost: owner.DeliveryShipCost === '' || owner.DeliveryShipCost == null ? null : Number(owner.DeliveryShipCost),
     deliveryAirCargoCost: owner.DeliveryAirCargoCost === '' || owner.DeliveryAirCargoCost == null ? null : Number(owner.DeliveryAirCargoCost),
@@ -157,6 +159,7 @@ function actionRegisterOwner(body) {
   var password = String(body.password || '');
   var email = String(body.email || '').trim();
   var phone = String(body.phone || '').trim();
+  var messenger = String(body.messenger || '').trim();
 
   if (!storeName || !username || !password || !email || !phone) {
     return fail('Store name, username, password, contact email and contact phone are required');
@@ -167,6 +170,8 @@ function actionRegisterOwner(body) {
   if (storeNameErr) return storeNameErr;
   var phoneErr = capLength(phone, 30, 'Phone number');
   if (phoneErr) return phoneErr;
+  var messengerErr = capLength(messenger, 100, 'Facebook Messenger');
+  if (messengerErr) return messengerErr;
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -204,6 +209,7 @@ function actionRegisterOwner(body) {
       PasswordSalt: salt,
       Email: email,
       Phone: phone,
+      Messenger: messenger,
       ANZ_AccountName: '',
       ANZ_AccountNumber: '',
       ANZ_Branch: '',

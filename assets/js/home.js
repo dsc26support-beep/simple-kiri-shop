@@ -3,8 +3,7 @@ document.addEventListener('DOMContentLoaded', init);
 function init() {
   renderCategoryButtons('category-buttons');
   document.getElementById('search-form').addEventListener('submit', onSearchSubmit);
-  loadTrendingProducts();
-  loadTrendingStores();
+  loadHomePageData();
 }
 
 function onSearchSubmit(e) {
@@ -13,23 +12,35 @@ function onSearchSubmit(e) {
   window.location.href = `search.html?q=${encodeURIComponent(q)}`;
 }
 
-async function loadTrendingProducts() {
+// One combined request for both carousels below, instead of two separate
+// round trips - Apps Script's own per-request execution-startup overhead
+// is the dominant cost for a page load like this, so halving the number of
+// round trips is what actually moves the needle on "page feels slow," not
+// anything about the Sheets reads themselves (both halves are still served
+// from the same 300s caches actionListTopProducts/actionListTopStores use).
+async function loadHomePageData() {
+  const res = await Api.get('getHomePageData', {});
+  if (!res.ok) {
+    document.getElementById('trending-products-status').textContent = res.error || '';
+    document.getElementById('trending-stores-status').textContent = res.error || '';
+    return;
+  }
+  renderTrendingProducts(res.products);
+  renderTrendingStores(res.stores);
+}
+
+function renderTrendingProducts(products) {
   const statusEl = document.getElementById('trending-products-status');
   const listEl = document.getElementById('trending-products-list');
 
-  const res = await Api.get('listTopProducts', {});
-  if (!res.ok) {
-    statusEl.textContent = res.error || '';
-    return;
-  }
-  if (res.products.length === 0) {
+  if (products.length === 0) {
     statusEl.textContent = 'No products yet.';
     return;
   }
 
   statusEl.textContent = '';
-  listEl.innerHTML = res.products.map(renderTrendingProductCard).join('');
-  recordProductViewsOnce(res.products.map((p) => p.productId));
+  listEl.innerHTML = products.map(renderTrendingProductCard).join('');
+  recordProductViewsOnce(products.map((p) => p.productId));
   wireTrendingCarouselFocus(listEl);
 }
 
@@ -96,16 +107,16 @@ function renderTrendingProductCard(product) {
   // mobile (a bare placeholder-swatch is aria-hidden, so without this the
   // link would otherwise have no accessible name at all there).
   return `
-    <a class="trending-product-card" href="store.html?store=${encodeURIComponent(product.storeSlug)}" data-product-id="${escapeHtml(product.productId)}" aria-label="${escapeHtml(product.name)}, sold by ${escapeHtml(product.storeName)}">
+    <a class="trending-product-card" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" data-product-id="${escapeHtml(product.productId)}" aria-label="${escapeHtml(product.name)}, sold by ${escapeHtml(product.storeName)}">
       ${media}
       <div class="trending-product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <p class="helper-text">Sold by ${escapeHtml(product.storeName)}</p>
         ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
         ${renderDeliveryIcons({
           truck: product.storeDeliveryTruck,
           ship: product.storeDeliveryShip,
           airCargo: product.storeDeliveryAirCargo,
+          pickPay: product.storeDeliveryPickPay,
           truckCost: product.storeDeliveryTruckCost,
           shipCost: product.storeDeliveryShipCost,
           airCargoCost: product.storeDeliveryAirCargoCost
@@ -116,20 +127,15 @@ function renderTrendingProductCard(product) {
   `;
 }
 
-async function loadTrendingStores() {
+function renderTrendingStores(stores) {
   const statusEl = document.getElementById('trending-stores-status');
   const listEl = document.getElementById('trending-stores-list');
 
-  const res = await Api.get('listTopStores', {});
-  if (!res.ok) {
-    statusEl.textContent = res.error || '';
-    return;
-  }
-  if (res.stores.length === 0) {
+  if (stores.length === 0) {
     statusEl.textContent = 'No stores yet.';
     return;
   }
 
   statusEl.textContent = '';
-  listEl.innerHTML = res.stores.map(renderLogoCarouselItem).join('');
+  listEl.innerHTML = stores.map(renderLogoCarouselItem).join('');
 }

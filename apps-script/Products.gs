@@ -29,6 +29,7 @@ function deliveryFlagsOf(owner) {
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
     deliveryShip: String(owner.DeliveryShip) === 'true',
     deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true',
+    deliveryPickPay: String(owner.DeliveryPickPay) === 'true',
     deliveryTruckCost: deliveryCostOf(owner.DeliveryTruckCost),
     deliveryShipCost: deliveryCostOf(owner.DeliveryShipCost),
     deliveryAirCargoCost: deliveryCostOf(owner.DeliveryAirCargoCost)
@@ -55,15 +56,28 @@ function actionListStores(params) {
         return store;
       });
   });
+
+  // Filtering happens after the cache read, on the one full cached list -
+  // every query shares the same 60s cache entry instead of minting a new
+  // cache key per search string, and the query never affects the eligible
+  // page-size cap below.
+  var q = String(params.q || '').trim().toLowerCase();
+  var filtered = q
+    ? all.filter(function (s) {
+        var haystack = (s.storeName + ' ' + (s.island || '') + ' ' + (s.village || '')).toLowerCase();
+        return haystack.indexOf(q) !== -1;
+      })
+    : all;
+
   var limit = clampPageSize(params.limit, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE);
   var offset = Math.max(0, Number(params.offset) || 0);
-  var page = all.slice(offset, offset + limit);
-  return ok({ stores: page, total: all.length, hasMore: offset + limit < all.length });
+  var page = filtered.slice(offset, offset + limit);
+  return ok({ stores: page, total: filtered.length, hasMore: offset + limit < filtered.length });
 }
 
 /** Top 20 active products by view count, for the home page "trending" carousel. */
-function actionListTopProducts() {
-  var results = getCached('v1:topProducts', 300, function () {
+function getTopProductsCached() {
+  return getCached('v1:topProducts', 300, function () {
     var ownersById = {};
     sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return o.Status === 'active'; })
@@ -95,6 +109,7 @@ function actionListTopProducts() {
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
         product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
         product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+        product.storeDeliveryPickPay = String(owner.DeliveryPickPay) === 'true';
         product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
         product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
         product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
@@ -107,13 +122,15 @@ function actionListTopProducts() {
       .sort(function (a, b) { return b.views - a.views; })
       .slice(0, 20);
   });
+}
 
-  return ok({ products: results });
+function actionListTopProducts() {
+  return ok({ products: getTopProductsCached() });
 }
 
 /** Top 20 active stores by visit count, for the home page "popular stores" logo carousel. */
-function actionListTopStores() {
-  var stores = getCached('v1:topStores', 300, function () {
+function getTopStoresCached() {
+  return getCached('v1:topStores', 300, function () {
     return sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return o.Status === 'active'; })
       .map(function (o) {
@@ -132,7 +149,24 @@ function actionListTopStores() {
       .sort(function (a, b) { return b.visits - a.visits; })
       .slice(0, 20);
   });
-  return ok({ stores: stores });
+}
+
+function actionListTopStores() {
+  return ok({ stores: getTopStoresCached() });
+}
+
+/**
+ * The home page's "Trending Products" and "Popular Stores" sections used to
+ * be two separate round trips to the Apps Script backend - each one pays
+ * Apps Script's own per-request execution-startup overhead, which is the
+ * dominant cost for a small/cached read like this (not the Sheets read
+ * itself). Combining them into one response halves that fixed tax on the
+ * highest-traffic page in the app. Both halves still read through the same
+ * 300s caches as their standalone actions, so nothing about caching
+ * behavior changes - this only cuts the network round trip.
+ */
+function actionGetHomePageData() {
+  return ok({ products: getTopProductsCached(), stores: getTopStoresCached() });
 }
 
 /**
@@ -280,6 +314,7 @@ function actionSearchProducts(params) {
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
         product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
         product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+        product.storeDeliveryPickPay = String(owner.DeliveryPickPay) === 'true';
         product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
         product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
         product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
@@ -343,6 +378,7 @@ function actionListProducts(params) {
     var out = {
       storeName: owner.StoreName,
       storePhone: owner.Phone,
+      storeMessenger: owner.Messenger,
       storeLogoUrl: owner.LogoUrl,
       storeIsland: owner.Island,
       storeVillage: owner.Village,
@@ -351,6 +387,7 @@ function actionListProducts(params) {
     out.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
     out.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
     out.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
+    out.storeDeliveryPickPay = String(owner.DeliveryPickPay) === 'true';
     out.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
     out.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
     out.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
@@ -540,6 +577,11 @@ function actionUpdateOwnerProfile(owner, body) {
     if (phoneErr) return phoneErr;
     update.Phone = body.phone;
   }
+  if (body.messenger !== undefined) {
+    var messengerErr = capLength(body.messenger, 100, 'Facebook Messenger');
+    if (messengerErr) return messengerErr;
+    update.Messenger = body.messenger;
+  }
   if (body.island !== undefined) {
     var islandErr = capLength(body.island, 100, 'Island');
     if (islandErr) return islandErr;
@@ -554,6 +596,7 @@ function actionUpdateOwnerProfile(owner, body) {
   if (body.deliveryTruck !== undefined) update.DeliveryTruck = body.deliveryTruck ? 'true' : 'false';
   if (body.deliveryShip !== undefined) update.DeliveryShip = body.deliveryShip ? 'true' : 'false';
   if (body.deliveryAirCargo !== undefined) update.DeliveryAirCargo = body.deliveryAirCargo ? 'true' : 'false';
+  if (body.deliveryPickPay !== undefined) update.DeliveryPickPay = body.deliveryPickPay ? 'true' : 'false';
 
   var costFieldMap = { deliveryTruckCost: 'DeliveryTruckCost', deliveryShipCost: 'DeliveryShipCost', deliveryAirCargoCost: 'DeliveryAirCargoCost' };
   Object.keys(costFieldMap).forEach(function (k) {

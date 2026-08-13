@@ -18,10 +18,6 @@
         <ul>
           <li><a href="../index.html">Home</a></li>
           <li><a href="dashboard.html">Dashboard</a></li>
-          <li><a href="products.html">Products</a></li>
-          <li><a href="orders.html">Orders</a></li>
-          <li><a href="bookings.html">Bookings</a></li>
-          <li><a href="messages.html">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden">0</span></a></li>
           <li><a href="settings.html">Settings</a></li>
           <li><a href="#" id="logout-link">Log Out</a></li>
         </ul>
@@ -37,7 +33,7 @@
         <h2>Store Details</h2>
         <div class="field">
           <label for="store-name">Store Name</label>
-          <input id="store-name" required>
+          <input id="store-name">
         </div>
         <div class="field">
           <label for="contact-email">Contact Email</label>
@@ -46,6 +42,11 @@
         <div class="field">
           <label for="contact-phone">Contact Phone (used for WhatsApp order sharing)</label>
           <input id="contact-phone" type="tel">
+        </div>
+        <div class="field">
+          <label for="contact-messenger">Facebook Messenger (Optional)</label>
+          <input id="contact-messenger" type="text">
+          <p class="helper-text">Your Messenger username or page link, e.g. m.me/yourpage. Lets customers message you straight from your store page.</p>
         </div>
 
         <h2>Store Logo</h2>
@@ -82,6 +83,10 @@
             <button type="button" class="delivery-toggle-btn" id="delivery-aircargo-btn" data-method="airCargo" aria-pressed="false"></button>
             <label class="sr-only" for="delivery-aircargo-cost">Air cargo delivery cost</label>
             <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-aircargo-cost" placeholder="Cost ($0 = free)">
+          </div>
+          <div class="delivery-method-row">
+            <button type="button" class="delivery-toggle-btn" id="delivery-pickpay-btn" data-method="pickPay" aria-pressed="false"></button>
+            <span class="helper-text">Always free — customers pick up in person and pay at your store.</span>
           </div>
         </div>
 
@@ -159,7 +164,7 @@
   <footer class="site-footer">
     <div class="container">
       <p>Mwakete — Store Owner Portal</p>
-      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Enquiries">Enquiries</a></p>
       <p class="copyright">©MainKT Enterprises</p>
     </div>
   </footer>

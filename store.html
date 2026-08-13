@@ -97,7 +97,12 @@
   <main id="main">
     <section aria-labelledby="products-heading">
       <div class="container">
-        <h1 id="products-heading">Products</h1>
+        <h1 id="products-heading" class="sr-only">Products</h1>
+        <form id="products-search-form" class="search-box" role="search">
+          <label class="sr-only" for="products-search-input">Search products</label>
+          <input id="products-search-input" type="search" placeholder="Search Products (e.g. rice, t-shirt)">
+          <button type="submit" class="btn btn-primary">Search</button>
+        </form>
         <p id="products-status" class="helper-text" role="status">Loading products…</p>
         <div id="product-list" class="product-grid"></div>
         <p id="cart-feedback" class="form-success" aria-live="polite"></p>
@@ -116,7 +121,7 @@
   <footer class="site-footer">
     <div class="container">
       <p>All payments is arranged between Customer and Seller</p>
-      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Feedback">Give Feedback</a></p>
+      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Enquiries">Enquiries</a></p>
       <p class="copyright">©MainKT Enterprises</p>
     </div>
   </footer>

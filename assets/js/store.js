@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', init);
 
 let currentProducts = [];
 let currentSlug = null;
+let currentStorePhone = null;
+let currentStoreMessenger = null;
 
 async function init() {
   currentSlug = getQueryParam('store');
@@ -32,6 +34,9 @@ async function init() {
     logoImg.classList.remove('hidden');
   }
 
+  currentStorePhone = res.storePhone || null;
+  currentStoreMessenger = res.storeMessenger || null;
+
   const phoneLine = document.getElementById('store-phone-line');
   if (res.storePhone) {
     phoneLine.textContent = res.storePhone;
@@ -42,6 +47,7 @@ async function init() {
     truck: res.storeDeliveryTruck,
     ship: res.storeDeliveryShip,
     airCargo: res.storeDeliveryAirCargo,
+    pickPay: res.storeDeliveryPickPay,
     truckCost: res.storeDeliveryTruckCost,
     shipCost: res.storeDeliveryShipCost,
     airCargoCost: res.storeDeliveryAirCargoCost
@@ -61,7 +67,74 @@ async function init() {
   updateCartCount();
   wireProductEvents();
   wireGalleryScrollSync();
+  wireProductsSearch();
   loadSimilarProducts();
+  scrollToRequestedProduct();
+}
+
+// Filters this store's own already-loaded product list client-side - no
+// extra request, since currentProducts is the store's full catalog (unlike
+// the paginated cross-store directory on stores.html, a single store's
+// products are all loaded up front already).
+function filterCurrentProducts(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return currentProducts;
+  return currentProducts.filter((p) => {
+    const haystack = `${p.name} ${p.description || ''} ${p.category || ''}`.toLowerCase();
+    return haystack.indexOf(q) !== -1;
+  });
+}
+
+function renderFilteredProducts(query) {
+  const statusEl = document.getElementById('products-status');
+  const listEl = document.getElementById('product-list');
+  const filtered = filterCurrentProducts(query);
+
+  if (filtered.length === 0) {
+    statusEl.textContent = query.trim() ? `No products match "${query.trim()}".` : 'This store has no products listed yet.';
+    listEl.innerHTML = '';
+    return;
+  }
+
+  statusEl.textContent = '';
+  listEl.innerHTML = filtered.map(renderProductCard).join('');
+  // Re-render replaces the gallery track elements, and their scroll sync
+  // (wireGalleryScrollSync) is per-element, not delegated like the click
+  // handler in wireProductEvents - has to be redone after every re-render.
+  wireGalleryScrollSync();
+}
+
+// Live-filters as the customer types (debounced), same pattern as the store
+// directory search on stores.html - Enter/Search button also works.
+function wireProductsSearch() {
+  const form = document.getElementById('products-search-form');
+  const input = document.getElementById('products-search-input');
+  let debounceTimer = null;
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearTimeout(debounceTimer);
+    renderFilteredProducts(input.value);
+  });
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => renderFilteredProducts(input.value), 300);
+  });
+}
+
+// Trending-product cards on the home page link here with ?product=<id> so a
+// customer landing on a store with many listings sees the exact item they
+// clicked, not just the top of the catalog - then finds "Similar Products"
+// naturally below it, same as any other visit to this page.
+function scrollToRequestedProduct() {
+  const productId = getQueryParam('product');
+  if (!productId) return;
+  const card = document.querySelector(`.product-card[data-product-id="${CSS.escape(productId)}"]`);
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.add('product-highlight');
+  card.addEventListener('animationend', () => card.classList.remove('product-highlight'), { once: true });
 }
 
 async function loadSimilarProducts() {
@@ -161,6 +234,27 @@ async function onRequestBooking(btn) {
 
   btn.textContent = 'Requested';
   statusEl.textContent = 'Booking request sent — the vendor will confirm or decline.';
+  renderBookingVendorContact(productId);
+}
+
+// Shown once a booking request succeeds, alongside the "vendor will
+// confirm or decline" status - waiting on the vendor shouldn't mean the
+// customer has no way to reach them in the meantime.
+function renderBookingVendorContact(productId) {
+  const contactEl = document.getElementById(`booking-contact-${productId}`);
+  if (!contactEl) return;
+
+  const buttons = [];
+  if (currentStorePhone) {
+    buttons.push(`<a class="btn btn-call" href="tel:${escapeHtml(currentStorePhone)}">${PHONE_ICON_SVG}Call Now</a>`);
+  }
+  if (currentStoreMessenger) {
+    buttons.push(`<a class="btn btn-messenger" href="${escapeHtml(messengerUrl(currentStoreMessenger))}" target="_blank" rel="noopener">${MESSENGER_ICON_SVG}Messenger</a>`);
+  }
+  if (buttons.length === 0) return;
+
+  contactEl.innerHTML = buttons.join('');
+  contactEl.classList.remove('hidden');
 }
 
 function wireProductEvents() {

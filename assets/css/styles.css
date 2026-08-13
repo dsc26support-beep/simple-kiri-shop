@@ -484,6 +484,43 @@ footer.site-footer .copyright {
 }
 
 /*
+ * New-message popup (chat-window.js/owner-messages.js via
+ * showChatNotificationToast in helpers.js) - top-anchored on purpose so it
+ * never overlaps the bottom-anchored FAB/chat window it's telling you about.
+ */
+.chat-notification-toast {
+  position: fixed;
+  top: max(var(--space-3), env(safe-area-inset-top));
+  left: 50%;
+  z-index: 1003; /* above the chat window (1002) */
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100vw - 2 * var(--space-3));
+  padding: 0.75em 1.25em;
+  border-radius: 999px;
+  background: var(--color-blue);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  opacity: 0;
+  transform: translate(-50%, -12px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.chat-notification-toast--visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.chat-notification-toast-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/*
  * Chat window - the panel the FAB opens. Kept visible-but-transparent
  * (not display:none) while closed so opacity/transform can transition;
  * .chat-window--open is what JS toggles to reveal it. Not connected to any
@@ -1097,6 +1134,11 @@ footer.site-footer .copyright {
   color: #fff;
 }
 
+.btn-light-blue {
+  background: var(--color-blue-light);
+  color: #fff;
+}
+
 .btn-adding {
   background: var(--color-blue-light) !important;
   opacity: 1;
@@ -1220,6 +1262,31 @@ legend {
   display: flex;
   flex-direction: column;
   background: #fff;
+  /* renderBrowseProductCard (search results / similar products) renders
+     this as an <a> so the whole card is clickable - text-decoration/color
+     resets are harmless on the plain <article> cards from product-card.js. */
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Marks the exact product a customer arrived at via a trending-product link
+   (?product=<id> on store.html) so it's clear which card they clicked,
+   since it may not be the first one on the page. Self-clears via
+   animationend in store.js - no JS timer needed. */
+.product-highlight {
+  animation: product-highlight-pulse 2.2s ease-out;
+}
+
+@keyframes product-highlight-pulse {
+  0% { box-shadow: 0 0 0 3px var(--color-blue-light); }
+  70% { box-shadow: 0 0 0 3px var(--color-blue-light); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-highlight {
+    animation: none;
+  }
 }
 
 .product-image {
@@ -1519,12 +1586,18 @@ legend {
 
 .booking-dates-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: var(--space-2);
 }
 
 .booking-dates-row input {
-  flex: 1 1 0;
+  /* min-width: 0 lets a flex item shrink below its content's intrinsic
+     size (the default `auto` doesn't) - without it, a native date input's
+     own minimum width made the row overflow the card's overflow:hidden
+     boundary, clipping the end-date field off entirely on narrower cards. */
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 .booking-contact-fields {
@@ -1540,6 +1613,26 @@ legend {
 
 .booking-request-status {
   margin-top: var(--space-1);
+}
+
+.booking-vendor-contact {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.booking-vendor-contact .btn {
+  flex: 1 1 0;
+}
+
+.btn-call {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.btn-messenger {
+  background: #0084ff;
+  color: #fff;
 }
 
 /* Store directory */

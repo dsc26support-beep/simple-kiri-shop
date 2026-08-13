@@ -38,6 +38,12 @@ function customerVillageMatchesTruckList(customerVillage) {
  *    lets them reach off-island at all; air never available.
  *  - Any other (outer island) vendor: truck only to their own same island;
  *    ship and air only to South Tarawa.
+ *
+ * Pick & Pay (in-person pickup at the store, always free) sits outside all
+ * of the above - it doesn't involve a physical delivery route, so it's
+ * eligible for ANY customer location whenever the vendor has it enabled,
+ * unlike truck/ship/airCargo which depend on where the vendor and customer
+ * each are.
  */
 function computeEligibleDeliveryMethods(owner, customerIsland, customerVillage, subtotal) {
   var eligible = [];
@@ -64,9 +70,15 @@ function computeEligibleDeliveryMethods(owner, customerIsland, customerVillage, 
     if (hasAirCargo && customerIsland === 'South Tarawa') eligible.push('airCargo');
   }
 
+  if (String(owner.DeliveryPickPay) === 'true') eligible.push('pickPay');
+
   return eligible;
 }
 
+// Pick & Pay has no cost field/column - it's always free, deliberately left
+// out of this map. DELIVERY_COST_FIELD['pickPay'] is undefined, so the
+// actionCreateOrder lookup below resolves to 0 either way, but the delivery
+// cost line there spells it out explicitly rather than relying on that.
 var DELIVERY_COST_FIELD = { truck: 'DeliveryTruckCost', ship: 'DeliveryShipCost', airCargo: 'DeliveryAirCargoCost' };
 
 function actionCreateOrder(body) {
@@ -134,7 +146,7 @@ function actionCreateOrder(body) {
     if (eligibleMethods.indexOf(deliveryMethod) === -1) {
       return fail('That delivery method is not available for your location - please refresh and choose an available option.');
     }
-    var deliveryCost = Number(owner[DELIVERY_COST_FIELD[deliveryMethod]]) || 0;
+    var deliveryCost = deliveryMethod === 'pickPay' ? 0 : Number(owner[DELIVERY_COST_FIELD[deliveryMethod]]) || 0;
     var total = subtotal + deliveryCost;
 
     var orderId = generateOrderRef(slug);

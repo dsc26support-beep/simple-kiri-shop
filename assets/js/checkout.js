@@ -53,6 +53,7 @@ async function init() {
     truck: storeInfo.deliveryTruck,
     ship: storeInfo.deliveryShip,
     airCargo: storeInfo.deliveryAirCargo,
+    pickPay: storeInfo.deliveryPickPay,
     truckCost: storeInfo.deliveryTruckCost,
     shipCost: storeInfo.deliveryShipCost,
     airCargoCost: storeInfo.deliveryAirCargoCost
@@ -187,6 +188,10 @@ function customerVillageMatchesTruckList(customerVillage) {
  *    lets them reach off-island at all; air never available.
  *  - Any other (outer island) vendor: truck only to their own same island;
  *    ship and air only to South Tarawa.
+ *
+ * Pick & Pay (in-person pickup, always free) is eligible for any customer
+ * location whenever the vendor has it enabled - it doesn't involve a
+ * delivery route, so none of the island/village logic above applies to it.
  */
 function computeEligibleDeliveryMethods(subtotal) {
   if (!storeInfo) return [];
@@ -213,6 +218,8 @@ function computeEligibleDeliveryMethods(subtotal) {
     if (storeInfo.deliveryAirCargo && customerIsland === 'South Tarawa') eligible.push('airCargo');
   }
 
+  if (storeInfo.deliveryPickPay) eligible.push('pickPay');
+
   return eligible;
 }
 
@@ -220,6 +227,14 @@ function updateDeliveryMethods() {
   if (!storeInfo) return;
   const subtotal = Cart.getTotal(currentSlug);
   renderDeliveryMethodOptions(computeEligibleDeliveryMethods(subtotal));
+}
+
+// storeInfo's cost fields are named deliveryTruckCost/deliveryShipCost/
+// deliveryAirCargoCost (see publicOwnerFields in Auth.gs) - not
+// "<method>Cost". pickPay has no cost field at all since it's always free.
+function deliveryCostOf(m) {
+  if (m === 'pickPay') return 0;
+  return storeInfo['delivery' + m[0].toUpperCase() + m.slice(1) + 'Cost'];
 }
 
 function renderDeliveryMethodOptions(eligible) {
@@ -245,7 +260,7 @@ function renderDeliveryMethodOptions(eligible) {
 
   container.innerHTML = eligible
     .map((m, i) => {
-      const cost = storeInfo[m + 'Cost'];
+      const cost = deliveryCostOf(m);
       const priceText = cost == null ? '' : cost === 0 ? ' — Free' : ` — ${formatMoney(cost)}`;
       const checked = previousValue ? m === previousValue : i === 0;
       return `
@@ -264,7 +279,20 @@ function renderDeliveryMethodOptions(eligible) {
 function updateReviewTotal() {
   const subtotal = Cart.getTotal(currentSlug);
   const selected = document.querySelector('input[name="deliveryMethod"]:checked');
-  const deliveryCost = selected && storeInfo && storeInfo[selected.value + 'Cost'] != null ? storeInfo[selected.value + 'Cost'] : 0;
+  const cost = selected && storeInfo ? deliveryCostOf(selected.value) : null;
+  const deliveryCost = cost != null ? cost : 0;
+
+  document.getElementById('review-subtotal').textContent = formatMoney(subtotal);
+
+  const deliveryRow = document.getElementById('delivery-review-row');
+  if (selected) {
+    deliveryRow.classList.remove('hidden');
+    document.getElementById('delivery-review-label').textContent = 'Delivery';
+    document.getElementById('review-delivery-cost').textContent = deliveryCost === 0 ? 'Free' : formatMoney(deliveryCost);
+  } else {
+    deliveryRow.classList.add('hidden');
+  }
+
   document.getElementById('review-total').textContent = formatMoney(subtotal + deliveryCost);
 }
 
@@ -297,6 +325,8 @@ function renderOrderReview() {
     `
     )
     .join('');
+  document.getElementById('review-subtotal').textContent = formatMoney(Cart.getTotal(currentSlug));
+  document.getElementById('delivery-review-row').classList.add('hidden');
   document.getElementById('review-total').textContent = formatMoney(Cart.getTotal(currentSlug));
 }
 
@@ -361,9 +391,11 @@ async function onSubmit(e) {
   showConfirmation(res, payload);
 }
 
-function buildSummaryText(orderRef, payload, cart, total) {
+function buildSummaryText(orderRef, payload, cart, total, deliveryCost) {
   const lines = cart.map((l) => `- ${l.qty} x ${l.label} = ${formatMoney(l.unitPrice * l.qty)}`).join('\n');
   const deliveryLabel = payload.deliveryMethod ? DELIVERY_ICON_LABELS[payload.deliveryMethod] : '';
+  const subtotal = cart.reduce((sum, l) => sum + l.unitPrice * l.qty, 0);
+  const deliveryCostLine = deliveryCost != null ? `Delivery Cost: ${deliveryCost === 0 ? 'Free' : formatMoney(deliveryCost)}\n` : '';
 
   return `${storeInfo.storeName} - New Order
 ${orderRef ? 'Order Ref: ' + orderRef : '(order not yet confirmed with the store server — please send this message directly)'}
@@ -374,7 +406,8 @@ ${payload.deliveryAddress ? 'Address: ' + payload.deliveryAddress + '\n' : ''}${
 Items:
 ${lines}
 
-Total: ${formatMoney(total)}
+Subtotal: ${formatMoney(subtotal)}
+${deliveryCostLine}Total: ${formatMoney(total)}
 
 Hi, I'd like to place this order. Could you please reply and let me know how you'd like me to arrange payment?
 
@@ -390,7 +423,7 @@ function showConfirmation(orderResult, payload) {
   document.getElementById('confirmation-intro').textContent =
     `Thank you, ${payload.customerName}! Your order reference is ${orderResult.orderId}.`;
 
-  const summaryText = buildSummaryText(orderResult.orderId, payload, orderResult.items.map((i) => ({ label: i.label, unitPrice: i.unitPrice, qty: i.qty })), orderResult.total);
+  const summaryText = buildSummaryText(orderResult.orderId, payload, orderResult.items.map((i) => ({ label: i.label, unitPrice: i.unitPrice, qty: i.qty })), orderResult.total, orderResult.deliveryCost);
   document.getElementById('order-summary-text').value = summaryText;
 
   wireShareLinks(summaryText, orderResult.orderId);
@@ -406,9 +439,10 @@ function showConfirmation(orderResult, payload) {
 }
 
 function showFallbackConfirmation(payload, cart) {
-  const deliveryCost = payload.deliveryMethod && storeInfo && storeInfo[payload.deliveryMethod + 'Cost'] != null ? storeInfo[payload.deliveryMethod + 'Cost'] : 0;
+  const fallbackCost = payload.deliveryMethod && storeInfo ? deliveryCostOf(payload.deliveryMethod) : null;
+  const deliveryCost = fallbackCost != null ? fallbackCost : 0;
   const total = Cart.getTotal(currentSlug) + deliveryCost;
-  const summaryText = buildSummaryText(null, payload, cart, total);
+  const summaryText = buildSummaryText(null, payload, cart, total, fallbackCost);
   // Reuse the confirmation section as a manual fallback if the API call failed.
   // No auto-redirect here - there's no server-confirmed order yet, so the
   // customer should review and send it themselves rather than being pushed
