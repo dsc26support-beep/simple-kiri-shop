@@ -62,9 +62,12 @@ function getQueryParam(name) {
  * results, similar products) - image, name, store, delivery icons, price,
  * and a link straight to that product on its store page (store.html's
  * ?product= param triggers the same scroll-to-and-highlight redirect the
- * home page trending carousel uses), not just the store's front page.
- * Distinct from renderProductCard in product-card.js, which is the full
- * add-to-cart card shown on a store's own page.
+ * home page trending carousel uses), not just the store's front page. The
+ * whole card is that link (same pattern as the home page's
+ * trending-product-card), not just the "View" button at the bottom, so
+ * clicking anywhere on a similar/search-result product jumps straight to
+ * it. Distinct from renderProductCard in product-card.js, which is the
+ * full add-to-cart card shown on a store's own page.
  */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
@@ -82,7 +85,7 @@ function renderBrowseProductCard(product, opts) {
       : formatMoney(prices[0]);
 
   return `
-    <article class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}">
+    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml((soldByVerb(product.category) + ' ' + product.storeName).toLowerCase())}">
       ${media}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
@@ -98,9 +101,9 @@ function renderBrowseProductCard(product, opts) {
           airCargoCost: product.storeDeliveryAirCargoCost
         })}
         <strong>${priceText}</strong>
-        <a class="btn btn-primary" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}">${escapeHtml(linkLabel)}</a>
+        <span class="btn btn-primary" aria-hidden="true">${escapeHtml(linkLabel)}</span>
       </div>
-    </article>
+    </a>
   `;
 }
 

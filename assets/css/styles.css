@@ -1225,6 +1225,11 @@ legend {
   display: flex;
   flex-direction: column;
   background: #fff;
+  /* renderBrowseProductCard (search results / similar products) renders
+     this as an <a> so the whole card is clickable - text-decoration/color
+     resets are harmless on the plain <article> cards from product-card.js. */
+  text-decoration: none;
+  color: inherit;
 }
 
 /* Marks the exact product a customer arrived at via a trending-product link
