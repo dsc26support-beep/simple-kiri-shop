@@ -71,13 +71,14 @@ async function init() {
 async function loadConversations(opts) {
   const isPoll = !!(opts && opts.isPoll);
   const statusEl = document.getElementById('conversations-status');
-  if (!isPoll) statusEl.textContent = 'Loading…';
+  const stopLoading = isPoll ? null : startLoadingMessage(statusEl);
 
   const params = { token: Auth.getToken() };
   const limit = (opts && opts.limit) || ownerConversations.length || undefined;
   if (limit) params.limit = limit;
 
   const res = await Api.post('getVendorConversations', params);
+  if (stopLoading) stopLoading();
   if (!res.ok) {
     if (!isPoll) statusEl.textContent = res.error || 'Could not load conversations.';
     return; // a background poll failing stays silent and just retries next interval
@@ -170,7 +171,6 @@ async function openConversation(conversationId) {
   document.getElementById('messages-layout').classList.add('has-open-conversation');
   document.getElementById('conversation-empty-state').classList.add('hidden');
   document.getElementById('conversation-detail').classList.remove('hidden');
-  document.getElementById('conversation-messages').innerHTML = '<p class="helper-text">Loading…</p>';
 
   const conv = ownerConversations.find((c) => c.conversationId === conversationId);
   document.getElementById('detail-customer-name').textContent = conv && conv.customerName ? conv.customerName : 'Customer';
@@ -237,18 +237,25 @@ async function loadConversationMessages(opts) {
   const isPoll = !!(opts && opts.isPoll);
   if (!activeConversationId) return false;
 
+  const messagesEl = document.getElementById('conversation-messages');
+  let stopLoading = null;
+  if (!isPoll) {
+    messagesEl.innerHTML = '<p id="conversation-messages-loading" class="helper-text"></p>';
+    stopLoading = startLoadingMessage(document.getElementById('conversation-messages-loading'));
+  }
+
   const params = { token: Auth.getToken(), conversationId: activeConversationId };
   if (activeLastMessageId) params.sinceMessageId = activeLastMessageId;
 
   const res = await Api.post('getConversation', params);
+  if (stopLoading) stopLoading();
   if (!res.ok) {
-    if (!isPoll) document.getElementById('conversation-messages').innerHTML = '<p class="helper-text">Could not load messages.</p>';
+    if (!isPoll) messagesEl.innerHTML = '<p class="helper-text">Could not load messages.</p>';
     return false;
   }
 
   showTyping(!!res.otherPartyTyping);
 
-  const messagesEl = document.getElementById('conversation-messages');
   const messages = res.messages || [];
   if (!isPoll) {
     messagesEl.innerHTML = messages.length === 0 ? '<p class="helper-text">No messages yet.</p>' : '';

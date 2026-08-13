@@ -234,6 +234,7 @@ function initChatWindow() {
   }
 
   function showLoadError() {
+    stopChatLoadingMessage();
     loadingEl.innerHTML = '';
     const msg = document.createElement('span');
     msg.textContent = "Couldn't load messages.";
@@ -248,8 +249,11 @@ function initChatWindow() {
     messagesEl.classList.add('hidden');
   }
 
+  let stopChatLoadingMessage = () => {};
+
   function resetLoadingSpinner() {
-    loadingEl.innerHTML = '<span class="chat-spinner" aria-hidden="true"></span><span>Loading conversation…</span>';
+    loadingEl.innerHTML = '<span class="chat-spinner" aria-hidden="true"></span><span id="chat-loading-text"></span>';
+    stopChatLoadingMessage = startLoadingMessage(document.getElementById('chat-loading-text'));
   }
 
   /**
@@ -314,6 +318,7 @@ function initChatWindow() {
     showTyping(!!res.otherPartyTyping);
 
     if (!isPoll) {
+      stopChatLoadingMessage();
       loadingEl.classList.add('hidden');
       messagesEl.classList.remove('hidden');
       hasMoreBefore = !!res.hasMoreBefore;

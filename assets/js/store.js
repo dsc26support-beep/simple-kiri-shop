@@ -17,7 +17,9 @@ async function init() {
 
   localStorage.setItem('skiri_active_store', currentSlug);
 
+  const stopLoading = startLoadingMessage(statusEl);
   const res = await Api.get('listProducts', { storeSlug: currentSlug });
+  stopLoading();
   if (!res.ok) {
     statusEl.textContent = res.error || 'Could not load this store.';
     return;

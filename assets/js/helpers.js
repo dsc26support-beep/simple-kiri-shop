@@ -2,6 +2,32 @@ function formatMoney(amount) {
   return APP_CONFIG.CURRENCY_SYMBOL + Number(amount || 0).toFixed(2);
 }
 
+// Apps Script's own per-request execution-startup overhead means even a
+// small/cached read can take a few seconds - a loading message that never
+// changes reads as "frozen" past that point. Stage two exists purely to
+// reassure the customer/vendor the page is still working, not stuck.
+const LOADING_MESSAGE_STAGE2_DELAY_MS = 3000;
+const LOADING_MESSAGE_STAGE1_TEXT = '(Loading...)';
+const LOADING_MESSAGE_STAGE2_TEXT = 'Please wait...';
+
+/**
+ * Sets el's text to "(Loading...)" immediately, then to "Please wait..."
+ * after LOADING_MESSAGE_STAGE2_DELAY_MS if it's still going. Returns a
+ * stop() function - callers MUST call it as soon as the request settles
+ * (success or failure), before setting el's real text, so stage two never
+ * fires after the real content is already showing.
+ */
+function startLoadingMessage(el) {
+  if (!el) return () => {};
+  el.textContent = LOADING_MESSAGE_STAGE1_TEXT;
+  const timer = setTimeout(() => {
+    el.textContent = LOADING_MESSAGE_STAGE2_TEXT;
+  }, LOADING_MESSAGE_STAGE2_DELAY_MS);
+  return function stopLoadingMessage() {
+    clearTimeout(timer);
+  };
+}
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = String(str == null ? '' : str);

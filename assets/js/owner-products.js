@@ -35,8 +35,9 @@ async function init() {
 async function loadProducts(opts) {
   const limit = (opts && opts.limit) || ownerProducts.length || PRODUCTS_PAGE_SIZE;
   const statusEl = document.getElementById('products-status');
-  statusEl.textContent = 'Loading…';
+  const stopLoading = startLoadingMessage(statusEl);
   const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit });
+  stopLoading();
   if (!res.ok) {
     statusEl.textContent = res.error || 'Could not load your products.';
     return;

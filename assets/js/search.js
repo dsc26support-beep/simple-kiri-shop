@@ -32,9 +32,10 @@ async function runSearch(q, category) {
     headingEl.textContent = 'All Products';
   }
 
-  statusEl.textContent = 'Loading…';
+  const stopLoading = startLoadingMessage(statusEl);
 
   const res = await Api.get('searchProducts', { q, category });
+  stopLoading();
   if (!res.ok) {
     statusEl.textContent = res.error || 'Could not load results right now.';
     return;

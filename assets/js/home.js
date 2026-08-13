@@ -19,10 +19,17 @@ function onSearchSubmit(e) {
 // anything about the Sheets reads themselves (both halves are still served
 // from the same 300s caches actionListTopProducts/actionListTopStores use).
 async function loadHomePageData() {
+  const productsStatusEl = document.getElementById('trending-products-status');
+  const storesStatusEl = document.getElementById('trending-stores-status');
+  const stopProductsLoading = startLoadingMessage(productsStatusEl);
+  const stopStoresLoading = startLoadingMessage(storesStatusEl);
+
   const res = await Api.get('getHomePageData', {});
+  stopProductsLoading();
+  stopStoresLoading();
   if (!res.ok) {
-    document.getElementById('trending-products-status').textContent = res.error || '';
-    document.getElementById('trending-stores-status').textContent = res.error || '';
+    productsStatusEl.textContent = res.error || '';
+    storesStatusEl.textContent = res.error || '';
     return;
   }
   renderTrendingProducts(res.products);
