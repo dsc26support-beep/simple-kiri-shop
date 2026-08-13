@@ -42,12 +42,13 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
  * keyed on that raw token; an anonymous customer is keyed on their
- * customerToken. Returns null if neither is present, so a malformed
- * request falls through to the action's own validation (resolveChatRequest
- * in Chat.gs) to produce the real error instead of a misleading
- * rate-limit one.
+ * customerToken. Returns null if neither is present (including body itself
+ * being missing), so a malformed request falls through to the action's own
+ * validation (resolveChatRequest in Chat.gs) to produce the real error
+ * instead of a misleading rate-limit one.
  */
 function chatRateLimitIdentity(body) {
+  if (!body) return null;
   if (body.token) return 'token:' + body.token;
   if (body.customerToken) return 'cust:' + body.customerToken;
   return null;
