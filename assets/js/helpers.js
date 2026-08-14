@@ -2,6 +2,21 @@ function formatMoney(amount) {
   return APP_CONFIG.CURRENCY_SYMBOL + Number(amount || 0).toFixed(2);
 }
 
+/**
+ * The price label on a product card, from its variants' prices. A range
+ * repeats neither the currency symbol nor spaces around the dash
+ * ("$10.02-14.32", not "$10.02 – $14.32") - the spaced form ran the full
+ * width of a half-width grid card with no slack, and wrapped onto a second
+ * line as soon as the numbers grew past two digits.
+ */
+function formatPriceLabel(variants) {
+  const prices = (variants || []).map((v) => v.price);
+  if (prices.length === 0) return '';
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  return min === max ? formatMoney(min) : `${formatMoney(min)}-${Number(max).toFixed(2)}`;
+}
+
 // Apps Script's own per-request execution-startup overhead means even a
 // small/cached read can take a few seconds - a loading message that never
 // changes reads as "frozen" past that point. Stage two exists purely to
@@ -119,11 +134,7 @@ function renderBrowseProductCard(product, opts) {
     ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
     : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
-  const prices = product.variants.map((v) => v.price);
-  const priceText =
-    prices.length > 1 && Math.min(...prices) !== Math.max(...prices)
-      ? `${formatMoney(Math.min(...prices))} – ${formatMoney(Math.max(...prices))}`
-      : formatMoney(prices[0]);
+  const priceText = formatPriceLabel(product.variants);
 
   return `
     <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml((soldByVerb(product.category) + ' ' + product.storeName).toLowerCase())}">

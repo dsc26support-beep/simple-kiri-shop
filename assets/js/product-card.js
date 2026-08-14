@@ -24,15 +24,11 @@ function renderProductCard(product) {
 
   const pid = escapeHtml(product.productId);
 
-  // Same price-range treatment as renderBrowseProductCard's cards, so a
-  // product's price reads the same whether you meet it while browsing or
-  // on the store's own page. Previously the price only existed inside the
-  // variant <option> labels, which the marketplace-style grid buries.
-  const prices = product.variants.map((v) => v.price);
-  const priceText =
-    prices.length > 1 && Math.min(...prices) !== Math.max(...prices)
-      ? `${formatMoney(Math.min(...prices))} \u2013 ${formatMoney(Math.max(...prices))}`
-      : formatMoney(prices[0]);
+  // Same label as the browse cards use (formatPriceLabel in helpers.js), so
+  // a product's price reads identically whether you meet it while browsing
+  // or on the store's own page. Previously the price only existed inside
+  // the variant <option> labels, which the grid layout buries.
+  const priceText = formatPriceLabel(product.variants);
 
   if (isBookingCategory(product.category)) {
     const availabilityBadge =
