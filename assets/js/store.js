@@ -162,7 +162,7 @@ async function loadSimilarProducts() {
   if (similar.length === 0) return;
 
   document.getElementById('similar-products-list').innerHTML = similar
-    .map((p) => renderBrowseProductCard(p, { linkLabel: 'View', cardClass: 'similar-product-card' }))
+    .map((p) => renderBrowseProductCard(p, { cardClass: 'similar-product-card' }))
     .join('');
   document.getElementById('similar-section').classList.remove('hidden');
   recordProductViewsOnce(similar.map((p) => p.productId));

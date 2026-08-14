@@ -24,6 +24,16 @@ function renderProductCard(product) {
 
   const pid = escapeHtml(product.productId);
 
+  // Same price-range treatment as renderBrowseProductCard's cards, so a
+  // product's price reads the same whether you meet it while browsing or
+  // on the store's own page. Previously the price only existed inside the
+  // variant <option> labels, which the marketplace-style grid buries.
+  const prices = product.variants.map((v) => v.price);
+  const priceText =
+    prices.length > 1 && Math.min(...prices) !== Math.max(...prices)
+      ? `${formatMoney(Math.min(...prices))} \u2013 ${formatMoney(Math.max(...prices))}`
+      : formatMoney(prices[0]);
+
   if (isBookingCategory(product.category)) {
     const availabilityBadge =
       product.available === false
@@ -32,11 +42,12 @@ function renderProductCard(product) {
         ? '<span class="availability-badge availability-badge--available">Available</span>'
         : '';
     return `
-      <article class="product-card" data-product-id="${pid}">
+      <article class="product-card product-card--booking" data-product-id="${pid}">
         ${media}
         ${thumbs}
         <div class="product-card-body">
           <h3 class="product-name">${escapeHtml(product.name)} ${availabilityBadge}</h3>
+          <strong class="product-price">${priceText}</strong>
           ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
           <div class="product-controls">
             <label class="sr-only" for="variety-${pid}">Choose a rate for ${escapeHtml(product.name)}</label>
@@ -74,6 +85,7 @@ function renderProductCard(product) {
       ${thumbs}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
+        <strong class="product-price">${priceText}</strong>
         ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
         <div class="product-controls">
           <label class="sr-only" for="variety-${pid}">Choose an option for ${escapeHtml(product.name)}</label>

@@ -48,6 +48,6 @@ async function runSearch(q, category) {
   }
 
   statusEl.textContent = `${res.products.length} product${res.products.length === 1 ? '' : 's'} found.`;
-  listEl.innerHTML = res.products.map((p) => renderBrowseProductCard(p, { linkLabel: 'View in Store', cardClass: 'search-result-card' })).join('');
+  listEl.innerHTML = res.products.map((p) => renderBrowseProductCard(p, { cardClass: 'search-result-card' })).join('');
   recordProductViewsOnce(res.products.map((p) => p.productId));
 }

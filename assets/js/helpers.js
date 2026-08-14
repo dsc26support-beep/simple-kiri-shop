@@ -102,20 +102,17 @@ function getQueryParam(name) {
 }
 
 /**
- * Shared "browse" card for a product from someone else's context (search
- * results, similar products) - image, name, store, delivery icons, price,
- * and a link straight to that product on its store page (store.html's
- * ?product= param triggers the same scroll-to-and-highlight redirect the
- * home page trending carousel uses), not just the store's front page. The
- * whole card is that link (same pattern as the home page's
- * trending-product-card), not just the "View" button at the bottom, so
- * clicking anywhere on a similar/search-result product jumps straight to
- * it. Distinct from renderProductCard in product-card.js, which is the
- * full add-to-cart card shown on a store's own page.
+ * Shared "browse" card for a product from someone else's context - the home
+ * page's trending grid, search results, and a store page's similar-products
+ * row. Marketplace-style ordering (photo, name, then the price as the
+ * loudest element, then the smaller store/delivery meta), and the whole
+ * card is a link straight to that product on its store page (store.html's
+ * ?product= param triggers the scroll-to-and-highlight there), so there's
+ * no separate "View" button to aim at. Distinct from renderProductCard in
+ * product-card.js, which is the full add-to-cart card on a store's own page.
  */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
-  const linkLabel = opts.linkLabel || 'View';
   const cardClass = opts.cardClass || '';
 
   const media = product.imageUrl
@@ -133,6 +130,7 @@ function renderBrowseProductCard(product, opts) {
       ${media}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
+        <strong class="product-price">${priceText}</strong>
         <p class="helper-text">${soldByVerb(product.category)} ${escapeHtml(product.storeName)}</p>
         ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
         ${renderDeliveryIcons({
@@ -144,8 +142,6 @@ function renderBrowseProductCard(product, opts) {
           shipCost: product.storeDeliveryShipCost,
           airCargoCost: product.storeDeliveryAirCargoCost
         })}
-        <strong>${priceText}</strong>
-        <span class="btn btn-primary" aria-hidden="true">${escapeHtml(linkLabel)}</span>
       </div>
     </a>
   `;
