@@ -17,6 +17,40 @@ function formatPriceLabel(variants) {
   return min === max ? formatMoney(min) : `${formatMoney(min)}-${Number(max).toFixed(2)}`;
 }
 
+// .product-price is `white-space: nowrap`, so a price that's too wide for
+// its column overflows (and gets clipped by the card) instead of wrapping.
+// This shrinks it just enough to fit rather than letting either happen.
+const PRICE_FIT_MAX_REM = 1.15; // matches .product-price's CSS font-size
+const PRICE_FIT_MIN_REM = 0.8;
+
+/**
+ * Auto-fits every price label under `root` (default: the whole document) to
+ * its own column. Text width scales about linearly with font-size, so the
+ * needed size comes from one width measurement rather than a shrink-by-a-
+ * step-and-re-measure loop, which would reflow once per step per card.
+ * Safe to call repeatedly - it resets to the CSS size before measuring, so
+ * a re-fit after a resize can grow the text back as well as shrink it.
+ */
+function fitPriceLabels(root) {
+  (root || document).querySelectorAll('.product-price').forEach((el) => {
+    el.style.fontSize = '';
+    const available = el.clientWidth;
+    const needed = el.scrollWidth;
+    if (!available || needed <= available) return;
+    // 0.98 keeps it off the exact edge, where sub-pixel rounding can still clip.
+    const fitted = PRICE_FIT_MAX_REM * (available / needed) * 0.98;
+    el.style.fontSize = Math.max(PRICE_FIT_MIN_REM, fitted) + 'rem';
+  });
+}
+
+// Cards change width on rotate/resize, so a size fitted to the old column
+// can end up too big (or needlessly small) for the new one.
+let priceFitResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(priceFitResizeTimer);
+  priceFitResizeTimer = setTimeout(() => fitPriceLabels(), 150);
+});
+
 // Apps Script's own per-request execution-startup overhead means even a
 // small/cached read can take a few seconds - a loading message that never
 // changes reads as "frozen" past that point. Stage two exists purely to

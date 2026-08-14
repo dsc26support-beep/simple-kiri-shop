@@ -62,6 +62,7 @@ async function init() {
   } else {
     statusEl.textContent = '';
     listEl.innerHTML = currentProducts.map(renderProductCard).join('');
+    fitPriceLabels(listEl);
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
   }
 
@@ -100,6 +101,7 @@ function renderFilteredProducts(query) {
 
   statusEl.textContent = '';
   listEl.innerHTML = filtered.map(renderProductCard).join('');
+  fitPriceLabels(listEl);
   // Re-render replaces the gallery track elements, and their scroll sync
   // (wireGalleryScrollSync) is per-element, not delegated like the click
   // handler in wireProductEvents - has to be redone after every re-render.
@@ -165,6 +167,8 @@ async function loadSimilarProducts() {
     .map((p) => renderBrowseProductCard(p, { cardClass: 'similar-product-card' }))
     .join('');
   document.getElementById('similar-section').classList.remove('hidden');
+  // After unhiding: a hidden element has no width to measure against.
+  fitPriceLabels(document.getElementById('similar-products-list'));
   recordProductViewsOnce(similar.map((p) => p.productId));
 }
 

@@ -1411,12 +1411,15 @@ legend {
   overflow: hidden;
 }
 
-/* The loudest thing on a card - price is what a browse grid is scanned for. */
+/* The loudest thing on a card - price is what a browse grid is scanned for.
+   Never wraps: fitPriceLabels() in helpers.js measures the overflow this
+   allows and scales the font down to whatever the column actually fits. */
 .product-price {
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.2;
   color: var(--color-ink);
+  white-space: nowrap;
 }
 
 .product-desc {

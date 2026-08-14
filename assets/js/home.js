@@ -47,6 +47,7 @@ function renderTrendingProducts(products) {
 
   statusEl.textContent = '';
   listEl.innerHTML = products.map((p) => renderBrowseProductCard(p)).join('');
+  fitPriceLabels(listEl);
   recordProductViewsOnce(products.map((p) => p.productId));
 }
 

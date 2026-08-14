@@ -49,5 +49,6 @@ async function runSearch(q, category) {
 
   statusEl.textContent = `${res.products.length} product${res.products.length === 1 ? '' : 's'} found.`;
   listEl.innerHTML = res.products.map((p) => renderBrowseProductCard(p, { cardClass: 'search-result-card' })).join('');
+  fitPriceLabels(listEl);
   recordProductViewsOnce(res.products.map((p) => p.productId));
 }
