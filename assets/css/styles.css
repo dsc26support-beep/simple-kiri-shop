@@ -293,6 +293,25 @@ section {
   padding-top: var(--space-3);
 }
 
+/* Home page, mobile & tablet only (<=1024px): show the category buttons ABOVE
+   the search bar, and add one extra spacer between the stacked sections
+   (categories, search box, Trending Products). Scoped to .home-main (only
+   index.html's <main> carries that class) so no other page's #main is touched;
+   above 1024px this doesn't apply and the original block order/spacing stands.
+   Explicit order on every child so a default-0 child can't jump ahead. */
+@media (max-width: 1024px) {
+  .home-main {
+    display: flex;
+    flex-direction: column;
+    row-gap: var(--space-4);
+  }
+  .home-main > .categories { order: 1; }
+  .home-main > .hero { order: 2; }
+  .home-main > .trending-products { order: 3; }
+  .home-main > .trending-stores { order: 4; }
+  .home-main > noscript { order: 5; }
+}
+
 .category-buttons {
   display: flex;
   flex-wrap: wrap;
