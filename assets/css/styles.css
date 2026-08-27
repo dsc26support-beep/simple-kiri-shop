@@ -417,6 +417,62 @@ footer.site-footer .copyright {
   right: max(var(--space-3), env(safe-area-inset-right));
 }
 
+/* Custom PWA "Install" pill, injected by register-sw.js on mobile & tablet.
+   Sits in the lower-right, stacked just above the 56px chat FAB (or the same
+   slot on pages with no chat button). Hidden until JS adds .is-visible, and
+   never shown on desktop (the min-width guard below), matching the JS gate. */
+.install-fab {
+  position: fixed;
+  right: max(var(--space-3), env(safe-area-inset-right));
+  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
+  z-index: 1001;
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.5em 1em;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-gold);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.install-fab.is-visible {
+  display: inline-flex;
+}
+
+.install-fab svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (min-width: 1025px) {
+  .install-fab {
+    display: none !important;
+  }
+}
+
+/* Instruction popover shown when there's no programmatic install (iOS, or a
+   browser with no captured prompt) - anchored above the Install pill. */
+.install-hint {
+  position: fixed;
+  right: max(var(--space-3), env(safe-area-inset-right));
+  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2) + 3rem);
+  z-index: 1002;
+  max-width: min(18rem, calc(100vw - 2 * var(--space-3)));
+  padding: var(--space-2) var(--space-3);
+  border-radius: 12px;
+  background: var(--color-ink);
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
 /* Cart button on store.html: light blue (--color-blue-light, same hue the
    chat FAB uses), 25%-transparent background, sized at ~100.5%. transform-
    origin keeps it anchored to the left/bottom edges as it scales, rather
