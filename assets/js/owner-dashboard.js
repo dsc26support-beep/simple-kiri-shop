@@ -30,9 +30,13 @@ async function init() {
 
   wireQuickLinks();
 
-  const [productsRes, ordersRes] = await Promise.all([
+  // limit:100 so the pending counts below (and the totals) reflect the whole
+  // store, not just the first default page. The Messages badge is populated
+  // separately by owner-nav.js (getUnreadCount).
+  const [productsRes, ordersRes, bookingsRes] = await Promise.all([
     Api.post('listOwnerProducts', { token: Auth.getToken() }),
-    Api.post('listOwnerOrders', { token: Auth.getToken() })
+    Api.post('listOwnerOrders', { token: Auth.getToken(), limit: 100 }),
+    Api.post('listOwnerBookings', { token: Auth.getToken(), limit: 100 })
   ]);
 
   if (productsRes.ok) {
@@ -41,8 +45,28 @@ async function init() {
   }
 
   if (ordersRes.ok) {
-    document.getElementById('metric-orders').textContent = ordersRes.orders.length;
+    document.getElementById('metric-orders').textContent = ordersRes.total != null ? ordersRes.total : ordersRes.orders.length;
     const pending = ordersRes.orders.filter((o) => o.status === 'Pending Payment').length;
     document.getElementById('metric-pending').textContent = pending;
+    setNavBadge('nav-orders-badge', pending);
+  }
+
+  if (bookingsRes.ok) {
+    const pendingBookings = bookingsRes.bookings.filter((b) => b.status === 'Pending').length;
+    setNavBadge('nav-bookings-badge', pendingBookings);
+  }
+}
+
+// Shows a red count in a quick-link button's corner when there's something
+// needing attention; hides it at zero. Caps the display at 99+ so a big backlog
+// never blows out the pill.
+function setNavBadge(id, count) {
+  const badge = document.getElementById(id);
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
   }
 }

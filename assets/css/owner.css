@@ -114,6 +114,16 @@
   position: relative;
 }
 
+/* Pending-notification count sits in the button's top-right corner (Orders,
+   Bookings, Messages). The button is position:relative above; the badge's base
+   red-pill styling comes from .nav-unread-badge. */
+.dashboard-quick-links .nav-unread-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  margin: 0;
+}
+
 .dashboard-card .metric {
   font-size: 1.75rem;
   font-weight: 700;
