@@ -76,7 +76,7 @@ function renderList() {
   listEl.innerHTML = ownerProducts
     .map((p) => {
       const media = p.imageUrl
-        ? `<img src="${escapeHtml(p.imageUrl)}" alt="">`
+        ? `<img src="${escapeHtml(optimizedImageUrl(p.imageUrl, IMG_W.thumb))}" alt="" loading="lazy" decoding="async">`
         : `<div class="placeholder-swatch category-${escapeHtml(p.category || 'general')}" aria-hidden="true">${escapeHtml(initials(p.name))}</div>`;
       const activeVariants = p.variants.filter((v) => v.status === 'active');
       const priceRange = activeVariants.length
@@ -145,13 +145,13 @@ function openForm(product) {
     document.getElementById('product-category').value = product.category || '';
     document.getElementById('product-status').value = product.status || 'active';
     if (product.imageUrl) {
-      preview.src = product.imageUrl;
+      preview.src = optimizedImageUrl(product.imageUrl, IMG_W.card);
       preview.classList.remove('hidden');
     } else {
       preview.classList.add('hidden');
     }
     if (product.imageUrl2) {
-      preview2.src = product.imageUrl2;
+      preview2.src = optimizedImageUrl(product.imageUrl2, IMG_W.card);
       preview2.classList.remove('hidden');
     } else {
       preview2.classList.add('hidden');

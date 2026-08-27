@@ -75,7 +75,7 @@ async function onLoadMore() {
 
 function renderStoreCard(store) {
   const logo = store.logoUrl
-    ? `<img class="store-card-logo" src="${escapeHtml(store.logoUrl)}" alt="">`
+    ? `<img class="store-card-logo" src="${escapeHtml(optimizedImageUrl(store.logoUrl, IMG_W.logo))}" alt="" loading="lazy" decoding="async">`
     : `<div class="store-card-logo-placeholder" aria-hidden="true">${escapeHtml(initials(store.storeName))}</div>`;
 
   const location = storeLocationLabel(store.island, store.village);

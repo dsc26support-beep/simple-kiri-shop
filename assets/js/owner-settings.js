@@ -55,7 +55,7 @@ function fillForm(owner) {
 
   const logoPreview = document.getElementById('logo-preview');
   if (owner.logoUrl) {
-    logoPreview.src = owner.logoUrl;
+    logoPreview.src = optimizedImageUrl(owner.logoUrl, IMG_W.logo);
     logoPreview.classList.remove('hidden');
   }
 
@@ -81,7 +81,7 @@ async function onLogoFileChange(e) {
       statusEl.textContent = res.error || 'Could not upload logo.';
       return;
     }
-    preview.src = res.logoUrl;
+    preview.src = optimizedImageUrl(res.logoUrl, IMG_W.logo);
     preview.classList.remove('hidden');
     statusEl.textContent = 'Logo updated.';
 

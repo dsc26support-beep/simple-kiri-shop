@@ -150,6 +150,42 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+// Target render widths (px) per image slot, sized to cover ~2x DPR of the
+// actual CSS box so retina screens still look sharp: logos/thumbs render at
+// 56-64px, product cards at ~170-260px, chat images at max 220px.
+const IMG_W = { logo: 160, thumb: 160, card: 520, chat: 440 };
+
+/**
+ * Rewrites a stored image URL to request an appropriately-sized, modern-format
+ * variant from whichever host serves it, instead of hotlinking the full ~1280px
+ * original into a small slot. Provider-aware, idempotent (safe to call twice),
+ * and defensive - any URL it doesn't recognise (data:/blob:/unknown host) is
+ * returned unchanged.
+ *   - Cloudinary: inserts f_auto (WebP/AVIF), q_auto (quality), c_limit,w_<N>
+ *     (downscale, never upscale) after /image/upload/.
+ *   - Google Drive CDN (lh3.googleusercontent.com/d/<id>): appends the =w<N>
+ *     size suffix.
+ * See apps-script/Utils.gs uploadImage/uploadToCloudinary for where these URL
+ * shapes come from. Purely client-side - the backend still stores/returns the
+ * full original.
+ */
+function optimizedImageUrl(url, width) {
+  if (!url || typeof url !== 'string') return url;
+  if (url.indexOf('res.cloudinary.com') !== -1) {
+    const marker = '/image/upload/';
+    const at = url.indexOf(marker);
+    if (at === -1) return url;
+    const after = at + marker.length;
+    const rest = url.slice(after);
+    if (/^(f_auto|q_auto|w_\d|c_)/.test(rest)) return url; // already transformed
+    return url.slice(0, after) + 'f_auto,q_auto,c_limit,w_' + width + '/' + rest;
+  }
+  if (url.indexOf('lh3.googleusercontent.com/') !== -1) {
+    return url.replace(/=[-\w]+$/, '') + '=w' + width; // strip any existing =w../=s.. then set ours
+  }
+  return url;
+}
+
 /**
  * Shared "browse" card for a product from someone else's context - the home
  * page's trending grid, search results, and a store page's similar-products
@@ -165,7 +201,7 @@ function renderBrowseProductCard(product, opts) {
   const cardClass = opts.cardClass || '';
 
   const media = product.imageUrl
-    ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
+    ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
     : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   const priceText = formatPriceLabel(product.variants);
@@ -195,7 +231,7 @@ function renderBrowseProductCard(product, opts) {
 /** Small circular-logo carousel item, for the home page "popular stores" row. */
 function renderLogoCarouselItem(store) {
   const logo = store.logoUrl
-    ? `<img class="logo-carousel-logo" src="${escapeHtml(store.logoUrl)}" alt="">`
+    ? `<img class="logo-carousel-logo" src="${escapeHtml(optimizedImageUrl(store.logoUrl, IMG_W.logo))}" alt="" loading="lazy" decoding="async">`
     : `<div class="logo-carousel-logo-placeholder" aria-hidden="true">${escapeHtml(initials(store.storeName))}</div>`;
   return `
     <a class="logo-carousel-item" href="store.html?store=${encodeURIComponent(store.storeSlug)}">

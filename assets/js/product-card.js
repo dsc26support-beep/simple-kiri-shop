@@ -7,18 +7,18 @@ function renderProductCard(product) {
   const media =
     product.imageUrl && product.imageUrl2
       ? `<div class="product-gallery-track">
-          <img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy">
-          <img class="product-image" src="${escapeHtml(product.imageUrl2)}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy">
+          <img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy" decoding="async">
+          <img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl2, IMG_W.card))}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy" decoding="async">
         </div>`
       : product.imageUrl
-      ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
+      ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
       : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   const thumbs =
     product.imageUrl && product.imageUrl2
       ? `<div class="product-gallery-thumbs">
-          <button type="button" class="product-gallery-thumb active" data-index="0"><img src="${escapeHtml(product.imageUrl)}" alt="Photo 1 of ${escapeHtml(product.name)}"></button>
-          <button type="button" class="product-gallery-thumb" data-index="1"><img src="${escapeHtml(product.imageUrl2)}" alt="Photo 2 of ${escapeHtml(product.name)}"></button>
+          <button type="button" class="product-gallery-thumb active" data-index="0"><img src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.thumb))}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"></button>
+          <button type="button" class="product-gallery-thumb" data-index="1"><img src="${escapeHtml(optimizedImageUrl(product.imageUrl2, IMG_W.thumb))}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"></button>
         </div>`
       : '';
 

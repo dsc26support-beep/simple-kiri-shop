@@ -38,7 +38,7 @@ async function init() {
 
   if (storeInfo.logoUrl) {
     const logoImg = document.getElementById('store-logo-img');
-    logoImg.src = storeInfo.logoUrl;
+    logoImg.src = optimizedImageUrl(storeInfo.logoUrl, IMG_W.logo);
     logoImg.alt = storeInfo.storeName;
     logoImg.classList.remove('hidden');
   }

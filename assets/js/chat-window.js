@@ -134,7 +134,7 @@ function initChatWindow() {
     if (res.store.logoUrl) {
       const img = document.createElement('img');
       img.className = 'chat-vendor-avatar';
-      img.src = res.store.logoUrl;
+      img.src = optimizedImageUrl(res.store.logoUrl, IMG_W.logo);
       img.alt = '';
       placeholder.replaceWith(img);
     } else {
@@ -201,8 +201,11 @@ function initChatWindow() {
     if (opts && opts.imageUrl) {
       const img = document.createElement('img');
       img.className = 'chat-message-image';
-      img.src = opts.imageUrl;
+      // A freshly-sent image is a data: URL (passes through unchanged); a
+      // history/hosted image is resized to the chat bubble's width.
+      img.src = optimizedImageUrl(opts.imageUrl, IMG_W.chat);
       img.alt = 'Photo';
+      img.decoding = 'async';
       img.loading = 'lazy'; // off-screen chat photos (older history, long threads) don't cost bandwidth until scrolled into view - real savings on mobile data
       bubble.appendChild(img);
     }

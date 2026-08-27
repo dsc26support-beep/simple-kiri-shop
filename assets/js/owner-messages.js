@@ -332,8 +332,9 @@ function appendConversationMessage(m, opts) {
   if (m.imageUrl) {
     const img = document.createElement('img');
     img.className = 'chat-message-image';
-    img.src = m.imageUrl;
+    img.src = optimizedImageUrl(m.imageUrl, IMG_W.chat);
     img.alt = 'Photo';
+    img.decoding = 'async';
     img.loading = 'lazy'; // off-screen chat photos don't cost bandwidth until scrolled into view
     bubble.appendChild(img);
   }
