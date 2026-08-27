@@ -293,7 +293,7 @@ section {
 .search-box {
   display: flex;
   gap: var(--space-2);
-  max-width: 32em;
+  max-width: 40em; /* ~640px - wider, stretched look; still a tidy centered bar on desktop */
   margin: 0 auto;
 }
 
