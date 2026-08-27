@@ -46,6 +46,11 @@ assets/js/kiribati-locations.js  Island -> village data for Settings (see caveat
 assets/css/styles.css      Shared, mobile-first styles
 assets/css/owner.css        Store owner dashboard styles
 
+manifest.json              Web app manifest - makes the site installable as an app (PWA)
+sw.js                      Service worker - offline shell + fast repeat loads
+offline.html               Shown only when a page is opened with no connection
+assets/js/register-sw.js   Registers sw.js (loaded on every page)
+
 apps-script/*.gs           Google Apps Script backend source (see setup below)
 ```
 
@@ -468,6 +473,59 @@ products and the 20 most-visited stores, each ranked by a running counter
   active products/stores sorted by their counter, descending. Items with 0
   views/visits still appear (useful on a brand-new store with little
   traffic yet) — nothing is filtered out by count, only by `Status: active`.
+
+## Install as an app (PWA)
+
+The site is a **Progressive Web App**: visitors can install it to their phone's
+home screen and it opens full-screen with its own icon, like a native app.
+Nothing extra to deploy — the moment `manifest.json`, `sw.js`, and the icon
+files are live on your GitHub Pages URL, the install prompt becomes available.
+
+There's no separate app to build, and no store account needed. The installed
+app simply loads your live site, so **anything you push to GitHub Pages shows up
+in the installed app instantly** — no re-packaging, no re-submitting.
+
+**How a customer installs it:**
+
+- **Android (Chrome):** open the site → menu (⋮) → **Install app** (or tap the
+  "Add to Home screen" banner Chrome shows on its own).
+- **iPhone (Safari):** open the site → **Share** button → **Add to Home
+  Screen**. (iOS only supports this from Safari, not other browsers.)
+
+**What's in the repo for this:**
+
+- `manifest.json` — app name, icons, colors, and `display: standalone` (the
+  full-screen mode). All its paths are **relative**, so it works whether the
+  site is served from a domain root or a project subpath like
+  `/simple-kiri-shop/`.
+- `sw.js` — the service worker. It caches the static shell (HTML/CSS/JS/icons)
+  for fast repeat loads and an offline fallback, but **never caches the Google
+  Apps Script backend** — orders, chat, and bookings always hit the network so
+  they're never stale.
+- `offline.html` — a tiny standalone page shown only when someone opens a page
+  with no connection.
+- The brand icons come from `assets/img/app-icon-*.png` (a 192, a 512, a
+  maskable 512 for Android adaptive icons, and a 180 `apple-touch-icon` for
+  iOS), all generated from `assets/img/app-icon-source.svg`. To restyle the
+  app icon, edit that SVG and regenerate the PNGs.
+- `theme-color` (the browser/status-bar tint) is the brand purple `#332d63`,
+  set both in `manifest.json` and as a `<meta>` on every page.
+
+**Publishing to the App Store / Google Play later (optional):**
+
+A PWA is the foundation for real store listings when you want them. The
+easiest route is [PWABuilder](https://www.pwabuilder.com/) — point it at your
+live URL and it generates ready-to-submit Android (`.aab`) and iOS (Xcode)
+packages that just wrap this same site. Real-world prerequisites to be aware
+of before that step:
+
+- **Google Play** — a Play Console account (one-time **$25** fee). Android
+  packages can be built without a Mac.
+- **Apple App Store** — an Apple Developer Program membership (**$99/year**),
+  and iOS packages must be built/submitted from a **Mac with Xcode**.
+
+None of that is set up here yet — it's noted so the option is documented when
+you're ready.
 
 ## Security & operational notes
 
