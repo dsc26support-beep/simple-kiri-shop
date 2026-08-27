@@ -289,6 +289,26 @@ section {
   flex: 1;
 }
 
+/* Mobile only (<=600px): collapse the "Search" submit button's label to a bold
+   ">" so it takes less width next to the input. font-size:0 hides the text node
+   but leaves the real "Search" text in the DOM, so the button's accessible name
+   is unchanged for screen readers; the glyph is drawn via ::after at its own
+   size. Scoped to .search-box so the Continue/Place Order/chat Send buttons are
+   untouched. */
+@media (max-width: 600px) {
+  .search-box button[type="submit"] {
+    font-size: 0;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  .search-box button[type="submit"]::after {
+    content: ">";
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+}
+
 .categories {
   padding-top: var(--space-3);
 }
