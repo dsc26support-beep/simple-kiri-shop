@@ -38,8 +38,13 @@
   var HIDE_MS = typeof window.MWAKETE_INSTALL_HIDE_MS === 'number' ? window.MWAKETE_INSTALL_HIDE_MS : 60000;
   var CHAT_FAB_HEIGHT = 56; // keep in sync with .chat-fab-btn height in styles.css
 
+  var INSTALLED_KEY = 'skiri_pwa_installed';
+
   var deferredPrompt = null;
+  // Remember a prior install so the button stays hidden on later browser reloads,
+  // not just for the session where appinstalled fired.
   var installed = false;
+  try { installed = localStorage.getItem(INSTALLED_KEY) === '1'; } catch (e) {}
   var btn = null;
   var hint = null;
   var hideTimer = null;
@@ -129,14 +134,26 @@
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault(); // suppress the native infobar - our button replaces it
     deferredPrompt = e;
-    showButton(); // in case load already fired
+    // This event only fires when the app is NOT installed, so if a stale
+    // "installed" flag is set (e.g. the user uninstalled), clear it and let the
+    // button return.
+    installed = false;
+    try { localStorage.removeItem(INSTALLED_KEY); } catch (err) {}
+    showButton();
   });
 
   window.addEventListener('appinstalled', function () {
     installed = true;
     deferredPrompt = null;
+    try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (err) {}
     hideButton();
   });
 
-  window.addEventListener('load', showButton);
+  // On Chromium the button is shown by the beforeinstallprompt handler above,
+  // which only fires when the app is installable AND not installed - so once
+  // installed it never reappears in the browser. iOS never fires that event but
+  // can still add-to-home-screen, so show the button there on load instead.
+  window.addEventListener('load', function () {
+    if (isIos()) showButton();
+  });
 })();

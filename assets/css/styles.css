@@ -257,6 +257,18 @@ main {
   padding-bottom: var(--space-5);
 }
 
+/* Product-list pages (home, search, store front): on mobile & tablet drop the
+   60vh floor and the large trailing padding so the footer hugs the last product
+   instead of sitting below a gap. Desktop keeps the 60vh floor (outside this
+   query). Only these pages carry .page-products, so owner/other pages are
+   unaffected. */
+@media (max-width: 1024px) {
+  main.page-products {
+    min-height: 0;
+    padding-bottom: var(--space-3);
+  }
+}
+
 section {
   padding: var(--space-4) 0;
 }
