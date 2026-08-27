@@ -310,6 +310,33 @@ section {
   border-color: var(--color-blue);
 }
 
+/* Rentals & Services are the two booking categories - give their quick-filter
+   buttons a filled (inverted) style with white text so they stand out from the
+   plain goods buttons. Colors reuse the existing category accents (see the
+   .placeholder-swatch.category-* rules). The doubled class (.category-btn +
+   modifier) raises specificity above the generic .btn/.category-btn background
+   rules, which otherwise win since .btn is defined later in this file. */
+.category-btn.category-btn--rentals {
+  background: #b45309;
+  border-color: #b45309;
+  color: #fff;
+}
+.category-btn.category-btn--services {
+  background: #166534;
+  border-color: #166534;
+  color: #fff;
+}
+.category-btn.category-btn--rentals:hover,
+.category-btn.category-btn--rentals:focus-visible {
+  background: #92400e;
+  border-color: #92400e;
+}
+.category-btn.category-btn--services:hover,
+.category-btn.category-btn--services:focus-visible {
+  background: #14532d;
+  border-color: #14532d;
+}
+
 footer.site-footer {
   background: var(--color-bg-alt);
   border-top: 1px solid var(--color-border);

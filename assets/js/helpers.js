@@ -319,7 +319,7 @@ const CATEGORIES = [
 
 function renderCategoryButtons(containerId) {
   document.getElementById(containerId).innerHTML = CATEGORIES.map(
-    (c) => `<a class="btn category-btn" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
+    (c) => `<a class="btn category-btn category-btn--${c.id}" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
   ).join('');
 }
 
