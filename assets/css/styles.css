@@ -312,6 +312,12 @@ section {
     font-size: 0;
     padding-left: var(--space-3);
     padding-right: var(--space-3);
+    /* Drop the blue pill on mobile - the ">" reads as a bare chevron. Colour it
+       (the ::after inherits this) since the .btn-primary white would be invisible
+       once the background is gone. */
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-blue);
   }
   .search-box button[type="submit"]::after {
     content: ">";
