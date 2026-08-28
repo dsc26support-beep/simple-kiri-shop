@@ -65,7 +65,6 @@ async function init() {
   updateDeliveryMethods();
 
   document.getElementById('checkout-form').addEventListener('submit', onSubmit);
-  document.getElementById('copy-summary-btn').addEventListener('click', onCopySummary);
   document.getElementById('customer-email').addEventListener('blur', onEmailBlur);
 }
 
@@ -430,16 +429,7 @@ function showConfirmation(orderResult, payload) {
   const summaryText = buildSummaryText(orderResult.orderId, payload, orderResult.items.map((i) => ({ label: i.label, unitPrice: i.unitPrice, qty: i.qty })), orderResult.total, orderResult.deliveryCost);
   document.getElementById('order-summary-text').value = summaryText;
 
-  wireShareLinks(summaryText, orderResult.orderId);
-
-  // Click the mailto link rather than assigning window.location.href - the
-  // latter can trigger a real page navigation/reload in some mobile browsers
-  // when no mail app is configured (losing this confirmation screen and its
-  // Copy/Email fallback buttons), while clicking the anchor just invokes the
-  // OS mail handler without navigating the current page.
-  if (storeInfo.email) {
-    document.getElementById('email-order-link').click();
-  }
+  wireCallLink();
 }
 
 function showFallbackConfirmation(payload, cart) {
@@ -455,33 +445,18 @@ function showFallbackConfirmation(payload, cart) {
   document.getElementById('confirmation-section').classList.remove('hidden');
   document.getElementById('confirmation-intro').textContent = `We couldn't reach the store's order system, but you can still send your order directly, ${payload.customerName}.`;
   document.getElementById('order-summary-text').value = summaryText;
-  wireShareLinks(summaryText, null);
+  wireCallLink();
 }
 
-function wireShareLinks(summaryText, orderRef) {
-  const emailLink = document.getElementById('email-order-link');
-
-  if (storeInfo.email) {
-    emailLink.href = `mailto:${encodeURIComponent(storeInfo.email)}?subject=${encodeURIComponent('Order ' + (orderRef || ''))}&body=${encodeURIComponent(summaryText)}`;
-    emailLink.classList.remove('hidden');
+// The post-order action is now a single green "Call Seller Now!" button (a tel:
+// link to the store's phone). Stores always register a phone, but guard anyway.
+function wireCallLink() {
+  const callLink = document.getElementById('call-seller-link');
+  if (storeInfo && storeInfo.phone) {
+    callLink.href = `tel:${storeInfo.phone}`;
+    callLink.innerHTML = PHONE_ICON_SVG + 'Call Seller Now!';
+    callLink.classList.remove('hidden');
   } else {
-    emailLink.classList.add('hidden');
+    callLink.classList.add('hidden');
   }
-}
-
-async function onCopySummary() {
-  const text = document.getElementById('order-summary-text').value;
-  const feedback = document.getElementById('copy-feedback');
-  try {
-    await navigator.clipboard.writeText(text);
-    feedback.textContent = 'Copied to clipboard.';
-  } catch (err) {
-    const textarea = document.getElementById('order-summary-text');
-    textarea.select();
-    document.execCommand('copy');
-    feedback.textContent = 'Copied to clipboard.';
-  }
-  setTimeout(() => {
-    feedback.textContent = '';
-  }, 3000);
 }
