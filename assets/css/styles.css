@@ -276,7 +276,10 @@ section {
 .hero {
   background: var(--color-bg-alt);
   text-align: center;
-  padding: var(--space-5) var(--space-3);
+  /* No horizontal padding: the inner .container already insets content by
+     var(--space-3). Doubling it here made the home/search search bar narrower
+     than the store/directory pages (which use .container alone) on mobile. */
+  padding: var(--space-5) 0;
 }
 
 .hero h1 {
