@@ -294,6 +294,7 @@ function wireProductEvents() {
     if (!variant) return;
     const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
 
+    const prevDistinct = Cart.getDistinctProductCount(currentSlug);
     Cart.addItem(currentSlug, {
       variantId: variant.variantId,
       productId: product.productId,
@@ -304,6 +305,7 @@ function wireProductEvents() {
 
     showAddingToCartState(btn);
     updateCartCount();
+    animateCartOnAdd(prevDistinct, Cart.getDistinctProductCount(currentSlug));
     const feedback = document.getElementById('cart-feedback');
     feedback.textContent = `Added ${qty} × ${product.name} (${variant.label}) to your cart.`;
     setTimeout(() => {
@@ -330,6 +332,30 @@ function wireGalleryScrollSync() {
   });
 }
 
+// Refreshes the floating cart button. The label keeps showing total quantity
+// ("Cart (N)"), but the button's escalating look is driven by the number of
+// DISTINCT products in the cart, reactively - so it also reverts if items are
+// removed (e.g. on cart.html) and the shopper returns here. Runs on init and
+// after every add, so it's the resting-state applier; the one-shot flash/blink
+// lives in animateCartOnAdd (add path only), never here.
 function updateCartCount() {
-  document.getElementById('cart-count').textContent = Cart.getItemCount(currentSlug);
+  const el = document.getElementById('cart-link');
+  el.querySelector('#cart-count').textContent = Cart.getItemCount(currentSlug);
+  const n = Cart.getDistinctProductCount(currentSlug);
+  el.classList.toggle('cart-fab--bold', n >= 1); // 1+ item  -> bold blue background
+  el.classList.toggle('cart-fab--corner', n >= 2); // 2+ items -> fixed top-right corner
+}
+
+// One-shot animation fired only when an item is added (not on init). From the
+// 3rd distinct product onward the button reacts: the moment it crosses to 3 it
+// flashes twice; every add after that gives one quick blink. Self-clears on
+// animationend so a repeat add can retrigger it.
+function animateCartOnAdd(prev, next) {
+  const el = document.getElementById('cart-link');
+  if (!el || next < 3) return;
+  const cls = prev < 3 ? 'cart-fab--flash2' : 'cart-fab--blink';
+  el.classList.remove('cart-fab--flash2', 'cart-fab--blink');
+  void el.offsetWidth; // reflow so re-adding the class restarts the animation
+  el.classList.add(cls);
+  el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
 }

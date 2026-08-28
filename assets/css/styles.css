@@ -524,6 +524,46 @@ footer.site-footer .copyright {
   background: rgba(91, 155, 213, 0.75); /* --color-blue-light */
 }
 
+/* The cart button escalates its look as distinct products are added (see
+   updateCartCount / animateCartOnAdd in store.js). Effects stack and track the
+   current count. Two-class selectors outspecify the base --cart rule above. */
+
+/* 1+ items: solid deep brand blue (over the resting translucent light blue). */
+.floating-action-btn--cart.cart-fab--bold {
+  background: var(--color-blue);
+}
+
+/* 2+ items: relocate from bottom-left to a fixed top-right corner, and stay. */
+.floating-action-btn--cart.cart-fab--corner {
+  left: auto;
+  right: max(var(--space-3), env(safe-area-inset-right));
+  bottom: auto;
+  top: max(var(--space-3), env(safe-area-inset-top));
+  transform-origin: right top;
+}
+
+/* 3rd item added: flash twice; each add after that: one blink. Flashes between
+   the deep blue and light blue so the white label stays readable throughout. */
+@keyframes cart-bg-flash {
+  0%, 100% { background-color: var(--color-blue); }
+  50%      { background-color: var(--color-blue-light); }
+}
+
+.floating-action-btn--cart.cart-fab--flash2 {
+  animation: cart-bg-flash 0.35s ease 2;
+}
+
+.floating-action-btn--cart.cart-fab--blink {
+  animation: cart-bg-flash 0.35s ease 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-action-btn--cart.cart-fab--flash2,
+  .floating-action-btn--cart.cart-fab--blink {
+    animation: none;
+  }
+}
+
 /* "Continue Shopping" button on cart.html: 50% smaller, light blue
    (#5b9bd5), 10%-transparent background. transform-origin keeps it anchored
    to the left/bottom edges as it shrinks. */
