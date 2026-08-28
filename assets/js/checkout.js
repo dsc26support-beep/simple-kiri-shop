@@ -27,7 +27,9 @@ async function init() {
   document.getElementById('delivery-method-options').addEventListener('change', updateReviewTotal);
   prefillSavedCheckoutProfile();
 
+  const hideOverlay = showLoadingOverlay();
   const res = await Api.get('getStorePublicInfo', { storeSlug: currentSlug });
+  hideOverlay();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not load this store.';
     document.getElementById('place-order-btn').disabled = true;
@@ -375,9 +377,11 @@ async function onSubmit(e) {
   const submitBtn = document.getElementById('place-order-btn');
   submitBtn.disabled = true;
   submitBtn.textContent = 'Placing order…';
+  const hideOverlay = showLoadingOverlay();
 
   const res = await Api.post('createOrder', payload);
 
+  hideOverlay();
   submitBtn.disabled = false;
   submitBtn.textContent = 'Place Order';
 

@@ -1316,6 +1316,37 @@ footer.site-footer .copyright {
  * bounces, phase-offset by a third of the color cycle so the three dots
  * are always showing three different colors at once.
  */
+/* Centered full-screen "Loading… / Please wait…" overlay (see
+   showLoadingOverlay in helpers.js) - used for waits with no inline status
+   spot, e.g. checkout's initial load and while placing an order. Above the
+   FABs/toast layer (1003) so nothing sits on top of it. */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1004;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.loading-overlay.is-visible {
+  display: flex;
+}
+
+.loading-overlay-card {
+  background: #fff;
+  color: var(--color-ink);
+  padding: var(--space-4) var(--space-5);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+
 .loading-dots {
   display: inline-flex;
   align-items: center;

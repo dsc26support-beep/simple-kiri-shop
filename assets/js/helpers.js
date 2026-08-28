@@ -80,6 +80,28 @@ function startLoadingMessage(el) {
   };
 }
 
+// A centered, full-screen "Loading… / Please wait…" overlay (moving dots),
+// for waits where there's no inline status element to write into - e.g. the
+// checkout page's initial load and while an order is being placed. Reuses
+// startLoadingMessage for the two-stage text. Returns a function that hides it;
+// safe to create once and reuse (the overlay element is kept and toggled).
+function showLoadingOverlay() {
+  let overlay = document.getElementById('loading-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'loading-overlay';
+    overlay.className = 'loading-overlay';
+    overlay.innerHTML = '<div class="loading-overlay-card" role="status" aria-live="polite"></div>';
+    document.body.appendChild(overlay);
+  }
+  overlay.classList.add('is-visible');
+  const stop = startLoadingMessage(overlay.querySelector('.loading-overlay-card'));
+  return function hideLoadingOverlay() {
+    stop();
+    overlay.classList.remove('is-visible');
+  };
+}
+
 // The failed state deliberately looks different from the loading state,
 // not just says something different - static (no bounce) and one plain
 // currentColor (not cycling red/gold/purple), so it reads at a glance as
