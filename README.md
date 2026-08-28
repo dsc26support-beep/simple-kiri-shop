@@ -177,8 +177,9 @@ Sheet and deploy the Apps Script backend under your own Google account first.
      can be. Defaults to `5242880` (5MB, the same ceiling as product photos)
      if unset — set this property to change the limit without editing code
      or redeploying.
-   - `SITE_BASE_URL` — optional, e.g. `https://you.github.io/simple-kiri-shop`
-     (no trailing slash needed either way). When set, the new-message
+   - `SITE_BASE_URL` — optional, e.g. `https://mwakete.com` (or
+     `https://you.github.io/simple-kiri-shop` if you haven't set up a custom
+     domain — no trailing slash needed either way). When set, the new-message
      notification email (see below) includes an "Open Messages" button
      linking straight to `owner/messages.html` on your live site. Leave it
      unset and the email still sends, just without the button — nothing
@@ -262,6 +263,36 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    folder into Netlify — no build step).
 
 8. Visit `owner/login.html` and register the first store to seed real data.
+
+### Custom domain (mwakete.com)
+
+The repo ships a `CNAME` file (`mwakete.com`) so GitHub Pages serves the site
+from that domain instead of `…github.io/simple-kiri-shop`. All paths in the app
+are relative, so nothing else in the code changes when the domain moves to the
+root. To finish hooking it up:
+
+> **Order matters:** set the DNS records *before* the custom domain goes live
+> on GitHub, otherwise the old `…github.io` URL redirects to `mwakete.com` and
+> the site is unreachable until DNS resolves.
+
+1. **Own `mwakete.com`** — register/confirm control of the domain.
+2. **DNS** at your registrar / DNS host:
+   - Apex `mwakete.com` → four **A** records to GitHub Pages:
+     `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
+     (optionally the matching **AAAA** records `2606:50c0:8000::153`,
+     `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`).
+     These are GitHub's published Pages IPs — confirm against GitHub's docs if
+     in doubt.
+   - `www.mwakete.com` → **CNAME** to `dsc26support-beep.github.io` (so `www`
+     works and redirects to the apex).
+   - **On Cloudflare:** add the records **DNS-only (grey cloud)** first so GitHub
+     can issue the HTTPS certificate; you can re-enable the proxy afterward.
+3. **GitHub → repo Settings → Pages → Custom domain** = `mwakete.com` → Save,
+   then wait for the DNS check to pass.
+4. Tick **Enforce HTTPS** once the certificate is issued (can take up to ~24h).
+5. **Apps Script** → Project Settings → Script Properties: set
+   `SITE_BASE_URL = https://mwakete.com` so notification emails link to the new
+   domain.
 
 **Whenever you edit the Apps Script code**, you must create a new deployment
 version (Manage deployments → Edit → New version) — saving the script alone
