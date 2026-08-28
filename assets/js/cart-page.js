@@ -12,7 +12,9 @@ async function init() {
 
   document.getElementById('back-to-store-link').href = `store.html?store=${encodeURIComponent(currentSlug)}`;
 
+  const hideOverlay = showLoadingOverlay();
   const res = await Api.get('getStorePublicInfo', { storeSlug: currentSlug });
+  hideOverlay();
   if (res.ok) {
     document.getElementById('store-name-tagline').textContent = `Your cart — ${res.store.storeName}`;
     if (res.store.logoUrl) {
