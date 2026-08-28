@@ -7,6 +7,12 @@
   <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
   <link rel="stylesheet" href="../assets/css/styles.css">
   <link rel="stylesheet" href="../assets/css/owner.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
 </head>
 <body class="owner-shell">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -47,9 +53,9 @@
 
       <div class="dashboard-quick-links">
         <button type="button" class="btn btn-light-blue" data-href="products.html" data-label="Products">Products</button>
-        <button type="button" class="btn btn-light-blue" data-href="orders.html" data-label="Orders">Orders</button>
-        <button type="button" class="btn btn-light-blue" data-href="bookings.html" data-label="Bookings">Bookings</button>
-        <button type="button" class="btn btn-light-blue" data-href="messages.html" data-label="Messages">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden">0</span></button>
+        <button type="button" class="btn btn-light-blue" data-href="orders.html" data-label="Orders">Orders <span id="nav-orders-badge" class="nav-unread-badge hidden" aria-label="orders needing attention">0</span></button>
+        <button type="button" class="btn btn-light-blue" data-href="bookings.html" data-label="Bookings">Bookings <span id="nav-bookings-badge" class="nav-unread-badge hidden" aria-label="bookings needing attention">0</span></button>
+        <button type="button" class="btn btn-light-blue" data-href="messages.html" data-label="Messages">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden" aria-label="unread messages">0</span></button>
       </div>
     </div>
   </main>
@@ -57,7 +63,7 @@
   <footer class="site-footer">
     <div class="container">
       <p>Mwakete — Store Owner Portal</p>
-      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Enquiries">Enquiries</a></p>
+      <p><a href="mailto:admin@mwakete.com?subject=Mwakete%20Enquiry">Enquiry</a></p>
       <p class="copyright">©MainKT Enterprises</p>
     </div>
   </footer>
@@ -69,5 +75,6 @@
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/owner-nav.js"></script>
   <script src="../assets/js/owner-dashboard.js"></script>
+  <script src="../assets/js/register-sw.js"></script>
 </body>
 </html>

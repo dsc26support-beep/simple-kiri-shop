@@ -17,9 +17,11 @@ async function init() {
 
   localStorage.setItem('skiri_active_store', currentSlug);
 
+  const stopLoading = startLoadingMessage(statusEl);
   const res = await Api.get('listProducts', { storeSlug: currentSlug });
+  stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load this store.';
+    showLoadFailedMessage(statusEl);
     return;
   }
 
@@ -29,7 +31,7 @@ async function init() {
 
   if (res.storeLogoUrl) {
     const logoImg = document.getElementById('store-logo-img');
-    logoImg.src = res.storeLogoUrl;
+    logoImg.src = optimizedImageUrl(res.storeLogoUrl, IMG_W.logo);
     logoImg.alt = res.storeName;
     logoImg.classList.remove('hidden');
   }
@@ -60,6 +62,7 @@ async function init() {
   } else {
     statusEl.textContent = '';
     listEl.innerHTML = currentProducts.map(renderProductCard).join('');
+    fitPriceLabels(listEl);
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
   }
 
@@ -98,6 +101,7 @@ function renderFilteredProducts(query) {
 
   statusEl.textContent = '';
   listEl.innerHTML = filtered.map(renderProductCard).join('');
+  fitPriceLabels(listEl);
   // Re-render replaces the gallery track elements, and their scroll sync
   // (wireGalleryScrollSync) is per-element, not delegated like the click
   // handler in wireProductEvents - has to be redone after every re-render.
@@ -160,9 +164,11 @@ async function loadSimilarProducts() {
   if (similar.length === 0) return;
 
   document.getElementById('similar-products-list').innerHTML = similar
-    .map((p) => renderBrowseProductCard(p, { linkLabel: 'View', cardClass: 'similar-product-card' }))
+    .map((p) => renderBrowseProductCard(p, { cardClass: 'similar-product-card' }))
     .join('');
   document.getElementById('similar-section').classList.remove('hidden');
+  // After unhiding: a hidden element has no width to measure against.
+  fitPriceLabels(document.getElementById('similar-products-list'));
   recordProductViewsOnce(similar.map((p) => p.productId));
 }
 

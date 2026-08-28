@@ -45,9 +45,11 @@ function wireStoresSearch() {
 
 async function loadStores() {
   const statusEl = document.getElementById('stores-status');
+  const stopLoading = startLoadingMessage(statusEl);
   const res = await Api.get('listStores', { limit: storesLoadedLimit, q: storesQuery });
+  stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load stores right now. Please try again later.';
+    showLoadFailedMessage(statusEl);
     return;
   }
 
@@ -73,7 +75,7 @@ async function onLoadMore() {
 
 function renderStoreCard(store) {
   const logo = store.logoUrl
-    ? `<img class="store-card-logo" src="${escapeHtml(store.logoUrl)}" alt="">`
+    ? `<img class="store-card-logo" src="${escapeHtml(optimizedImageUrl(store.logoUrl, IMG_W.logo))}" alt="" loading="lazy" decoding="async">`
     : `<div class="store-card-logo-placeholder" aria-hidden="true">${escapeHtml(initials(store.storeName))}</div>`;
 
   const location = storeLocationLabel(store.island, store.village);

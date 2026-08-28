@@ -46,6 +46,11 @@ assets/js/kiribati-locations.js  Island -> village data for Settings (see caveat
 assets/css/styles.css      Shared, mobile-first styles
 assets/css/owner.css        Store owner dashboard styles
 
+manifest.json              Web app manifest - makes the site installable as an app (PWA)
+sw.js                      Service worker - offline shell + fast repeat loads
+offline.html               Shown only when a page is opened with no connection
+assets/js/register-sw.js   Registers sw.js (loaded on every page)
+
 apps-script/*.gs           Google Apps Script backend source (see setup below)
 ```
 
@@ -172,8 +177,9 @@ Sheet and deploy the Apps Script backend under your own Google account first.
      can be. Defaults to `5242880` (5MB, the same ceiling as product photos)
      if unset — set this property to change the limit without editing code
      or redeploying.
-   - `SITE_BASE_URL` — optional, e.g. `https://you.github.io/simple-kiri-shop`
-     (no trailing slash needed either way). When set, the new-message
+   - `SITE_BASE_URL` — optional, e.g. `https://mwakete.com` (or
+     `https://you.github.io/simple-kiri-shop` if you haven't set up a custom
+     domain — no trailing slash needed either way). When set, the new-message
      notification email (see below) includes an "Open Messages" button
      linking straight to `owner/messages.html` on your live site. Leave it
      unset and the email still sends, just without the button — nothing
@@ -257,6 +263,55 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    folder into Netlify — no build step).
 
 8. Visit `owner/login.html` and register the first store to seed real data.
+
+### Custom domain (mwakete.com)
+
+The repo ships a `CNAME` file (`mwakete.com`) so GitHub Pages serves the site
+from that domain instead of `…github.io/simple-kiri-shop`. All paths in the app
+are relative, so nothing else in the code changes when the domain moves to the
+root. To finish hooking it up:
+
+> **Order matters:** set the DNS records *before* the custom domain goes live
+> on GitHub, otherwise the old `…github.io` URL redirects to `mwakete.com` and
+> the site is unreachable until DNS resolves.
+
+`mwakete.com` was registered via Google Domains, which is now **Squarespace** —
+so its DNS is managed in the Squarespace dashboard. Keep the domain there (no
+transfer needed); you only edit DNS records. *(If you ever moved the domain's
+nameservers away from Squarespace, edit DNS wherever the nameservers point
+instead.)*
+
+**A. Point DNS at GitHub Pages (in Squarespace)**
+
+1. Sign in at **account.squarespace.com** → **Domains** → **mwakete.com** →
+   **DNS** (DNS Settings).
+2. **Remove anything pointing the root at Squarespace:** delete any existing
+   **A record with host `@`**, and turn off any **Domain Forwarding / redirect**.
+   Leave unrelated records (e.g. Google `MX`/email) alone.
+3. Under **Custom Records**, add these four **A** records (host `@`), one per IP:
+   `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`.
+   *(Optionally also four **AAAA** records, host `@`, to `2606:50c0:8000::153`,
+   `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`.)* These are
+   GitHub's published Pages IPs — confirm against GitHub's docs if in doubt.
+4. Add one **CNAME** record: host `www`, value `dsc26support-beep.github.io`
+   (add a trailing dot if Squarespace requires one). Save.
+
+**B. Point GitHub at the domain**
+
+5. Repo → **Settings → Pages → Custom domain** = `mwakete.com` → Save, then wait
+   for the green **DNS check** (DNS can take minutes–hours to propagate).
+6. Tick **Enforce HTTPS** once the certificate is issued (can take up to ~24h).
+
+**C. Update the app's email links**
+
+7. **Apps Script** → Project Settings → Script Properties: set
+   `SITE_BASE_URL = https://mwakete.com` so notification emails link to the new
+   domain (no code redeploy needed).
+
+**Troubleshooting:** if `mwakete.com` still shows a Squarespace/parking page, a
+leftover `@` A record or Domain Forwarding is still set (step 2). If GitHub's DNS
+check won't go green, the only `@` A records must be the four GitHub IPs above,
+with no typos.
 
 **Whenever you edit the Apps Script code**, you must create a new deployment
 version (Manage deployments → Edit → New version) — saving the script alone
@@ -468,6 +523,59 @@ products and the 20 most-visited stores, each ranked by a running counter
   active products/stores sorted by their counter, descending. Items with 0
   views/visits still appear (useful on a brand-new store with little
   traffic yet) — nothing is filtered out by count, only by `Status: active`.
+
+## Install as an app (PWA)
+
+The site is a **Progressive Web App**: visitors can install it to their phone's
+home screen and it opens full-screen with its own icon, like a native app.
+Nothing extra to deploy — the moment `manifest.json`, `sw.js`, and the icon
+files are live on your GitHub Pages URL, the install prompt becomes available.
+
+There's no separate app to build, and no store account needed. The installed
+app simply loads your live site, so **anything you push to GitHub Pages shows up
+in the installed app instantly** — no re-packaging, no re-submitting.
+
+**How a customer installs it:**
+
+- **Android (Chrome):** open the site → menu (⋮) → **Install app** (or tap the
+  "Add to Home screen" banner Chrome shows on its own).
+- **iPhone (Safari):** open the site → **Share** button → **Add to Home
+  Screen**. (iOS only supports this from Safari, not other browsers.)
+
+**What's in the repo for this:**
+
+- `manifest.json` — app name, icons, colors, and `display: standalone` (the
+  full-screen mode). All its paths are **relative**, so it works whether the
+  site is served from a domain root or a project subpath like
+  `/simple-kiri-shop/`.
+- `sw.js` — the service worker. It caches the static shell (HTML/CSS/JS/icons)
+  for fast repeat loads and an offline fallback, but **never caches the Google
+  Apps Script backend** — orders, chat, and bookings always hit the network so
+  they're never stale.
+- `offline.html` — a tiny standalone page shown only when someone opens a page
+  with no connection.
+- The brand icons come from `assets/img/app-icon-*.png` (a 192, a 512, a
+  maskable 512 for Android adaptive icons, and a 180 `apple-touch-icon` for
+  iOS), all generated from `assets/img/app-icon-source.svg`. To restyle the
+  app icon, edit that SVG and regenerate the PNGs.
+- `theme-color` (the browser/status-bar tint) is the brand purple `#332d63`,
+  set both in `manifest.json` and as a `<meta>` on every page.
+
+**Publishing to the App Store / Google Play later (optional):**
+
+A PWA is the foundation for real store listings when you want them. The
+easiest route is [PWABuilder](https://www.pwabuilder.com/) — point it at your
+live URL and it generates ready-to-submit Android (`.aab`) and iOS (Xcode)
+packages that just wrap this same site. Real-world prerequisites to be aware
+of before that step:
+
+- **Google Play** — a Play Console account (one-time **$25** fee). Android
+  packages can be built without a Mac.
+- **Apple App Store** — an Apple Developer Program membership (**$99/year**),
+  and iOS packages must be built/submitted from a **Mac with Xcode**.
+
+None of that is set up here yet — it's noted so the option is documented when
+you're ready.
 
 ## Security & operational notes
 

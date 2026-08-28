@@ -25,10 +25,11 @@ async function init() {
 async function loadBookings(opts) {
   const limit = (opts && opts.limit) || ownerBookings.length || BOOKINGS_PAGE_SIZE;
   const statusEl = document.getElementById('bookings-status');
-  statusEl.textContent = 'Loading…';
+  const stopLoading = startLoadingMessage(statusEl);
   const res = await Api.post('listOwnerBookings', { token: Auth.getToken(), limit });
+  stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load bookings.';
+    showLoadFailedMessage(statusEl);
     return;
   }
   ownerBookings = res.bookings;

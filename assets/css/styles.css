@@ -257,6 +257,18 @@ main {
   padding-bottom: var(--space-5);
 }
 
+/* Product-list pages (home, search, store front): on mobile & tablet drop the
+   60vh floor and the large trailing padding so the footer hugs the last product
+   instead of sitting below a gap. Desktop keeps the 60vh floor (outside this
+   query). Only these pages carry .page-products, so owner/other pages are
+   unaffected. */
+@media (max-width: 1024px) {
+  main.page-products {
+    min-height: 0;
+    padding-bottom: var(--space-3);
+  }
+}
+
 section {
   padding: var(--space-4) 0;
 }
@@ -264,7 +276,10 @@ section {
 .hero {
   background: var(--color-bg-alt);
   text-align: center;
-  padding: var(--space-5) var(--space-3);
+  /* No horizontal padding: the inner .container already insets content by
+     var(--space-3). Doubling it here made the home/search search bar narrower
+     than the store/directory pages (which use .container alone) on mobile. */
+  padding: var(--space-5) 0;
 }
 
 .hero h1 {
@@ -281,7 +296,7 @@ section {
 .search-box {
   display: flex;
   gap: var(--space-2);
-  max-width: 32em;
+  max-width: 40em; /* ~640px - wider, stretched look; still a tidy centered bar on desktop */
   margin: 0 auto;
 }
 
@@ -289,8 +304,53 @@ section {
   flex: 1;
 }
 
+/* Mobile only (<=600px): collapse the "Search" submit button's label to a bold
+   ">" so it takes less width next to the input. font-size:0 hides the text node
+   but leaves the real "Search" text in the DOM, so the button's accessible name
+   is unchanged for screen readers; the glyph is drawn via ::after at its own
+   size. Scoped to .search-box so the Continue/Place Order/chat Send buttons are
+   untouched. */
+@media (max-width: 600px) {
+  .search-box button[type="submit"] {
+    font-size: 0;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+    /* Drop the blue pill on mobile - the ">" reads as a bare dark-grey chevron.
+       Colour it (the ::after inherits this) since the .btn-primary white would be
+       invisible once the background is gone. */
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-muted);
+  }
+  .search-box button[type="submit"]::after {
+    content: ">";
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+}
+
 .categories {
   padding-top: var(--space-3);
+}
+
+/* Home page, mobile & tablet only (<=1024px): show the category buttons ABOVE
+   the search bar, and add one extra spacer between the stacked sections
+   (categories, search box, Trending Products). Scoped to .home-main (only
+   index.html's <main> carries that class) so no other page's #main is touched;
+   above 1024px this doesn't apply and the original block order/spacing stands.
+   Explicit order on every child so a default-0 child can't jump ahead. */
+@media (max-width: 1024px) {
+  .home-main {
+    display: flex;
+    flex-direction: column;
+    row-gap: var(--space-4);
+  }
+  .home-main > .categories { order: 1; }
+  .home-main > .hero { order: 2; }
+  .home-main > .trending-products { order: 3; }
+  .home-main > .trending-stores { order: 4; }
+  .home-main > noscript { order: 5; }
 }
 
 .category-buttons {
@@ -310,8 +370,31 @@ section {
   border-color: var(--color-blue);
 }
 
-.search-result-card .helper-text {
-  margin: 0 0 var(--space-2);
+/* Rentals & Services are the two booking categories - give their quick-filter
+   buttons a filled (inverted) style with white text so they stand out from the
+   plain goods buttons. Colors reuse the existing category accents (see the
+   .placeholder-swatch.category-* rules). The doubled class (.category-btn +
+   modifier) raises specificity above the generic .btn/.category-btn background
+   rules, which otherwise win since .btn is defined later in this file. */
+.category-btn.category-btn--rentals {
+  background: #b45309;
+  border-color: #b45309;
+  color: #fff;
+}
+.category-btn.category-btn--services {
+  background: #166534;
+  border-color: #166534;
+  color: #fff;
+}
+.category-btn.category-btn--rentals:hover,
+.category-btn.category-btn--rentals:focus-visible {
+  background: #92400e;
+  border-color: #92400e;
+}
+.category-btn.category-btn--services:hover,
+.category-btn.category-btn--services:focus-visible {
+  background: #14532d;
+  border-color: #14532d;
 }
 
 footer.site-footer {
@@ -373,6 +456,62 @@ footer.site-footer .copyright {
 
 .floating-action-btn--right {
   right: max(var(--space-3), env(safe-area-inset-right));
+}
+
+/* Custom PWA "Install" pill, injected by register-sw.js on mobile & tablet.
+   Sits in the lower-right, stacked just above the 56px chat FAB (or the same
+   slot on pages with no chat button). Hidden until JS adds .is-visible, and
+   never shown on desktop (the min-width guard below), matching the JS gate. */
+.install-fab {
+  position: fixed;
+  right: max(var(--space-3), env(safe-area-inset-right));
+  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
+  z-index: 1001;
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.5em 1em;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-gold);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.install-fab.is-visible {
+  display: inline-flex;
+}
+
+.install-fab svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (min-width: 1025px) {
+  .install-fab {
+    display: none !important;
+  }
+}
+
+/* Instruction popover shown when there's no programmatic install (iOS, or a
+   browser with no captured prompt) - anchored above the Install pill. */
+.install-hint {
+  position: fixed;
+  right: max(var(--space-3), env(safe-area-inset-right));
+  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2) + 3rem);
+  z-index: 1002;
+  max-width: min(18rem, calc(100vw - 2 * var(--space-3)));
+  padding: var(--space-2) var(--space-3);
+  border-radius: 12px;
+  background: var(--color-ink);
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
 /* Cart button on store.html: light blue (--color-blue-light, same hue the
@@ -1169,6 +1308,96 @@ footer.site-footer .copyright {
   40% { opacity: 1; transform: scale(1); }
 }
 
+/*
+ * The page/data-loading message's dots (startLoadingMessage in helpers.js)
+ * - a separate class from .btn-saving-dots on purpose, so this colorful
+ * treatment stays specific to "the page is loading," not every button's
+ * plain "Saving…" state. Each dot cycles red -> gold -> purple as it
+ * bounces, phase-offset by a third of the color cycle so the three dots
+ * are always showing three different colors at once.
+ */
+/* Centered full-screen "Loading… / Please wait…" overlay (see
+   showLoadingOverlay in helpers.js) - used for waits with no inline status
+   spot, e.g. checkout's initial load and while placing an order. Above the
+   FABs/toast layer (1003) so nothing sits on top of it. */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1004;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.loading-overlay.is-visible {
+  display: flex;
+}
+
+.loading-overlay-card {
+  background: #fff;
+  color: var(--color-ink);
+  padding: var(--space-4) var(--space-5);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 0.3em;
+  vertical-align: middle;
+}
+
+.loading-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  animation: loading-dots-bounce 1.2s infinite ease-in-out both, loading-dots-color 1.8s infinite linear;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s, 0s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s, -0.6s; }
+.loading-dots span:nth-child(3) { animation-delay: 0s, -1.2s; }
+
+@keyframes loading-dots-bounce {
+  0%, 80%, 100% { opacity: 0.35; transform: scale(0.7); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes loading-dots-color {
+  0%, 33% { background: var(--color-red); }
+  34%, 66% { background: var(--color-gold); }
+  67%, 100% { background: #8b5cf6; }
+}
+
+/*
+ * "Refresh page" failed-state dots (loadFailedMessageHtml in helpers.js) -
+ * deliberately the opposite of .loading-dots: no animation, one plain
+ * currentColor, so a failed load reads as "stopped," not "still working."
+ */
+.static-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 0.3em;
+  vertical-align: middle;
+}
+
+.static-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
 .btn-danger {
   background: #fff;
   color: var(--color-danger);
@@ -1243,16 +1472,29 @@ legend {
 
 /* Product grid */
 
+/* Marketplace-style browse grid - two columns on a phone (the density a
+   product grid is normally scanned at), then as many ~200px columns as fit
+   from 600px up. Used by the home page's trending section, a store's own
+   product list, and the search results page. */
 .product-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  align-items: start;
 }
 
 @media (min-width: 600px) {
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-3);
   }
+}
+
+/* Booking listings carry a whole request form (two dates, name, phone,
+   notes) - far too much for a half-width phone column, so they take the
+   full row while goods cards stay two-up beside each other. */
+.product-card--booking {
+  grid-column: 1 / -1;
 }
 
 .product-card {
@@ -1291,14 +1533,14 @@ legend {
 
 .product-image {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   background: var(--color-bg-alt);
 }
 
 .placeholder-swatch {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1317,22 +1559,52 @@ legend {
 .placeholder-swatch.category-services { background: #166534; }
 
 .product-card-body {
-  padding: var(--space-3);
+  padding: var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   flex: 1;
 }
 
+/* The flex gap above is the card's only vertical rhythm - default paragraph
+   margins would stack on top of it and leave holes in the meta block. */
+.product-card-body p {
+  margin: 0;
+}
+
+/* Clamped rather than truncated to one line: a two-line name is readable
+   at half-width and keeps every card in a row the same height. */
 .product-name {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The loudest thing on a card - price is what a browse grid is scanned for.
+   Never wraps: fitPriceLabels() in helpers.js measures the overflow this
+   allows and scales the font down to whatever the column actually fits. */
+.product-price {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-ink);
+  white-space: nowrap;
 }
 
 .product-desc {
   margin: 0;
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .product-gallery-track {
@@ -1416,70 +1688,6 @@ legend {
   font-size: 0.85rem;
 }
 
-.similar-product-card .btn {
-  min-height: 32px;
-  padding: 0.3em 0.6em;
-  font-size: 0.8rem;
-}
-
-/* Horizontal scrolling rail, used by the home page's trending-products row
-   (and reusable anywhere else a horizontal browse carousel is needed). */
-.carousel-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  /* Extra vertical padding gives the centered card's scale-up (below)
-     room to grow into without being clipped by the scroll container. */
-  padding: var(--space-4) 0;
-}
-
-.trending-product-card {
-  flex: 0 0 150px;
-  scroll-snap-align: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  font-size: 0.85rem;
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.25s ease;
-  transform: scale(1);
-}
-
-/* The card nearest the carousel's horizontal center - kept in sync with
-   scroll position by wireTrendingCarouselFocus() in home.js, so this
-   keeps moving to whichever card is currently centered as the customer
-   scrolls/swipes through the row. */
-.trending-product-card.is-focused {
-  transform: scale(1.1);
-  z-index: 1;
-}
-
-.trending-product-card .product-image,
-.trending-product-card .placeholder-swatch {
-  aspect-ratio: 1 / 1;
-  font-size: 1.25rem;
-}
-
-/* Photo-only on mobile - the name/store/price/delivery-icon details only
-   show from 600px up. The whole card is still the click target on mobile
-   (it's an <a>), just visually reduced to the image. */
-.trending-product-card-body {
-  display: none;
-  padding: var(--space-2);
-  gap: var(--space-1);
-  flex-direction: column;
-}
-
-.trending-product-card .product-name {
-  font-size: 0.85rem;
-}
-
 /* Small circular-logo rail, used by the home page's popular-stores row. */
 .logo-carousel {
   display: flex;
@@ -1535,10 +1743,6 @@ legend {
     display: block;
   }
 
-  .trending-product-card-body {
-    display: flex;
-  }
-
   .trending-stores {
     display: block;
   }
@@ -1550,7 +1754,9 @@ legend {
 
 .product-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 .qty-input {

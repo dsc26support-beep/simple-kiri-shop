@@ -2,6 +2,121 @@ function formatMoney(amount) {
   return APP_CONFIG.CURRENCY_SYMBOL + Number(amount || 0).toFixed(2);
 }
 
+/**
+ * The price label on a product card, from its variants' prices. A range
+ * repeats neither the currency symbol nor spaces around the dash
+ * ("$10.02-14.32", not "$10.02 – $14.32") - the spaced form ran the full
+ * width of a half-width grid card with no slack, and wrapped onto a second
+ * line as soon as the numbers grew past two digits.
+ */
+function formatPriceLabel(variants) {
+  const prices = (variants || []).map((v) => v.price);
+  if (prices.length === 0) return '';
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  return min === max ? formatMoney(min) : `${formatMoney(min)}-${Number(max).toFixed(2)}`;
+}
+
+// .product-price is `white-space: nowrap`, so a price that's too wide for
+// its column overflows (and gets clipped by the card) instead of wrapping.
+// This shrinks it just enough to fit rather than letting either happen.
+const PRICE_FIT_MAX_REM = 1.15; // matches .product-price's CSS font-size
+const PRICE_FIT_MIN_REM = 0.8;
+
+/**
+ * Auto-fits every price label under `root` (default: the whole document) to
+ * its own column. Text width scales about linearly with font-size, so the
+ * needed size comes from one width measurement rather than a shrink-by-a-
+ * step-and-re-measure loop, which would reflow once per step per card.
+ * Safe to call repeatedly - it resets to the CSS size before measuring, so
+ * a re-fit after a resize can grow the text back as well as shrink it.
+ */
+function fitPriceLabels(root) {
+  (root || document).querySelectorAll('.product-price').forEach((el) => {
+    el.style.fontSize = '';
+    const available = el.clientWidth;
+    const needed = el.scrollWidth;
+    if (!available || needed <= available) return;
+    // 0.98 keeps it off the exact edge, where sub-pixel rounding can still clip.
+    const fitted = PRICE_FIT_MAX_REM * (available / needed) * 0.98;
+    el.style.fontSize = Math.max(PRICE_FIT_MIN_REM, fitted) + 'rem';
+  });
+}
+
+// Cards change width on rotate/resize, so a size fitted to the old column
+// can end up too big (or needlessly small) for the new one.
+let priceFitResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(priceFitResizeTimer);
+  priceFitResizeTimer = setTimeout(() => fitPriceLabels(), 150);
+});
+
+// Apps Script's own per-request execution-startup overhead means even a
+// small/cached read can take a few seconds - a loading message that never
+// changes reads as "frozen" past that point. Stage two exists purely to
+// reassure the customer/vendor the page is still working, not stuck. The
+// "..." in both stages is animated, bouncing-and-color-cycling dot markup
+// (.loading-dots in styles.css - a distinct class from the plain
+// currentColor .btn-saving-dots used for button "Saving…" states) rather
+// than static periods, so it visibly moves instead of just sitting there.
+const LOADING_MESSAGE_STAGE2_DELAY_MS = 3000;
+const LOADING_DOTS_HTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
+
+/**
+ * Sets el's content to "Loading" + moving dots immediately, then to
+ * "Please wait" + moving dots after LOADING_MESSAGE_STAGE2_DELAY_MS if it's
+ * still going. Returns a stop() function - callers MUST call it as soon as
+ * the request settles (success or failure), before setting el's real text,
+ * so stage two never fires after the real content is already showing.
+ */
+function startLoadingMessage(el) {
+  if (!el) return () => {};
+  el.innerHTML = 'Loading' + LOADING_DOTS_HTML;
+  const timer = setTimeout(() => {
+    el.innerHTML = 'Please wait' + LOADING_DOTS_HTML;
+  }, LOADING_MESSAGE_STAGE2_DELAY_MS);
+  return function stopLoadingMessage() {
+    clearTimeout(timer);
+  };
+}
+
+// A centered, full-screen "Loading… / Please wait…" overlay (moving dots),
+// for waits where there's no inline status element to write into - e.g. the
+// checkout page's initial load and while an order is being placed. Reuses
+// startLoadingMessage for the two-stage text. Returns a function that hides it;
+// safe to create once and reuse (the overlay element is kept and toggled).
+function showLoadingOverlay() {
+  let overlay = document.getElementById('loading-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'loading-overlay';
+    overlay.className = 'loading-overlay';
+    overlay.innerHTML = '<div class="loading-overlay-card" role="status" aria-live="polite"></div>';
+    document.body.appendChild(overlay);
+  }
+  overlay.classList.add('is-visible');
+  const stop = startLoadingMessage(overlay.querySelector('.loading-overlay-card'));
+  return function hideLoadingOverlay() {
+    stop();
+    overlay.classList.remove('is-visible');
+  };
+}
+
+// The failed state deliberately looks different from the loading state,
+// not just says something different - static (no bounce) and one plain
+// currentColor (not cycling red/gold/purple), so it reads at a glance as
+// "this stopped trying," distinct from "still working."
+const STATIC_DOTS_HTML = '<span class="static-dots"><span></span><span></span><span></span></span>';
+
+function loadFailedMessageHtml() {
+  return 'Refresh page' + STATIC_DOTS_HTML;
+}
+
+function showLoadFailedMessage(el) {
+  if (!el) return;
+  el.innerHTML = loadFailedMessageHtml();
+}
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = String(str == null ? '' : str);
@@ -57,38 +172,68 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+// Target render widths (px) per image slot, sized to cover ~2x DPR of the
+// actual CSS box so retina screens still look sharp: logos/thumbs render at
+// 56-64px, product cards at ~170-260px, chat images at max 220px.
+const IMG_W = { logo: 160, thumb: 160, card: 520, chat: 440 };
+
 /**
- * Shared "browse" card for a product from someone else's context (search
- * results, similar products) - image, name, store, delivery icons, price,
- * and a link straight to that product on its store page (store.html's
- * ?product= param triggers the same scroll-to-and-highlight redirect the
- * home page trending carousel uses), not just the store's front page. The
- * whole card is that link (same pattern as the home page's
- * trending-product-card), not just the "View" button at the bottom, so
- * clicking anywhere on a similar/search-result product jumps straight to
- * it. Distinct from renderProductCard in product-card.js, which is the
- * full add-to-cart card shown on a store's own page.
+ * Rewrites a stored image URL to request an appropriately-sized, modern-format
+ * variant from whichever host serves it, instead of hotlinking the full ~1280px
+ * original into a small slot. Provider-aware, idempotent (safe to call twice),
+ * and defensive - any URL it doesn't recognise (data:/blob:/unknown host) is
+ * returned unchanged.
+ *   - Cloudinary: inserts f_auto (WebP/AVIF), q_auto (quality), c_limit,w_<N>
+ *     (downscale, never upscale) after /image/upload/.
+ *   - Google Drive CDN (lh3.googleusercontent.com/d/<id>): appends the =w<N>
+ *     size suffix.
+ * See apps-script/Utils.gs uploadImage/uploadToCloudinary for where these URL
+ * shapes come from. Purely client-side - the backend still stores/returns the
+ * full original.
+ */
+function optimizedImageUrl(url, width) {
+  if (!url || typeof url !== 'string') return url;
+  if (url.indexOf('res.cloudinary.com') !== -1) {
+    const marker = '/image/upload/';
+    const at = url.indexOf(marker);
+    if (at === -1) return url;
+    const after = at + marker.length;
+    const rest = url.slice(after);
+    if (/^(f_auto|q_auto|w_\d|c_)/.test(rest)) return url; // already transformed
+    return url.slice(0, after) + 'f_auto,q_auto,c_limit,w_' + width + '/' + rest;
+  }
+  if (url.indexOf('lh3.googleusercontent.com/') !== -1) {
+    return url.replace(/=[-\w]+$/, '') + '=w' + width; // strip any existing =w../=s.. then set ours
+  }
+  return url;
+}
+
+/**
+ * Shared "browse" card for a product from someone else's context - the home
+ * page's trending grid, search results, and a store page's similar-products
+ * row. Marketplace-style ordering (photo, name, then the price as the
+ * loudest element, then the smaller store/delivery meta), and the whole
+ * card is a link straight to that product on its store page (store.html's
+ * ?product= param triggers the scroll-to-and-highlight there), so there's
+ * no separate "View" button to aim at. Distinct from renderProductCard in
+ * product-card.js, which is the full add-to-cart card on a store's own page.
  */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
-  const linkLabel = opts.linkLabel || 'View';
   const cardClass = opts.cardClass || '';
 
   const media = product.imageUrl
-    ? `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy">`
+    ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
     : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
-  const prices = product.variants.map((v) => v.price);
-  const priceText =
-    prices.length > 1 && Math.min(...prices) !== Math.max(...prices)
-      ? `${formatMoney(Math.min(...prices))} – ${formatMoney(Math.max(...prices))}`
-      : formatMoney(prices[0]);
+  const priceText = formatPriceLabel(product.variants);
 
   return `
     <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml((soldByVerb(product.category) + ' ' + product.storeName).toLowerCase())}">
       ${media}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
+        <strong class="product-price">${priceText}</strong>
         <p class="helper-text">${soldByVerb(product.category)} ${escapeHtml(product.storeName)}</p>
         ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
         ${renderDeliveryIcons({
@@ -100,8 +245,6 @@ function renderBrowseProductCard(product, opts) {
           shipCost: product.storeDeliveryShipCost,
           airCargoCost: product.storeDeliveryAirCargoCost
         })}
-        <strong>${priceText}</strong>
-        <span class="btn btn-primary" aria-hidden="true">${escapeHtml(linkLabel)}</span>
       </div>
     </a>
   `;
@@ -110,7 +253,7 @@ function renderBrowseProductCard(product, opts) {
 /** Small circular-logo carousel item, for the home page "popular stores" row. */
 function renderLogoCarouselItem(store) {
   const logo = store.logoUrl
-    ? `<img class="logo-carousel-logo" src="${escapeHtml(store.logoUrl)}" alt="">`
+    ? `<img class="logo-carousel-logo" src="${escapeHtml(optimizedImageUrl(store.logoUrl, IMG_W.logo))}" alt="" loading="lazy" decoding="async">`
     : `<div class="logo-carousel-logo-placeholder" aria-hidden="true">${escapeHtml(initials(store.storeName))}</div>`;
   return `
     <a class="logo-carousel-item" href="store.html?store=${encodeURIComponent(store.storeSlug)}">
@@ -234,7 +377,7 @@ const CATEGORIES = [
 
 function renderCategoryButtons(containerId) {
   document.getElementById(containerId).innerHTML = CATEGORIES.map(
-    (c) => `<a class="btn category-btn" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
+    (c) => `<a class="btn category-btn category-btn--${c.id}" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
   ).join('');
 }
 

@@ -17,7 +17,7 @@ async function init() {
     document.getElementById('store-name-tagline').textContent = `Your cart — ${res.store.storeName}`;
     if (res.store.logoUrl) {
       const logoImg = document.getElementById('store-logo-img');
-      logoImg.src = res.store.logoUrl;
+      logoImg.src = optimizedImageUrl(res.store.logoUrl, IMG_W.logo);
       logoImg.alt = res.store.storeName;
       logoImg.classList.remove('hidden');
     }

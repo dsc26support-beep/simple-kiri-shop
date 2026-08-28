@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offline — Mwakete</title>
+  <meta name="theme-color" content="#332d63">
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2rem;
+      text-align: center;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #332d63;
+      background: #ffffff;
+    }
+    .mark { width: 88px; height: 88px; }
+    h1 { margin: 0; font-size: 1.4rem; }
+    p { margin: 0; max-width: 22rem; color: #555; line-height: 1.5; }
+    button {
+      margin-top: 0.5rem;
+      padding: 0.7rem 1.4rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: #332d63;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <svg class="mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="mkt-g" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#332d63"/>
+        <stop offset="35%" stop-color="#6b62a0"/>
+        <stop offset="65%" stop-color="#a49bdb"/>
+        <stop offset="100%" stop-color="#5b56d6"/>
+      </linearGradient>
+    </defs>
+    <rect width="100" height="100" fill="#ffffff"/>
+    <polygon points="20,18 20,78 32,78 32,40 44,54 44,78 56,78 56,54 68,40 68,78 80,78 80,18 68,18 50,38 32,18" fill="url(#mkt-g)"/>
+    <polygon points="42,18 58,18 50,28" fill="#7b74ab"/>
+  </svg>
+  <h1>You're offline</h1>
+  <p>Mwakete needs a connection to load stores and products. Reconnect and try again.</p>
+  <button type="button" onclick="location.reload()">Try again</button>
+</body>
+</html>

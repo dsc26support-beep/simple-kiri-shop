@@ -1,5 +1,21 @@
 document.addEventListener('DOMContentLoaded', init);
 
+// The "Varieties & Prices" block is reused for Rentals/Services listings, where
+// "Label (e.g. 500g, Large)" reads wrong - a rental sells a duration, a service
+// sells a named job. These relabel the section heading and each variety row's
+// first field to suit the chosen category (ids match BOOKING_CATEGORIES in
+// helpers.js). Kept local to the owner form since it's portal copy, not shared logic.
+function varietyRowLabelText(category) {
+  if (category === 'rentals') return 'Duration (e.g. ½ day, per day, per week)';
+  if (category === 'services') return 'Service Name (e.g. Car Wash start price)';
+  return 'Label (e.g. 500g, Large)';
+}
+function varietiesSectionText(category) {
+  if (category === 'rentals') return 'Rental Durations & Prices';
+  if (category === 'services') return 'Services & Prices';
+  return 'Varieties & Prices';
+}
+
 const PRODUCTS_PAGE_SIZE = 20;
 let ownerProducts = [];
 let productsHasMore = false;
@@ -16,6 +32,7 @@ async function init() {
   document.getElementById('add-product-btn').addEventListener('click', () => openForm(null));
   document.getElementById('cancel-product-btn').addEventListener('click', closeForm);
   document.getElementById('add-variant-btn').addEventListener('click', () => addVariantRow());
+  document.getElementById('product-category').addEventListener('change', updateVarietyLabels);
   document.getElementById('product-form').addEventListener('submit', onSaveProduct);
   document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
   document.getElementById('product-image-input-2').addEventListener('change', onImageFileChange2);
@@ -35,10 +52,11 @@ async function init() {
 async function loadProducts(opts) {
   const limit = (opts && opts.limit) || ownerProducts.length || PRODUCTS_PAGE_SIZE;
   const statusEl = document.getElementById('products-status');
-  statusEl.textContent = 'Loading…';
+  const stopLoading = startLoadingMessage(statusEl);
   const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit });
+  stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load your products.';
+    showLoadFailedMessage(statusEl);
     return;
   }
   ownerProducts = res.products;
@@ -58,7 +76,7 @@ function renderList() {
   listEl.innerHTML = ownerProducts
     .map((p) => {
       const media = p.imageUrl
-        ? `<img src="${escapeHtml(p.imageUrl)}" alt="">`
+        ? `<img src="${escapeHtml(optimizedImageUrl(p.imageUrl, IMG_W.thumb))}" alt="" loading="lazy" decoding="async">`
         : `<div class="placeholder-swatch category-${escapeHtml(p.category || 'general')}" aria-hidden="true">${escapeHtml(initials(p.name))}</div>`;
       const activeVariants = p.variants.filter((v) => v.status === 'active');
       const priceRange = activeVariants.length
@@ -124,16 +142,16 @@ function openForm(product) {
     document.getElementById('product-id').value = product.productId;
     document.getElementById('product-name').value = product.name;
     document.getElementById('product-description').value = product.description || '';
-    document.getElementById('product-category').value = product.category || 'general';
+    document.getElementById('product-category').value = product.category || '';
     document.getElementById('product-status').value = product.status || 'active';
     if (product.imageUrl) {
-      preview.src = product.imageUrl;
+      preview.src = optimizedImageUrl(product.imageUrl, IMG_W.card);
       preview.classList.remove('hidden');
     } else {
       preview.classList.add('hidden');
     }
     if (product.imageUrl2) {
-      preview2.src = product.imageUrl2;
+      preview2.src = optimizedImageUrl(product.imageUrl2, IMG_W.card);
       preview2.classList.remove('hidden');
     } else {
       preview2.classList.add('hidden');
@@ -146,13 +164,14 @@ function openForm(product) {
     document.getElementById('product-id').value = '';
     document.getElementById('product-name').value = '';
     document.getElementById('product-description').value = '';
-    document.getElementById('product-category').value = 'general';
+    document.getElementById('product-category').value = '';
     document.getElementById('product-status').value = 'active';
     preview.classList.add('hidden');
     preview2.classList.add('hidden');
     addVariantRow();
   }
 
+  updateVarietyLabels();
   section.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -166,9 +185,10 @@ function addVariantRow(variant) {
   const wrapper = document.createElement('div');
   wrapper.className = 'variant-row';
   wrapper.dataset.variantId = variant ? variant.variantId : '';
+  const rowLabel = varietyRowLabelText(document.getElementById('product-category').value);
   wrapper.innerHTML = `
     <div class="field">
-      <label for="${rowId}-label">Label (e.g. 500g, Large)</label>
+      <label for="${rowId}-label">${escapeHtml(rowLabel)}</label>
       <input id="${rowId}-label" class="variant-label" value="${variant ? escapeHtml(variant.label) : ''}" required>
     </div>
     <div class="field">
@@ -179,6 +199,20 @@ function addVariantRow(variant) {
   `;
   wrapper.querySelector('.remove-variant-btn').addEventListener('click', () => wrapper.remove());
   document.getElementById('variant-rows').appendChild(wrapper);
+}
+
+// Retitle the section heading and each already-added variety row for the
+// currently selected category. Called on category change and after openForm
+// builds the rows, so switching to Rentals/Services after adding rows keeps
+// every row's label in sync.
+function updateVarietyLabels() {
+  const cat = document.getElementById('product-category').value;
+  document.getElementById('varieties-label').textContent = varietiesSectionText(cat);
+  const rowLabel = varietyRowLabelText(cat);
+  document.querySelectorAll('#variant-rows .variant-row .variant-label').forEach((input) => {
+    const label = input.closest('.field').querySelector('label');
+    if (label) label.textContent = rowLabel;
+  });
 }
 
 function onImageFileChange(e) {
@@ -221,6 +255,15 @@ async function onSaveProduct(e) {
   e.preventDefault();
   const errorEl = document.getElementById('product-form-error');
   errorEl.textContent = '';
+
+  // Category is required (the <select> has no default). Native validation
+  // normally blocks submit, but guard here too since this handler runs after
+  // preventDefault - and a legacy product with no stored category opens on the
+  // empty placeholder, so an edit could otherwise reach this with a blank value.
+  if (!document.getElementById('product-category').value) {
+    errorEl.textContent = 'Please choose a category.';
+    return;
+  }
 
   const variants = Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((row) => ({
     variantId: row.dataset.variantId || undefined,

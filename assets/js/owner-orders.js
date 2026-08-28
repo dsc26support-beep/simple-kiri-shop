@@ -27,10 +27,11 @@ async function init() {
 async function loadOrders(opts) {
   const limit = (opts && opts.limit) || ownerOrders.length || ORDERS_PAGE_SIZE;
   const statusEl = document.getElementById('orders-status');
-  statusEl.textContent = 'Loading…';
+  const stopLoading = startLoadingMessage(statusEl);
   const res = await Api.post('listOwnerOrders', { token: Auth.getToken(), limit });
+  stopLoading();
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not load orders.';
+    showLoadFailedMessage(statusEl);
     return;
   }
   ownerOrders = res.orders;
