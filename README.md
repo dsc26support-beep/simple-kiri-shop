@@ -275,24 +275,43 @@ root. To finish hooking it up:
 > on GitHub, otherwise the old `…github.io` URL redirects to `mwakete.com` and
 > the site is unreachable until DNS resolves.
 
-1. **Own `mwakete.com`** — register/confirm control of the domain.
-2. **DNS** at your registrar / DNS host:
-   - Apex `mwakete.com` → four **A** records to GitHub Pages:
-     `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
-     (optionally the matching **AAAA** records `2606:50c0:8000::153`,
-     `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`).
-     These are GitHub's published Pages IPs — confirm against GitHub's docs if
-     in doubt.
-   - `www.mwakete.com` → **CNAME** to `dsc26support-beep.github.io` (so `www`
-     works and redirects to the apex).
-   - **On Cloudflare:** add the records **DNS-only (grey cloud)** first so GitHub
-     can issue the HTTPS certificate; you can re-enable the proxy afterward.
-3. **GitHub → repo Settings → Pages → Custom domain** = `mwakete.com` → Save,
-   then wait for the DNS check to pass.
-4. Tick **Enforce HTTPS** once the certificate is issued (can take up to ~24h).
-5. **Apps Script** → Project Settings → Script Properties: set
+`mwakete.com` was registered via Google Domains, which is now **Squarespace** —
+so its DNS is managed in the Squarespace dashboard. Keep the domain there (no
+transfer needed); you only edit DNS records. *(If you ever moved the domain's
+nameservers away from Squarespace, edit DNS wherever the nameservers point
+instead.)*
+
+**A. Point DNS at GitHub Pages (in Squarespace)**
+
+1. Sign in at **account.squarespace.com** → **Domains** → **mwakete.com** →
+   **DNS** (DNS Settings).
+2. **Remove anything pointing the root at Squarespace:** delete any existing
+   **A record with host `@`**, and turn off any **Domain Forwarding / redirect**.
+   Leave unrelated records (e.g. Google `MX`/email) alone.
+3. Under **Custom Records**, add these four **A** records (host `@`), one per IP:
+   `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`.
+   *(Optionally also four **AAAA** records, host `@`, to `2606:50c0:8000::153`,
+   `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153`.)* These are
+   GitHub's published Pages IPs — confirm against GitHub's docs if in doubt.
+4. Add one **CNAME** record: host `www`, value `dsc26support-beep.github.io`
+   (add a trailing dot if Squarespace requires one). Save.
+
+**B. Point GitHub at the domain**
+
+5. Repo → **Settings → Pages → Custom domain** = `mwakete.com` → Save, then wait
+   for the green **DNS check** (DNS can take minutes–hours to propagate).
+6. Tick **Enforce HTTPS** once the certificate is issued (can take up to ~24h).
+
+**C. Update the app's email links**
+
+7. **Apps Script** → Project Settings → Script Properties: set
    `SITE_BASE_URL = https://mwakete.com` so notification emails link to the new
-   domain.
+   domain (no code redeploy needed).
+
+**Troubleshooting:** if `mwakete.com` still shows a Squarespace/parking page, a
+leftover `@` A record or Domain Forwarding is still set (step 2). If GitHub's DNS
+check won't go green, the only `@` A records must be the four GitHub IPs above,
+with no typos.
 
 **Whenever you edit the Apps Script code**, you must create a new deployment
 version (Manage deployments → Edit → New version) — saving the script alone
