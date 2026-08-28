@@ -391,6 +391,16 @@ async function onSubmit(e) {
   }
 
   Cart.clearCart(currentSlug);
+
+  // The server emails the seller as part of createOrder and reports back
+  // whether it went out. When it did, show a brief confirmation popup so the
+  // customer knows the seller was notified, then reveal the Order Received
+  // page. If the email couldn't be sent, fall straight through to the page
+  // (the "Call Seller Now!" button is there for them either way).
+  if (res.emailedSeller) {
+    await showOrderSentPopup('The seller has been emailed about your order.', 2600);
+  }
+
   showConfirmation(res, payload);
 }
 

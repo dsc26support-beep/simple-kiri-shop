@@ -1347,6 +1347,36 @@ footer.site-footer .copyright {
   align-items: center;
 }
 
+/* Order-sent confirmation popup (checkout): a white card with a green check
+   and a short message, shown briefly after the seller is emailed and before
+   the Order Received page appears. Rides the .loading-overlay backdrop. */
+.order-sent-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(22rem, calc(100vw - 2 * var(--space-3)));
+  background: #fff;
+  color: var(--color-ink);
+  padding: var(--space-4) var(--space-5);
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.order-sent-check {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-success);
+  color: #fff;
+}
+
 .loading-dots {
   display: inline-flex;
   align-items: center;

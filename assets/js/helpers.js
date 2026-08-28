@@ -102,6 +102,34 @@ function showLoadingOverlay() {
   };
 }
 
+// Centered, auto-dismissing confirmation popup. Reuses the loading-overlay
+// backdrop so it sits over the whole page, then fades itself out after `ms`
+// and resolves - the caller awaits it before revealing the next screen.
+// Used on checkout to confirm "the seller has been emailed" for a beat
+// before the Order Received page appears.
+function showOrderSentPopup(message, ms) {
+  return new Promise((resolve) => {
+    let overlay = document.getElementById('order-sent-popup');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'order-sent-popup';
+      overlay.className = 'loading-overlay';
+      overlay.innerHTML =
+        '<div class="order-sent-card" role="status" aria-live="polite">' +
+        '<span class="order-sent-check" aria-hidden="true">' +
+        '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+        '</span><span class="order-sent-text"></span></div>';
+      document.body.appendChild(overlay);
+    }
+    overlay.querySelector('.order-sent-text').textContent = message;
+    overlay.classList.add('is-visible');
+    setTimeout(() => {
+      overlay.classList.remove('is-visible');
+      resolve();
+    }, ms);
+  });
+}
+
 // The failed state deliberately looks different from the loading state,
 // not just says something different - static (no bounce) and one plain
 // currentColor (not cycling red/gold/purple), so it reads at a glance as

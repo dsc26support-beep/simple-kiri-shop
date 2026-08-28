@@ -81,6 +81,39 @@ function computeEligibleDeliveryMethods(owner, customerIsland, customerVillage, 
 // cost line there spells it out explicitly rather than relying on that.
 var DELIVERY_COST_FIELD = { truck: 'DeliveryTruckCost', ship: 'DeliveryShipCost', airCargo: 'DeliveryAirCargoCost' };
 
+// Human-readable delivery-method names for the seller-notification email.
+var DELIVERY_METHOD_LABEL = { truck: 'Truck', ship: 'Boat / Ship', airCargo: 'Air Cargo', pickPay: 'Pick & Pay (in-person pickup)' };
+
+function orderMoney(n) {
+  return '$' + (Number(n) || 0).toFixed(2);
+}
+
+// Plain-text order notification sent to the seller the moment an order is
+// placed. Mirrors the on-screen order summary the customer sees so the vendor
+// has the full order in their inbox without opening the dashboard.
+function buildSellerOrderEmail(owner, orderId, name, phone, email, island, village, method, deliveryCost, lineItems, subtotal, total, notes) {
+  var lines = lineItems.map(function (l) {
+    return '- ' + l.qty + ' x ' + l.label + ' = ' + orderMoney(l.lineTotal);
+  }).join('\n');
+  var methodLabel = DELIVERY_METHOD_LABEL[method] || method;
+  var deliveryText = Number(deliveryCost) === 0 ? 'Free' : orderMoney(deliveryCost);
+
+  return 'New order received on Mwakete.\n\n' +
+    'Order Ref: ' + orderId + '\n' +
+    'Store: ' + owner.StoreName + '\n\n' +
+    'Customer: ' + name + '\n' +
+    'Phone: ' + phone + '\n' +
+    (email ? 'Email: ' + email + '\n' : '') +
+    'Deliver to: ' + village + ', ' + island + '\n' +
+    'Delivery Method: ' + methodLabel + ' (' + deliveryText + ')\n\n' +
+    'Items:\n' + lines + '\n\n' +
+    'Subtotal: ' + orderMoney(subtotal) + '\n' +
+    'Delivery: ' + deliveryText + '\n' +
+    'Total: ' + orderMoney(total) + '\n\n' +
+    'Notes: ' + (notes ? notes : '(none)') + '\n\n' +
+    'The customer has been asked to call you to arrange payment.';
+}
+
 function actionCreateOrder(body) {
   var slug = body.storeSlug;
   if (!slug) return fail('storeSlug is required');
@@ -175,19 +208,34 @@ function actionCreateOrder(body) {
     });
 
     if (body.customerEmail) markAbandonedCartConverted(slug, body.customerEmail, orderId);
-
-    return ok({
-      orderId: orderId,
-      total: total,
-      deliveryMethod: deliveryMethod,
-      deliveryCost: deliveryCost,
-      paymentMethod: paymentMethod,
-      store: publicOwnerFields(owner),
-      items: lineItems
-    });
   } finally {
     lock.releaseLock();
   }
+
+  // Notify the seller by email now that the order is safely written. Done
+  // outside the lock (the send can be slow, and it must not block or roll back
+  // a committed order). We report whether it went out via emailedSeller so the
+  // customer's confirmation screen can confirm the seller was emailed before
+  // showing the "Order Received" page.
+  var emailedSeller = false;
+  if (owner.Email) {
+    emailedSeller = sendAppEmail(
+      owner.Email,
+      'New order ' + orderId + ' — ' + customerName,
+      buildSellerOrderEmail(owner, orderId, customerName, customerPhone, body.customerEmail, island, village, deliveryMethod, deliveryCost, lineItems, subtotal, total, body.notes)
+    );
+  }
+
+  return ok({
+    orderId: orderId,
+    total: total,
+    deliveryMethod: deliveryMethod,
+    deliveryCost: deliveryCost,
+    paymentMethod: paymentMethod,
+    store: publicOwnerFields(owner),
+    items: lineItems,
+    emailedSeller: emailedSeller
+  });
 }
 
 /**

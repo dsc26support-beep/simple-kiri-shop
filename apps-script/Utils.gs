@@ -142,7 +142,7 @@ function sendViaResend(to, subject, body, config, htmlBody) {
  */
 function sendAppEmail(to, subject, body, htmlBody) {
   var resendConfig = getResendConfig();
-  if (resendConfig && sendViaResend(to, subject, body, resendConfig, htmlBody)) return;
+  if (resendConfig && sendViaResend(to, subject, body, resendConfig, htmlBody)) return true;
 
   try {
     if (htmlBody) {
@@ -150,8 +150,10 @@ function sendAppEmail(to, subject, body, htmlBody) {
     } else {
       MailApp.sendEmail(to, subject, body);
     }
+    return true;
   } catch (e) {
     // best effort only
+    return false;
   }
 }
 
