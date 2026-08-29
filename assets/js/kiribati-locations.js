@@ -1,36 +1,39 @@
 // ============================================================================
-// UNVERIFIED DRAFT DATA. Village names below are a best-effort starting
-// point, not confirmed against an authoritative source (e.g. Kiribati's
-// island councils/census). Please review and correct island-by-island -
-// each array is a plain list of strings, safe to edit directly. Every
-// island automatically gets an "Other (please specify)" option appended in
-// code (see owner-settings.js) so a vendor is never blocked by a missing or
-// wrong village name while this list is being corrected.
+// Island/village list reviewed and corrected by the store owner (a Kiribati
+// local) on 2026-08-29. Each array is a plain list of village-name strings.
+// Every island automatically gets an "Other (please specify)" option appended
+// in code (see owner-settings.js), so a customer/vendor is never blocked by a
+// missing village name.
+//
+// NOTE: the island NAMES 'South Tarawa' and 'North Tarawa', and the North
+// Tarawa villages 'Buota'/'Abatao'/'Tabiteuea', are load-bearing in the
+// delivery-eligibility logic (checkout.js, Orders.gs). Don't rename them
+// without updating that logic to match.
 // ============================================================================
 const KIRIBATI_ISLANDS = {
-  'South Tarawa': ['Betio', 'Bairiki', 'Bikenibeu', 'Nanikai', 'Eita', 'Ambo', 'Antebuka', 'Teaoraereke', 'Banraeaba', 'Abarao', 'Bonriki', 'Temaiku'],
-  'North Tarawa': ['Buariki', 'Abatao', 'Marenanuka', 'Tearinibai', 'Nabeina', 'Muribenua', 'Abaokoro', 'Buota', 'Tabiteuea'],
-  Makin: ['Makin Village', 'Onne', 'Tebanga'],
-  Butaritari: ['Butaritari Village', 'Keuea', 'Tanimaiaki', 'Ukiangang', 'Kuma', 'Tabwiroa'],
-  Marakei: ['Rawannawi', 'Buariki', 'Antebuka', 'Taboiaki', 'Tekabwibwi'],
-  Abaiang: ['Tuuta', 'Koinawa', 'Tabontebike', 'Aonobuaka', 'Ewena', 'Nuotaea', 'Borotiam'],
-  Maiana: ['Tebero', 'Tearinibai', 'Tebwangetua', 'Buota'],
-  Kuria: ['Tabontebike', 'Buariki'],
-  Aranuka: ['Takaeang', 'Buariki', 'Bekenibeu', 'Mwakoro'],
-  Abemama: ['Kariatebike', 'Kabangaki', 'Tekaman', 'Manoku'],
-  Nonouti: ['Tabomatang', 'Teuabu', 'Matangare', 'Naa'],
-  'Tabiteuea North': ['Eita', 'Utiroa', 'Buariki'],
-  'Tabiteuea South': ['Tewai', 'Betarawa'],
-  Beru: ['Taboiaki', 'Tabukiniberu', 'Rongorongo'],
-  Nikunau: ['Rungata', 'Tabomatang'],
-  Onotoa: ['Tabuarorae', 'Buariki'],
-  Tamana: ['Bakaka', 'Kautu'],
-  Arorae: ['Roreti', 'Tamaroa'],
-  Banaba: ['Antereron', 'Tabiang', 'Uma'],
-  Kiritimati: ['London', 'Banana', 'Poland', 'Tabwakea'],
-  Tabuaeran: ['Tetautua', 'Napari'],
-  Teraina: ['Washington Camp', 'Arariki'],
-  Kanton: []
+  'South Tarawa': ['Betio', 'Bairiki', 'Nanikai', 'Teaoraereke', 'Antebuka', 'Banraeaba', 'Ambo', 'Taborio', 'Eita', 'Abarao', 'Bikenibeu', 'Bonriki', 'Marae', 'Kawaiaeboou', 'Temaiku'],
+  'North Tarawa': ['Buariki', 'Abatao', 'Marenanuka', 'Tearinibai', 'Nabeina', 'Taratai', 'Nooto', 'Abaokoro', 'Buota', 'Tabiteuea'],
+  Makin: ['Makin', 'Kiebu'],
+  Butaritari: ['Ukiangang', 'Onomwaru', 'Temwanokunuea', 'Vatikano', 'Antekana', 'Taboniuea', 'Tanimaiaki', 'Tanimainiku', 'Keuea', 'Kuma'],
+  Marakei: ['Rawannawi', 'Temotu', 'Buota', 'Tekarakan', 'Bwainuna', 'Norauea', 'Tekuanga', 'Antai'],
+  Abaiang: ['Takarano', 'Aonibuaka', 'Borotiam', 'Koinawa', 'Morikao', 'Ewena', 'Taburao', 'Tebero', 'Tabwiroa', 'Tuarabu', 'Teirio', 'Tanimaiaki', 'Taniau', 'Tabontebike', 'Nuotaea'],
+  Maiana: ['Bubutei', 'Tebanga', 'Raweai', 'Tebiauea', 'Tematantongo', 'Tekaranga', 'Tebangetua', 'Temwangaua', 'Toora', 'Aobike', 'Tebikerai', 'Teitai'],
+  Kuria: ['Oneke', 'Marenaua', 'Buariki'],
+  Aranuka: ['Takaeang', 'Buariki', 'Kauake', 'Baurua'],
+  Abemama: ['Tabiang', 'Tekatirirake', 'Kabangaki', 'Bangotantekabaia', 'Baretoa', 'Tabontebike', 'Manoku', 'Tebanga', 'Abatiku', 'Kauma', 'Kariatebike'],
+  Nonouti: ['Abamakoro', 'Matang', 'Rotima', 'Teuabu', 'Temanoku', 'Temotu', 'Autukia', 'Mwakauro', 'Taboiaki', 'Benuaroa'],
+  'Tabiteuea North': ['Eita', 'Utiroa', 'Tanaeang', 'Buariki', 'Buota', 'Terikiai', 'Tekaman', 'Kabuna', 'Tauma', 'Aiwa', 'Tekabwibwi', 'Tenatorua', 'Bangai'],
+  'Tabiteuea South': ['Tewai', 'Betarawa', 'Buariki', 'Taungaeaka', 'Nikutoru', 'Katabanga', 'Taku'],
+  Beru: ['Taboiaki', 'Eriko', 'Taubukiniberu', 'Teteirio', 'Nuka', 'Rongorongo', 'Aoniman', 'Autukia', 'Tabiang'],
+  Nikunau: ['Muribenua', 'Tabutoa', 'Rungata', 'Manriki', 'Nikumanu', 'Tabomatang'],
+  Onotoa: ['Tekawa', 'Tanaeang', 'Buariki', 'Temao', 'Otoae', 'Aiaki', 'Tabuarorae'],
+  Tamana: ['Bakaka', 'Barebuka', 'Bakarawa'],
+  Arorae: ['Roreti', 'Tamaroa', 'Taribo'],
+  Banaba: ['Tabwewa', 'Tabiang', 'Umwa', 'Buakonikai'],
+  Kiritimati: ['Banana', 'Poland', 'Tabwakea', 'London'],
+  Tabuaeran: ['Paelau', 'Tereitaki', 'Betania', 'Eten', 'Terine', 'Fareturaina', 'Aontenaa', 'Napari', 'Aramari'],
+  Teraina: ['Tangkore', 'Matanibike', 'Arabata', 'Onouea', 'Kauamwemwe', 'Mwakeitari', 'Abaiang', 'Uteute', 'Tekaitara'],
+  Kanton: ['Tebaronga', 'Tabon te Uaabu']
 };
 
 const KIRIBATI_OTHER_VILLAGE = 'Other (please specify)';
