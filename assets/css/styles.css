@@ -184,6 +184,21 @@ header.site-header a {
   margin: var(--space-1) 0 0;
 }
 
+/* Product card: phone number and delivery icons share one line, grouped
+   left (icons sit just after the number). */
+.store-phone-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.store-phone-row .store-phone,
+.store-phone-row .delivery-icons {
+  margin: 0;
+}
+
 .delivery-icons {
   display: inline-flex;
   gap: var(--space-1);

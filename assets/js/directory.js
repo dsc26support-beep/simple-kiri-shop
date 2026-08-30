@@ -88,16 +88,16 @@ function renderStoreCard(store) {
         <h3>${escapeHtml(displayName)}</h3>
         <div class="store-card-meta">
           ${store.phone ? `<span class="store-phone">${escapeHtml(store.phone)}</span>` : ''}
+          ${renderDeliveryIcons({
+            truck: store.deliveryTruck,
+            ship: store.deliveryShip,
+            airCargo: store.deliveryAirCargo,
+            pickPay: store.deliveryPickPay,
+            truckCost: store.deliveryTruckCost,
+            shipCost: store.deliveryShipCost,
+            airCargoCost: store.deliveryAirCargoCost
+          })}
         </div>
-        ${renderDeliveryIcons({
-          truck: store.deliveryTruck,
-          ship: store.deliveryShip,
-          airCargo: store.deliveryAirCargo,
-          pickPay: store.deliveryPickPay,
-          truckCost: store.deliveryTruckCost,
-          shipCost: store.deliveryShipCost,
-          airCargoCost: store.deliveryAirCargoCost
-        })}
         <p class="helper-text">Visit store →</p>
       </div>
     </a>

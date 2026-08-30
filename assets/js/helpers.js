@@ -257,22 +257,24 @@ function renderBrowseProductCard(product, opts) {
   const priceText = formatPriceLabel(product.variants);
 
   return `
-    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml((soldByVerb(product.category) + ' ' + product.storeName).toLowerCase())}">
+    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
       ${media}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         <strong class="product-price">${priceText}</strong>
-        <p class="helper-text">${soldByVerb(product.category)} ${escapeHtml(product.storeName)}</p>
-        ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
-        ${renderDeliveryIcons({
-          truck: product.storeDeliveryTruck,
-          ship: product.storeDeliveryShip,
-          airCargo: product.storeDeliveryAirCargo,
-          pickPay: product.storeDeliveryPickPay,
-          truckCost: product.storeDeliveryTruckCost,
-          shipCost: product.storeDeliveryShipCost,
-          airCargoCost: product.storeDeliveryAirCargoCost
-        })}
+        <p class="helper-text">${escapeHtml(product.storeName)}</p>
+        <div class="store-phone-row">
+          ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
+          ${renderDeliveryIcons({
+            truck: product.storeDeliveryTruck,
+            ship: product.storeDeliveryShip,
+            airCargo: product.storeDeliveryAirCargo,
+            pickPay: product.storeDeliveryPickPay,
+            truckCost: product.storeDeliveryTruckCost,
+            shipCost: product.storeDeliveryShipCost,
+            airCargoCost: product.storeDeliveryAirCargoCost
+          })}
+        </div>
       </div>
     </a>
   `;
@@ -414,14 +416,6 @@ function renderCategoryButtons(containerId) {
 // cart/checkout.
 const BOOKING_CATEGORIES = ['rentals', 'services'];
 function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
-
-// "Sold by" only makes sense for a goods listing that's actually purchased -
-// a Rentals/Services listing is booked, not sold, from someone.
-function soldByVerb(category) {
-  if (category === 'rentals') return 'Rent by';
-  if (category === 'services') return 'Service by';
-  return 'Sold by';
-}
 
 // Self-contained inline-SVG icons (no external icon library/CDN) - keep the
 // site working offline-first on limited mobile data.
