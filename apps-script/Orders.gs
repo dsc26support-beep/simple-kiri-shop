@@ -114,6 +114,25 @@ function buildSellerOrderEmail(owner, orderId, name, phone, email, island, villa
     'The customer has been asked to call you to arrange payment.';
 }
 
+// Server mirror of the client isCustomerPhoneValid (§16). Local Kiribati
+// numbers (+686/00686/686 prefix, or no country code) must start 730 or 630;
+// any other explicit country code is overseas and unrestricted. Never rely on
+// the frontend check alone - createOrder is public/unauthenticated.
+function isCustomerPhoneValid(phone) {
+  var s = String(phone || '').replace(/[\s()\-.]/g, '');
+  var hasCountryCode = false;
+  if (s.charAt(0) === '+') { s = s.slice(1); hasCountryCode = true; }
+  else if (s.slice(0, 2) === '00') { s = s.slice(2); hasCountryCode = true; }
+
+  var national, local;
+  if (s.slice(0, 3) === '686') { local = true; national = s.slice(3); }
+  else if (hasCountryCode) { local = false; national = s; }
+  else { local = true; national = s; }
+
+  if (!local) return true;
+  return /^(730|630)/.test(national);
+}
+
 function actionCreateOrder(body) {
   var slug = body.storeSlug;
   if (!slug) return fail('storeSlug is required');
@@ -130,6 +149,7 @@ function actionCreateOrder(body) {
   var deliveryMethod = String(body.deliveryMethod || '').trim();
   var paymentMethod = body.paymentMethod || '';
   if (!customerName || !customerPhone) return fail('Name and phone number are required');
+  if (!isCustomerPhoneValid(customerPhone)) return fail('Local phone numbers must start with 730 or 630. For an overseas number, include your country code.');
   if (!island || !village) return fail('Island and village are required');
   var nameErr = capLength(customerName, 100, 'Name');
   if (nameErr) return nameErr;

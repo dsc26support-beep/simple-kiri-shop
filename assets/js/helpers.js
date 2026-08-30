@@ -417,6 +417,31 @@ function renderCategoryButtons(containerId) {
 const BOOKING_CATEGORIES = ['rentals', 'services'];
 function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
 
+// Phone classification (§16). Local Kiribati customers must use a number
+// starting 730 or 630; overseas customers are unrestricted. Auto-detected by
+// country code: a +686 / 00686 / 686 prefix, OR no country code at all, is
+// treated as local (the national part, after any 686, must then begin 730 or
+// 630); any OTHER explicit country code (+64, 0061, …) is overseas and exempt.
+// Overseas customers therefore need to include their country code.
+function classifyKiribatiPhone(phone) {
+  let s = String(phone || '').replace(/[\s()\-.]/g, '');
+  let hasCountryCode = false;
+  if (s.charAt(0) === '+') { s = s.slice(1); hasCountryCode = true; }
+  else if (s.slice(0, 2) === '00') { s = s.slice(2); hasCountryCode = true; }
+
+  if (s.slice(0, 3) === '686') return { local: true, national: s.slice(3) };
+  if (hasCountryCode) return { local: false, national: s };
+  return { local: true, national: s };
+}
+
+// True if the phone is acceptable: overseas numbers pass unconditionally;
+// local numbers must start 730 or 630.
+function isCustomerPhoneValid(phone) {
+  const c = classifyKiribatiPhone(phone);
+  if (!c.local) return true;
+  return /^(730|630)/.test(c.national);
+}
+
 // Self-contained inline-SVG icons (no external icon library/CDN) - keep the
 // site working offline-first on limited mobile data.
 const DELIVERY_ICON_SVG = {
