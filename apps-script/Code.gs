@@ -16,7 +16,11 @@ var PUBLIC_POST_ACTIONS = [
   // or a vendor with a token) from one action each, so they can't sit only
   // in PROTECTED_POST_ACTIONS - they do their own optional auth internally
   // via resolveChatRequest() in Chat.gs. See that file for why.
-  'sendMessage', 'getConversation', 'markAsRead', 'sendChatImage', 'setTyping'
+  'sendMessage', 'getConversation', 'markAsRead', 'sendChatImage', 'setTyping',
+  // Customer accounts (passwordless email code) - all public; getProfile/logout
+  // validate their own customer token internally via requireCustomerAuth.
+  'registerCustomer', 'verifyCustomerEmail', 'loginCustomer', 'verifyCustomerLogin',
+  'getCustomerProfile', 'logoutCustomer'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -126,6 +130,12 @@ function doPost(e) {
         case 'markAsRead': return jsonOut(actionMarkAsRead(body));
         case 'sendChatImage': return jsonOut(actionSendChatImage(body));
         case 'setTyping': return jsonOut(actionSetTyping(body));
+        case 'registerCustomer': return jsonOut(actionRegisterCustomer(body));
+        case 'verifyCustomerEmail': return jsonOut(actionVerifyCustomerEmail(body));
+        case 'loginCustomer': return jsonOut(actionLoginCustomer(body));
+        case 'verifyCustomerLogin': return jsonOut(actionVerifyCustomerLogin(body));
+        case 'getCustomerProfile': return jsonOut(actionGetCustomerProfile(body));
+        case 'logoutCustomer': return jsonOut(actionLogoutCustomer(body));
       }
     }
 

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign In — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-top-row">
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+        </ul>
+      </nav>
+      <img src="assets/img/favicon.svg" alt="Mwakete" class="header-logo-mark">
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="container auth-card-wrap">
+      <div class="auth-card">
+        <h1 id="auth-title">Sign in to Mwakete</h1>
+
+        <div class="auth-tabs" role="tablist" aria-label="Sign in or create an account">
+          <button type="button" class="auth-tab is-active" id="tab-signin" role="tab" aria-selected="true">Sign In</button>
+          <button type="button" class="auth-tab" id="tab-signup" role="tab" aria-selected="false">Create Account</button>
+        </div>
+
+        <!-- Sign in -->
+        <div id="panel-signin" class="auth-panel">
+          <form id="login-form" novalidate>
+            <div class="field">
+              <label for="login-email">Email</label>
+              <input id="login-email" type="email" autocomplete="email" required>
+            </div>
+            <p id="login-error" class="form-error" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
+            <p class="helper-text">We'll email you a 6-digit code to sign in — no password needed.</p>
+          </form>
+
+          <form id="login-code-form" class="hidden" novalidate>
+            <p class="helper-text" id="login-code-hint"></p>
+            <div class="field">
+              <label for="login-code">Enter the 6-digit code</label>
+              <input id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+            </div>
+            <p id="login-code-error" class="form-error" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-block">Verify &amp; sign in</button>
+            <button type="button" id="login-back" class="btn btn-block">Use a different email</button>
+          </form>
+        </div>
+
+        <!-- Create account -->
+        <div id="panel-signup" class="auth-panel hidden">
+          <form id="signup-form" novalidate>
+            <div class="field">
+              <label for="signup-name">Your Name</label>
+              <input id="signup-name" type="text" autocomplete="name" required>
+            </div>
+            <div class="field">
+              <label for="signup-email">Email</label>
+              <input id="signup-email" type="email" autocomplete="email" required>
+            </div>
+            <div class="field">
+              <label for="signup-phone">Phone Number</label>
+              <input id="signup-phone" type="tel" autocomplete="tel" required>
+              <p class="helper-text">Local numbers start with 730 or 630. Overseas? Include your country code (e.g. +64…).</p>
+            </div>
+            <p id="signup-error" class="form-error" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
+          </form>
+
+          <form id="signup-code-form" class="hidden" novalidate>
+            <p class="helper-text" id="signup-code-hint"></p>
+            <div class="field">
+              <label for="signup-code">Enter the 6-digit code</label>
+              <input id="signup-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+            </div>
+            <p id="signup-code-error" class="form-error" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-block">Verify &amp; create account</button>
+            <button type="button" id="signup-back" class="btn btn-block">Change my details</button>
+          </form>
+        </div>
+
+        <p class="helper-text auth-alt"><a href="index.html">← Back to Home</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/helpers.js"></script>
+  <script src="assets/js/cookie-consent.js"></script>
+  <script src="assets/js/customer-auth.js"></script>
+  <script src="assets/js/customer-login.js"></script>
+  <script src="assets/js/register-sw.js"></script>
+</body>
+</html>
