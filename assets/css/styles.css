@@ -751,10 +751,30 @@ footer.site-footer .copyright {
   transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@media (max-width: 480px) {
+/* §21: on mobile the chat takes over the whole screen - a dedicated
+   messaging screen rather than a floating window. Full viewport, no rounded
+   corners, safe-area padding so the header clears the notch and the input row
+   clears the home indicator; the header X acts as back/close. Slides up from
+   the bottom instead of the desktop scale animation. */
+@media (max-width: 600px) {
   .chat-window {
-    width: calc(100vw - var(--space-3) * 2);
-    height: calc(100vh - 140px);
+    inset: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* dynamic vh: accounts for mobile browser chrome */
+    max-height: none;
+    border-radius: 0;
+    transform-origin: center bottom;
+    transform: translateY(100%);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .chat-window.chat-window--open {
+    transform: translateY(0);
   }
 }
 
