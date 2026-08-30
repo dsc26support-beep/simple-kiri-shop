@@ -50,10 +50,14 @@ function renderProductCard(product) {
             <select id="variety-${pid}" class="variety-select">${options}</select>
           </div>
           <div class="booking-dates-row">
-            <label class="sr-only" for="start-${pid}">Start date</label>
-            <input id="start-${pid}" class="booking-start-input" type="date">
-            <label class="sr-only" for="end-${pid}">End date</label>
-            <input id="end-${pid}" class="booking-end-input" type="date">
+            <div class="booking-date-field">
+              <label class="booking-date-label" for="start-${pid}">Pick-up date</label>
+              <input id="start-${pid}" class="booking-start-input" type="date" aria-label="Pick-up date">
+            </div>
+            <div class="booking-date-field">
+              <label class="booking-date-label" for="end-${pid}">Return date</label>
+              <input id="end-${pid}" class="booking-end-input" type="date" aria-label="Return date">
+            </div>
           </div>
           <div class="booking-contact-fields">
             <label class="sr-only" for="name-${pid}">Your name</label>
@@ -87,6 +91,7 @@ function renderProductCard(product) {
           <label class="sr-only" for="variety-${pid}">Choose an option for ${escapeHtml(product.name)}</label>
           <select id="variety-${pid}" class="variety-select">${options}</select>
         </div>
+        <p class="product-shipping-note helper-text">Shipping fee and delivery date to be negotiated. Chat with store for more details.</p>
         <div class="product-actions">
           <label class="sr-only" for="qty-${pid}">Quantity</label>
           <input id="qty-${pid}" class="qty-input" type="number" min="1" value="1" inputmode="numeric">

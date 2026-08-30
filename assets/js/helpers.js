@@ -265,15 +265,17 @@ function renderBrowseProductCard(product, opts) {
         <p class="helper-text">${escapeHtml(product.storeName)}</p>
         <div class="store-phone-row">
           ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
-          ${renderDeliveryIcons({
-            truck: product.storeDeliveryTruck,
-            ship: product.storeDeliveryShip,
-            airCargo: product.storeDeliveryAirCargo,
-            pickPay: product.storeDeliveryPickPay,
-            truckCost: product.storeDeliveryTruckCost,
-            shipCost: product.storeDeliveryShipCost,
-            airCargoCost: product.storeDeliveryAirCargoCost
-          })}
+          ${isBookingCategory(product.category)
+            ? '' /* delivery flags are store-wide; they're meaningless (and misleading) on a rental/service listing, so suppress them here — the goods listings and the store page keep them */
+            : renderDeliveryIcons({
+                truck: product.storeDeliveryTruck,
+                ship: product.storeDeliveryShip,
+                airCargo: product.storeDeliveryAirCargo,
+                pickPay: product.storeDeliveryPickPay,
+                truckCost: product.storeDeliveryTruckCost,
+                shipCost: product.storeDeliveryShipCost,
+                airCargoCost: product.storeDeliveryAirCargoCost
+              })}
         </div>
       </div>
     </a>

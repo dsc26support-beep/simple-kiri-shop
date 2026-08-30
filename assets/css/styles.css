@@ -1898,12 +1898,29 @@ legend {
   margin-top: var(--space-2);
 }
 
-.booking-dates-row input {
+/* Each date input now sits under a visible "Pick-up date" / "Return date"
+   label (native type=date ignores placeholder). The field wrapper is the flex
+   item; the input fills it. */
+.booking-date-field {
   /* min-width: 0 lets a flex item shrink below its content's intrinsic
      size (the default `auto` doesn't) - without it, a native date input's
      own minimum width made the row overflow the card's overflow:hidden
      boundary, clipping the end-date field off entirely on narrower cards. */
   flex: 1 1 140px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-date-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.booking-dates-row input {
+  width: 100%;
   min-width: 0;
 }
 
