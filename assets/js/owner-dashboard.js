@@ -37,6 +37,10 @@ async function init() {
   renderStoreToggle(owner.status);
   document.getElementById('store-status-toggle').addEventListener('click', onToggleStoreStatus);
 
+  if (owner.isAdmin) {
+    document.getElementById('admin-link-wrap').classList.remove('hidden');
+  }
+
   // limit:100 so the pending counts below (and the totals) reflect the whole
   // store, not just the first default page. The Messages badge is populated
   // separately by owner-nav.js (getUnreadCount).

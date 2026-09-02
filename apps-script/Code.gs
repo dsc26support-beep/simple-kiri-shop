@@ -31,7 +31,8 @@ var PROTECTED_POST_ACTIONS = [
   'listOwnerOrders', 'updateOrderStatus', 'setStoreStatus',
   'listOwnerBookings', 'updateBookingStatus',
   'enable2FARequest', 'confirm2FASetup', 'disable2FA',
-  'getVendorConversations', 'deleteConversation', 'archiveConversation', 'getUnreadCount'
+  'getVendorConversations', 'deleteConversation', 'archiveConversation', 'getUnreadCount',
+  'listFeatured', 'addFeatured', 'removeFeatured'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -100,6 +101,7 @@ function doGet(e) {
       case 'listTopProducts': return jsonOut(actionListTopProducts());
       case 'listTopStores': return jsonOut(actionListTopStores());
       case 'getHomePageData': return jsonOut(actionGetHomePageData());
+      case 'getTips': return jsonOut(actionGetTips(params));
       default: return jsonOut(fail('Unknown action: ' + params.action));
     }
   } catch (err) {
@@ -177,6 +179,9 @@ function doPost(e) {
         case 'deleteConversation': return jsonOut(actionDeleteConversation(owner, body));
         case 'archiveConversation': return jsonOut(actionArchiveConversation(owner, body));
         case 'getUnreadCount': return jsonOut(actionGetUnreadCount(owner));
+        case 'listFeatured': return jsonOut(actionListFeatured(owner, body));
+        case 'addFeatured': return jsonOut(actionAddFeatured(owner, body));
+        case 'removeFeatured': return jsonOut(actionRemoveFeatured(owner, body));
       }
     }
 
