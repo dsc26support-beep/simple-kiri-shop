@@ -33,6 +33,8 @@ async function init() {
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not load this store.';
     document.getElementById('place-order-btn').disabled = true;
+    // Say the options failed to load - never that the store cannot deliver.
+    showDeliveryLoadError();
     return;
   }
   storeInfo = res.store;
@@ -238,6 +240,53 @@ function deliveryCostOf(m) {
   return storeInfo['delivery' + m[0].toUpperCase() + m.slice(1) + 'Cost'];
 }
 
+// A paid method whose fee the vendor has never filled in. publicOwnerFields
+// maps a blank cost cell to null and a real zero to 0, so null is
+// unambiguously "not set" - it must never be presented or charged as Free,
+// which is what happened before. Pick & Pay is the one method free by design.
+function isNegotiatedDelivery(m) {
+  return m !== 'pickPay' && deliveryCostOf(m) == null;
+}
+
+// Reuse the store chat that is already on this page rather than adding a
+// second contact path.
+function openStoreChat() {
+  var fab = document.getElementById('chat-fab');
+  if (fab) fab.click();
+}
+
+function hideDeliveryAlert() {
+  const el = document.getElementById('delivery-alert');
+  el.className = 'delivery-alert hidden';
+  el.innerHTML = '';
+}
+
+// "We know the options, and none reach you." Always offers a way out so the
+// customer is never stuck: change the destination above, or open the chat.
+function showDeliveryUnavailable() {
+  const el = document.getElementById('delivery-alert');
+  el.className = 'delivery-alert delivery-alert--unavailable';
+  el.innerHTML =
+    '<p class="delivery-alert-text">This store can\'t deliver to your island/village with an available method. ' +
+    'Double-check your selection above, or contact the store directly.</p>' +
+    '<button type="button" class="btn btn-small delivery-alert-btn" id="delivery-contact-store">Contact Store</button>';
+  document.getElementById('delivery-contact-store').addEventListener('click', openStoreChat);
+}
+
+// Distinct from the above on purpose: here the store's delivery configuration
+// never loaded, so we do NOT know what is available. Saying "this store can't
+// deliver" would be a guess presented as fact, so this is a neutral error with
+// a retry instead.
+function showDeliveryLoadError() {
+  const el = document.getElementById('delivery-alert');
+  el.className = 'delivery-alert delivery-alert--failed';
+  el.innerHTML =
+    '<p class="delivery-alert-text">We could not load this store\'s delivery options just now. ' +
+    'This does not mean the store cannot deliver to you.</p>' +
+    '<button type="button" class="btn btn-small delivery-alert-btn" id="delivery-retry">Try again</button>';
+  document.getElementById('delivery-retry').addEventListener('click', () => window.location.reload());
+}
+
 function renderDeliveryMethodOptions(eligible) {
   const container = document.getElementById('delivery-method-options');
   const helpEl = document.getElementById('delivery-method-help');
@@ -248,26 +297,36 @@ function renderDeliveryMethodOptions(eligible) {
 
   if (eligible.length === 0) {
     container.innerHTML = '';
-    helpEl.textContent = document.getElementById('checkout-island').value
-      ? "This store can't deliver to your island/village with an available method. Double-check your selection above, or contact the store directly."
-      : 'Choose your island and village first — available delivery methods depend on where you and the store are.';
+    if (document.getElementById('checkout-island').value) {
+      helpEl.textContent = '';
+      showDeliveryUnavailable();
+    } else {
+      helpEl.textContent = 'Choose your island and village first — available delivery methods depend on where you and the store are.';
+      hideDeliveryAlert();
+    }
     placeOrderBtn.disabled = true;
     updateReviewTotal();
     return;
   }
 
+  hideDeliveryAlert();
   helpEl.textContent = '';
   placeOrderBtn.disabled = false;
 
   // Default the selection to Pick & Pay when it's available (it's free and
   // needs no delivery arrangement) - otherwise the first eligible method.
   // A previously-chosen method always wins on re-render.
-  const defaultMethod = previousValue || (eligible.indexOf('pickPay') !== -1 ? 'pickPay' : eligible[0]);
+  // Keep the customer's choice only while it is still eligible - changing
+  // island used to leave a stale value selected (or nothing checked at all)
+  // while Place Order stayed enabled.
+  const keepPrevious = previousValue && eligible.indexOf(previousValue) !== -1;
+  const defaultMethod = keepPrevious ? previousValue : (eligible.indexOf('pickPay') !== -1 ? 'pickPay' : eligible[0]);
 
   container.innerHTML = eligible
     .map((m) => {
       const cost = deliveryCostOf(m);
-      const priceText = cost == null ? '' : cost === 0 ? ' — Free' : ` — ${formatMoney(cost)}`;
+      // null = fee never set -> negotiated; 0 = genuinely free.
+      const priceText = cost == null ? ' — To Be Negotiated' : cost === 0 ? ' — Free' : ` — ${formatMoney(cost)}`;
       const checked = m === defaultMethod;
       return `
         <label class="delivery-method-option">
@@ -286,7 +345,10 @@ function updateReviewTotal() {
   const subtotal = Cart.getTotal(currentSlug);
   const selected = document.querySelector('input[name="deliveryMethod"]:checked');
   const cost = selected && storeInfo ? deliveryCostOf(selected.value) : null;
-  const deliveryCost = cost != null ? cost : 0;
+  const negotiated = !!(selected && storeInfo && isNegotiatedDelivery(selected.value));
+  // An unknown fee is not zero. It stays out of the total rather than silently
+  // adding $0 and presenting the result as a final price.
+  const deliveryCost = negotiated || cost == null ? 0 : cost;
 
   document.getElementById('review-subtotal').textContent = formatMoney(subtotal);
 
@@ -294,9 +356,20 @@ function updateReviewTotal() {
   if (selected) {
     deliveryRow.classList.remove('hidden');
     document.getElementById('delivery-review-label').textContent = 'Delivery';
-    document.getElementById('review-delivery-cost').textContent = deliveryCost === 0 ? 'Free' : formatMoney(deliveryCost);
+    document.getElementById('review-delivery-cost').textContent = negotiated
+      ? 'To Be Negotiated'
+      : deliveryCost === 0 ? 'Free' : formatMoney(deliveryCost);
   } else {
     deliveryRow.classList.add('hidden');
+  }
+
+  const noteEl = document.getElementById('delivery-negotiated-note');
+  if (negotiated) {
+    noteEl.textContent = 'Shipping fee and delivery date to be negotiated. Chat with store for more details.';
+    noteEl.classList.remove('hidden');
+  } else {
+    noteEl.textContent = '';
+    noteEl.classList.add('hidden');
   }
 
   document.getElementById('review-total').textContent = formatMoney(subtotal + deliveryCost);

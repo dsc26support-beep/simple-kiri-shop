@@ -1297,6 +1297,81 @@ footer.site-footer .copyright {
   }
 }
 
+/* Checkout delivery states.
+ *
+ * Two visually distinct cases, deliberately not interchangeable:
+ *   --unavailable  we loaded the store's options and none reach this
+ *                  destination. Light red: unambiguous without being alarming.
+ *   --failed       the options never loaded, so we do NOT know what is
+ *                  available. Neutral, because telling someone a store cannot
+ *                  deliver to them when we simply failed to ask would be a
+ *                  guess presented as fact.
+ * Both always carry an action so the customer is never stuck on this page.
+ */
+.delivery-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.delivery-alert-text {
+  flex: 1 1 14em;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.delivery-alert-btn {
+  flex: 0 0 auto;
+}
+
+.delivery-alert--unavailable {
+  background: #fdecec;
+  border-color: #f2bcbc;
+  color: #8c1d18;
+}
+
+.delivery-alert--unavailable .delivery-alert-btn {
+  border-color: #c5544e;
+  background: #fff;
+  color: #8c1d18;
+}
+
+.delivery-alert--failed {
+  background: var(--color-bg-alt);
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}
+
+/* Shown when the selected method's fee is not fixed. Sits under the delivery
+   options so the customer reads it before committing, and echoes the wording
+   already used on the product page. */
+.delivery-negotiated-note {
+  margin: var(--space-2) 0 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+@media (prefers-color-scheme: dark) {
+  .delivery-alert--unavailable {
+    background: #3a2523;
+    border-color: #6b3a36;
+    color: #f3b8b4;
+  }
+
+  .delivery-alert--unavailable .delivery-alert-btn {
+    background: #2a2c30;
+    border-color: #6b3a36;
+    color: #f3b8b4;
+  }
+}
+
 .cookie-consent-banner {
   position: fixed;
   left: 0;
