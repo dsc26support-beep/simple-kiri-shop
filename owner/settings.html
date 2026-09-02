@@ -73,20 +73,32 @@
         </div>
 
         <h2>Delivery Methods</h2>
-        <p class="helper-text">Select all the ways you can deliver orders — these show as icons next to your store name. Set a cost for each ($0 = free delivery, shown with a green icon).</p>
+        <p class="helper-text">Select all the ways you can deliver orders — these show as icons next to your store name. For each paid method, either set a fixed fee ($0 = free delivery, shown with a green icon) or choose <strong>To Be Negotiated</strong> if the price depends on the order and you agree it with the customer.</p>
         <div class="delivery-toggle-group" id="delivery-toggle-group" role="group" aria-label="Delivery methods">
           <div class="delivery-method-row">
             <button type="button" class="delivery-toggle-btn" id="delivery-truck-btn" data-method="truck" aria-pressed="false"></button>
+            <div class="delivery-fee-mode hidden" id="delivery-truck-mode" role="radiogroup" aria-label="Truck delivery fee type">
+              <label class="delivery-fee-mode-choice"><input type="radio" name="truckFeeMode" value="fixed" checked> Fixed</label>
+              <label class="delivery-fee-mode-choice"><input type="radio" name="truckFeeMode" value="negotiated"> To Be Negotiated</label>
+            </div>
             <label class="sr-only" for="delivery-truck-cost">Truck delivery cost</label>
             <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-truck-cost" placeholder="Cost ($0 = free)">
           </div>
           <div class="delivery-method-row">
             <button type="button" class="delivery-toggle-btn" id="delivery-ship-btn" data-method="ship" aria-pressed="false"></button>
+            <div class="delivery-fee-mode hidden" id="delivery-ship-mode" role="radiogroup" aria-label="Ship delivery fee type">
+              <label class="delivery-fee-mode-choice"><input type="radio" name="shipFeeMode" value="fixed" checked> Fixed</label>
+              <label class="delivery-fee-mode-choice"><input type="radio" name="shipFeeMode" value="negotiated"> To Be Negotiated</label>
+            </div>
             <label class="sr-only" for="delivery-ship-cost">Ship delivery cost</label>
             <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-ship-cost" placeholder="Cost ($0 = free)">
           </div>
           <div class="delivery-method-row">
             <button type="button" class="delivery-toggle-btn" id="delivery-aircargo-btn" data-method="airCargo" aria-pressed="false"></button>
+            <div class="delivery-fee-mode hidden" id="delivery-aircargo-mode" role="radiogroup" aria-label="Air cargo delivery fee type">
+              <label class="delivery-fee-mode-choice"><input type="radio" name="aircargoFeeMode" value="fixed" checked> Fixed</label>
+              <label class="delivery-fee-mode-choice"><input type="radio" name="aircargoFeeMode" value="negotiated"> To Be Negotiated</label>
+            </div>
             <label class="sr-only" for="delivery-aircargo-cost">Air cargo delivery cost</label>
             <input type="number" min="0" step="0.01" class="delivery-cost-input hidden" id="delivery-aircargo-cost" placeholder="Cost ($0 = free)">
           </div>
