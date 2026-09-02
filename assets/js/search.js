@@ -12,15 +12,18 @@
 
 const PAGE_SIZE = 24;
 
-// Only offer a facet the data can actually support. There is no rating,
-// delivery-time or discount data in the marketplace, so there is deliberately
-// no "Highest rated", "Fastest delivery" or "Biggest discount" sort - inventing
-// one would be a ranking the marketplace cannot honestly justify.
+// Only offer a facet the data can actually support. "Highest rated" is backed
+// by real customer reviews (Reviews.gs computes the aggregate server-side).
+// There is still no delivery-time or discount data, so there is deliberately
+// no "Fastest delivery" or "Biggest discount" sort - inventing one would be a
+// ranking the marketplace cannot honestly justify.
 const SORTS = {
   relevance: null, // server order, refined by relevanceScore when there's a query
   cheapest: (a, b) => minPrice(a) - minPrice(b),
   dearest: (a, b) => minPrice(b) - minPrice(a),
   popular: (a, b) => (Number(b.views) || 0) - (Number(a.views) || 0),
+  // Unrated products sort last rather than ahead of a genuine 1-star.
+  rated: (a, b) => (Number(b.rating) || -1) - (Number(a.rating) || -1),
   newest: (a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')),
   name: (a, b) => String(a.name || '').localeCompare(String(b.name || ''))
 };

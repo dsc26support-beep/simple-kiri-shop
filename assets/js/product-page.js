@@ -63,6 +63,9 @@ async function init() {
   document.title = `${product.name} — Mwakete`;
   wireActions();
   wireGallery();
+  // Deliberately not awaited: reviews are supporting information, and a slow
+  // (or absent) Reviews tab must never hold up the product itself.
+  loadReviews(product.productId);
 }
 
 function wireActions() {
@@ -163,4 +166,160 @@ async function onRequestBooking(btn) {
   }
   btn.textContent = 'Requested';
   statusEl.textContent = 'Booking request sent — the vendor will confirm or decline.';
+}
+
+/* ---------- Ratings & reviews ---------- */
+
+// Loaded after the product itself so a slow or missing Reviews tab can never
+// delay or block the thing the customer actually came for.
+async function loadReviews(productId) {
+  const section = document.getElementById('reviews-section');
+  const statusEl = document.getElementById('reviews-status');
+  section.hidden = false;
+
+  const stop = startLoadingMessage(statusEl);
+  const res = await Api.get('listProductReviews', { productId });
+  stop();
+
+  if (!res.ok) {
+    showLoadFailedMessage(statusEl);
+    return;
+  }
+  statusEl.textContent = '';
+  renderReviewSummary(res);
+  renderReviewList(res.reviews || []);
+  renderReviewForm(productId, res.reviews || []);
+}
+
+function renderReviewSummary(data) {
+  const el = document.getElementById('reviews-summary');
+  const count = Number(data.count) || 0;
+  if (count === 0) {
+    // Explicitly "none yet" rather than zero stars, which reads as a bad score.
+    el.innerHTML = '<p class="helper-text">No reviews yet. Be the first to review this product.</p>';
+    return;
+  }
+
+  const avg = Number(data.average);
+  const dist = data.distribution || [0, 0, 0, 0, 0];
+  const rows = [5, 4, 3, 2, 1]
+    .map((star) => {
+      const n = Number(dist[star - 1]) || 0;
+      const pct = count ? Math.round((n / count) * 100) : 0;
+      return `<div class="rating-bar-row">
+          <span class="rating-bar-label">${star}★</span>
+          <span class="rating-bar"><span class="rating-bar-fill" style="width:${pct}%"></span></span>
+          <span class="rating-bar-count">${n}</span>
+        </div>`;
+    })
+    .join('');
+
+  el.innerHTML = `
+    <div class="reviews-average">
+      <strong class="reviews-average-value">${avg.toFixed(1)}</strong>
+      ${renderStars(avg, count)}
+      <span class="helper-text">${count} review${count === 1 ? '' : 's'}</span>
+    </div>
+    <div class="rating-bars">${rows}</div>`;
+}
+
+function renderReviewList(reviews) {
+  const el = document.getElementById('reviews-list');
+  el.innerHTML = reviews
+    .map(
+      (r) => `
+      <article class="review-item">
+        <div class="review-head">
+          ${renderStars(r.rating, 1).replace(/<span class="rating-count">.*?<\/span>/, '')}
+          <span class="review-author">${escapeHtml(r.customerName || 'Customer')}</span>
+          ${r.verifiedPurchase ? '<span class="review-verified">✓ Verified purchase</span>' : ''}
+        </div>
+        ${r.comment ? `<p class="review-comment">${escapeHtml(r.comment)}</p>` : ''}
+        <p class="review-date helper-text">${escapeHtml(formatReviewDate(r.createdAt))}</p>
+      </article>`
+    )
+    .join('');
+}
+
+function formatReviewDate(iso) {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+}
+
+// Only a signed-in customer can review, and only once. Everyone else is told
+// why rather than being shown a form that will be rejected on submit.
+function renderReviewForm(productId, reviews) {
+  const slot = document.getElementById('review-form-slot');
+  const signedIn = typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken();
+
+  if (!signedIn) {
+    slot.innerHTML =
+      '<p class="helper-text review-signin-prompt">' +
+      '<a href="customer-login.html">Sign in or create an account</a> to leave a review.</p>';
+    return;
+  }
+
+  const profile = CustomerAuth.getProfile && CustomerAuth.getProfile();
+  const mine = profile && reviews.some((r) => r.customerName === profile.name);
+  if (mine) {
+    slot.innerHTML = '<p class="helper-text">You have already reviewed this product.</p>';
+    return;
+  }
+
+  slot.innerHTML = `
+    <form class="review-form" id="review-form">
+      <fieldset class="review-stars-field">
+        <legend>Your rating</legend>
+        ${[1, 2, 3, 4, 5]
+          .map(
+            (n) => `<label class="review-star-choice">
+              <input type="radio" name="reviewRating" value="${n}" required>
+              <span>${n}★</span>
+            </label>`
+          )
+          .join('')}
+      </fieldset>
+      <div class="field">
+        <label for="review-comment">Your review <span class="helper-text">(optional)</span></label>
+        <textarea id="review-comment" rows="3" maxlength="1000"></textarea>
+      </div>
+      <p class="form-error hidden" id="review-error"></p>
+      <button type="submit" class="btn btn-primary" id="review-submit">Submit review</button>
+    </form>`;
+
+  document.getElementById('review-form').addEventListener('submit', (e) => onSubmitReview(e, productId));
+}
+
+async function onSubmitReview(e, productId) {
+  e.preventDefault();
+  const errorEl = document.getElementById('review-error');
+  const btn = document.getElementById('review-submit');
+  const checked = document.querySelector('input[name="reviewRating"]:checked');
+
+  errorEl.classList.add('hidden');
+  if (!checked) {
+    errorEl.textContent = 'Please choose a rating.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = 'Submitting<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+
+  const res = await Api.post('submitReview', {
+    token: CustomerAuth.getToken(),
+    productId,
+    rating: Number(checked.value),
+    comment: document.getElementById('review-comment').value.trim()
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Submit review';
+
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not submit your review.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  await loadReviews(productId);
 }

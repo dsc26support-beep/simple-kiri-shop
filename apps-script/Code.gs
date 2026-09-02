@@ -22,7 +22,10 @@ var PUBLIC_POST_ACTIONS = [
   'registerCustomer', 'verifyCustomerEmail', 'loginCustomer', 'verifyCustomerLogin',
   'getCustomerProfile', 'logoutCustomer',
   'listCustomerOrders', 'listCustomerBookings', 'updateCustomerProfile',
-  'getCustomerInbox'
+  'getCustomerInbox',
+  // Reviews: submitReview does its own customer auth internally (a review
+  // requires a signed-in customer), same pattern as the account actions above.
+  'submitReview'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -52,7 +55,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'search1-2026-09-02';
+var APP_VERSION = 'reviews1-2026-09-02';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -111,7 +114,9 @@ var REQUIRED_TABS = {
   Customers: ['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt'],
   CustomerSessions: ['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'],
   CustomerCodes: ['Token', 'Email', 'Code', 'Purpose', 'Name', 'Phone', 'CreatedAt', 'ExpiresAt', 'Attempts'],
-  Featured: ['FeaturedId', 'Type', 'RefId', 'SortOrder', 'CreatedAt']
+  Featured: ['FeaturedId', 'Type', 'RefId', 'SortOrder', 'CreatedAt'],
+  Reviews: ['ReviewId', 'ProductId', 'OwnerId', 'StoreSlug', 'CustomerId', 'CustomerName',
+            'Rating', 'Comment', 'VerifiedPurchase', 'Status', 'CreatedAt', 'UpdatedAt']
 };
 
 /**
@@ -164,6 +169,7 @@ function actionCheckSetup() {
   var missingFiles = [];
   if (typeof actionRegisterCustomer !== 'function') missingFiles.push('Customers.gs');
   if (typeof actionGetTips !== 'function') missingFiles.push('Admin.gs');
+  if (typeof actionSubmitReview !== 'function') missingFiles.push('Reviews.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -311,6 +317,7 @@ function doGet(e) {
       case 'listTopStores': return jsonOut(actionListTopStores());
       case 'getHomePageData': return jsonOut(actionGetHomePageData());
       case 'getTips': return jsonOut(actionGetTips(params));
+      case 'listProductReviews': return jsonOut(actionListProductReviews(params));
       // Deploy health probe: no auth, no Sheets access, so it answers even on a
       // half-configured project - it can only report the running build or, if
       // absent, prove the deployment is stale.
@@ -358,6 +365,7 @@ function doPost(e) {
         case 'listCustomerBookings': return jsonOut(actionListCustomerBookings(body));
         case 'updateCustomerProfile': return jsonOut(actionUpdateCustomerProfile(body));
         case 'getCustomerInbox': return jsonOut(actionGetCustomerInbox(body));
+        case 'submitReview': return jsonOut(actionSubmitReview(body));
       }
     }
 

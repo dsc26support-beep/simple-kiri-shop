@@ -357,6 +357,29 @@ these three steps in order, every time:
 Bump `APP_VERSION` in `apps-script/Code.gs` whenever you change the
 `apps-script/` files, so the probe stays meaningful.
 
+### Ratings and reviews
+
+Reviews live in a **`Reviews`** tab, created by `setupSheets` like the others:
+
+`ReviewId | ProductId | OwnerId | StoreSlug | CustomerId | CustomerName | Rating | Comment | VerifiedPurchase | Status | CreatedAt | UpdatedAt`
+
+Who can write one is deliberately narrow, because ratings are what make
+"Highest rated" and any future "Best Value" ranking trustworthy:
+
+- A review requires a **signed-in customer**. Sellers never write to this sheet,
+  and nothing submitted from a browser can influence a rating — the aggregate is
+  computed server-side in `Reviews.gs` from rows only customers can create.
+- **One review per customer per product**, enforced inside a lock on write.
+- **`VerifiedPurchase` is derived, never submitted**: it is set to `true` only
+  when a non-cancelled `Orders` row exists for that customer's email containing
+  that product. A client that posts `verifiedPurchase: true` is ignored.
+- `Status` is forced to `published` on write; `hidden` exists so a review can be
+  withdrawn from the aggregate without deleting the row.
+
+Every read path tolerates the tab being **absent** — `productRatingIndex()`
+returns `{}` and `listProductReviews` returns an empty result — so a deployment
+that has not run `setupSheets` keeps browsing and buying exactly as before.
+
 ### Creating or repairing the Sheet tabs
 
 Header names are load-bearing and the failure mode is silent, so **do not type
