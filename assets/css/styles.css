@@ -435,7 +435,7 @@ footer.site-footer .copyright {
 .floating-action-btn {
   position: fixed;
   bottom: var(--space-3);
-  z-index: 1001; /* stays above .cookie-consent-banner (1000) if both show at once */
+  z-index: 1001; /* above page content; below the chat window (1002) and consent banner (1003) */
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -723,7 +723,7 @@ footer.site-footer .copyright {
  */
 .chat-window {
   position: fixed;
-  z-index: 1002; /* above the FAB (1001) and cookie banner (1000) */
+  z-index: 1002; /* above the FAB (1001); below the bottom nav and consent banner (1003) */
   right: max(var(--space-3), env(safe-area-inset-right));
   bottom: calc(56px + var(--space-3) * 2 + env(safe-area-inset-bottom));
   width: 360px;
@@ -1302,7 +1302,14 @@ footer.site-footer .copyright {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
+  /* Above the floating buttons (1001) and chat window (1002) so the install
+     pill can't sit on top of the notice text. Deliberately NOT above the
+     blocking overlays - .loading-overlay (1004) and .login-chooser-overlay
+     (1005) are modal and must stay on top. Ties with the top-anchored
+     .chat-notification-toast (1003), which never overlaps a bottom-anchored
+     bar. It never hides the bottom nav (also 1003) because it is offset
+     above it on mobile - see the max-width:700px block. */
+  z-index: 1003;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1757,6 +1764,14 @@ footer.site-footer .copyright {
   body.has-bottom-nav .floating-action-btn--right,
   body.has-bottom-nav .floating-action-btn--left {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
+  }
+
+  /* The consent banner is anchored to the bottom of the viewport, which is
+     where the nav now lives. Left at bottom:0 the nav covers the banner's
+     lower edge - and since the banner wraps on a narrow screen, the Accept
+     button is exactly what ends up hidden, leaving no way to dismiss it. */
+  body.has-bottom-nav .cookie-consent-banner {
+    bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
   }
 }
 
