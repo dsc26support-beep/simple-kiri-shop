@@ -47,8 +47,59 @@
     <section aria-labelledby="results-heading">
       <div class="container">
         <h1 id="results-heading">Results</h1>
+
+        <div class="results-toolbar" id="results-toolbar" hidden>
+          <button type="button" class="btn btn-small" id="filters-toggle" aria-expanded="false" aria-controls="filters-panel">
+            Filters
+            <span class="filters-count" id="filters-count" hidden></span>
+          </button>
+          <div class="field results-sort-field">
+            <label class="sr-only" for="results-sort">Sort results</label>
+            <select id="results-sort">
+              <option value="relevance">Relevance</option>
+              <option value="cheapest">Price: low to high</option>
+              <option value="dearest">Price: high to low</option>
+              <option value="popular">Most popular</option>
+              <option value="newest">Newest</option>
+              <option value="name">Name A–Z</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filters-panel" id="filters-panel" hidden>
+          <div class="filters-row" id="filter-price-row">
+            <span class="filters-label" id="price-range-label">Price</span>
+            <div class="price-range" role="group" aria-labelledby="price-range-label">
+              <label class="sr-only" for="filter-price-max">Maximum price</label>
+              <input type="range" id="filter-price-max" min="0" max="100" step="1" value="100">
+              <output id="filter-price-out" for="filter-price-max"></output>
+            </div>
+          </div>
+          <div class="filters-row" id="filter-delivery-row">
+            <span class="filters-label" id="delivery-filter-label">Delivery available</span>
+            <div class="filters-chips" id="filter-delivery" role="group" aria-labelledby="delivery-filter-label"></div>
+          </div>
+          <div class="filters-row" id="filter-store-row">
+            <span class="filters-label" for="filter-store">Seller</span>
+            <div class="field">
+              <label class="sr-only" for="filter-store">Seller</label>
+              <select id="filter-store"><option value="">All sellers</option></select>
+            </div>
+          </div>
+          <div class="filters-row" id="filter-available-row">
+            <label class="checkbox-line"><input type="checkbox" id="filter-available"> Available only</label>
+          </div>
+          <div class="filters-actions">
+            <button type="button" class="btn btn-small" id="filters-clear">Clear all</button>
+            <button type="button" class="btn btn-primary btn-small" id="filters-done">Show results</button>
+          </div>
+        </div>
+
         <p id="results-status" class="helper-text" role="status">Loading…</p>
         <div id="results-list" class="product-grid"></div>
+        <div class="results-more" id="results-more" hidden>
+          <button type="button" class="btn" id="load-more-btn">Load More</button>
+        </div>
         <noscript><p>Please enable JavaScript in your browser to search.</p></noscript>
       </div>
     </section>

@@ -1297,6 +1297,158 @@ footer.site-footer .copyright {
   }
 }
 
+/* Search results toolbar: sort + a single Filters button, per the rule that
+   one entry point beats a wall of always-visible facets. Sits above the grid
+   and stays on one row down to small phones. */
+.results-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.results-sort-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.results-sort-field select {
+  width: 100%;
+}
+
+/* Count of active filters, so a collapsed panel never hides the fact that
+   results are being narrowed - that is how a customer concludes the shop is
+   empty when it is only filtered. */
+.filters-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4em;
+  height: 1.4em;
+  margin-left: 0.4em;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: var(--color-blue);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.filters-panel {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-alt);
+}
+
+.filters-row {
+  margin-bottom: var(--space-3);
+}
+
+.filters-row .field {
+  margin: 0;
+}
+
+.filters-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.filters-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Chips are labels wrapping a real checkbox: the control stays keyboard
+   reachable and screen-reader correct, the label just restyles it. */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-height: 44px;
+  padding: 0.35em 0.9em;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.filter-chip:focus-within {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+.filter-chip:has(input:checked) {
+  border-color: var(--color-blue);
+  background: #e8f0fb;
+  font-weight: 600;
+}
+
+.price-range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.price-range input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
+}
+
+.price-range output {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.checkbox-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.filters-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+/* Load More rather than infinite scroll: predictable, keyboard reachable, and
+   it never strands the footer out of reach. */
+.results-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
+/* A button that reads as a link - used inside sentences such as the
+   no-results recovery text, where a full button would break the line. */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-blue);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+  .filter-chip:has(input:checked) {
+    background: #22303f;
+  }
+}
+
 /* Checkout delivery states.
  *
  * Two visually distinct cases, deliberately not interchangeable:
