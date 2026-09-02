@@ -84,6 +84,7 @@ function getTopProductsCached() {
       .forEach(function (o) { ownersById[o.OwnerId] = o; });
 
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
+    var ratings = productRatingIndex();
 
     return sheetToObjects(getSheet('Products'))
       .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
@@ -104,7 +105,9 @@ function getTopProductsCached() {
           storePhone: owner.Phone,
           storeLogoUrl: owner.LogoUrl,
           views: Number(p.Views) || 0,
-          variants: productVariants
+          variants: productVariants,
+          rating: (ratings[p.ProductId] || {}).average != null ? ratings[p.ProductId].average : null,
+          reviewCount: (ratings[p.ProductId] || {}).count || 0
         };
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
         product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
@@ -277,6 +280,7 @@ function actionSearchProducts(params) {
       .forEach(function (o) { ownersById[o.OwnerId] = o; });
 
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
+    var ratings = productRatingIndex();
 
     var matched = sheetToObjects(getSheet('Products'))
       .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
@@ -314,7 +318,12 @@ function actionSearchProducts(params) {
           // to read and is what lets the results page offer honest "Most
           // popular" and "Newest" sorting instead of inventing a ranking.
           views: Number(p.Views) || 0,
-          createdAt: p.CreatedAt || ''
+          createdAt: p.CreatedAt || '',
+          // Rating is computed server-side from the Reviews sheet - a seller
+          // cannot submit or influence it. null means "no reviews yet", which
+          // the UI must show as such rather than as a zero-star product.
+          rating: (ratings[p.ProductId] || {}).average != null ? ratings[p.ProductId].average : null,
+          reviewCount: (ratings[p.ProductId] || {}).count || 0
         };
         if (isBookingCategory(p.Category)) product.available = !unavailableIds[p.ProductId];
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
@@ -360,6 +369,8 @@ function actionListProducts(params) {
       return v.OwnerId === owner.OwnerId && v.Status === 'active';
     });
     var unavailableIds = unavailableProductIdsToday(products.filter(function (p) { return isBookingCategory(p.Category); }).map(function (p) { return p.ProductId; }));
+    // One Reviews read for the whole store, not one per product.
+    var ratings = productRatingIndex();
 
     var result = products
       .sort(function (a, b) { return (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0); })
@@ -374,7 +385,9 @@ function actionListProducts(params) {
           category: p.Category,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
-          variants: productVariants
+          variants: productVariants,
+          rating: (ratings[p.ProductId] || {}).average != null ? ratings[p.ProductId].average : null,
+          reviewCount: (ratings[p.ProductId] || {}).count || 0
         };
         if (isBookingCategory(p.Category)) product.available = !unavailableIds[p.ProductId];
         return product;

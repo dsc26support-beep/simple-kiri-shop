@@ -246,6 +246,32 @@ function optimizedImageUrl(url, width) {
  * no separate "View" button to aim at. Distinct from renderProductCard in
  * product-card.js, which is the full add-to-cart card on a store's own page.
  */
+/**
+ * Star rating display. Returns '' when there are no reviews - a product with
+ * no ratings must not render as zero stars, which reads as "rated badly"
+ * rather than "not rated yet".
+ *
+ * The fill is a width-clipped overlay so a 4.3 shows as 4.3 stars' worth
+ * rather than being rounded up into a claim the data doesn't support. The
+ * numeric value and review count are always rendered as text beside the
+ * stars, so the rating never depends on the glyphs or their colour alone.
+ */
+function renderStars(rating, count) {
+  const value = Number(rating);
+  const reviews = Number(count) || 0;
+  if (!(value > 0) || reviews === 0) return '';
+
+  const pct = Math.max(0, Math.min(100, (value / 5) * 100));
+  return `<span class="rating" role="img" aria-label="Rated ${value.toFixed(1)} out of 5 from ${reviews} review${reviews === 1 ? '' : 's'}">
+      <span class="rating-stars" aria-hidden="true">
+        <span class="rating-stars-empty">\u2605\u2605\u2605\u2605\u2605</span>
+        <span class="rating-stars-fill" style="width:${pct}%">\u2605\u2605\u2605\u2605\u2605</span>
+      </span>
+      <span class="rating-value">${value.toFixed(1)}</span>
+      <span class="rating-count">(${reviews})</span>
+    </span>`;
+}
+
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
@@ -262,6 +288,7 @@ function renderBrowseProductCard(product, opts) {
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         <strong class="product-price">${priceText}</strong>
+        ${renderStars(product.rating, product.reviewCount)}
         <p class="helper-text">${escapeHtml(product.storeName)}</p>
         <div class="store-phone-row">
           ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}

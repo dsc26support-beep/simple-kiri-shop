@@ -1524,6 +1524,166 @@ footer.site-footer .copyright {
   }
 }
 
+/* Ratings & reviews.
+ *
+ * The star row is an overlay clipped by width, so 4.3 renders as 4.3 stars'
+ * worth rather than rounding up into a claim the data doesn't support. The
+ * numeric value and count always sit beside it as text, so the rating never
+ * depends on the glyphs or their colour alone.
+ */
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.rating-stars {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  color: var(--color-border);
+  letter-spacing: 0.05em;
+}
+
+.rating-stars-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--color-gold);
+}
+
+.rating-value {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.reviews-section {
+  margin-top: var(--space-5);
+}
+
+.reviews-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.reviews-average {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+}
+
+.reviews-average-value {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.rating-bars {
+  flex: 1 1 12em;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+}
+
+.rating-bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.rating-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-bg-alt);
+  overflow: hidden;
+}
+
+.rating-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-gold);
+}
+
+.rating-bar-count {
+  min-width: 2ch;
+  text-align: right;
+}
+
+.review-item {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.review-author {
+  font-weight: 600;
+}
+
+/* Not colour-only: the tick carries the meaning too. */
+.review-verified {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-green, #1a7f37);
+}
+
+.review-comment {
+  margin: var(--space-2) 0 0;
+  line-height: 1.5;
+}
+
+.review-date {
+  margin: var(--space-1, 0.25rem) 0 0;
+}
+
+.review-form {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-alt);
+}
+
+.review-stars-field {
+  border: 0;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+}
+
+.review-stars-field legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+/* Comfortable one-handed targets on a phone, per the mobile-first rule. */
+.review-star-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  min-height: 44px;
+  padding: 0 0.6em 0 0;
+  cursor: pointer;
+}
+
+.review-signin-prompt {
+  margin: var(--space-2) 0;
+}
+
 .cookie-consent-banner {
   position: fixed;
   left: 0;
