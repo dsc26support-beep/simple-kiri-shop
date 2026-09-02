@@ -52,7 +52,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'phase8-2026-09-02';
+var APP_VERSION = 'phase9-2026-09-02';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -237,6 +237,61 @@ function setupSheets() {
       line += '\n            NOTE: this tab already has data rows - check that they still line up.';
     }
     lines.push(line);
+  });
+
+  var report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+/**
+ * Diagnostic for a signup/login code that will not verify. Run it from the Apps
+ * Script editor (function dropdown -> debugCustomerCodes -> Run), then read the
+ * Execution log.
+ *
+ * Every value is printed via JSON.stringify so invisible characters show up as
+ * what they are: "signup" and "signup " are indistinguishable in a cell, but
+ * obvious here. That matters because consumeCustomerEmailCode compares these
+ * values exactly.
+ *
+ * Editor-only, never a web action - it reads one-time codes, so it must not be
+ * reachable from the internet. Tokens are printed as a prefix plus length
+ * rather than in full: enough to match a row, not enough to reuse as a
+ * credential if the log is shared.
+ */
+function debugCustomerCodes() {
+  var sheet = getSheet('CustomerCodes');
+  var headers = getHeaders(sheet).map(function (h) { return String(h); });
+  var rows = sheetToObjects(sheet);
+  var now = Date.now();
+
+  var lines = [];
+  lines.push('Headers (' + headers.length + '): ' + JSON.stringify(headers));
+  lines.push('Expected     : ' + JSON.stringify(REQUIRED_TABS.CustomerCodes));
+  lines.push('Headers match: ' + REQUIRED_TABS.CustomerCodes.every(function (h) {
+    return headers.indexOf(h) !== -1;
+  }));
+  lines.push('Data rows: ' + rows.length);
+  lines.push('Now: ' + new Date(now).toISOString());
+
+  if (rows.length === 0) {
+    lines.push('(no rows - request a code, then run this again)');
+  }
+
+  // Newest few only; a long history adds noise without adding signal.
+  rows.slice(-5).forEach(function (r) {
+    var tok = String(r.Token == null ? '' : r.Token);
+    var expiresMs = new Date(r.ExpiresAt).getTime();
+    lines.push(
+      'row ' + r.__row +
+      ' Token=' + (tok ? tok.slice(0, 8) + '...(len ' + tok.length + ')' : '(blank)') +
+      ' Email=' + JSON.stringify(String(r.Email)) +
+      ' Code=' + JSON.stringify(String(r.Code)) +
+      ' Purpose=' + JSON.stringify(String(r.Purpose)) +
+      ' Attempts=' + JSON.stringify(String(r.Attempts)) +
+      ' ExpiresAt=' + JSON.stringify(String(r.ExpiresAt)) +
+      ' expired=' + (isNaN(expiresMs) ? 'UNPARSEABLE' : (expiresMs < now))
+    );
   });
 
   var report = lines.join('\n');
