@@ -701,3 +701,24 @@
   outline: 3px solid var(--color-blue-light);
   outline-offset: 2px;
 }
+
+
+/* Fee type for a paid delivery method (Fixed vs To Be Negotiated).
+   Making this an explicit choice is the point: a blank cost box used to be
+   saved as $0, so "the price depends on the order" was not expressible and
+   silently became free delivery. */
+.delivery-fee-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 1rem);
+  margin: 0.35rem 0;
+}
+
+.delivery-fee-mode-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-height: 44px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}

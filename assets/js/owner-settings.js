@@ -3,11 +3,26 @@ document.addEventListener('DOMContentLoaded', init);
 // pickPay has costId: null - it's always free (see helpers.js's
 // ALWAYS_FREE_DELIVERY_METHODS), so it never gets a cost input.
 const DELIVERY_BUTTONS = [
-  { id: 'delivery-truck-btn', costId: 'delivery-truck-cost', method: 'truck', label: 'Truck' },
-  { id: 'delivery-ship-btn', costId: 'delivery-ship-cost', method: 'ship', label: 'Ship' },
-  { id: 'delivery-aircargo-btn', costId: 'delivery-aircargo-cost', method: 'airCargo', label: 'Air Cargo' },
-  { id: 'delivery-pickpay-btn', costId: null, method: 'pickPay', label: 'Pick & Pay' }
+  { id: 'delivery-truck-btn', costId: 'delivery-truck-cost', modeId: 'delivery-truck-mode', modeName: 'truckFeeMode', method: 'truck', label: 'Truck' },
+  { id: 'delivery-ship-btn', costId: 'delivery-ship-cost', modeId: 'delivery-ship-mode', modeName: 'shipFeeMode', method: 'ship', label: 'Ship' },
+  { id: 'delivery-aircargo-btn', costId: 'delivery-aircargo-cost', modeId: 'delivery-aircargo-mode', modeName: 'aircargoFeeMode', method: 'airCargo', label: 'Air Cargo' },
+  { id: 'delivery-pickpay-btn', costId: null, modeId: null, modeName: null, method: 'pickPay', label: 'Pick & Pay' }
 ];
+
+/** Which fee mode is currently selected for a paid method. */
+function feeModeOf(modeName) {
+  const checked = document.querySelector(`input[name="${modeName}"]:checked`);
+  return checked ? checked.value : 'fixed';
+}
+
+// The cost box only makes sense for a fixed fee - a negotiated one has no
+// number to type.
+function syncFeeModeVisibility({ id, costId, modeId, modeName }) {
+  if (!costId) return;
+  const enabled = document.getElementById(id).getAttribute('aria-pressed') === 'true';
+  document.getElementById(modeId).classList.toggle('hidden', !enabled);
+  document.getElementById(costId).classList.toggle('hidden', !enabled || feeModeOf(modeName) !== 'fixed');
+}
 
 async function init() {
   const owner = await Auth.guardOwnerAuth();
@@ -46,9 +61,17 @@ function fillForm(owner) {
     if (!costId) return;
     const costInput = document.getElementById(costId);
     const cost = owner[key + 'Cost'];
-    costInput.value = cost == null ? '' : cost;
-    costInput.classList.toggle('hidden', !pressed);
+    // null means the fee was never set, which is exactly the negotiated
+    // state - preselect that rather than showing an empty "fixed" box that
+    // would silently save as $0 on the next save.
+    const negotiated = cost == null;
+    costInput.value = negotiated ? '' : cost;
+    const modeInput = document.querySelector(
+      `input[name="${DELIVERY_BUTTONS.find((b) => b.costId === costId).modeName}"][value="${negotiated ? 'negotiated' : 'fixed'}"]`
+    );
+    if (modeInput) modeInput.checked = true;
   });
+  DELIVERY_BUTTONS.forEach(syncFeeModeVisibility);
 
   document.getElementById('settings-island').value = owner.island || '';
   populateVillageSelect(owner.island || '', owner.village || '');
@@ -131,13 +154,16 @@ function renderDeliveryToggleButtons() {
 }
 
 function wireDeliveryToggles() {
-  DELIVERY_BUTTONS.forEach(({ id, costId }) => {
-    const btn = document.getElementById(id);
-    const costInput = costId ? document.getElementById(costId) : null;
+  DELIVERY_BUTTONS.forEach((cfg) => {
+    const btn = document.getElementById(cfg.id);
     btn.addEventListener('click', () => {
       const pressed = btn.getAttribute('aria-pressed') === 'true';
       btn.setAttribute('aria-pressed', String(!pressed));
-      if (costInput) costInput.classList.toggle('hidden', pressed);
+      syncFeeModeVisibility(cfg);
+    });
+    if (!cfg.modeName) return;
+    document.querySelectorAll(`input[name="${cfg.modeName}"]`).forEach((radio) => {
+      radio.addEventListener('change', () => syncFeeModeVisibility(cfg));
     });
   });
 }
@@ -276,13 +302,20 @@ async function onSaveSettings(e) {
     village: village
   };
 
-  DELIVERY_BUTTONS.forEach(({ id, costId, method }) => {
+  DELIVERY_BUTTONS.forEach(({ id, costId, modeName, method }) => {
     const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
     const pressed = document.getElementById(id).getAttribute('aria-pressed') === 'true';
     payload[key] = pressed;
     if (pressed && costId) {
-      const raw = document.getElementById(costId).value.trim();
-      payload[key + 'Cost'] = raw === '' ? 0 : Math.max(0, parseFloat(raw) || 0);
+      // null is the wire form of "to be negotiated". Previously a blank box
+      // was coerced to 0 here, which made the negotiated state unreachable
+      // from this page - every save turned it into free delivery.
+      if (feeModeOf(modeName) === 'negotiated') {
+        payload[key + 'Cost'] = null;
+      } else {
+        const raw = document.getElementById(costId).value.trim();
+        payload[key + 'Cost'] = raw === '' ? 0 : Math.max(0, parseFloat(raw) || 0);
+      }
     }
   });
 

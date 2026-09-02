@@ -620,6 +620,14 @@ function actionUpdateOwnerProfile(owner, body) {
   var costFieldMap = { deliveryTruckCost: 'DeliveryTruckCost', deliveryShipCost: 'DeliveryShipCost', deliveryAirCargoCost: 'DeliveryAirCargoCost' };
   Object.keys(costFieldMap).forEach(function (k) {
     if (body[k] === undefined) return;
+    // null / '' mean "fee to be negotiated" and are stored BLANK, which every
+    // read path already treats as negotiated (publicOwnerFields maps a blank
+    // cell to null). Number('') is 0, so this has to be checked before the
+    // numeric conversion or a negotiated fee would silently become free.
+    if (body[k] === null || body[k] === '') {
+      update[costFieldMap[k]] = '';
+      return;
+    }
     var cost = Number(body[k]);
     update[costFieldMap[k]] = isNaN(cost) || cost < 0 ? '' : cost;
   });
