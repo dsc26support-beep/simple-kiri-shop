@@ -308,7 +308,13 @@ function actionSearchProducts(params) {
           storeName: owner.StoreName,
           storePhone: owner.Phone,
           storeLogoUrl: owner.LogoUrl,
-          variants: productVariants
+          variants: productVariants,
+          // Both columns already exist on Products and are already maintained
+          // (Views by recordProductViews). Surfacing them costs nothing extra
+          // to read and is what lets the results page offer honest "Most
+          // popular" and "Newest" sorting instead of inventing a ranking.
+          views: Number(p.Views) || 0,
+          createdAt: p.CreatedAt || ''
         };
         if (isBookingCategory(p.Category)) product.available = !unavailableIds[p.ProductId];
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
