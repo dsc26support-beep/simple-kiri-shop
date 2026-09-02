@@ -438,7 +438,9 @@ function resolveChatRequest(body, opts) {
 
   if (createIfMissing) {
     var storeOwner = getOwnerBySlug(storeSlug);
-    if (!storeOwner || storeOwner.Status !== 'active') return { ok: false, error: 'Store not found' };
+    // Chat stays open while a store is closed - that is the whole point of
+    // showing a Closed badge instead of hiding the store.
+    if (!isStoreBrowsable(storeOwner)) return { ok: false, error: 'Store not found' };
     var conv = findOrCreateConversation(storeOwner, storeSlug, customerToken, body.customerName);
     return { ok: true, conversation: conv, senderType: 'customer' };
   }

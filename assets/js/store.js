@@ -25,6 +25,11 @@ async function init() {
     return;
   }
 
+  // Publish for the shared chat window (see storeIsOpen in chat-window.js).
+  // storeOpen is absent on an older backend; only an explicit false closes.
+  window.__storeOpen = res.storeOpen !== false;
+  renderStoreClosedState(window.__storeOpen);
+
   document.title = res.storeName + ' — Mwakete';
   const location = storeLocationLabel(res.storeIsland, res.storeVillage);
   document.getElementById('store-name-tagline').textContent = location ? `${res.storeName} | ${location}` : res.storeName;
@@ -62,6 +67,7 @@ async function init() {
   } else {
     statusEl.textContent = '';
     listEl.innerHTML = currentProducts.map(renderProductCard).join('');
+    disableOrderingControls();
     fitPriceLabels(listEl);
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
   }
@@ -101,6 +107,7 @@ function renderFilteredProducts(query) {
 
   statusEl.textContent = '';
   listEl.innerHTML = filtered.map(renderProductCard).join('');
+  disableOrderingControls();
   fitPriceLabels(listEl);
   // Re-render replaces the gallery track elements, and their scroll sync
   // (wireGalleryScrollSync) is per-element, not delegated like the click
@@ -358,4 +365,44 @@ function animateCartOnAdd(prev, next) {
   void el.offsetWidth; // reflow so re-adding the class restarts the animation
   el.classList.add(cls);
   el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+}
+
+
+/**
+ * A closed store stays fully browsable - customers can read listings, see
+ * prices and chat - but must not be able to order. The banner explains why
+ * the buttons are disabled, so a dead button never looks like a bug.
+ *
+ * The backend re-checks this on createOrder/createBookingRequest; this is the
+ * honest UI in front of that gate, not the gate itself.
+ */
+function renderStoreClosedState(open) {
+  const existing = document.getElementById('store-closed-banner');
+  if (open) {
+    if (existing) existing.remove();
+    document.body.classList.remove('store-is-closed');
+    return;
+  }
+  document.body.classList.add('store-is-closed');
+  if (!existing) {
+    const banner = document.createElement('div');
+    banner.id = 'store-closed-banner';
+    banner.className = 'store-closed-banner';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML =
+      '<span class="store-closed-pill">Closed</span>' +
+      '<span>This store is not taking orders right now. You can still browse and chat with them.</span>';
+    const anchor = document.getElementById('store-name-tagline');
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(banner, anchor.nextSibling);
+  }
+  disableOrderingControls();
+}
+
+// Re-applied after every product render, since the grid is rebuilt.
+function disableOrderingControls() {
+  if (!document.body.classList.contains('store-is-closed')) return;
+  document.querySelectorAll('.add-to-cart-btn, .request-booking-btn').forEach((btn) => {
+    btn.disabled = true;
+    btn.title = 'This store is closed right now';
+  });
 }

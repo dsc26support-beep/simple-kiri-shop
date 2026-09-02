@@ -49,7 +49,7 @@ function actionListStores(params) {
   params = params || {};
   var all = getCached('v1:listStores', 60, function () {
     return sheetToObjects(getSheet('Owners'))
-      .filter(function (o) { return o.Status === 'active'; })
+      .filter(function (o) { return isStoreBrowsable(o); })
       .map(function (o) {
         var store = { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone, island: o.Island, village: o.Village, logoUrl: o.LogoUrl };
         Object.assign(store, deliveryFlagsOf(o));
@@ -80,7 +80,7 @@ function getTopProductsCached() {
   return getCached('v1:topProducts', 300, function () {
     var ownersById = {};
     sheetToObjects(getSheet('Owners'))
-      .filter(function (o) { return o.Status === 'active'; })
+      .filter(function (o) { return isStoreBrowsable(o); })
       .forEach(function (o) { ownersById[o.OwnerId] = o; });
 
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
@@ -135,7 +135,7 @@ function actionListTopProducts() {
 function getTopStoresCached() {
   return getCached('v1:topStores', 300, function () {
     return sheetToObjects(getSheet('Owners'))
-      .filter(function (o) { return o.Status === 'active'; })
+      .filter(function (o) { return isStoreBrowsable(o); })
       .map(function (o) {
         var store = {
           storeSlug: o.StoreSlug,
@@ -276,7 +276,7 @@ function actionSearchProducts(params) {
   var results = getCached(cacheKey, 60, function () {
     var ownersById = {};
     sheetToObjects(getSheet('Owners'))
-      .filter(function (o) { return o.Status === 'active'; })
+      .filter(function (o) { return isStoreBrowsable(o); })
       .forEach(function (o) { ownersById[o.OwnerId] = o; });
 
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) { return v.Status === 'active'; });
@@ -347,7 +347,7 @@ function actionGetStorePublicInfo(params) {
 
   var store = getCached('v1:storeInfo:' + slug, 60, function () {
     var owner = getOwnerBySlug(slug);
-    if (!owner || owner.Status !== 'active') return null;
+    if (!isStoreBrowsable(owner)) return null;
     return publicOwnerFields(owner);
   });
   if (!store) return fail('Store not found');
@@ -360,7 +360,7 @@ function actionListProducts(params) {
 
   var response = getCached('v1:listProducts:' + slug, 60, function () {
     var owner = getOwnerBySlug(slug);
-    if (!owner || owner.Status !== 'active') return null;
+    if (!isStoreBrowsable(owner)) return null;
 
     var products = sheetToObjects(getSheet('Products')).filter(function (p) {
       return p.OwnerId === owner.OwnerId && p.Status === 'active';
@@ -401,6 +401,9 @@ function actionListProducts(params) {
       storeLogoUrl: owner.LogoUrl,
       storeIsland: owner.Island,
       storeVillage: owner.Village,
+      // A closed store is still browsable; the UI needs to say so and block
+      // ordering rather than pretend it is open.
+      storeOpen: isStoreOpenForBusiness(owner),
       products: result
     };
     out.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';

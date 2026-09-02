@@ -104,7 +104,7 @@ function actionGetTips(params) {
   var stores = [];
   storeSlugs.forEach(function (slug) {
     var o = ownersBySlug[slug];
-    if (o && o.Status === 'active') {
+    if (isStoreBrowsable(o)) {
       stores.push({ storeSlug: o.StoreSlug, storeName: o.StoreName, logoUrl: o.LogoUrl, island: o.Island, village: o.Village });
     }
   });
@@ -118,7 +118,7 @@ function actionGetTips(params) {
     sheetToObjects(getSheet('Products')).forEach(function (p) {
       if (!want[p.ProductId] || p.Status !== 'active') return;
       var owner = ownersById[p.OwnerId];
-      if (!owner || owner.Status !== 'active') return;
+      if (!isStoreBrowsable(owner)) return;
       var pv = variants
         .filter(function (v) { return v.ProductId === p.ProductId && v.Status === 'active'; })
         .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });

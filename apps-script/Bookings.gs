@@ -77,7 +77,12 @@ function actionCreateBookingRequest(body) {
   var slug = body.storeSlug;
   if (!slug) return fail('storeSlug is required');
   var owner = getOwnerBySlug(slug);
-  if (!owner || owner.Status !== 'active') return fail('Store not found');
+  if (!isStoreBrowsable(owner)) return fail('Store not found');
+  // Browsable but closed: the storefront and chat stay open, taking money
+  // does not. Re-checked here because the client cannot be trusted to.
+  if (!isStoreOpenForBusiness(owner)) {
+    return fail('This store is closed right now and cannot take bookings. You can still chat with them to ask when they reopen.');
+  }
 
   var customerName = String(body.customerName || '').trim();
   var customerPhone = String(body.customerPhone || '').trim();

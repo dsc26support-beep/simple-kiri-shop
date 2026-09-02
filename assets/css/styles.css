@@ -1695,6 +1695,66 @@ footer.site-footer .copyright {
   margin: var(--space-2) 0;
 }
 
+/* Store open/closed availability.
+ *
+ * A closed store stays browsable and chattable - it is marked, not hidden -
+ * so these are the only places a customer learns the state. Red carries the
+ * meaning, but never alone: every one of them says the word "Closed" too. */
+.chat-vendor-status.is-closed {
+  color: var(--color-danger);
+}
+
+.chat-vendor-status.is-closed .chat-status-dot {
+  background: var(--color-danger);
+}
+
+.chat-closed-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: #fdecec;
+  border-bottom: 1px solid #f2bcbc;
+  color: #8c1d18;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.store-closed-banner,
+.store-closed-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid #f2bcbc;
+  border-radius: var(--radius);
+  background: #fdecec;
+  color: #8c1d18;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.store-closed-pill {
+  flex: 0 0 auto;
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chat-closed-note,
+  .store-closed-banner,
+  .store-closed-note {
+    background: #3a2523;
+    border-color: #6b3a36;
+    color: #f3b8b4;
+  }
+}
+
 .cookie-consent-banner {
   position: fixed;
   left: 0;

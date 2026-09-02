@@ -36,6 +36,10 @@ async function init() {
   statusEl.textContent = '';
 
   // Store header
+  // Shared with the chat window (storeIsOpen in chat-window.js). Only an
+  // explicit false closes, so an older backend still reads as open.
+  window.__storeOpen = res.storeOpen !== false;
+
   document.getElementById('store-name-tagline').textContent = res.storeName || 'Store';
   if (res.storeLogoUrl) {
     const img = document.getElementById('store-logo-img');
@@ -63,6 +67,17 @@ async function init() {
   document.title = `${product.name} — Mwakete`;
   wireActions();
   wireGallery();
+  if (!window.__storeOpen) {
+    // Browsable but closed: keep the listing readable, take the buy buttons
+    // out of play, and say why so a dead button never looks broken.
+    document.querySelectorAll('#product-detail .add-to-cart-btn, #product-detail .request-booking-btn')
+      .forEach((btn) => { btn.disabled = true; btn.title = 'This store is closed right now'; });
+    const detail = document.getElementById('product-detail');
+    const note = document.createElement('p');
+    note.className = 'store-closed-note';
+    note.innerHTML = '<span class="store-closed-pill">Closed</span> This store is not taking orders right now. You can still chat with them.';
+    detail.insertBefore(note, detail.firstChild);
+  }
   // Deliberately not awaited: reviews are supporting information, and a slow
   // (or absent) Reviews tab must never hold up the product itself.
   loadReviews(product.productId);

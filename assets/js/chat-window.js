@@ -601,7 +601,51 @@ function initChatWindow() {
     window.visualViewport.addEventListener('resize', adjustForOnscreenKeyboard);
   }
 
+  /**
+   * Whether the store is open for business, as told to us by whichever page
+   * hosts this chat window (store, product, checkout all know it already).
+   * Deliberately read from memory rather than fetched: getConversation is
+   * polled, so asking the backend here would mean an Owners lookup on every
+   * poll for a value that changes about once a day.
+   *
+   * Defaults to open. A page that does not know must never render a false
+   * "Closed" - claiming a store is shut when it isn't costs it real orders.
+   */
+  function storeIsOpen() {
+    return window.__storeOpen !== false;
+  }
+
+  // The header status was hardcoded to "Online" in the markup of all four
+  // pages that host this window. Make it tell the truth.
+  function renderStoreAvailability() {
+    const el = document.querySelector('.chat-vendor-status');
+    if (!el) return;
+    const open = storeIsOpen();
+    el.classList.toggle('is-closed', !open);
+    el.innerHTML =
+      '<span class="chat-status-dot" aria-hidden="true"></span>' + (open ? 'Online' : 'Closed');
+
+    // The customer can still write while the store is closed - the message
+    // simply waits. Say so, rather than leaving them guessing whether it sent.
+    const body = document.getElementById('chat-window-body');
+    if (!body) return;
+    let note = document.getElementById('chat-closed-note');
+    if (open) {
+      if (note) note.remove();
+      return;
+    }
+    if (!note) {
+      note = document.createElement('p');
+      note.id = 'chat-closed-note';
+      note.className = 'chat-closed-note';
+      note.textContent =
+        'This store is closed right now. You can still send a message — they will see it when they reopen.';
+      body.insertBefore(note, body.firstChild);
+    }
+  }
+
   function openWindow() {
+    renderStoreAvailability();
     isOpen = true;
     win.classList.add('chat-window--open');
     win.setAttribute('aria-hidden', 'false');
