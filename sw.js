@@ -13,7 +13,7 @@
 // minimal offline page as fallbacks. Static assets are stale-while-revalidate
 // so they load instantly but still refresh in the background.
 
-var CACHE = 'mwakete-v1';
+var CACHE = 'mwakete-v2';
 
 // Separate cache for cross-origin product/logo photos. Cache-first is safe here
 // because every uploaded image has a unique URL (Drive file id / Cloudinary

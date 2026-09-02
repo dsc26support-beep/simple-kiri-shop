@@ -5,6 +5,7 @@
   --color-gold: #fcd116;
   --color-blue: #003f87;
   --color-blue-light: #5b9bd5;
+  --color-purple: #332d63;
   --color-ink: #1a1a1a;
   --color-muted: #5f6368;
   --color-border: #dcdfe3;
@@ -1700,10 +1701,13 @@ footer.site-footer .copyright {
   font-size: 0.7rem;
 }
 
-.bottom-nav-item.is-active { color: var(--color-blue); }
+.bottom-nav-item.is-active { color: var(--color-purple); }
+.bottom-nav-item.is-active .bottom-nav-label { font-weight: 600; }
 
 .bottom-nav-icon { position: relative; display: inline-flex; }
-.bottom-nav-icon svg { width: 22px; height: 22px; }
+/* Hard cap the icon size so it can never balloon, even if this stylesheet is
+   momentarily stale on a device (the SVGs also carry width/height now). */
+.bottom-nav-icon svg { width: 24px; height: 24px; }
 .bottom-nav-label { line-height: 1; }
 
 .bottom-nav-badge {
