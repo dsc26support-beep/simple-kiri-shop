@@ -52,7 +52,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'phase6-2026-09-02';
+var APP_VERSION = 'phase9-2026-09-02';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -98,6 +98,207 @@ function checkChatRateLimit(action, body) {
   }
 }
 
+/**
+ * Sheet tabs this app's newer features depend on, with the exact header row
+ * each one needs. Db.gs addresses columns purely by header NAME and does so
+ * silently - appendRowFromObject drops a field whose header is absent and
+ * sheetToObjects reads it back as undefined - so a single mistyped header
+ * surfaces much later as a confusing runtime error (a mistyped Purpose here
+ * makes a valid signup code report "invalid or has expired"). checkSetup
+ * turns that class of misconfiguration into a direct answer.
+ */
+var REQUIRED_TABS = {
+  Customers: ['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt'],
+  CustomerSessions: ['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'],
+  CustomerCodes: ['Token', 'Email', 'Code', 'Purpose', 'Name', 'Phone', 'CreatedAt', 'ExpiresAt', 'Attempts'],
+  Featured: ['FeaturedId', 'Type', 'RefId', 'SortOrder', 'CreatedAt']
+};
+
+/**
+ * Public setup self-check: reports which required tabs/headers are wrong and
+ * whether the optional pieces are configured. Deliberately returns only tab
+ * names, header names and booleans - never row contents, and never the
+ * ADMIN_EMAILS value - because this action is unauthenticated. Header names
+ * are already published in README.md, so they are not sensitive.
+ */
+function actionCheckSetup() {
+  var problems = [];
+  var tabs = Object.keys(REQUIRED_TABS).map(function (name) {
+    var required = REQUIRED_TABS[name];
+    var entry = { tab: name, exists: false, missingHeaders: [], untrimmedHeaders: [], unexpectedHeaders: [] };
+
+    var raw;
+    try {
+      raw = getHeaders(getSheet(name));
+    } catch (err) {
+      // getSheet throws when the tab does not exist; report it rather than
+      // aborting, so one missing tab still yields a full report.
+      problems.push('Missing sheet tab: ' + name);
+      return entry;
+    }
+    entry.exists = true;
+
+    var headers = raw.map(function (h) { return String(h); });
+    entry.missingHeaders = required.filter(function (h) { return headers.indexOf(h) === -1; });
+    entry.unexpectedHeaders = headers.filter(function (h) {
+      return h !== '' && required.indexOf(h) === -1;
+    });
+    // A header with stray whitespace looks correct in the Sheet but never
+    // matches, so call it out separately from a plain typo.
+    entry.untrimmedHeaders = headers.filter(function (h) {
+      return h !== h.trim() && required.indexOf(h.trim()) !== -1;
+    });
+
+    if (entry.missingHeaders.length) {
+      problems.push(name + ' is missing header(s): ' + entry.missingHeaders.join(', '));
+    }
+    if (entry.untrimmedHeaders.length) {
+      problems.push(name + ' has header(s) with stray spaces: ' + entry.untrimmedHeaders.join(', '));
+    }
+    return entry;
+  });
+
+  // Each .gs file is pasted into the editor by hand, so a file can exist by
+  // name yet be empty - which leaves its functions undefined. Probe one
+  // function per file to catch that directly.
+  var missingFiles = [];
+  if (typeof actionRegisterCustomer !== 'function') missingFiles.push('Customers.gs');
+  if (typeof actionGetTips !== 'function') missingFiles.push('Admin.gs');
+  if (missingFiles.length) {
+    problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
+  }
+
+  var adminEmailsSet = false;
+  try {
+    adminEmailsSet = getAdminEmails().length > 0;
+  } catch (err) {
+    adminEmailsSet = false;
+  }
+  if (!adminEmailsSet) {
+    problems.push('ADMIN_EMAILS script property is not set (needed only for the admin back-office)');
+  }
+
+  return ok({
+    version: APP_VERSION,
+    setupOk: problems.length === 0,
+    problems: problems,
+    tabs: tabs,
+    missingFiles: missingFiles,
+    adminEmailsSet: adminEmailsSet
+  });
+}
+
+/**
+ * One-time setup / repair for the tabs in REQUIRED_TABS. Run it from the Apps
+ * Script editor: pick setupSheets in the function dropdown and press Run.
+ *
+ * Deliberately NOT wired into doGet/doPost. The web app is unauthenticated, so
+ * an endpoint able to rewrite spreadsheet headers must not be reachable from
+ * the internet; keeping this editor-only means it can only be invoked by
+ * someone who already has edit access to the script.
+ *
+ * Creates a missing tab, and rewrites row 1 when the required headers are not
+ * all present. It never reads, writes or deletes a data row. Rewriting row 1 is
+ * safe on a broken tab because Db.gs matches columns by header NAME: a header
+ * that does not match is one appendRowFromObject has never written to, so the
+ * cells beneath it are empty by construction. The previous header row is logged
+ * either way, so any surprise is recoverable.
+ */
+function setupSheets() {
+  var ss = SpreadsheetApp.getActive();
+  var lines = [];
+
+  Object.keys(REQUIRED_TABS).forEach(function (name) {
+    var required = REQUIRED_TABS[name];
+    var sheet = ss.getSheetByName(name);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(name);
+      sheet.getRange(1, 1, 1, required.length).setValues([required]);
+      lines.push('CREATED   ' + name + ' -> ' + required.join(' | '));
+      return;
+    }
+
+    // Order-independent: Db.gs looks columns up by name, so a tab whose headers
+    // are all present but in a different order is already correct - leave it be
+    // rather than shuffling columns that hold data.
+    var existing = getHeaders(sheet).map(function (h) { return String(h); });
+    var allPresent = required.every(function (h) { return existing.indexOf(h) !== -1; });
+    if (allPresent) {
+      lines.push('OK        ' + name);
+      return;
+    }
+
+    sheet.getRange(1, 1, 1, required.length).setValues([required]);
+    var line = 'REPAIRED  ' + name +
+      '\n            was: ' + (existing.join(' | ') || '(empty)') +
+      '\n            now: ' + required.join(' | ');
+    if (sheet.getLastRow() > 1) {
+      line += '\n            NOTE: this tab already has data rows - check that they still line up.';
+    }
+    lines.push(line);
+  });
+
+  var report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
+/**
+ * Diagnostic for a signup/login code that will not verify. Run it from the Apps
+ * Script editor (function dropdown -> debugCustomerCodes -> Run), then read the
+ * Execution log.
+ *
+ * Every value is printed via JSON.stringify so invisible characters show up as
+ * what they are: "signup" and "signup " are indistinguishable in a cell, but
+ * obvious here. That matters because consumeCustomerEmailCode compares these
+ * values exactly.
+ *
+ * Editor-only, never a web action - it reads one-time codes, so it must not be
+ * reachable from the internet. Tokens are printed as a prefix plus length
+ * rather than in full: enough to match a row, not enough to reuse as a
+ * credential if the log is shared.
+ */
+function debugCustomerCodes() {
+  var sheet = getSheet('CustomerCodes');
+  var headers = getHeaders(sheet).map(function (h) { return String(h); });
+  var rows = sheetToObjects(sheet);
+  var now = Date.now();
+
+  var lines = [];
+  lines.push('Headers (' + headers.length + '): ' + JSON.stringify(headers));
+  lines.push('Expected     : ' + JSON.stringify(REQUIRED_TABS.CustomerCodes));
+  lines.push('Headers match: ' + REQUIRED_TABS.CustomerCodes.every(function (h) {
+    return headers.indexOf(h) !== -1;
+  }));
+  lines.push('Data rows: ' + rows.length);
+  lines.push('Now: ' + new Date(now).toISOString());
+
+  if (rows.length === 0) {
+    lines.push('(no rows - request a code, then run this again)');
+  }
+
+  // Newest few only; a long history adds noise without adding signal.
+  rows.slice(-5).forEach(function (r) {
+    var tok = String(r.Token == null ? '' : r.Token);
+    var expiresMs = new Date(r.ExpiresAt).getTime();
+    lines.push(
+      'row ' + r.__row +
+      ' Token=' + (tok ? tok.slice(0, 8) + '...(len ' + tok.length + ')' : '(blank)') +
+      ' Email=' + JSON.stringify(String(r.Email)) +
+      ' Code=' + JSON.stringify(String(r.Code)) +
+      ' Purpose=' + JSON.stringify(String(r.Purpose)) +
+      ' Attempts=' + JSON.stringify(String(r.Attempts)) +
+      ' ExpiresAt=' + JSON.stringify(String(r.ExpiresAt)) +
+      ' expired=' + (isNaN(expiresMs) ? 'UNPARSEABLE' : (expiresMs < now))
+    );
+  });
+
+  var report = lines.join('\n');
+  Logger.log(report);
+  return report;
+}
+
 function doGet(e) {
   try {
     var params = (e && e.parameter) || {};
@@ -114,6 +315,7 @@ function doGet(e) {
       // half-configured project - it can only report the running build or, if
       // absent, prove the deployment is stale.
       case 'getVersion': return jsonOut(ok({ version: APP_VERSION }));
+      case 'checkSetup': return jsonOut(actionCheckSetup());
       default: return jsonOut(fail('Unknown action: ' + params.action));
     }
   } catch (err) {

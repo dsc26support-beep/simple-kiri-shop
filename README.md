@@ -343,6 +343,47 @@ these three steps in order, every time:
 Bump `APP_VERSION` in `apps-script/Code.gs` whenever you change the
 `apps-script/` files, so the probe stays meaningful.
 
+### Creating or repairing the Sheet tabs
+
+Header names are load-bearing and the failure mode is silent, so **do not type
+them by hand**. Instead, in the Apps Script editor pick **`setupSheets`** in the
+function dropdown next to Run and press **Run** (once).
+
+It creates any of `Customers`, `CustomerSessions`, `CustomerCodes` and `Featured`
+that are missing, and rewrites row 1 on any whose required headers aren't all
+present. It never reads, writes or deletes a data row, and it logs the previous
+header row so any surprise is recoverable. A tab whose headers are all present
+but in a different order is left alone — `Db.gs` matches columns by name, so that
+tab is already correct.
+
+`setupSheets` is intentionally **not** exposed as a web action: the web app is
+unauthenticated, so a URL that could rewrite spreadsheet headers must not exist.
+Running it requires edit access to the script.
+
+### Checking the Sheet setup
+
+The row helpers in `Db.gs` address columns purely by **header name**, and they do
+it silently: writing a field whose header is missing simply drops it, and reading
+it back gives `undefined`. So one mistyped header does not raise an error — it
+resurfaces later as something misleading (a mistyped `Purpose` in `CustomerCodes`
+makes a valid, fresh signup code report *"This code is invalid or has expired"*).
+
+To check all of that at once, open the live URL with `?action=checkSetup`:
+
+```
+https://script.google.com/macros/s/…/exec?action=checkSetup
+```
+
+It reports, for `Customers`, `CustomerSessions`, `CustomerCodes` and `Featured`:
+whether the tab exists, which required headers are **missing**, which have **stray
+spaces**, and which are **unexpected**. It also flags any `.gs` file that exists but
+is **empty** (a common paste mistake — the file shows in the editor, but its
+functions are undefined) and whether `ADMIN_EMAILS` is set. `setupOk: true` with an
+empty `problems` array means everything is wired correctly.
+
+The action needs no auth and returns only tab names, header names and booleans —
+never row contents, and never the `ADMIN_EMAILS` value.
+
 **The first time you deploy after adding the 2FA/password-reset code**, Apps
 Script will prompt you to re-authorize an additional permission (sending
 email as you, via `MailApp`) — this is expected, since login codes and reset
