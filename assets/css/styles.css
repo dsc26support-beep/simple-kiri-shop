@@ -1682,6 +1682,80 @@ footer.site-footer .copyright {
   background: var(--color-blue);
 }
 
+/* Mobile bottom navigation (§7) - injected by bottom-nav.js, mobile only. */
+:root { --bottom-nav-h: 56px; }
+
+.bottom-nav { display: none; }
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--bottom-nav-h);
+  padding: 4px 0;
+  text-decoration: none;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+}
+
+.bottom-nav-item.is-active { color: var(--color-blue); }
+
+.bottom-nav-icon { position: relative; display: inline-flex; }
+.bottom-nav-icon svg { width: 22px; height: 22px; }
+.bottom-nav-label { line-height: 1; }
+
+.bottom-nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 16px;
+  text-align: center;
+}
+
+.bottom-nav-badge.is-dot {
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  top: -2px;
+  right: -4px;
+}
+
+@media (max-width: 700px) {
+  .bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1003;
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Keep page content clear of the fixed bar. */
+  body.has-bottom-nav { padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+
+  /* Lift existing floating buttons above the bar (only where the bar exists). */
+  body.has-bottom-nav .chat-fab-btn,
+  body.has-bottom-nav .floating-action-btn--right,
+  body.has-bottom-nav .floating-action-btn--left {
+    bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
+  }
+}
+
 /* Static "Continue Shopping" button on cart.html - sits beneath the bigger
    "Proceed to Checkout" primary button. Secondary weight: light-blue outline
    on a tinted fill so it reads clearly below the solid primary CTA. */

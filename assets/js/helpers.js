@@ -257,7 +257,7 @@ function renderBrowseProductCard(product, opts) {
   const priceText = formatPriceLabel(product.variants);
 
   return `
-    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
+    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
       ${media}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
