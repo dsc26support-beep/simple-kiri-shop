@@ -32,7 +32,7 @@ function nextDest() {
   if (next && !/^https?:/i.test(next) && !next.startsWith('//') && /^[a-zA-Z0-9_\-./?=&%]+$/.test(next)) {
     return next;
   }
-  return 'index.html';
+  return 'customer-dashboard.html';
 }
 
 function showTab(which) {

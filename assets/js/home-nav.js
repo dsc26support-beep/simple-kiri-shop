@@ -11,15 +11,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const hasStore = typeof Auth !== 'undefined' && !!Auth.getToken();
   const hasCustomer = typeof CustomerAuth !== 'undefined' && !!CustomerAuth.getToken();
 
-  // §13: hide Create Store once they own a store; hide Sign In once they have a
-  // customer account.
+  // §13: hide Create Store once they own a store.
   if (createLi && hasStore) createLi.hidden = true;
-  if (signinLi && hasCustomer) signinLi.hidden = true;
 
-  // §14: Sign In routing. Default href already points at the customer login.
-  // If the visitor also owns a store, intercept and offer a Customer/Seller
-  // choice instead of assuming which one they mean.
-  if (signinLink && !hasCustomer && hasStore) {
+  if (hasCustomer) {
+    // Signed-in customer: the "Sign In" link becomes their Account entry point
+    // (Phase 3 dashboard) rather than disappearing.
+    if (signinLink) {
+      signinLink.textContent = 'Account';
+      signinLink.setAttribute('href', 'customer-dashboard.html');
+    }
+  } else if (signinLink && hasStore) {
+    // §14: not a customer but owns a store - Sign In offers a Customer/Seller
+    // choice instead of assuming which one they mean.
     signinLink.addEventListener('click', (e) => {
       e.preventDefault();
       showLoginChooser();

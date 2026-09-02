@@ -231,3 +231,102 @@ function actionLogoutCustomer(body) {
   if (session) sheet.deleteRow(session.__row);
   return ok({});
 }
+
+/* ---------- Customer dashboard reads (Phase 3) ---------- */
+
+function digitsOnly(s) {
+  return String(s || '').replace(/\D/g, '');
+}
+
+// Resolve a store slug to its display name, memoised per call so a customer
+// with orders across N stores does a bounded number of lookups.
+function makeStoreNameResolver() {
+  var cache = {};
+  return function (slug) {
+    if (Object.prototype.hasOwnProperty.call(cache, slug)) return cache[slug];
+    var owner = getOwnerBySlug(slug);
+    cache[slug] = owner ? owner.StoreName : slug;
+    return cache[slug];
+  };
+}
+
+function actionListCustomerOrders(body) {
+  var customer;
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+
+  var email = normalizeEmail(customer.Email);
+  var storeName = makeStoreNameResolver();
+  var orders = sheetToObjects(getSheet('Orders'))
+    .filter(function (o) { return normalizeEmail(o.CustomerEmail) === email; });
+  orders.sort(function (a, b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); });
+
+  var out = orders.map(function (o) {
+    var items = [];
+    try { items = JSON.parse(o.ItemsJson || '[]'); } catch (e) { /* malformed row */ }
+    return {
+      orderId: o.OrderId,
+      storeSlug: o.StoreSlug,
+      storeName: storeName(o.StoreSlug),
+      items: items,
+      itemsSummary: o.ItemsSummary,
+      deliveryMethod: o.DeliveryMethod,
+      deliveryCost: o.DeliveryCost,
+      total: o.Total,
+      status: o.Status,
+      createdAt: o.CreatedAt
+    };
+  });
+  return ok({ orders: out });
+}
+
+function actionListCustomerBookings(body) {
+  var customer;
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+
+  var email = normalizeEmail(customer.Email);
+  var phone = digitsOnly(customer.Phone);
+  var storeName = makeStoreNameResolver();
+  var rows = sheetToObjects(getSheet('Bookings')).filter(function (b) {
+    var byEmail = b.CustomerEmail && normalizeEmail(b.CustomerEmail) === email;
+    var byPhone = phone && digitsOnly(b.CustomerPhone) === phone;
+    return byEmail || byPhone;
+  });
+  rows.sort(function (a, b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); });
+
+  var out = rows.map(function (b) {
+    return {
+      bookingId: b.BookingId,
+      storeSlug: b.StoreSlug,
+      storeName: storeName(b.StoreSlug),
+      productName: b.ProductName,
+      rateLabel: b.RateLabel,
+      startDate: b.StartDate,
+      endDate: b.EndDate,
+      status: b.Status,
+      createdAt: b.CreatedAt
+    };
+  });
+  return ok({ bookings: out });
+}
+
+function actionUpdateCustomerProfile(body) {
+  var customer;
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+
+  var name = String(body.name || '').trim();
+  var phone = String(body.phone || '').trim();
+  if (!name) return fail('Please enter your name');
+  var nameErr = capLength(name, 100, 'Name');
+  if (nameErr) return nameErr;
+  if (!phone) return fail('Please enter your phone number');
+  var phoneErr = capLength(phone, 30, 'Phone number');
+  if (phoneErr) return phoneErr;
+  if (!isCustomerPhoneValid(phone)) {
+    return fail('Local phone numbers must start with 730 or 630. For an overseas number, include your country code.');
+  }
+
+  updateRowFromObject(getSheet('Customers'), customer.__row, { Name: name, Phone: phone, UpdatedAt: nowIso() });
+  customer.Name = name;
+  customer.Phone = phone;
+  return ok({ customer: publicCustomerFields(customer) });
+}

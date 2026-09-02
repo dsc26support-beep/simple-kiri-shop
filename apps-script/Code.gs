@@ -20,7 +20,8 @@ var PUBLIC_POST_ACTIONS = [
   // Customer accounts (passwordless email code) - all public; getProfile/logout
   // validate their own customer token internally via requireCustomerAuth.
   'registerCustomer', 'verifyCustomerEmail', 'loginCustomer', 'verifyCustomerLogin',
-  'getCustomerProfile', 'logoutCustomer'
+  'getCustomerProfile', 'logoutCustomer',
+  'listCustomerOrders', 'listCustomerBookings', 'updateCustomerProfile'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -136,6 +137,9 @@ function doPost(e) {
         case 'verifyCustomerLogin': return jsonOut(actionVerifyCustomerLogin(body));
         case 'getCustomerProfile': return jsonOut(actionGetCustomerProfile(body));
         case 'logoutCustomer': return jsonOut(actionLogoutCustomer(body));
+        case 'listCustomerOrders': return jsonOut(actionListCustomerOrders(body));
+        case 'listCustomerBookings': return jsonOut(actionListCustomerBookings(body));
+        case 'updateCustomerProfile': return jsonOut(actionUpdateCustomerProfile(body));
       }
     }
 
