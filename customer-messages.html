@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Messages — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-top-row">
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="stores.html">Browse Stores</a></li>
+        </ul>
+      </nav>
+      <img src="assets/img/favicon.svg" alt="Mwakete" class="header-logo-mark">
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="container">
+      <div class="dash-head">
+        <h1>Messages</h1>
+        <a class="btn btn-small" href="customer-dashboard.html">My Account</a>
+      </div>
+      <p class="helper-text">Your chats with stores on this device. Tap one to continue the conversation.</p>
+
+      <section class="dash-section">
+        <p id="messages-status" class="helper-text" aria-live="polite"></p>
+        <div id="messages-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p><a href="stores.html">Browse All Stores</a></p>
+      <p class="copyright">©MainKT Enterprises</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/helpers.js"></script>
+  <script src="assets/js/cookie-consent.js"></script>
+  <script src="assets/js/customer-messages.js"></script>
+  <script src="assets/js/register-sw.js"></script>
+</body>
+</html>

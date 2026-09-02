@@ -1646,6 +1646,42 @@ footer.site-footer .copyright {
   margin-top: var(--space-2);
 }
 
+/* Customer Messages inbox (customer-messages.html) */
+.inbox-thread {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) 0;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.inbox-thread:first-child {
+  border-top: none;
+}
+
+.inbox-thread .dash-item-main {
+  flex: 1 1 auto;
+}
+
+.inbox-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.inbox-dot.is-unread {
+  background: var(--color-blue);
+}
+
 /* Static "Continue Shopping" button on cart.html - sits beneath the bigger
    "Proceed to Checkout" primary button. Secondary weight: light-blue outline
    on a tinted fill so it reads clearly below the solid primary CTA. */

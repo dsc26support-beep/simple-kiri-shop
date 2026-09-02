@@ -21,7 +21,8 @@ var PUBLIC_POST_ACTIONS = [
   // validate their own customer token internally via requireCustomerAuth.
   'registerCustomer', 'verifyCustomerEmail', 'loginCustomer', 'verifyCustomerLogin',
   'getCustomerProfile', 'logoutCustomer',
-  'listCustomerOrders', 'listCustomerBookings', 'updateCustomerProfile'
+  'listCustomerOrders', 'listCustomerBookings', 'updateCustomerProfile',
+  'getCustomerInbox'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -140,6 +141,7 @@ function doPost(e) {
         case 'listCustomerOrders': return jsonOut(actionListCustomerOrders(body));
         case 'listCustomerBookings': return jsonOut(actionListCustomerBookings(body));
         case 'updateCustomerProfile': return jsonOut(actionUpdateCustomerProfile(body));
+        case 'getCustomerInbox': return jsonOut(actionGetCustomerInbox(body));
       }
     }
 
