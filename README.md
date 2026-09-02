@@ -313,6 +313,20 @@ leftover `@` A record or Domain Forwarding is still set (step 2). If GitHub's DN
 check won't go green, the only `@` A records must be the four GitHub IPs above,
 with no typos.
 
+### Releasing a front-end change
+
+**Bump `CACHE` in `sw.js` whenever you change a cached CSS or JS file.**
+
+The service worker serves static assets stale-while-revalidate: the first load
+after a deploy returns the *previously cached* file and fetches the new one in
+the background, so the change only appears on the load after that. On a page
+someone visits once, it looks like the fix never shipped. Renaming the cache
+(`mwakete-v3` -> `mwakete-v4`, ...) makes `activate` delete the old one, so the
+next load fetches fresh.
+
+Skipping this does not break anything permanently - a second reload always
+picks the change up - but it makes every release look broken on first view.
+
 ### Redeploying after a code change
 
 Apps Script serves a **frozen snapshot of the last saved files**, so an editor
