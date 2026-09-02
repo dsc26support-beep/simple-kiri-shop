@@ -91,12 +91,15 @@ function orderMoney(n) {
 // Plain-text order notification sent to the seller the moment an order is
 // placed. Mirrors the on-screen order summary the customer sees so the vendor
 // has the full order in their inbox without opening the dashboard.
-function buildSellerOrderEmail(owner, orderId, name, phone, email, island, village, method, deliveryCost, lineItems, subtotal, total, notes) {
+function buildSellerOrderEmail(owner, orderId, name, phone, email, island, village, method, deliveryCost, lineItems, subtotal, total, notes, shippingNegotiated) {
   var lines = lineItems.map(function (l) {
     return '- ' + l.qty + ' x ' + l.label + ' = ' + orderMoney(l.lineTotal);
   }).join('\n');
   var methodLabel = DELIVERY_METHOD_LABEL[method] || method;
-  var deliveryText = Number(deliveryCost) === 0 ? 'Free' : orderMoney(deliveryCost);
+  // Trailing arg, so any caller that predates it still behaves as before.
+  var deliveryText = shippingNegotiated
+    ? 'To Be Negotiated - contact the customer to agree the fee'
+    : Number(deliveryCost) === 0 ? 'Free' : orderMoney(deliveryCost);
 
   return 'New order received on Mwakete.\n\n' +
     'Order Ref: ' + orderId + '\n' +
@@ -199,7 +202,15 @@ function actionCreateOrder(body) {
     if (eligibleMethods.indexOf(deliveryMethod) === -1) {
       return fail('That delivery method is not available for your location - please refresh and choose an available option.');
     }
-    var deliveryCost = deliveryMethod === 'pickPay' ? 0 : Number(owner[DELIVERY_COST_FIELD[deliveryMethod]]) || 0;
+    // A paid method whose cost cell the vendor never filled in means the fee
+    // has to be agreed with the store - it is NOT free. Previously the
+    // `|| 0` below silently turned a blank cell into $0, so the order was
+    // written, totalled and emailed as free delivery. Record it as negotiated
+    // instead: DeliveryCost is left blank (not 0) so the vendor can see the
+    // fee is still open, and the unknown amount stays out of the total.
+    var rawDeliveryCost = deliveryMethod === 'pickPay' ? 0 : owner[DELIVERY_COST_FIELD[deliveryMethod]];
+    var shippingNegotiated = deliveryMethod !== 'pickPay' && (rawDeliveryCost === '' || rawDeliveryCost == null);
+    var deliveryCost = shippingNegotiated ? 0 : Number(rawDeliveryCost) || 0;
     var total = subtotal + deliveryCost;
 
     var orderId = generateOrderRef(slug);
@@ -214,7 +225,9 @@ function actionCreateOrder(body) {
       Village: village,
       DeliveryAddress: village + ', ' + island,
       DeliveryMethod: deliveryMethod,
-      DeliveryCost: deliveryCost,
+      // Blank, not 0, when the fee is still to be agreed - a 0 here would be
+      // indistinguishable from genuinely free delivery.
+      DeliveryCost: shippingNegotiated ? '' : deliveryCost,
       Notes: body.notes || '',
       PaymentMethod: paymentMethod,
       PaymentReference: orderId,
@@ -242,7 +255,7 @@ function actionCreateOrder(body) {
     emailedSeller = sendAppEmail(
       owner.Email,
       'New order ' + orderId + ' — ' + customerName,
-      buildSellerOrderEmail(owner, orderId, customerName, customerPhone, body.customerEmail, island, village, deliveryMethod, deliveryCost, lineItems, subtotal, total, body.notes)
+      buildSellerOrderEmail(owner, orderId, customerName, customerPhone, body.customerEmail, island, village, deliveryMethod, deliveryCost, lineItems, subtotal, total, body.notes, shippingNegotiated)
     );
   }
 

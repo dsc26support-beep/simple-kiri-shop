@@ -38,7 +38,7 @@ async function loadInbox(stores, statusEl, listEl) {
   stop();
   if (!res.ok) {
     listEl.innerHTML = '';
-    showLoadFailedMessage(statusEl);
+    showMessagesLoadFailed(statusEl);
     return;
   }
   const convs = res.conversations || [];
@@ -51,6 +51,22 @@ async function loadInbox(stores, statusEl, listEl) {
   listEl.querySelectorAll('.inbox-thread').forEach((el) => {
     el.addEventListener('click', () => openThread(el.dataset.slug, el.dataset.at));
   });
+}
+
+// The inbox is the one place where "refresh" is not the most useful next step
+// for everyone seeing it: a visitor with no account may simply not have one
+// yet, and creating it - not retrying - is what gets them a message history.
+// Signed-in visitors keep the plain shared wording, and every other page keeps
+// showLoadFailedMessage untouched, so this stays local rather than changing a
+// helper used in fourteen places.
+function showMessagesLoadFailed(statusEl) {
+  const signedIn = typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken();
+  if (signedIn) {
+    showLoadFailedMessage(statusEl);
+    return;
+  }
+  statusEl.innerHTML =
+    '<a href="customer-login.html">Create Your Account now</a> or refresh page' + STATIC_DOTS_HTML;
 }
 
 // Unread is computed here, not from the server flag: getConversation (used by
