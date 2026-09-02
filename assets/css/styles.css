@@ -1302,13 +1302,12 @@ footer.site-footer .copyright {
   left: 0;
   right: 0;
   bottom: 0;
-  /* Above the floating buttons (1001) and chat window (1002) so the install
-     pill can't sit on top of the notice text. Deliberately NOT above the
-     blocking overlays - .loading-overlay (1004) and .login-chooser-overlay
-     (1005) are modal and must stay on top. Ties with the top-anchored
-     .chat-notification-toast (1003), which never overlaps a bottom-anchored
-     bar. It never hides the bottom nav (also 1003) because it is offset
-     above it on mobile - see the max-width:700px block. */
+  /* Above the chat FAB (1001) and chat window (1002), which are bottom-right
+     anchored and would otherwise sit on top of this full-width bar.
+     Deliberately NOT above the blocking overlays - .loading-overlay (1004)
+     and .login-chooser-overlay (1005) are modal and must stay on top. Ties
+     with .chat-notification-toast (1003), which is top-anchored and so never
+     meets a bottom-anchored bar. */
   z-index: 1003;
   display: flex;
   flex-wrap: wrap;
@@ -1325,6 +1324,18 @@ footer.site-footer .copyright {
   margin: 0;
   max-width: 50em;
   font-size: 0.9rem;
+}
+
+/* Desktop only. On mobile and tablet the notice is suppressed: it competes
+   for the little screen space there is with the bottom nav, the chat FAB and
+   the install pill, and this site's device storage is purely functional (cart
+   contents and store-owner login) with no tracking or third-party sharing -
+   the banner's own wording. 1024px is the breakpoint the install pill already
+   uses to mean "mobile and tablet", so the two stay in step. */
+@media (max-width: 1024px) {
+  .cookie-consent-banner {
+    display: none;
+  }
 }
 
 /* Buttons & form controls */
@@ -1766,13 +1777,6 @@ footer.site-footer .copyright {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
   }
 
-  /* The consent banner is anchored to the bottom of the viewport, which is
-     where the nav now lives. Left at bottom:0 the nav covers the banner's
-     lower edge - and since the banner wraps on a narrow screen, the Accept
-     button is exactly what ends up hidden, leaving no way to dismiss it. */
-  body.has-bottom-nav .cookie-consent-banner {
-    bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
-  }
 }
 
 /* Static "Continue Shopping" button on cart.html - sits beneath the bigger
