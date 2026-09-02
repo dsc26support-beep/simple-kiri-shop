@@ -68,6 +68,48 @@ function findConversation(storeSlug, customerToken) {
   })[0] || null;
 }
 
+// Read-only inbox for the customer Messages page (Phase 3b). Takes the device's
+// list of (storeSlug, customerToken) chat identities and returns a summary per
+// existing conversation - WITHOUT marking anything read (unlike getConversation,
+// which does). Reads the Conversations sheet once. Tokens are secret UUIDs, so a
+// caller can only ever see their own threads.
+function actionGetCustomerInbox(body) {
+  var stores = Array.isArray(body.stores) ? body.stores.slice(0, 50) : [];
+  if (stores.length === 0) return ok({ conversations: [] });
+
+  var want = {};
+  for (var i = 0; i < stores.length; i++) {
+    var slug = String(stores[i].storeSlug || '');
+    var token = String(stores[i].customerToken || '');
+    if (slug && token) want[slug + '|' + token] = true;
+  }
+
+  var nameCache = {};
+  function storeName(slug) {
+    if (Object.prototype.hasOwnProperty.call(nameCache, slug)) return nameCache[slug];
+    var owner = getOwnerBySlug(slug);
+    nameCache[slug] = owner ? owner.StoreName : slug;
+    return nameCache[slug];
+  }
+
+  var out = [];
+  var convs = sheetToObjects(getSheet('Conversations'));
+  for (var j = 0; j < convs.length; j++) {
+    var c = convs[j];
+    if (c.Status === 'deleted') continue;
+    if (!want[c.StoreSlug + '|' + c.CustomerToken]) continue;
+    out.push({
+      storeSlug: c.StoreSlug,
+      storeName: storeName(c.StoreSlug),
+      lastMessagePreview: c.LastMessagePreview,
+      lastMessageAt: c.LastMessageAt,
+      lastSenderType: c.LastSenderType
+    });
+  }
+  out.sort(function (a, b) { return new Date(b.lastMessageAt) - new Date(a.lastMessageAt); });
+  return ok({ conversations: out });
+}
+
 function getConversationById(conversationId) {
   if (!conversationId) return null;
   return findRowById(getSheet('Conversations'), 'ConversationId', conversationId);

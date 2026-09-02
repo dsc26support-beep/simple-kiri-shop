@@ -35,6 +35,16 @@
     <div class="container">
       <h1>Welcome<span id="welcome-name"></span></h1>
       <p><a id="storefront-link" href="#" target="_blank" rel="noopener">View my public storefront →</a></p>
+      <p id="admin-link-wrap" class="hidden"><a href="admin.html">Admin — Tips →</a></p>
+
+      <div class="store-status-toggle-row">
+        <span class="store-status-word" id="store-status-open-label">OPEN</span>
+        <button type="button" id="store-status-toggle" class="store-status-toggle" role="switch" aria-checked="true" aria-label="Store open or closed to customers">
+          <span class="store-status-toggle-knob" aria-hidden="true"></span>
+        </button>
+        <span class="store-status-word" id="store-status-closed-label">CLOSED</span>
+        <span class="helper-text" id="store-status-toggle-hint"></span>
+      </div>
 
       <div class="dashboard-cards">
         <div class="dashboard-card">

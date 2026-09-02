@@ -102,6 +102,34 @@ function showLoadingOverlay() {
   };
 }
 
+// Centered, auto-dismissing confirmation popup. Reuses the loading-overlay
+// backdrop so it sits over the whole page, then fades itself out after `ms`
+// and resolves - the caller awaits it before revealing the next screen.
+// Used on checkout to confirm "the seller has been emailed" for a beat
+// before the Order Received page appears.
+function showOrderSentPopup(message, ms) {
+  return new Promise((resolve) => {
+    let overlay = document.getElementById('order-sent-popup');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'order-sent-popup';
+      overlay.className = 'loading-overlay';
+      overlay.innerHTML =
+        '<div class="order-sent-card" role="status" aria-live="polite">' +
+        '<span class="order-sent-check" aria-hidden="true">' +
+        '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+        '</span><span class="order-sent-text"></span></div>';
+      document.body.appendChild(overlay);
+    }
+    overlay.querySelector('.order-sent-text').textContent = message;
+    overlay.classList.add('is-visible');
+    setTimeout(() => {
+      overlay.classList.remove('is-visible');
+      resolve();
+    }, ms);
+  });
+}
+
 // The failed state deliberately looks different from the loading state,
 // not just says something different - static (no bounce) and one plain
 // currentColor (not cycling red/gold/purple), so it reads at a glance as
@@ -229,22 +257,26 @@ function renderBrowseProductCard(product, opts) {
   const priceText = formatPriceLabel(product.variants);
 
   return `
-    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="store.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml((soldByVerb(product.category) + ' ' + product.storeName).toLowerCase())}">
+    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
       ${media}
       <div class="product-card-body">
         <h3 class="product-name">${escapeHtml(product.name)}</h3>
         <strong class="product-price">${priceText}</strong>
-        <p class="helper-text">${soldByVerb(product.category)} ${escapeHtml(product.storeName)}</p>
-        ${product.storePhone ? `<p class="store-phone">${escapeHtml(product.storePhone)}</p>` : ''}
-        ${renderDeliveryIcons({
-          truck: product.storeDeliveryTruck,
-          ship: product.storeDeliveryShip,
-          airCargo: product.storeDeliveryAirCargo,
-          pickPay: product.storeDeliveryPickPay,
-          truckCost: product.storeDeliveryTruckCost,
-          shipCost: product.storeDeliveryShipCost,
-          airCargoCost: product.storeDeliveryAirCargoCost
-        })}
+        <p class="helper-text">${escapeHtml(product.storeName)}</p>
+        <div class="store-phone-row">
+          ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
+          ${isBookingCategory(product.category)
+            ? '' /* delivery flags are store-wide; they're meaningless (and misleading) on a rental/service listing, so suppress them here — the goods listings and the store page keep them */
+            : renderDeliveryIcons({
+                truck: product.storeDeliveryTruck,
+                ship: product.storeDeliveryShip,
+                airCargo: product.storeDeliveryAirCargo,
+                pickPay: product.storeDeliveryPickPay,
+                truckCost: product.storeDeliveryTruckCost,
+                shipCost: product.storeDeliveryShipCost,
+                airCargoCost: product.storeDeliveryAirCargoCost
+              })}
+        </div>
       </div>
     </a>
   `;
@@ -387,12 +419,29 @@ function renderCategoryButtons(containerId) {
 const BOOKING_CATEGORIES = ['rentals', 'services'];
 function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
 
-// "Sold by" only makes sense for a goods listing that's actually purchased -
-// a Rentals/Services listing is booked, not sold, from someone.
-function soldByVerb(category) {
-  if (category === 'rentals') return 'Rent by';
-  if (category === 'services') return 'Service by';
-  return 'Sold by';
+// Phone classification (§16). Local Kiribati customers must use a number
+// starting 730 or 630; overseas customers are unrestricted. Auto-detected by
+// country code: a +686 / 00686 / 686 prefix, OR no country code at all, is
+// treated as local (the national part, after any 686, must then begin 730 or
+// 630); any OTHER explicit country code (+64, 0061, …) is overseas and exempt.
+// Overseas customers therefore need to include their country code.
+function classifyKiribatiPhone(phone) {
+  let s = String(phone || '').replace(/[\s()\-.]/g, '');
+  let hasCountryCode = false;
+  if (s.charAt(0) === '+') { s = s.slice(1); hasCountryCode = true; }
+  else if (s.slice(0, 2) === '00') { s = s.slice(2); hasCountryCode = true; }
+
+  if (s.slice(0, 3) === '686') return { local: true, national: s.slice(3) };
+  if (hasCountryCode) return { local: false, national: s };
+  return { local: true, national: s };
+}
+
+// True if the phone is acceptable: overseas numbers pass unconditionally;
+// local numbers must start 730 or 630.
+function isCustomerPhoneValid(phone) {
+  const c = classifyKiribatiPhone(phone);
+  if (!c.local) return true;
+  return /^(730|630)/.test(c.national);
 }
 
 // Self-contained inline-SVG icons (no external icon library/CDN) - keep the

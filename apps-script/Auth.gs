@@ -94,7 +94,8 @@ function publicOwnerFields(owner) {
     deliveryTruckCost: owner.DeliveryTruckCost === '' || owner.DeliveryTruckCost == null ? null : Number(owner.DeliveryTruckCost),
     deliveryShipCost: owner.DeliveryShipCost === '' || owner.DeliveryShipCost == null ? null : Number(owner.DeliveryShipCost),
     deliveryAirCargoCost: owner.DeliveryAirCargoCost === '' || owner.DeliveryAirCargoCost == null ? null : Number(owner.DeliveryAirCargoCost),
-    twoFAEnabled: String(owner.TwoFAEnabled) === 'true'
+    twoFAEnabled: String(owner.TwoFAEnabled) === 'true',
+    isAdmin: isOwnerAdmin(owner)
   };
 }
 

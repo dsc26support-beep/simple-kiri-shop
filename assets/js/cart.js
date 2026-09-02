@@ -61,5 +61,16 @@ const Cart = (function () {
     return getCart(storeSlug).reduce((sum, line) => sum + line.qty, 0);
   }
 
-  return { getCart, addItem, updateQty, removeItem, clearCart, getTotal, getItemCount };
+  // Number of DISTINCT products in the cart (by productId, so two varieties of
+  // the same product count once). Separate from getItemCount (total quantity) -
+  // the store-front cart button escalates its look by distinct-product count.
+  function getDistinctProductCount(storeSlug) {
+    const ids = {};
+    getCart(storeSlug).forEach((line) => {
+      ids[line.productId] = true;
+    });
+    return Object.keys(ids).length;
+  }
+
+  return { getCart, addItem, updateQty, removeItem, clearCart, getTotal, getItemCount, getDistinctProductCount };
 })();

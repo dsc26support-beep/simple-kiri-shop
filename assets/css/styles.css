@@ -5,6 +5,7 @@
   --color-gold: #fcd116;
   --color-blue: #003f87;
   --color-blue-light: #5b9bd5;
+  --color-purple: #332d63;
   --color-ink: #1a1a1a;
   --color-muted: #5f6368;
   --color-border: #dcdfe3;
@@ -182,6 +183,21 @@ header.site-header a {
   font-size: 0.8rem;
   font-weight: 700;
   margin: var(--space-1) 0 0;
+}
+
+/* Product card: phone number and delivery icons share one line, grouped
+   left (icons sit just after the number). */
+.store-phone-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.store-phone-row .store-phone,
+.store-phone-row .delivery-icons {
+  margin: 0;
 }
 
 .delivery-icons {
@@ -524,6 +540,46 @@ footer.site-footer .copyright {
   background: rgba(91, 155, 213, 0.75); /* --color-blue-light */
 }
 
+/* The cart button escalates its look as distinct products are added (see
+   updateCartCount / animateCartOnAdd in store.js). Effects stack and track the
+   current count. Two-class selectors outspecify the base --cart rule above. */
+
+/* 1+ items: solid deep brand blue (over the resting translucent light blue). */
+.floating-action-btn--cart.cart-fab--bold {
+  background: var(--color-blue);
+}
+
+/* 2+ items: relocate from bottom-left to a fixed top-right corner, and stay. */
+.floating-action-btn--cart.cart-fab--corner {
+  left: auto;
+  right: max(var(--space-3), env(safe-area-inset-right));
+  bottom: auto;
+  top: max(var(--space-3), env(safe-area-inset-top));
+  transform-origin: right top;
+}
+
+/* 3rd item added: flash twice; each add after that: one blink. Flashes between
+   the deep blue and light blue so the white label stays readable throughout. */
+@keyframes cart-bg-flash {
+  0%, 100% { background-color: var(--color-blue); }
+  50%      { background-color: var(--color-blue-light); }
+}
+
+.floating-action-btn--cart.cart-fab--flash2 {
+  animation: cart-bg-flash 0.35s ease 2;
+}
+
+.floating-action-btn--cart.cart-fab--blink {
+  animation: cart-bg-flash 0.35s ease 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-action-btn--cart.cart-fab--flash2,
+  .floating-action-btn--cart.cart-fab--blink {
+    animation: none;
+  }
+}
+
 /* "Continue Shopping" button on cart.html: 50% smaller, light blue
    (#5b9bd5), 10%-transparent background. transform-origin keeps it anchored
    to the left/bottom edges as it shrinks. */
@@ -696,10 +752,30 @@ footer.site-footer .copyright {
   transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@media (max-width: 480px) {
+/* §21: on mobile the chat takes over the whole screen - a dedicated
+   messaging screen rather than a floating window. Full viewport, no rounded
+   corners, safe-area padding so the header clears the notch and the input row
+   clears the home indicator; the header X acts as back/close. Slides up from
+   the bottom instead of the desktop scale animation. */
+@media (max-width: 600px) {
   .chat-window {
-    width: calc(100vw - var(--space-3) * 2);
-    height: calc(100vh - 140px);
+    inset: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* dynamic vh: accounts for mobile browser chrome */
+    max-height: none;
+    border-radius: 0;
+    transform-origin: center bottom;
+    transform: translateY(100%);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .chat-window.chat-window--open {
+    transform: translateY(0);
   }
 }
 
@@ -1347,6 +1423,36 @@ footer.site-footer .copyright {
   align-items: center;
 }
 
+/* Order-sent confirmation popup (checkout): a white card with a green check
+   and a short message, shown briefly after the seller is emailed and before
+   the Order Received page appears. Rides the .loading-overlay backdrop. */
+.order-sent-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(22rem, calc(100vw - 2 * var(--space-3)));
+  background: #fff;
+  color: var(--color-ink);
+  padding: var(--space-4) var(--space-5);
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.order-sent-check {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-success);
+  color: #fff;
+}
+
 .loading-dots {
   display: inline-flex;
   align-items: center;
@@ -1406,6 +1512,268 @@ footer.site-footer .copyright {
 
 .btn-block {
   width: 100%;
+}
+
+/* Customer sign-in / create-account page (customer-login.html) */
+.auth-card-wrap {
+  max-width: 30rem;
+}
+
+.auth-card {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: var(--space-2);
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid var(--color-border);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.auth-tab.is-active {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-blue);
+}
+
+.auth-panel .btn + .btn {
+  margin-top: var(--space-2);
+}
+
+.auth-alt {
+  text-align: center;
+  margin-top: var(--space-4);
+}
+
+/* Customer/Seller login chooser (homepage Sign In when the visitor also owns a
+   store). */
+.login-chooser-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1005;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.login-chooser-card {
+  width: 100%;
+  max-width: 22rem;
+  background: var(--color-bg);
+  border-radius: 14px;
+  padding: var(--space-4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.login-chooser-card h2 {
+  margin-top: 0;
+  text-align: center;
+}
+
+.login-chooser-card .btn + .btn {
+  margin-top: var(--space-2);
+}
+
+/* Customer dashboard (customer-dashboard.html) */
+.dash-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.dash-section {
+  margin: var(--space-4) 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.dash-section h2 {
+  margin-top: 0;
+}
+
+.dash-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.dash-item:first-child {
+  border-top: none;
+}
+
+.dash-item-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dash-item-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+.dash-status {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+#profile-form .btn + .btn {
+  margin-top: var(--space-2);
+}
+
+/* Customer Messages inbox (customer-messages.html) */
+.inbox-thread {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) 0;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.inbox-thread:first-child {
+  border-top: none;
+}
+
+.inbox-thread .dash-item-main {
+  flex: 1 1 auto;
+}
+
+.inbox-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.inbox-dot.is-unread {
+  background: var(--color-blue);
+}
+
+/* Mobile bottom navigation (§7) - injected by bottom-nav.js, mobile only. */
+:root { --bottom-nav-h: 56px; }
+
+.bottom-nav { display: none; }
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--bottom-nav-h);
+  padding: 4px 0;
+  text-decoration: none;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+}
+
+.bottom-nav-item.is-active { color: var(--color-purple); }
+.bottom-nav-item.is-active .bottom-nav-label { font-weight: 600; }
+
+.bottom-nav-icon { position: relative; display: inline-flex; }
+/* Hard cap the icon size so it can never balloon, even if this stylesheet is
+   momentarily stale on a device (the SVGs also carry width/height now). */
+.bottom-nav-icon svg { width: 24px; height: 24px; }
+.bottom-nav-label { line-height: 1; }
+
+.bottom-nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 16px;
+  text-align: center;
+}
+
+.bottom-nav-badge.is-dot {
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  top: -2px;
+  right: -4px;
+}
+
+@media (max-width: 700px) {
+  .bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1003;
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Keep page content clear of the fixed bar. */
+  body.has-bottom-nav { padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+
+  /* Lift existing floating buttons above the bar (only where the bar exists). */
+  body.has-bottom-nav .chat-fab-btn,
+  body.has-bottom-nav .floating-action-btn--right,
+  body.has-bottom-nav .floating-action-btn--left {
+    bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
+  }
+}
+
+/* Static "Continue Shopping" button on cart.html - sits beneath the bigger
+   "Proceed to Checkout" primary button. Secondary weight: light-blue outline
+   on a tinted fill so it reads clearly below the solid primary CTA. */
+.btn-continue-shopping {
+  margin-top: var(--space-2);
+  background: rgba(91, 155, 213, 0.12); /* --color-blue-light tint */
+  color: var(--color-blue);
+  border-color: var(--color-blue-light);
+}
+
+@media (hover: hover) {
+  .btn-continue-shopping:hover {
+    background: rgba(91, 155, 213, 0.22);
+  }
 }
 
 .btn-small {
@@ -1797,12 +2165,29 @@ legend {
   margin-top: var(--space-2);
 }
 
-.booking-dates-row input {
+/* Each date input now sits under a visible "Pick-up date" / "Return date"
+   label (native type=date ignores placeholder). The field wrapper is the flex
+   item; the input fills it. */
+.booking-date-field {
   /* min-width: 0 lets a flex item shrink below its content's intrinsic
      size (the default `auto` doesn't) - without it, a native date input's
      own minimum width made the row overflow the card's overflow:hidden
      boundary, clipping the end-date field off entirely on narrower cards. */
   flex: 1 1 140px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-date-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.booking-dates-row input {
+  width: 100%;
   min-width: 0;
 }
 

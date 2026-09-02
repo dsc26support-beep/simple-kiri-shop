@@ -644,6 +644,12 @@ function initChatWindow() {
     else openWindow();
   });
 
+  // Deep-link: store.html?store=<slug>&chat=open jumps straight into the chat -
+  // used by the customer Messages inbox to open a tapped conversation.
+  if (storeSlug && getQueryParam('chat') === 'open') {
+    openWindow();
+  }
+
   closeBtn.addEventListener('click', closeWindow);
 
   document.addEventListener('keydown', (e) => {

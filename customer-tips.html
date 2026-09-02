@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Search — Mwakete</title>
+  <title>Tips — Mwakete</title>
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
   <link rel="stylesheet" href="assets/css/styles.css">
   <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
@@ -19,45 +19,38 @@
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
-    <div class="container">
-      <div>
-        <p class="site-tagline">Search</p>
-      </div>
+    <div class="container header-top-row">
       <nav class="site-nav" aria-label="Main">
         <ul>
           <li><a href="index.html">Home</a></li>
-          <li><a href="owner/login.html?tab=register">Create Store</a></li>
+          <li><a href="stores.html">Browse Stores</a></li>
         </ul>
       </nav>
+      <img src="assets/img/favicon.svg" alt="Mwakete" class="header-logo-mark">
     </div>
   </header>
 
-  <main id="main" class="page-products">
-    <section class="hero">
-      <div class="container">
-        <form id="search-form" class="search-box" role="search">
-          <label class="sr-only" for="search-input">Search products</label>
-          <input id="search-input" type="search" placeholder="Search products (e.g. rice, t-shirt)">
-          <button type="submit" class="btn btn-primary">Search</button>
-        </form>
-        <div class="category-buttons" id="category-buttons" style="margin-top: 1rem;" aria-label="Shop by category"></div>
-      </div>
-    </section>
+  <main id="main" class="home-main page-products">
+    <div class="container">
+      <h1>Tips</h1>
+      <p class="helper-text">Featured stores and products, hand-picked for you.</p>
+      <p id="tips-status" class="helper-text" role="status" aria-live="polite"></p>
 
-    <section aria-labelledby="results-heading">
-      <div class="container">
-        <h1 id="results-heading">Results</h1>
-        <p id="results-status" class="helper-text" role="status">Loading…</p>
-        <div id="results-list" class="product-grid"></div>
-        <noscript><p>Please enable JavaScript in your browser to search.</p></noscript>
-      </div>
-    </section>
+      <section id="tips-stores-wrap" class="hidden" aria-labelledby="tips-stores-heading">
+        <h2 id="tips-stores-heading">Featured Stores</h2>
+        <div id="tips-stores" class="logo-carousel"></div>
+      </section>
+
+      <section id="tips-products-wrap" class="hidden" aria-labelledby="tips-products-heading">
+        <h2 id="tips-products-heading">Featured Products</h2>
+        <div id="tips-products" class="product-grid"></div>
+      </section>
+    </div>
   </main>
 
   <footer class="site-footer">
     <div class="container">
-      <p>All payments is arranged between Customer and Seller</p>
-      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Enquiry">Enquiry</a></p>
+      <p><a href="stores.html">Browse All Stores</a></p>
       <p class="copyright">©MainKT Enterprises</p>
     </div>
   </footer>
@@ -66,7 +59,7 @@
   <script src="assets/js/api.js"></script>
   <script src="assets/js/helpers.js"></script>
   <script src="assets/js/cookie-consent.js"></script>
-  <script src="assets/js/search.js"></script>
+  <script src="assets/js/customer-tips.js"></script>
   <script src="assets/js/customer-auth.js"></script>
   <script src="assets/js/bottom-nav.js"></script>
   <script src="assets/js/register-sw.js"></script>

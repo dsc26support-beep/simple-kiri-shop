@@ -259,11 +259,16 @@ function renderDeliveryMethodOptions(eligible) {
   helpEl.textContent = '';
   placeOrderBtn.disabled = false;
 
+  // Default the selection to Pick & Pay when it's available (it's free and
+  // needs no delivery arrangement) - otherwise the first eligible method.
+  // A previously-chosen method always wins on re-render.
+  const defaultMethod = previousValue || (eligible.indexOf('pickPay') !== -1 ? 'pickPay' : eligible[0]);
+
   container.innerHTML = eligible
-    .map((m, i) => {
+    .map((m) => {
       const cost = deliveryCostOf(m);
       const priceText = cost == null ? '' : cost === 0 ? ' — Free' : ` — ${formatMoney(cost)}`;
-      const checked = previousValue ? m === previousValue : i === 0;
+      const checked = m === defaultMethod;
       return `
         <label class="delivery-method-option">
           <input type="radio" name="deliveryMethod" value="${m}" ${checked ? 'checked' : ''}>
@@ -348,6 +353,10 @@ async function onSubmit(e) {
     errorEl.textContent = 'Please enter your name and phone number.';
     return;
   }
+  if (!isCustomerPhoneValid(customerPhone)) {
+    errorEl.textContent = 'Local phone numbers must start with 730 or 630. For an overseas number, include your country code (e.g. +64…).';
+    return;
+  }
   if (!island || !village) {
     errorEl.textContent = 'Please select your island and village.';
     return;
@@ -391,6 +400,16 @@ async function onSubmit(e) {
   }
 
   Cart.clearCart(currentSlug);
+
+  // The server emails the seller as part of createOrder and reports back
+  // whether it went out. When it did, show a brief confirmation popup so the
+  // customer knows the seller was notified, then reveal the Order Received
+  // page. If the email couldn't be sent, fall straight through to the page
+  // (the "Call Seller Now!" button is there for them either way).
+  if (res.emailedSeller) {
+    await showOrderSentPopup('The seller has been emailed about your order.', 2600);
+  }
+
   showConfirmation(res, payload);
 }
 

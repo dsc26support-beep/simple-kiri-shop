@@ -81,6 +81,58 @@ function computeEligibleDeliveryMethods(owner, customerIsland, customerVillage, 
 // cost line there spells it out explicitly rather than relying on that.
 var DELIVERY_COST_FIELD = { truck: 'DeliveryTruckCost', ship: 'DeliveryShipCost', airCargo: 'DeliveryAirCargoCost' };
 
+// Human-readable delivery-method names for the seller-notification email.
+var DELIVERY_METHOD_LABEL = { truck: 'Truck', ship: 'Boat / Ship', airCargo: 'Air Cargo', pickPay: 'Pick & Pay (in-person pickup)' };
+
+function orderMoney(n) {
+  return '$' + (Number(n) || 0).toFixed(2);
+}
+
+// Plain-text order notification sent to the seller the moment an order is
+// placed. Mirrors the on-screen order summary the customer sees so the vendor
+// has the full order in their inbox without opening the dashboard.
+function buildSellerOrderEmail(owner, orderId, name, phone, email, island, village, method, deliveryCost, lineItems, subtotal, total, notes) {
+  var lines = lineItems.map(function (l) {
+    return '- ' + l.qty + ' x ' + l.label + ' = ' + orderMoney(l.lineTotal);
+  }).join('\n');
+  var methodLabel = DELIVERY_METHOD_LABEL[method] || method;
+  var deliveryText = Number(deliveryCost) === 0 ? 'Free' : orderMoney(deliveryCost);
+
+  return 'New order received on Mwakete.\n\n' +
+    'Order Ref: ' + orderId + '\n' +
+    'Store: ' + owner.StoreName + '\n\n' +
+    'Customer: ' + name + '\n' +
+    'Phone: ' + phone + '\n' +
+    (email ? 'Email: ' + email + '\n' : '') +
+    'Deliver to: ' + village + ', ' + island + '\n' +
+    'Delivery Method: ' + methodLabel + ' (' + deliveryText + ')\n\n' +
+    'Items:\n' + lines + '\n\n' +
+    'Subtotal: ' + orderMoney(subtotal) + '\n' +
+    'Delivery: ' + deliveryText + '\n' +
+    'Total: ' + orderMoney(total) + '\n\n' +
+    'Notes: ' + (notes ? notes : '(none)') + '\n\n' +
+    'The customer has been asked to call you to arrange payment.';
+}
+
+// Server mirror of the client isCustomerPhoneValid (§16). Local Kiribati
+// numbers (+686/00686/686 prefix, or no country code) must start 730 or 630;
+// any other explicit country code is overseas and unrestricted. Never rely on
+// the frontend check alone - createOrder is public/unauthenticated.
+function isCustomerPhoneValid(phone) {
+  var s = String(phone || '').replace(/[\s()\-.]/g, '');
+  var hasCountryCode = false;
+  if (s.charAt(0) === '+') { s = s.slice(1); hasCountryCode = true; }
+  else if (s.slice(0, 2) === '00') { s = s.slice(2); hasCountryCode = true; }
+
+  var national, local;
+  if (s.slice(0, 3) === '686') { local = true; national = s.slice(3); }
+  else if (hasCountryCode) { local = false; national = s; }
+  else { local = true; national = s; }
+
+  if (!local) return true;
+  return /^(730|630)/.test(national);
+}
+
 function actionCreateOrder(body) {
   var slug = body.storeSlug;
   if (!slug) return fail('storeSlug is required');
@@ -97,6 +149,7 @@ function actionCreateOrder(body) {
   var deliveryMethod = String(body.deliveryMethod || '').trim();
   var paymentMethod = body.paymentMethod || '';
   if (!customerName || !customerPhone) return fail('Name and phone number are required');
+  if (!isCustomerPhoneValid(customerPhone)) return fail('Local phone numbers must start with 730 or 630. For an overseas number, include your country code.');
   if (!island || !village) return fail('Island and village are required');
   var nameErr = capLength(customerName, 100, 'Name');
   if (nameErr) return nameErr;
@@ -175,19 +228,34 @@ function actionCreateOrder(body) {
     });
 
     if (body.customerEmail) markAbandonedCartConverted(slug, body.customerEmail, orderId);
-
-    return ok({
-      orderId: orderId,
-      total: total,
-      deliveryMethod: deliveryMethod,
-      deliveryCost: deliveryCost,
-      paymentMethod: paymentMethod,
-      store: publicOwnerFields(owner),
-      items: lineItems
-    });
   } finally {
     lock.releaseLock();
   }
+
+  // Notify the seller by email now that the order is safely written. Done
+  // outside the lock (the send can be slow, and it must not block or roll back
+  // a committed order). We report whether it went out via emailedSeller so the
+  // customer's confirmation screen can confirm the seller was emailed before
+  // showing the "Order Received" page.
+  var emailedSeller = false;
+  if (owner.Email) {
+    emailedSeller = sendAppEmail(
+      owner.Email,
+      'New order ' + orderId + ' — ' + customerName,
+      buildSellerOrderEmail(owner, orderId, customerName, customerPhone, body.customerEmail, island, village, deliveryMethod, deliveryCost, lineItems, subtotal, total, body.notes)
+    );
+  }
+
+  return ok({
+    orderId: orderId,
+    total: total,
+    deliveryMethod: deliveryMethod,
+    deliveryCost: deliveryCost,
+    paymentMethod: paymentMethod,
+    store: publicOwnerFields(owner),
+    items: lineItems,
+    emailedSeller: emailedSeller
+  });
 }
 
 /**
