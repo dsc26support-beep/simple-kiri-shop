@@ -13,7 +13,13 @@
 // minimal offline page as fallbacks. Static assets are stale-while-revalidate
 // so they load instantly but still refresh in the background.
 
-var CACHE = 'mwakete-v2';
+// Bump this on any release that changes a file in PRECACHE or any other
+// cached CSS/JS. Static assets are stale-while-revalidate (see the fetch
+// handler), so without a bump the first load after a deploy still serves the
+// PREVIOUS stylesheet and only refreshes it in the background - the change
+// appears one load late, which reads as "my fix didn't ship". Renaming the
+// cache makes activate() drop the old one, so the next load fetches fresh.
+var CACHE = 'mwakete-v3';
 
 // Separate cache for cross-origin product/logo photos. Cache-first is safe here
 // because every uploaded image has a unique URL (Drive file id / Cloudinary
