@@ -52,7 +52,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'phase7-2026-09-02';
+var APP_VERSION = 'phase8-2026-09-02';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -186,6 +186,62 @@ function actionCheckSetup() {
     missingFiles: missingFiles,
     adminEmailsSet: adminEmailsSet
   });
+}
+
+/**
+ * One-time setup / repair for the tabs in REQUIRED_TABS. Run it from the Apps
+ * Script editor: pick setupSheets in the function dropdown and press Run.
+ *
+ * Deliberately NOT wired into doGet/doPost. The web app is unauthenticated, so
+ * an endpoint able to rewrite spreadsheet headers must not be reachable from
+ * the internet; keeping this editor-only means it can only be invoked by
+ * someone who already has edit access to the script.
+ *
+ * Creates a missing tab, and rewrites row 1 when the required headers are not
+ * all present. It never reads, writes or deletes a data row. Rewriting row 1 is
+ * safe on a broken tab because Db.gs matches columns by header NAME: a header
+ * that does not match is one appendRowFromObject has never written to, so the
+ * cells beneath it are empty by construction. The previous header row is logged
+ * either way, so any surprise is recoverable.
+ */
+function setupSheets() {
+  var ss = SpreadsheetApp.getActive();
+  var lines = [];
+
+  Object.keys(REQUIRED_TABS).forEach(function (name) {
+    var required = REQUIRED_TABS[name];
+    var sheet = ss.getSheetByName(name);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(name);
+      sheet.getRange(1, 1, 1, required.length).setValues([required]);
+      lines.push('CREATED   ' + name + ' -> ' + required.join(' | '));
+      return;
+    }
+
+    // Order-independent: Db.gs looks columns up by name, so a tab whose headers
+    // are all present but in a different order is already correct - leave it be
+    // rather than shuffling columns that hold data.
+    var existing = getHeaders(sheet).map(function (h) { return String(h); });
+    var allPresent = required.every(function (h) { return existing.indexOf(h) !== -1; });
+    if (allPresent) {
+      lines.push('OK        ' + name);
+      return;
+    }
+
+    sheet.getRange(1, 1, 1, required.length).setValues([required]);
+    var line = 'REPAIRED  ' + name +
+      '\n            was: ' + (existing.join(' | ') || '(empty)') +
+      '\n            now: ' + required.join(' | ');
+    if (sheet.getLastRow() > 1) {
+      line += '\n            NOTE: this tab already has data rows - check that they still line up.';
+    }
+    lines.push(line);
+  });
+
+  var report = lines.join('\n');
+  Logger.log(report);
+  return report;
 }
 
 function doGet(e) {

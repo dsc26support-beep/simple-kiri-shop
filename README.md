@@ -343,6 +343,23 @@ these three steps in order, every time:
 Bump `APP_VERSION` in `apps-script/Code.gs` whenever you change the
 `apps-script/` files, so the probe stays meaningful.
 
+### Creating or repairing the Sheet tabs
+
+Header names are load-bearing and the failure mode is silent, so **do not type
+them by hand**. Instead, in the Apps Script editor pick **`setupSheets`** in the
+function dropdown next to Run and press **Run** (once).
+
+It creates any of `Customers`, `CustomerSessions`, `CustomerCodes` and `Featured`
+that are missing, and rewrites row 1 on any whose required headers aren't all
+present. It never reads, writes or deletes a data row, and it logs the previous
+header row so any surprise is recoverable. A tab whose headers are all present
+but in a different order is left alone — `Db.gs` matches columns by name, so that
+tab is already correct.
+
+`setupSheets` is intentionally **not** exposed as a web action: the web app is
+unauthenticated, so a URL that could rewrite spreadsheet headers must not exist.
+Running it requires edit access to the script.
+
 ### Checking the Sheet setup
 
 The row helpers in `Db.gs` address columns purely by **header name**, and they do
