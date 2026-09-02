@@ -1680,6 +1680,17 @@ footer.site-footer .copyright {
   cursor: pointer;
 }
 
+/* Same opt-out as .delivery-method-option: without it the global input rule
+   (width:100%, min-height:44px) inflates these radios to fill their box. */
+.review-star-choice input[type="radio"] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+}
+
 .review-signin-prompt {
   margin: var(--space-2) 0;
 }

@@ -722,3 +722,18 @@
   font-size: 0.9rem;
   cursor: pointer;
 }
+
+/* The global input rule in styles.css sets width:100% and min-height:44px on
+   every input, radios included - so a radio grows to fill its flex box and a
+   two-line label ("To Be Negotiated") renders a visibly larger circle than a
+   one-line one ("Fixed"). Opt out the same way .delivery-method-option
+   already does, and pin an explicit size so both are identical whatever the
+   label does. */
+.delivery-fee-mode-choice input[type="radio"] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+}
