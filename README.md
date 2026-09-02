@@ -313,9 +313,35 @@ leftover `@` A record or Domain Forwarding is still set (step 2). If GitHub's DN
 check won't go green, the only `@` A records must be the four GitHub IPs above,
 with no typos.
 
-**Whenever you edit the Apps Script code**, you must create a new deployment
-version (Manage deployments → Edit → New version) — saving the script alone
-does not update the live `/exec` URL.
+### Redeploying after a code change
+
+Apps Script serves a **frozen snapshot of the last saved files**, so an editor
+that looks up to date tells you nothing about what the live URL is running. Do
+these three steps in order, every time:
+
+1. **Save first.** Press **Ctrl+S** and wait for the save to finish. Deploying
+   with unsaved edits publishes the *old* code. To confirm what is actually
+   saved, open the **function dropdown** next to Run/Debug — it lists functions
+   from the saved, parsed project, so a newly added function appearing there
+   proves the save landed.
+2. **Manage deployments → Edit (✏️) → Version: "New version" → Deploy.** This
+   keeps the same `/exec` URL. Do **not** use "New deployment" — that mints a
+   *different* URL, which the site never calls, so the live site keeps running
+   the old code.
+3. **Verify with the health probe.** Open the live URL with `?action=getVersion`:
+
+   ```
+   https://script.google.com/macros/s/…/exec?action=getVersion
+   ```
+
+   It must echo the current `APP_VERSION` from `apps-script/Code.gs`, e.g.
+   `{"ok":true,"version":"phase6-2026-09-02"}`. Anything else — an old version
+   string, or `Unknown action: getVersion` — means the deployment is stale and
+   step 1 or 2 did not take. This action uses no auth and touches no Sheets, so
+   it answers even on a half-configured project.
+
+Bump `APP_VERSION` in `apps-script/Code.gs` whenever you change the
+`apps-script/` files, so the probe stays meaningful.
 
 **The first time you deploy after adding the 2FA/password-reset code**, Apps
 Script will prompt you to re-authorize an additional permission (sending

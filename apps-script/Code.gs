@@ -46,6 +46,14 @@ var CHAT_BURST_WINDOW_SECONDS = 10;
 var CHAT_SUSTAINED_MAX = 30;
 var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 
+// Build stamp reported by the public 'getVersion' action. Apps Script serves a
+// frozen snapshot of the last SAVED files, so an editor that looks up to date
+// tells you nothing about what the /exec URL is actually running. Hitting
+// /exec?action=getVersion answers that in one click. Bump this whenever the
+// apps-script/ files change, then confirm the live URL echoes the new value
+// after redeploying (see README.md).
+var APP_VERSION = 'phase6-2026-09-02';
+
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
  * keyed on that raw token; an anonymous customer is keyed on their
@@ -102,6 +110,10 @@ function doGet(e) {
       case 'listTopStores': return jsonOut(actionListTopStores());
       case 'getHomePageData': return jsonOut(actionGetHomePageData());
       case 'getTips': return jsonOut(actionGetTips(params));
+      // Deploy health probe: no auth, no Sheets access, so it answers even on a
+      // half-configured project - it can only report the running build or, if
+      // absent, prove the deployment is stale.
+      case 'getVersion': return jsonOut(ok({ version: APP_VERSION }));
       default: return jsonOut(fail('Unknown action: ' + params.action));
     }
   } catch (err) {
