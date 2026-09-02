@@ -343,6 +343,30 @@ these three steps in order, every time:
 Bump `APP_VERSION` in `apps-script/Code.gs` whenever you change the
 `apps-script/` files, so the probe stays meaningful.
 
+### Checking the Sheet setup
+
+The row helpers in `Db.gs` address columns purely by **header name**, and they do
+it silently: writing a field whose header is missing simply drops it, and reading
+it back gives `undefined`. So one mistyped header does not raise an error — it
+resurfaces later as something misleading (a mistyped `Purpose` in `CustomerCodes`
+makes a valid, fresh signup code report *"This code is invalid or has expired"*).
+
+To check all of that at once, open the live URL with `?action=checkSetup`:
+
+```
+https://script.google.com/macros/s/…/exec?action=checkSetup
+```
+
+It reports, for `Customers`, `CustomerSessions`, `CustomerCodes` and `Featured`:
+whether the tab exists, which required headers are **missing**, which have **stray
+spaces**, and which are **unexpected**. It also flags any `.gs` file that exists but
+is **empty** (a common paste mistake — the file shows in the editor, but its
+functions are undefined) and whether `ADMIN_EMAILS` is set. `setupOk: true` with an
+empty `problems` array means everything is wired correctly.
+
+The action needs no auth and returns only tab names, header names and booleans —
+never row contents, and never the `ADMIN_EMAILS` value.
+
 **The first time you deploy after adding the 2FA/password-reset code**, Apps
 Script will prompt you to re-authorize an additional permission (sending
 email as you, via `MailApp`) — this is expected, since login codes and reset

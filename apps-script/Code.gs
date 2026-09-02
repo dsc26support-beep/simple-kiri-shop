@@ -52,7 +52,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'phase6-2026-09-02';
+var APP_VERSION = 'phase7-2026-09-02';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -98,6 +98,96 @@ function checkChatRateLimit(action, body) {
   }
 }
 
+/**
+ * Sheet tabs this app's newer features depend on, with the exact header row
+ * each one needs. Db.gs addresses columns purely by header NAME and does so
+ * silently - appendRowFromObject drops a field whose header is absent and
+ * sheetToObjects reads it back as undefined - so a single mistyped header
+ * surfaces much later as a confusing runtime error (a mistyped Purpose here
+ * makes a valid signup code report "invalid or has expired"). checkSetup
+ * turns that class of misconfiguration into a direct answer.
+ */
+var REQUIRED_TABS = {
+  Customers: ['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt'],
+  CustomerSessions: ['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'],
+  CustomerCodes: ['Token', 'Email', 'Code', 'Purpose', 'Name', 'Phone', 'CreatedAt', 'ExpiresAt', 'Attempts'],
+  Featured: ['FeaturedId', 'Type', 'RefId', 'SortOrder', 'CreatedAt']
+};
+
+/**
+ * Public setup self-check: reports which required tabs/headers are wrong and
+ * whether the optional pieces are configured. Deliberately returns only tab
+ * names, header names and booleans - never row contents, and never the
+ * ADMIN_EMAILS value - because this action is unauthenticated. Header names
+ * are already published in README.md, so they are not sensitive.
+ */
+function actionCheckSetup() {
+  var problems = [];
+  var tabs = Object.keys(REQUIRED_TABS).map(function (name) {
+    var required = REQUIRED_TABS[name];
+    var entry = { tab: name, exists: false, missingHeaders: [], untrimmedHeaders: [], unexpectedHeaders: [] };
+
+    var raw;
+    try {
+      raw = getHeaders(getSheet(name));
+    } catch (err) {
+      // getSheet throws when the tab does not exist; report it rather than
+      // aborting, so one missing tab still yields a full report.
+      problems.push('Missing sheet tab: ' + name);
+      return entry;
+    }
+    entry.exists = true;
+
+    var headers = raw.map(function (h) { return String(h); });
+    entry.missingHeaders = required.filter(function (h) { return headers.indexOf(h) === -1; });
+    entry.unexpectedHeaders = headers.filter(function (h) {
+      return h !== '' && required.indexOf(h) === -1;
+    });
+    // A header with stray whitespace looks correct in the Sheet but never
+    // matches, so call it out separately from a plain typo.
+    entry.untrimmedHeaders = headers.filter(function (h) {
+      return h !== h.trim() && required.indexOf(h.trim()) !== -1;
+    });
+
+    if (entry.missingHeaders.length) {
+      problems.push(name + ' is missing header(s): ' + entry.missingHeaders.join(', '));
+    }
+    if (entry.untrimmedHeaders.length) {
+      problems.push(name + ' has header(s) with stray spaces: ' + entry.untrimmedHeaders.join(', '));
+    }
+    return entry;
+  });
+
+  // Each .gs file is pasted into the editor by hand, so a file can exist by
+  // name yet be empty - which leaves its functions undefined. Probe one
+  // function per file to catch that directly.
+  var missingFiles = [];
+  if (typeof actionRegisterCustomer !== 'function') missingFiles.push('Customers.gs');
+  if (typeof actionGetTips !== 'function') missingFiles.push('Admin.gs');
+  if (missingFiles.length) {
+    problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
+  }
+
+  var adminEmailsSet = false;
+  try {
+    adminEmailsSet = getAdminEmails().length > 0;
+  } catch (err) {
+    adminEmailsSet = false;
+  }
+  if (!adminEmailsSet) {
+    problems.push('ADMIN_EMAILS script property is not set (needed only for the admin back-office)');
+  }
+
+  return ok({
+    version: APP_VERSION,
+    setupOk: problems.length === 0,
+    problems: problems,
+    tabs: tabs,
+    missingFiles: missingFiles,
+    adminEmailsSet: adminEmailsSet
+  });
+}
+
 function doGet(e) {
   try {
     var params = (e && e.parameter) || {};
@@ -114,6 +204,7 @@ function doGet(e) {
       // half-configured project - it can only report the running build or, if
       // absent, prove the deployment is stale.
       case 'getVersion': return jsonOut(ok({ version: APP_VERSION }));
+      case 'checkSetup': return jsonOut(actionCheckSetup());
       default: return jsonOut(fail('Unknown action: ' + params.action));
     }
   } catch (err) {
