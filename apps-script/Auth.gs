@@ -87,6 +87,8 @@ function publicOwnerFields(owner) {
     island: owner.Island,
     village: owner.Village,
     status: owner.Status,
+    // Derived so the client never has to know what 'standby' means.
+    isOpen: isStoreOpenForBusiness(owner),
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
     deliveryShip: String(owner.DeliveryShip) === 'true',
     deliveryAirCargo: String(owner.DeliveryAirCargo) === 'true',
@@ -114,6 +116,28 @@ function issueSession(ownerId) {
 // the owner is locked out; a soft delete, so the row itself is never erased).
 function ownerCanLogIn(owner) {
   return !!owner && (owner.Status === 'active' || owner.Status === 'standby');
+}
+
+/**
+ * Two different questions, deliberately separated.
+ *
+ * isStoreBrowsable  - may customers see this store at all? True for 'active'
+ *                     and 'standby'. A standby store is CLOSED FOR BUSINESS,
+ *                     not hidden: customers can still find it, read its
+ *                     listings and chat with it, and it is clearly marked
+ *                     Closed everywhere it appears.
+ * isStoreOpenForBusiness - may it take money? 'active' only. A standby store
+ *                     must never accept an order or a booking.
+ *
+ * 'closed' is neither. That is the soft delete from Settings, and it stays
+ * hidden from customers and locked out for the owner.
+ */
+function isStoreBrowsable(owner) {
+  return !!owner && (owner.Status === 'active' || owner.Status === 'standby');
+}
+
+function isStoreOpenForBusiness(owner) {
+  return !!owner && owner.Status === 'active';
 }
 
 /** Validates a bearer token and returns the owner row, or throws. */

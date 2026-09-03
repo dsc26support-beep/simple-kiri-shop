@@ -38,6 +38,8 @@ async function init() {
     return;
   }
   storeInfo = res.store;
+  // publicOwnerFields exposes isOpen; share it with the chat window.
+  window.__storeOpen = storeInfo.isOpen !== false;
   document.getElementById('store-name-tagline').textContent = `Checkout — ${storeInfo.storeName}`;
 
   if (storeInfo.logoUrl) {
