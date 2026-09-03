@@ -19,7 +19,7 @@
 // PREVIOUS stylesheet and only refreshes it in the background - the change
 // appears one load late, which reads as "my fix didn't ship". Renaming the
 // cache makes activate() drop the old one, so the next load fetches fresh.
-var CACHE = 'mwakete-v10';
+var CACHE = 'mwakete-v11';
 
 // Separate cache for cross-origin product/logo photos. Cache-first is safe here
 // because every uploaded image has a unique URL (Drive file id / Cloudinary
@@ -36,13 +36,56 @@ var IMAGE_HOSTS = ['res.cloudinary.com', 'lh3.googleusercontent.com'];
 // subpath like /simple-kiri-shop/.
 var PRECACHE = [
   './',
-  'index.html',
   'offline.html',
   'assets/css/styles.css',
+  'assets/img/favicon.svg',
+
+  // Every customer-facing page and the scripts it needs. The whole set is
+  // ~150KB and fetched once, on install, while the shopper is reading the
+  // page that installed it - after which moving between pages costs no
+  // network at all. That matters here more than the download does: the first
+  // tap from the homepage to a store used to fetch eight scripts it had never
+  // seen, over a mobile link, before anything could render.
+  //
+  // Owner pages are deliberately left out. There are a handful of vendors on
+  // better connections, and precaching their bundle would make every shopper
+  // pay for it.
+  'index.html',
+  'store.html',
+  'product.html',
+  'stores.html',
+  'search.html',
+  'cart.html',
+  'checkout.html',
+  'customer-tips.html',
+  'customer-login.html',
+  'customer-dashboard.html',
+  'customer-messages.html',
+
   'assets/js/config.js',
   'assets/js/api.js',
   'assets/js/helpers.js',
-  'assets/img/favicon.svg'
+  'assets/js/auth.js',
+  'assets/js/customer-auth.js',
+  'assets/js/cookie-consent.js',
+  'assets/js/bottom-nav.js',
+  'assets/js/register-sw.js',
+  'assets/js/cart.js',
+  'assets/js/product-card.js',
+  'assets/js/chat-window.js',
+  'assets/js/kiribati-locations.js',
+  'assets/js/home.js',
+  'assets/js/home-nav.js',
+  'assets/js/store.js',
+  'assets/js/product-page.js',
+  'assets/js/directory.js',
+  'assets/js/search.js',
+  'assets/js/cart-page.js',
+  'assets/js/checkout.js',
+  'assets/js/customer-login.js',
+  'assets/js/customer-dashboard.js',
+  'assets/js/customer-messages.js',
+  'assets/js/customer-tips.js'
 ];
 
 self.addEventListener('install', function (event) {
@@ -120,21 +163,38 @@ self.addEventListener('fetch', function (event) {
   // so backend freshness is never compromised by the cache.
   if (new URL(req.url).origin !== self.location.origin) return;
 
-  // HTML navigations: network-first so the user always gets the latest page
-  // when online; fall back to the cached copy, then to the offline page.
+  // HTML navigations: stale-while-revalidate, the same strategy the CSS/JS
+  // below already use, because these pages are the same kind of thing - a
+  // static shell. Not one byte of store, product, price or message data lives
+  // in the HTML; it is all fetched at runtime from the backend, which this
+  // worker never caches. So serving the shell from cache cannot show anyone a
+  // stale price, and it turns every tap between pages from "wait for a round
+  // trip to GitHub Pages" into an instant render.
+  //
+  // This was network-first before. On a fast connection the difference is
+  // invisible; on a Kiribati mobile link it was the whole feel of the site.
+  //
+  // The cost is that a release reaches an already-installed device one
+  // navigation late. That is the tradeoff already accepted for CSS and JS, and
+  // it is bounded the same way: bump CACHE on release, and activate() drops
+  // the old one (skipWaiting + clients.claim are already in place above), so
+  // the load after that is fresh.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then(function (res) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (cache) { cache.put(req, copy); });
-          return res;
-        })
-        .catch(function () {
-          return caches.match(req).then(function (cached) {
+      caches.match(req).then(function (cached) {
+        var network = fetch(req)
+          .then(function (res) {
+            if (res && res.status === 200) {
+              var copy = res.clone();
+              caches.open(CACHE).then(function (cache) { cache.put(req, copy); });
+            }
+            return res;
+          })
+          .catch(function () {
             return cached || caches.match('offline.html');
           });
-        })
+        return cached || network;
+      })
     );
     return;
   }

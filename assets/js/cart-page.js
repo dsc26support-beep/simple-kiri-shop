@@ -13,7 +13,14 @@ async function init() {
   document.getElementById('back-to-store-link').href = `store.html?store=${encodeURIComponent(currentSlug)}`;
 
   const hideOverlay = showLoadingOverlay();
-  const res = await Api.get('getStorePublicInfo', { storeSlug: currentSlug });
+  const request = Api.get('getStorePublicInfo', { storeSlug: currentSlug });
+  // The request this page paints from; whenIdle() waits for it (helpers.js).
+  window.__criticalReady = request;
+  // See store.js - without this the chat window repeats this exact call.
+  window.__storeInfoPromise = request.then(
+    (r) => (r && r.ok && r.store ? { storeName: r.store.storeName, logoUrl: r.store.logoUrl } : null)
+  );
+  const res = await request;
   hideOverlay();
   if (res.ok) {
     document.getElementById('store-name-tagline').textContent = `Your cart — ${res.store.storeName}`;

@@ -112,33 +112,48 @@ function initChatWindow() {
   }
 
   /**
-   * The header's name/avatar were static placeholders ("This Store" / "S")
-   * in the HTML with nothing ever wiring them up to the real store - fixed
-   * here by fetching the same cached public store-info endpoint the rest of
-   * the app already uses (Products.gs's actionGetStorePublicInfo), rather
-   * than depending on whatever the host page's own script (store.js/
-   * cart-page.js/checkout.js) happens to have loaded, since this file is
-   * shared across all three pages and should work self-contained.
+   * The header's name/avatar are static placeholders ("This Store" / "S") in
+   * the HTML with nothing else wiring them up to the real store.
+   *
+   * Every page that hosts this window has already asked the backend who the
+   * store is, so prefer what they fetched: each publishes
+   * window.__storeInfoPromise SYNCHRONOUSLY, before awaiting its own request,
+   * so this can hand off to it without a race whichever finishes first. That
+   * is worth caring about because this used to issue its own
+   * getStorePublicInfo on every load - on the store page it went out AHEAD of
+   * the request that renders the products, and on cart/checkout it made the
+   * very same call the page was already making, twice.
+   *
+   * The own-fetch path stays as the fallback, so the file still works
+   * self-contained on a page that publishes nothing.
    */
   async function loadVendorHeader() {
     if (!storeSlug) return;
-    const res = await Api.get('getStorePublicInfo', { storeSlug });
-    if (!res.ok || !res.store) return;
 
-    vendorStoreName = res.store.storeName || 'This Store';
+    let store = null;
+    if (window.__storeInfoPromise) {
+      try { store = await window.__storeInfoPromise; } catch (e) { store = null; }
+    }
+    if (!store) {
+      const res = await Api.get('getStorePublicInfo', { storeSlug });
+      if (!res.ok || !res.store) return;
+      store = { storeName: res.store.storeName, logoUrl: res.store.logoUrl };
+    }
+
+    vendorStoreName = store.storeName || 'This Store';
     const nameEl = document.getElementById('chat-window-vendor-name');
     if (nameEl) nameEl.textContent = vendorStoreName;
 
     const placeholder = document.getElementById('chat-vendor-avatar-placeholder');
     if (!placeholder) return;
-    if (res.store.logoUrl) {
+    if (store.logoUrl) {
       const img = document.createElement('img');
       img.className = 'chat-vendor-avatar';
-      img.src = optimizedImageUrl(res.store.logoUrl, IMG_W.logo);
+      img.src = optimizedImageUrl(store.logoUrl, IMG_W.logo);
       img.alt = '';
       placeholder.replaceWith(img);
     } else {
-      placeholder.textContent = initials(res.store.storeName);
+      placeholder.textContent = initials(store.storeName);
     }
   }
 
@@ -736,5 +751,9 @@ function initChatWindow() {
   // loadVendorHeader() sets vendorStoreName, used in checkForUnreadMessages'
   // notification toast text - chained rather than fired in parallel so that
   // toast never has to fall back to the generic "This Store" placeholder.
-  loadVendorHeader().then(checkForUnreadMessages);
+  //
+  // Deferred to idle: the chat panel is behind a FAB the shopper has not
+  // touched yet, so neither of these should be competing with the request
+  // that puts products on the screen.
+  whenIdle(() => { loadVendorHeader().then(checkForUnreadMessages); });
 }

@@ -18,7 +18,15 @@ async function init() {
   localStorage.setItem('skiri_active_store', currentSlug);
 
   const stopLoading = startLoadingMessage(statusEl);
-  const res = await Api.get('listProducts', { storeSlug: currentSlug });
+  const request = Api.get('listProducts', { storeSlug: currentSlug });
+  // The request this page paints from; whenIdle() waits for it (helpers.js).
+  window.__criticalReady = request;
+  // Published synchronously, before the await, so the chat window can hand off
+  // to this request instead of issuing its own (see loadVendorHeader).
+  window.__storeInfoPromise = request.then(
+    (r) => (r && r.ok ? { storeName: r.storeName, logoUrl: r.storeLogoUrl } : null)
+  );
+  const res = await request;
   stopLoading();
   if (!res.ok) {
     showLoadFailedMessage(statusEl);

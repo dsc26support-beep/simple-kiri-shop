@@ -315,14 +315,43 @@ with no typos.
 
 ### Releasing a front-end change
 
-**Bump `CACHE` in `sw.js` whenever you change a cached CSS or JS file.**
+**Bump `CACHE` in `sw.js` whenever you change a cached HTML, CSS or JS file.**
 
-The service worker serves static assets stale-while-revalidate: the first load
-after a deploy returns the *previously cached* file and fetches the new one in
-the background, so the change only appears on the load after that. On a page
+The service worker serves the static shell stale-while-revalidate: the first
+load after a deploy returns the *previously cached* file and fetches the new one
+in the background, so the change only appears on the load after that. On a page
 someone visits once, it looks like the fix never shipped. Renaming the cache
 (`mwakete-v3` -> `mwakete-v4`, ...) makes `activate` delete the old one, so the
 next load fetches fresh.
+
+This now covers **HTML pages too**, not just CSS and JS. Page navigations used
+to be network-first; they are cached like everything else in the shell, because
+none of the HTML contains store, product, price or message data - all of that is
+fetched at runtime from Apps Script, which the worker never caches. That is what
+makes moving between pages instant on a slow mobile connection, and it is why
+forgetting the bump now costs a stale *page*, not just a stale stylesheet.
+
+### Keeping work off the first render
+
+Every page paints from a single Apps Script request, and on a Kiribati mobile
+link that request is the page. Two conventions keep everything else out of its
+way, both in `assets/js/helpers.js`:
+
+- **`window.__criticalReady`** - each page assigns its render-critical request
+  to this *synchronously*, before awaiting it.
+- **`whenIdle(fn)`** - for anything that is not needed to render: unread badges,
+  analytics beacons, the chat header. It waits for `__criticalReady` to settle
+  and then for an idle moment. Idle alone is not enough; an idle callback fires
+  happily while a request is still in flight.
+
+If you add a page, set `__criticalReady`. If you add a background call, wrap it
+in `whenIdle`.
+
+Two layout reservations exist for the same reason and are easy to break:
+`.is-reserving-space` (set in the HTML on a list's status line, released by
+`startLoadingMessage`'s `stop()`) and `.category-buttons`' `min-height`, whose
+values are measured against the number of entries in `CATEGORIES`. Changing how
+many categories there are means re-measuring those three breakpoints.
 
 Skipping this does not break anything permanently - a second reload always
 picks the change up - but it makes every release look broken on first view.

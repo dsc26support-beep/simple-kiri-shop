@@ -46,7 +46,10 @@ function wireStoresSearch() {
 async function loadStores() {
   const statusEl = document.getElementById('stores-status');
   const stopLoading = startLoadingMessage(statusEl);
-  const res = await Api.get('listStores', { limit: storesLoadedLimit, q: storesQuery });
+  const request = Api.get('listStores', { limit: storesLoadedLimit, q: storesQuery });
+  // The request this page paints from; whenIdle() waits for it (helpers.js).
+  window.__criticalReady = request;
+  const res = await request;
   stopLoading();
   if (!res.ok) {
     showLoadFailedMessage(statusEl);

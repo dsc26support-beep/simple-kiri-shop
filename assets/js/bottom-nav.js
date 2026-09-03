@@ -39,7 +39,9 @@ function initBottomNav() {
   document.body.classList.add('has-bottom-nav');
 
   updateBottomNavCartBadge();
-  updateBottomNavMessagesBadge();
+  // Local-only, so it stays inline. The messages dot needs the backend, so it
+  // waits until the page has painted.
+  whenIdle(updateBottomNavMessagesBadge);
 }
 
 // Total items across every per-store cart (local; no API).

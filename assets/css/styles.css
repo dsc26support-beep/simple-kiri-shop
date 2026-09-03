@@ -374,6 +374,22 @@ section {
   flex-wrap: wrap;
   gap: var(--space-2);
   justify-content: center;
+  /* Hold the row's height before renderCategoryButtons (helpers.js) fills it.
+     The buttons are a fixed list, so the wrapped height is knowable per width
+     and measured rather than guessed: 3 rows on a phone, 2 on a small tablet,
+     1 from 900px up. Without this the row appeared a moment after first paint
+     and pushed 158px of page down under the reader - the homepage's and search
+     page's largest layout shift. Keep in step with CATEGORIES in helpers.js:
+     changing how many categories there are changes these numbers. */
+  min-height: 158px;
+}
+
+@media (min-width: 430px) {
+  .category-buttons { min-height: 102px; }
+}
+
+@media (min-width: 900px) {
+  .category-buttons { min-height: 47px; }
 }
 
 .category-btn {
@@ -2161,6 +2177,15 @@ footer.site-footer .copyright {
 
 /* Mobile bottom navigation (§7) - injected by bottom-nav.js, mobile only. */
 :root { --bottom-nav-h: 56px; }
+
+/* Space held open for a list that is still loading. Set in the HTML so it
+   exists at first paint, and removed by startLoadingMessage's stop() in
+   helpers.js when the results render.
+   A whole viewport, deliberately: the point is that the footer and anything
+   else below the list start off-screen and stay off-screen when the real
+   content lands, so nothing the shopper is actually looking at moves. This was
+   the largest source of layout shift on the site (CLS 0.9 on a store page). */
+.is-reserving-space { min-height: 100vh; }
 
 .bottom-nav { display: none; }
 
