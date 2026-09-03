@@ -345,10 +345,12 @@ function actionGetStorePublicInfo(params) {
   var slug = params.storeSlug;
   if (!slug) return fail('storeSlug is required');
 
-  var store = getCached('v1:storeInfo:' + slug, 60, function () {
+  // Cache key bumped v1 -> v2 with the payload narrowing below, so a warm
+  // entry holding the old wide object can't be served after the deploy.
+  var store = getCached('v2:storeInfo:' + slug, 60, function () {
     var owner = getOwnerBySlug(slug);
     if (!isStoreBrowsable(owner)) return null;
-    return publicOwnerFields(owner);
+    return publicStoreFields(owner);
   });
   if (!store) return fail('Store not found');
   return ok({ store: store });
@@ -573,11 +575,12 @@ function actionDeleteProduct(owner, body) {
 }
 
 /**
- * publicOwnerFields (Auth.gs) is also used by PUBLIC actions
- * (actionGetStorePublicInfo, the store object embedded in actionCreateOrder's
- * response) - idLicenseUrl must never go in there. It's added here instead,
- * directly on this PROTECTED action's response, so only the owner viewing
- * their own profile ever sees it.
+ * publicOwnerFields (Auth.gs) describes the owner's own ACCOUNT - ownerId,
+ * email, status, twoFAEnabled, isAdmin - so it belongs only behind a bearer
+ * token. The public actions (actionGetStorePublicInfo, the store object in
+ * actionCreateOrder's response) use publicStoreFields instead. idLicenseUrl is
+ * narrower still: it is added here, directly on this PROTECTED action's
+ * response, so only the owner viewing their own profile ever sees it.
  */
 function actionGetOwnerProfile(owner) {
   var fields = publicOwnerFields(owner);
@@ -661,7 +664,7 @@ function actionUpdateOwnerProfile(owner, body) {
     }
 
     updateRowFromObject(sheet, row.__row, update);
-    invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v1:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
+    invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v2:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
     return ok({ owner: publicOwnerFields(findRowById(sheet, 'OwnerId', owner.OwnerId)) });
   } finally {
     lock.releaseLock();

@@ -270,7 +270,7 @@ function actionCreateOrder(body) {
     deliveryMethod: deliveryMethod,
     deliveryCost: deliveryCost,
     paymentMethod: paymentMethod,
-    store: publicOwnerFields(owner),
+    store: publicStoreFields(owner),
     items: lineItems,
     emailedSeller: emailedSeller
   });

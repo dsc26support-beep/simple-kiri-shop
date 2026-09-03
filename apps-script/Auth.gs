@@ -101,6 +101,35 @@ function publicOwnerFields(owner) {
   };
 }
 
+/**
+ * The shape for UNAUTHENTICATED callers - actionGetStorePublicInfo, and the
+ * store object embedded in actionCreateOrder's response. It carries only what
+ * a shopper's browser actually renders.
+ *
+ * Deliberately NOT publicOwnerFields. That one describes the owner's own
+ * account and carries ownerId, email, status, twoFAEnabled and isAdmin - fine
+ * behind a bearer token, but anyone on the internet can read the two actions
+ * above. Never add an account field here.
+ */
+function publicStoreFields(owner) {
+  var store = {
+    storeName: owner.StoreName,
+    storeSlug: owner.StoreSlug,
+    phone: owner.Phone,
+    messenger: owner.Messenger,
+    logoUrl: owner.LogoUrl,
+    island: owner.Island,
+    village: owner.Village,
+    // Derived so the client never has to know what 'standby' means.
+    isOpen: isStoreOpenForBusiness(owner)
+  };
+  // deliveryFlagsOf (Products.gs) applies the same coercion publicOwnerFields
+  // does, including the blank-cost-means-negotiated contract: '' and null both
+  // become null, while 0 stays 0 (free).
+  Object.assign(store, deliveryFlagsOf(owner));
+  return store;
+}
+
 function issueSession(ownerId) {
   var sheet = getSheet('Sessions');
   var token = Utilities.getUuid() + Utilities.getUuid();
@@ -341,7 +370,7 @@ function actionSetStoreStatus(owner, body) {
     'v1:topStores',
     'v1:topProducts',
     'v1:listProducts:' + owner.StoreSlug,
-    'v1:storeInfo:' + owner.StoreSlug
+    'v2:storeInfo:' + owner.StoreSlug
   ]);
 
   return ok({ status: status });
