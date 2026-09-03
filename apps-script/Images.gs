@@ -90,7 +90,7 @@ function actionUploadStoreLogo(owner, body) {
 
   if (oldFileId) deleteStoredImage(oldFileId);
 
-  invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v1:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
+  invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v2:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
   return ok({ logoUrl: uploaded.imageUrl });
 }
 
