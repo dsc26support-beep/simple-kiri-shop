@@ -2758,6 +2758,81 @@ legend {
   border-color: var(--color-blue);
 }
 
+/* --- Stores the shopper already has a cart with (directory.js) ------------
+   Carts are per-store, so someone who browsed three shops has three of them
+   and, until now, no way back except remembering the name. */
+
+.cart-stores {
+  display: none;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* has-cart-stores is set by the inline script in stores.html <head>, before
+   the first paint, so this row is part of the initial layout rather than
+   something that appears later and shoves the directory down. */
+:root.has-cart-stores .cart-stores {
+  display: block;
+}
+
+/* Height held until the real cards arrive. One column below 600px, so the
+   height is rows x card + gaps + the heading/padding/border around them.
+   MEASURED, not guessed - and verify-cartstores.js re-measures a rendered card
+   and fails if these drift. */
+@media (max-width: 599px) {
+  :root.has-cart-stores .cart-stores:not(.is-loaded) #cart-store-list {
+    min-height: calc(
+      var(--cart-store-rows, 1) * 147px + (var(--cart-store-rows, 1) - 1) * 16px
+    );
+  }
+}
+
+.cart-stores h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 1rem;
+}
+
+/* Pinned card: tinted so the section reads as different from the directory
+   below it, without shouting. */
+.store-card--resume {
+  background: var(--color-bg-alt);
+  border-color: var(--color-blue);
+}
+
+.store-card-resume {
+  font-weight: 600;
+  color: var(--color-blue);
+}
+
+/* One line, always. The placeholder above can't know how long the real store
+   name will be, and a name that wraps to two lines where the placeholder had
+   one puts the shift straight back. On a "pick up where you left off" card the
+   name is for recognition, so trimming the tail costs nothing. */
+.store-card--resume .store-card-info h3 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Inline marker on a directory card. The label carries the meaning; the border
+   only reinforces it, so this never depends on colour alone. */
+.store-card.is-in-cart {
+  border-color: var(--color-blue);
+}
+
+.store-card-cart-flag {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-blue);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
 .store-card h3 {
   margin: 0 0 var(--space-1);
 }

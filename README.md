@@ -347,11 +347,22 @@ way, both in `assets/js/helpers.js`:
 If you add a page, set `__criticalReady`. If you add a background call, wrap it
 in `whenIdle`.
 
-Two layout reservations exist for the same reason and are easy to break:
-`.is-reserving-space` (set in the HTML on a list's status line, released by
-`startLoadingMessage`'s `stop()`) and `.category-buttons`' `min-height`, whose
-values are measured against the number of entries in `CATEGORIES`. Changing how
-many categories there are means re-measuring those three breakpoints.
+Three layout reservations exist for the same reason and are easy to break:
+
+- **`.is-reserving-space`** - set in the HTML on a list's status line, released
+  by `startLoadingMessage`'s `stop()`.
+- **`.category-buttons`' `min-height`** - measured against the number of entries
+  in `CATEGORIES`. Changing how many categories there are means re-measuring
+  those three breakpoints.
+- **`.cart-stores`' `min-height`** on `stores.html` - the "pick up where you
+  left off" row. Its height has to exist in the *first* paint, which is the one
+  place JS cannot reach, so a small inline script in that page's `<head>` counts
+  the carts in `localStorage` and sets `--cart-store-rows`. It is the only
+  inline script in the project, and it is there for that reason alone. Its
+  scan must stay in step with `cartStoreSlugs()` in `directory.js`, and the
+  `147px` card / `16px` gap in the CSS `calc` are measured values - both are
+  pinned by assertions in the cart-stores tests, which fail if a card's design
+  changes underneath them.
 
 Skipping this does not break anything permanently - a second reload always
 picks the change up - but it makes every release look broken on first view.
