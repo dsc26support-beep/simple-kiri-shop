@@ -70,6 +70,7 @@ async function init() {
   });
 
   // Product detail (reuses the store-page product card markup)
+  renderShippingNote('product-shipping-note', res);
   document.getElementById('product-detail').innerHTML = renderProductCard(product);
   document.title = `${product.name} — Mwakete`;
   wireActions();

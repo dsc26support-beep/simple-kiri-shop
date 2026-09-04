@@ -68,6 +68,8 @@ async function init() {
     airCargoCost: res.storeDeliveryAirCargoCost
   });
 
+  renderShippingNote('store-shipping-note', res);
+
   currentProducts = res.products;
 
   if (currentProducts.length === 0) {

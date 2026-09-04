@@ -419,27 +419,41 @@ function renderBrowseProductCard(product, opts) {
   // the line is never blank.
   const meta = showLocation ? (location || product.storeName) : product.storeName;
 
+  // Delivery flags are store-wide, so they are meaningless - and misleading -
+  // on a rental or service listing. Suppressed there; the goods listings and
+  // the store page keep them.
+  const deliveryIcons = isBookingCategory(product.category)
+    ? ''
+    : renderDeliveryIcons({
+        truck: product.storeDeliveryTruck,
+        ship: product.storeDeliveryShip,
+        airCargo: product.storeDeliveryAirCargo,
+        pickPay: product.storeDeliveryPickPay,
+        truckCost: product.storeDeliveryTruckCost,
+        shipCost: product.storeDeliveryShipCost,
+        airCargoCost: product.storeDeliveryAirCargoCost
+      });
+
+  // On the location cards the icons run straight on from the place name, one
+  // line instead of two, with the icons shrunk so both fit on a half-width
+  // phone card (.product-card-meta in styles.css). The other surfaces keep the
+  // store name on its own line with the phone and icons beneath, where there
+  // is more to fit.
+  const metaBlock = showLocation
+    ? `<p class="helper-text product-card-meta">${escapeHtml(meta)}${deliveryIcons ? ' ' + deliveryIcons : ''}</p>`
+    : `<p class="helper-text">${escapeHtml(meta)}</p>
+        <div class="store-phone-row">
+          ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
+          ${deliveryIcons}
+        </div>`;
+
   return `
     <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
       ${media}
       <div class="product-card-body">
         ${heading}
         ${renderStars(product.rating, product.reviewCount)}
-        <p class="helper-text">${escapeHtml(meta)}</p>
-        <div class="store-phone-row">
-          ${!showLocation && product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
-          ${isBookingCategory(product.category)
-            ? '' /* delivery flags are store-wide; they're meaningless (and misleading) on a rental/service listing, so suppress them here — the goods listings and the store page keep them */
-            : renderDeliveryIcons({
-                truck: product.storeDeliveryTruck,
-                ship: product.storeDeliveryShip,
-                airCargo: product.storeDeliveryAirCargo,
-                pickPay: product.storeDeliveryPickPay,
-                truckCost: product.storeDeliveryTruckCost,
-                shipCost: product.storeDeliveryShipCost,
-                airCargoCost: product.storeDeliveryAirCargoCost
-              })}
-        </div>
+        ${metaBlock}
       </div>
     </a>
   `;
@@ -639,6 +653,39 @@ const ALWAYS_FREE_DELIVERY_METHODS = ['pickPay'];
  * (store hasn't set one yet). pickPay has no cost flag - see
  * ALWAYS_FREE_DELIVERY_METHODS above.
  */
+/**
+ * Does this store have any delivery method whose fee is not set?
+ *
+ * null is the wire form of "to be negotiated" (deliveryCostOf in Products.gs);
+ * 0 is genuinely free. Pick & Pay is always free, so it never counts - there
+ * is nothing to negotiate about collecting it yourself.
+ *
+ * Takes a listProducts response, which is what both pages that need it have.
+ */
+function storeHasNegotiatedDelivery(res) {
+  if (!res) return false;
+  return [
+    [res.storeDeliveryTruck, res.storeDeliveryTruckCost],
+    [res.storeDeliveryShip, res.storeDeliveryShipCost],
+    [res.storeDeliveryAirCargo, res.storeDeliveryAirCargoCost]
+  ].some(function (pair) { return pair[0] && pair[1] == null; });
+}
+
+/**
+ * Fills in the once-per-page negotiated-shipping line, or leaves it hidden.
+ *
+ * This sentence used to be printed on EVERY product card, unconditionally - so
+ * a store with a fixed $5 truck fee still told shoppers the fee was to be
+ * negotiated, ten times down the page. Said once, and only when true.
+ */
+function renderShippingNote(elementId, res) {
+  const noteEl = document.getElementById(elementId);
+  if (!noteEl) return;
+  if (!storeHasNegotiatedDelivery(res)) return;
+  noteEl.textContent = 'Shipping fee and delivery date to be negotiated — chat with this store for details.';
+  noteEl.hidden = false;
+}
+
 function renderDeliveryIcons(flags) {
   flags = flags || {};
   const methods = ['truck', 'ship', 'airCargo', 'pickPay'].filter((m) => flags[m]);
