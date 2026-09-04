@@ -2748,6 +2748,35 @@ legend {
   line-clamp: 3;
 }
 
+/* Homepage and search cards: the place name and the delivery icons share one
+   line, the icons running straight on from the text.
+
+   A card is about 170px wide on a 390px phone, and "Teaoraereke" plus three
+   16px icons does not fit - so the icons are shrunk here rather than allowed
+   to wrap. Descendant selectors, so they beat .delivery-icons' own margin and
+   the width/height attributes on the SVGs themselves whatever the file order. */
+.product-card-meta .delivery-icons {
+  margin: 0;
+  gap: 3px;
+}
+
+.product-card-meta .delivery-icons svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Narrower phones (320px) leave about 30px less per card, which 13px icons
+   still overflow - so they step down again rather than wrapping to a second
+   line. Measured: below this they stop being tellable apart, so 320px is where
+   shrinking stops and wrapping would take over. */
+@media (max-width: 359px) {
+  .product-card-meta .delivery-icons svg {
+    width: 11px;
+    height: 11px;
+  }
+  .product-card-meta .delivery-icons { gap: 2px; }
+}
+
 .product-desc {
   margin: 0;
   color: var(--color-muted);

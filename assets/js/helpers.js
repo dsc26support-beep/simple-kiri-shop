@@ -419,27 +419,41 @@ function renderBrowseProductCard(product, opts) {
   // the line is never blank.
   const meta = showLocation ? (location || product.storeName) : product.storeName;
 
+  // Delivery flags are store-wide, so they are meaningless - and misleading -
+  // on a rental or service listing. Suppressed there; the goods listings and
+  // the store page keep them.
+  const deliveryIcons = isBookingCategory(product.category)
+    ? ''
+    : renderDeliveryIcons({
+        truck: product.storeDeliveryTruck,
+        ship: product.storeDeliveryShip,
+        airCargo: product.storeDeliveryAirCargo,
+        pickPay: product.storeDeliveryPickPay,
+        truckCost: product.storeDeliveryTruckCost,
+        shipCost: product.storeDeliveryShipCost,
+        airCargoCost: product.storeDeliveryAirCargoCost
+      });
+
+  // On the location cards the icons run straight on from the place name, one
+  // line instead of two, with the icons shrunk so both fit on a half-width
+  // phone card (.product-card-meta in styles.css). The other surfaces keep the
+  // store name on its own line with the phone and icons beneath, where there
+  // is more to fit.
+  const metaBlock = showLocation
+    ? `<p class="helper-text product-card-meta">${escapeHtml(meta)}${deliveryIcons ? ' ' + deliveryIcons : ''}</p>`
+    : `<p class="helper-text">${escapeHtml(meta)}</p>
+        <div class="store-phone-row">
+          ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
+          ${deliveryIcons}
+        </div>`;
+
   return `
     <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
       ${media}
       <div class="product-card-body">
         ${heading}
         ${renderStars(product.rating, product.reviewCount)}
-        <p class="helper-text">${escapeHtml(meta)}</p>
-        <div class="store-phone-row">
-          ${!showLocation && product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
-          ${isBookingCategory(product.category)
-            ? '' /* delivery flags are store-wide; they're meaningless (and misleading) on a rental/service listing, so suppress them here — the goods listings and the store page keep them */
-            : renderDeliveryIcons({
-                truck: product.storeDeliveryTruck,
-                ship: product.storeDeliveryShip,
-                airCargo: product.storeDeliveryAirCargo,
-                pickPay: product.storeDeliveryPickPay,
-                truckCost: product.storeDeliveryTruckCost,
-                shipCost: product.storeDeliveryShipCost,
-                airCargoCost: product.storeDeliveryAirCargoCost
-              })}
-        </div>
+        ${metaBlock}
       </div>
     </a>
   `;
