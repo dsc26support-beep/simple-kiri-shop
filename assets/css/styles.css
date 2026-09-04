@@ -118,15 +118,32 @@ header.site-header .container {
 header.site-header .container.header-top-row {
   position: relative;
   padding-bottom: var(--space-1);
+  /* Logo first, then the links - not space-between, which would fling the two
+     to opposite ends. */
+  justify-content: flex-start;
+}
+
+/* header-cart.js injects the cart button into the first container in the
+   header - .header-top-row where a page has one, otherwise the plain
+   .container that search.html and stores.html use. Either way the row needs
+   room on the right, or the nav links run underneath it. They already did on
+   those two pages before the logo moved; this covers both shapes. */
+header.site-header > .container:first-of-type {
+  padding-right: 52px;
+}
+
+/* In the flow at the far left, not pinned to the right corner. */
+.header-logo-link {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-right: var(--space-1);
 }
 
 .header-logo-mark {
-  position: absolute;
-  top: 50%;
-  right: var(--space-2);
-  transform: translateY(-50%);
-  height: 40px;
+  height: 36px;
   width: auto;
+  display: block;
 }
 
 header.site-header .container.site-branding {
@@ -2424,12 +2441,6 @@ footer.site-footer .copyright {
   border-radius: 50%;
   color: #fff;
   text-decoration: none;
-}
-
-/* index.html carries the logo mark in that corner; sit to the left of it. */
-.site-header .header-logo-mark ~ .header-cart,
-.header-top-row:has(.header-logo-mark) .header-cart {
-  right: calc(var(--space-2) + 48px);
 }
 
 .header-cart:hover,
