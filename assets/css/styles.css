@@ -739,7 +739,9 @@ footer.site-footer .copyright {
  */
 .chat-window {
   position: fixed;
-  z-index: 1002; /* above the FAB (1001); below the bottom nav and consent banner (1003) */
+  z-index: 1002; /* above the FAB (1001); below the bottom nav and consent
+                    banner (1003). Raised to 1004 on mobile, where this window
+                    goes full-screen - see the max-width: 600px block below. */
   right: max(var(--space-3), env(safe-area-inset-right));
   bottom: calc(56px + var(--space-3) * 2 + env(safe-area-inset-bottom));
   width: 360px;
@@ -775,6 +777,14 @@ footer.site-footer .copyright {
    the bottom instead of the desktop scale animation. */
 @media (max-width: 600px) {
   .chat-window {
+    /* Above the bottom nav (1003). On desktop this window is a small
+       bottom-right panel and sitting under the nav costs nothing, but here it
+       IS the screen - and the nav was covering the message box, so the
+       composer could not be reached while the chat was open. A full-screen
+       chat has its own close button, so nothing is lost by hiding the bar
+       behind it. Still below the modal overlays, which are raised to 1005/1006
+       to keep that true. */
+    z-index: 1004;
     inset: 0;
     right: 0;
     bottom: 0;
@@ -1778,8 +1788,8 @@ footer.site-footer .copyright {
   bottom: 0;
   /* Above the chat FAB (1001) and chat window (1002), which are bottom-right
      anchored and would otherwise sit on top of this full-width bar.
-     Deliberately NOT above the blocking overlays - .loading-overlay (1004)
-     and .login-chooser-overlay (1005) are modal and must stay on top. Ties
+     Deliberately NOT above the blocking overlays - .loading-overlay (1005)
+     and .login-chooser-overlay (1006) are modal and must stay on top. Ties
      with .chat-notification-toast (1003), which is top-anchored and so never
      meets a bottom-anchored bar. */
   z-index: 1003;
@@ -1887,11 +1897,12 @@ footer.site-footer .copyright {
 /* Centered full-screen "Loading… / Please wait…" overlay (see
    showLoadingOverlay in helpers.js) - used for waits with no inline status
    spot, e.g. checkout's initial load and while placing an order. Above the
-   FABs/toast layer (1003) so nothing sits on top of it. */
+   FABs/toast/bottom-nav layer (1003) AND above the full-screen mobile chat
+   (1004) so nothing sits on top of it. */
 .loading-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1004;
+  z-index: 1005;
   display: none;
   align-items: center;
   justify-content: center;
@@ -2056,7 +2067,7 @@ footer.site-footer .copyright {
 .login-chooser-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1005;
+  z-index: 1006;
   display: flex;
   align-items: center;
   justify-content: center;
