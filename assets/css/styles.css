@@ -2732,6 +2732,22 @@ legend {
   white-space: nowrap;
 }
 
+/* Homepage and search cards: the price sits inside the heading at the name's
+   own size and weight, and wraps to the next line by itself when both do not
+   fit. Compound selector so it beats .product-price above whatever the order
+   in this file - the ordering trap that broke the Browse rail. */
+.product-price.product-price--inline {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+/* Three lines rather than two: the price now shares them with the name. */
+.product-name--with-price {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
 .product-desc {
   margin: 0;
   color: var(--color-muted);

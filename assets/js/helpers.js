@@ -32,7 +32,11 @@ const PRICE_FIT_MIN_REM = 0.8;
  * a re-fit after a resize can grow the text back as well as shrink it.
  */
 function fitPriceLabels(root) {
-  (root || document).querySelectorAll('.product-price').forEach((el) => {
+  // Not the inline prices on the homepage/search cards: those sit in the
+  // heading at the name's own size and wrap to the next line when they don't
+  // fit, so shrinking them here would fight that - and this also runs globally
+  // on resize, which would undo it after the fact.
+  (root || document).querySelectorAll('.product-price:not(.product-price--inline)').forEach((el) => {
     el.style.fontSize = '';
     const available = el.clientWidth;
     const needed = el.scrollWidth;
@@ -380,26 +384,50 @@ function renderStars(rating, count) {
     </span>`;
 }
 
+/**
+ * opts.showLocation switches the card to the homepage/search treatment: the
+ * price sits in the heading beside the name at the same size, and the line
+ * beneath names WHERE the thing is rather than who sells it. In Kiribati the
+ * island - or the village, on South Tarawa - is what tells a shopper whether
+ * getting it to them is practical at all, which the store's name does not.
+ *
+ * The store's phone goes with the store name; a number on its own belongs to
+ * nobody. Delivery icons stay either way. The Tips page and a store's
+ * similar-products row keep the original card, where the seller is the point.
+ */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
+  const showLocation = !!opts.showLocation;
 
   const media = product.imageUrl
     ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
     : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   const priceText = formatPriceLabel(product.variants);
+  const location = storeLocationLabel(product.storeIsland, product.storeVillage);
+
+  // Price inside the heading, at the name's size. Normal inline flow, not a
+  // flex row: it puts the price beside the name and lets it fall to the next
+  // line by itself when both won't fit, which is what was asked for.
+  const heading = showLocation
+    ? `<h3 class="product-name product-name--with-price">${escapeHtml(product.name)} <span class="product-price product-price--inline">${priceText}</span></h3>`
+    : `<h3 class="product-name">${escapeHtml(product.name)}</h3>
+        <strong class="product-price">${priceText}</strong>`;
+
+  // Falls back to the store name if this store has no location recorded, so
+  // the line is never blank.
+  const meta = showLocation ? (location || product.storeName) : product.storeName;
 
   return `
     <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
       ${media}
       <div class="product-card-body">
-        <h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <strong class="product-price">${priceText}</strong>
+        ${heading}
         ${renderStars(product.rating, product.reviewCount)}
-        <p class="helper-text">${escapeHtml(product.storeName)}</p>
+        <p class="helper-text">${escapeHtml(meta)}</p>
         <div class="store-phone-row">
-          ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
+          ${!showLocation && product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
           ${isBookingCategory(product.category)
             ? '' /* delivery flags are store-wide; they're meaningless (and misleading) on a rental/service listing, so suppress them here — the goods listings and the store page keep them */
             : renderDeliveryIcons({
