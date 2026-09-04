@@ -103,6 +103,12 @@ function getTopProductsCached() {
           storeSlug: owner.StoreSlug,
           storeName: owner.StoreName,
           storePhone: owner.Phone,
+          // The homepage and search cards show WHERE a thing is rather than
+          // who sells it - in Kiribati that is what decides whether getting it
+          // to you is practical at all. storeLocationLabel (helpers.js) turns
+          // these two into the village on South Tarawa, the island elsewhere.
+          storeIsland: owner.Island,
+          storeVillage: owner.Village,
           storeLogoUrl: owner.LogoUrl,
           views: Number(p.Views) || 0,
           variants: productVariants,
@@ -311,6 +317,12 @@ function actionSearchProducts(params) {
           storeSlug: owner.StoreSlug,
           storeName: owner.StoreName,
           storePhone: owner.Phone,
+          // The homepage and search cards show WHERE a thing is rather than
+          // who sells it - in Kiribati that is what decides whether getting it
+          // to you is practical at all. storeLocationLabel (helpers.js) turns
+          // these two into the village on South Tarawa, the island elsewhere.
+          storeIsland: owner.Island,
+          storeVillage: owner.Village,
           storeLogoUrl: owner.LogoUrl,
           variants: productVariants,
           // Both columns already exist on Products and are already maintained

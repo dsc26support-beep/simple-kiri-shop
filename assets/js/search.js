@@ -352,8 +352,7 @@ function render() {
     statusEl.textContent = `${filtered.length} matching ${noun}.`;
   }
 
-  listEl.innerHTML = page.map((p) => renderBrowseProductCard(p, { cardClass: 'search-result-card' })).join('');
-  fitPriceLabels(listEl);
+  listEl.innerHTML = page.map((p) => renderBrowseProductCard(p, { cardClass: 'search-result-card', showLocation: true })).join('');
   moreEl.hidden = page.length >= filtered.length;
   recordProductViewsOnce(page.map((p) => p.productId));
 }
