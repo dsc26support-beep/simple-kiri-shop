@@ -32,10 +32,18 @@ async function init() {
   await selectCategory(known ? requested : CATEGORIES[0].id, { replaceUrl: false });
 }
 
+/**
+ * Text only, no colour chip.
+ *
+ * The chip reused .placeholder-swatch for its colour, and that class - defined
+ * later in the stylesheet at equal specificity - sets width:100%, so every chip
+ * inflated to fill the rail and pushed the labels out across the product grid.
+ * Text alone matches the reference, gives the labels the full rail width, and
+ * removes the collision rather than working around it.
+ */
 function renderRail() {
   document.getElementById('category-rail').innerHTML = CATEGORIES.map((c) => `
     <button type="button" class="category-rail-item" data-category="${escapeHtml(c.id)}" aria-pressed="false">
-      <span class="category-rail-swatch placeholder-swatch category-${escapeHtml(c.id)}" aria-hidden="true"></span>
       <span class="category-rail-label">${escapeHtml(c.label)}</span>
     </button>
   `).join('');
@@ -123,10 +131,35 @@ function render() {
     ? `Showing ${page.length} of ${categoryProducts.length} ${noun}.`
     : `${categoryProducts.length} ${noun}.`;
 
-  listEl.innerHTML = page.map((p) => renderBrowseProductCard(p)).join('');
-  fitPriceLabels(listEl);
+  listEl.innerHTML = page.map(renderCategoryTile).join('');
   moreEl.hidden = page.length >= categoryProducts.length;
   recordProductViewsOnce(page.map((p) => p.productId));
+}
+
+/**
+ * A browse tile: photo and name, nothing else.
+ *
+ * Deliberately NOT renderBrowseProductCard, which also carries the price
+ * range, star rating, store name, phone number and delivery icons. That is the
+ * right card for search results, where the shopper is comparing; here it made
+ * the page unreadable. Price, store and delivery are all one tap away on the
+ * product page.
+ *
+ * Same link target as every other product card, so the tap does what a shopper
+ * expects from anywhere else on the site.
+ */
+function renderCategoryTile(product) {
+  const media = product.imageUrl
+    ? `<img class="category-tile-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="" loading="lazy" decoding="async">`
+    : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
+
+  return `
+    <a class="category-tile" data-product-id="${escapeHtml(product.productId)}"
+       href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}">
+      ${media}
+      <span class="category-tile-name">${escapeHtml(product.name)}</span>
+    </a>
+  `;
 }
 
 function onShowMore() {

@@ -50,8 +50,12 @@
 
       <div class="category-pane">
         <h2 id="category-pane-heading" class="category-pane-heading">Browse</h2>
-        <p id="category-status" class="helper-text is-reserving-space" role="status">Loading…</p>
-        <div id="category-list" class="product-grid"></div>
+        <!-- Deliberately no .is-reserving-space. A viewport-tall reservation
+             fits a full-width product grid, but these tiles are three across
+             and short, so it overshoots and the release is itself a jump:
+             measured, it took this page from CLS 0.014 to 0.133. -->
+        <p id="category-status" class="helper-text" role="status">Loading…</p>
+        <div id="category-list" class="category-grid"></div>
         <p class="load-more-row"><button type="button" id="category-more" class="btn btn-small" hidden>Show More</button></p>
       </div>
 
