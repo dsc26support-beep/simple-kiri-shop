@@ -91,7 +91,6 @@ function renderProductCard(product) {
           <label class="sr-only" for="variety-${pid}">Choose an option for ${escapeHtml(product.name)}</label>
           <select id="variety-${pid}" class="variety-select">${options}</select>
         </div>
-        <p class="product-shipping-note helper-text">Shipping fee and delivery date to be negotiated. Chat with store for more details.</p>
         <div class="product-actions">
           <label class="sr-only" for="qty-${pid}">Quantity</label>
           <input id="qty-${pid}" class="qty-input" type="number" min="1" value="1" inputmode="numeric">

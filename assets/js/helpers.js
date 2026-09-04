@@ -639,6 +639,39 @@ const ALWAYS_FREE_DELIVERY_METHODS = ['pickPay'];
  * (store hasn't set one yet). pickPay has no cost flag - see
  * ALWAYS_FREE_DELIVERY_METHODS above.
  */
+/**
+ * Does this store have any delivery method whose fee is not set?
+ *
+ * null is the wire form of "to be negotiated" (deliveryCostOf in Products.gs);
+ * 0 is genuinely free. Pick & Pay is always free, so it never counts - there
+ * is nothing to negotiate about collecting it yourself.
+ *
+ * Takes a listProducts response, which is what both pages that need it have.
+ */
+function storeHasNegotiatedDelivery(res) {
+  if (!res) return false;
+  return [
+    [res.storeDeliveryTruck, res.storeDeliveryTruckCost],
+    [res.storeDeliveryShip, res.storeDeliveryShipCost],
+    [res.storeDeliveryAirCargo, res.storeDeliveryAirCargoCost]
+  ].some(function (pair) { return pair[0] && pair[1] == null; });
+}
+
+/**
+ * Fills in the once-per-page negotiated-shipping line, or leaves it hidden.
+ *
+ * This sentence used to be printed on EVERY product card, unconditionally - so
+ * a store with a fixed $5 truck fee still told shoppers the fee was to be
+ * negotiated, ten times down the page. Said once, and only when true.
+ */
+function renderShippingNote(elementId, res) {
+  const noteEl = document.getElementById(elementId);
+  if (!noteEl) return;
+  if (!storeHasNegotiatedDelivery(res)) return;
+  noteEl.textContent = 'Shipping fee and delivery date to be negotiated — chat with this store for details.';
+  noteEl.hidden = false;
+}
+
 function renderDeliveryIcons(flags) {
   flags = flags || {};
   const methods = ['truck', 'ship', 'airCargo', 'pickPay'].filter((m) => flags[m]);
