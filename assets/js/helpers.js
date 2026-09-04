@@ -63,6 +63,36 @@ const LOADING_MESSAGE_STAGE2_DELAY_MS = 3000;
 const LOADING_DOTS_HTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
 
 /**
+ * Total items across every per-store cart on this device.
+ *
+ * Carts are scoped per store (skiri_cart_<slug>, see cart.js), so "the cart"
+ * is really several. The one number a shopper wants on a header badge is the
+ * sum, which is what this returns.
+ *
+ * Single home for the scan: bottom-nav.js used to keep its own copy and
+ * directory.js has cartStoreSlugs() for a related question. Two is already
+ * enough; a third would be one too many.
+ */
+function totalCartItemCount() {
+  let total = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf('skiri_cart_') === 0) {
+        try {
+          (JSON.parse(localStorage.getItem(key)) || []).forEach((line) => {
+            total += Number(line.qty) || 0;
+          });
+        } catch (e) { /* skip malformed cart */ }
+      }
+    }
+  } catch (e) {
+    // storage unavailable - treated as an empty cart
+  }
+  return total;
+}
+
+/**
  * Runs work that must not compete with the page's own first render.
  *
  * Everything on this site paints from one Apps Script request, and that

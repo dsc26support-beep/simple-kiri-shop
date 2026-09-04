@@ -2185,7 +2185,150 @@ footer.site-footer .copyright {
    else below the list start off-screen and stay off-screen when the real
    content lands, so nothing the shopper is actually looking at moves. This was
    the largest source of layout shift on the site (CLS 0.9 on a store page). */
-.is-reserving-space { min-height: 100vh; }
+/* Doubled class on purpose. [aria-live] further down this file also sets a
+   min-height, and at equal specificity the later rule wins - which silently
+   reduced this reservation to one line on the first page that used both, and
+   put the layout shift straight back. Same specificity trick as
+   .category-btn.category-btn--rentals below. */
+.is-reserving-space.is-reserving-space { min-height: 100vh; }
+
+/* ---------- Browse by category (categories.html) ----------------------- */
+
+.category-browser {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  align-items: start;
+}
+
+@media (min-width: 600px) {
+  .category-browser {
+    grid-template-columns: 190px 1fr;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+}
+
+/* Six entries, fixed - so the rail's height is known and held here rather than
+   appearing a moment after first paint and pushing the pane down. Keep in step
+   with CATEGORIES in assets/js/helpers.js: more categories means a taller
+   reservation, and a test re-measures a rendered item and fails if it drifts. */
+.category-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: var(--space-2);
+  min-height: 348px;
+  border-right: 1px solid var(--color-border);
+  padding-right: var(--space-2);
+}
+
+.category-rail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-rail-item.is-selected {
+  background: var(--color-bg-alt);
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--color-blue);
+}
+
+.category-rail-item:hover,
+.category-rail-item:focus-visible {
+  background: var(--color-bg-alt);
+}
+
+/* Reuses the per-category colours already defined for product placeholders,
+   so a category reads the same here as it does on a card without a photo. */
+.category-rail-swatch {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.category-rail-label {
+  line-height: 1.25;
+}
+
+.category-pane-heading {
+  margin: 0 0 var(--space-2);
+  font-size: 1.05rem;
+}
+
+.category-pane .product-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 900px) {
+  .category-pane .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ---------- Cart button in the page header ----------------------------- */
+
+/* Absolutely positioned on purpose: header-cart.js injects this at
+   DOMContentLoaded, and anything injected into the flow at that point shifts
+   the page. Out of flow it costs nothing, the same reason
+   .header-logo-mark is positioned this way. */
+.header-cart {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  text-decoration: none;
+}
+
+/* index.html carries the logo mark in that corner; sit to the left of it. */
+.site-header .header-logo-mark ~ .header-cart,
+.header-top-row:has(.header-logo-mark) .header-cart {
+  right: calc(var(--space-2) + 48px);
+}
+
+.header-cart:hover,
+.header-cart:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.header-cart-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
 
 .bottom-nav { display: none; }
 

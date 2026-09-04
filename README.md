@@ -350,7 +350,12 @@ in `whenIdle`.
 Three layout reservations exist for the same reason and are easy to break:
 
 - **`.is-reserving-space`** - set in the HTML on a list's status line, released
-  by `startLoadingMessage`'s `stop()`.
+  by `startLoadingMessage`'s `stop()`. The selector is deliberately doubled
+  (`.is-reserving-space.is-reserving-space`): `[aria-live]` further down the
+  stylesheet also sets a `min-height`, and at equal specificity the later rule
+  wins, which silently cut the reservation to one line on the first page that
+  used both. Note that `role="status"` already implies `aria-live="polite"`, so
+  the attribute is usually redundant anyway.
 - **`.category-buttons`' `min-height`** - measured against the number of entries
   in `CATEGORIES`. Changing how many categories there are means re-measuring
   those three breakpoints.
