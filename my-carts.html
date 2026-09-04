@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tips — Mwakete</title>
+  <title>Your Carts — Mwakete</title>
+  <meta name="description" content="Every Mwakete store you have an unfinished cart with, in one place.">
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
   <link rel="stylesheet" href="assets/css/styles.css">
   <!-- The Apps Script backend gates whether the page has any content at all.
@@ -28,34 +29,34 @@
       <nav class="site-nav" aria-label="Main">
         <ul>
           <li><a href="index.html">Home</a></li>
-          <li><a href="stores.html">Browse Stores</a></li>
+          <li><a href="stores.html">Stores</a></li>
         </ul>
       </nav>
-      <img src="assets/img/favicon.svg" alt="Mwakete" class="header-logo-mark">
+    </div>
+    <div class="container site-branding">
+      <p class="site-tagline">Your Carts</p>
     </div>
   </header>
 
-  <main id="main" class="home-main page-products">
-    <div class="container">
-      <h1>Tips</h1>
-      <p class="helper-text">Featured stores and products, hand-picked for you.</p>
-      <p id="tips-status" class="helper-text" role="status" aria-live="polite"></p>
-
-      <section id="tips-stores-wrap" class="hidden" aria-labelledby="tips-stores-heading">
-        <h2 id="tips-stores-heading">Featured Stores</h2>
-        <div id="tips-stores" class="logo-carousel"></div>
-      </section>
-
-      <section id="tips-products-wrap" class="hidden" aria-labelledby="tips-products-heading">
-        <h2 id="tips-products-heading">Featured Products</h2>
-        <div id="tips-products" class="product-grid"></div>
-      </section>
-    </div>
+  <main id="main">
+    <section id="my-carts" aria-labelledby="my-carts-heading">
+      <div class="container">
+        <h1 id="my-carts-heading">Your Carts</h1>
+        <!-- Each store you shop with keeps its own cart, so this is the one
+             place they are all visible. Rows are drawn from localStorage
+             immediately (my-carts.js) and only the store's name and logo wait
+             on the backend. -->
+        <p id="my-carts-status" class="helper-text" role="status">Loading…</p>
+        <div id="my-carts-list" class="my-cart-list"></div>
+        <noscript><p>Please enable JavaScript in your browser to see your carts.</p></noscript>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
     <div class="container">
-      <p><a href="stores.html">Browse All Stores</a></p>
+      <p>All payments is arranged between Customer and Seller</p>
+      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Enquiry">Enquiry</a></p>
       <p class="copyright">©MainKT Enterprises</p>
     </div>
   </footer>
@@ -64,7 +65,8 @@
   <script defer src="assets/js/api.js"></script>
   <script defer src="assets/js/helpers.js"></script>
   <script defer src="assets/js/cookie-consent.js"></script>
-  <script defer src="assets/js/customer-tips.js"></script>
+  <script defer src="assets/js/cart.js"></script>
+  <script defer src="assets/js/my-carts.js"></script>
   <script defer src="assets/js/customer-auth.js"></script>
   <script defer src="assets/js/header-cart.js"></script>
   <script defer src="assets/js/bottom-nav.js"></script>

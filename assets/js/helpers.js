@@ -63,6 +63,108 @@ const LOADING_MESSAGE_STAGE2_DELAY_MS = 3000;
 const LOADING_DOTS_HTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
 
 /**
+ * Slugs this device has a non-empty cart for. Carts are per-store
+ * (skiri_cart_<slug>, see cart.js), so a shopper who browsed three shops has
+ * three of them and no way back to any but the one they remember.
+ *
+ * Same localStorage scan as bottom-nav.js's updateBottomNavCartBadge and
+ * customer-messages.js's collectChatStores, including their try/catch: storage
+ * can be unavailable in private mode, and a malformed entry must not take the
+ * page down with it.
+ */
+function cartStoreSlugs() {
+  const prefix = 'skiri_cart_';
+  const slugs = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf(prefix) === 0) {
+        const slug = key.slice(prefix.length);
+        if (!slug) continue;
+        try {
+          const cart = JSON.parse(localStorage.getItem(key));
+          if (Array.isArray(cart) && cart.length > 0) slugs.push(slug);
+        } catch (e) { /* skip malformed cart */ }
+      }
+    }
+  } catch (e) {
+    // storage unavailable - treated as no carts
+  }
+  return slugs;
+}
+
+/**
+ * Total items across every per-store cart on this device.
+ *
+ * Carts are scoped per store (skiri_cart_<slug>, see cart.js), so "the cart"
+ * is really several. The one number a shopper wants on a header badge is the
+ * sum, which is what this returns.
+ *
+ * Single home for the scan: bottom-nav.js used to keep its own copy and
+ * directory.js has cartStoreSlugs() for a related question. Two is already
+ * enough; a third would be one too many.
+ */
+function totalCartItemCount() {
+  let total = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf('skiri_cart_') === 0) {
+        try {
+          (JSON.parse(localStorage.getItem(key)) || []).forEach((line) => {
+            total += Number(line.qty) || 0;
+          });
+        } catch (e) { /* skip malformed cart */ }
+      }
+    }
+  } catch (e) {
+    // storage unavailable - treated as an empty cart
+  }
+  return total;
+}
+
+/**
+ * Runs work that must not compete with the page's own first render.
+ *
+ * Everything on this site paints from one Apps Script request, and that
+ * request is slow enough on a Kiribati mobile link that anything sharing the
+ * window with it is felt directly. Unread badges, analytics beacons and the
+ * chat header are all nice-to-have: they belong after the shopper can see
+ * their products, not before.
+ *
+ * Idle alone is not enough - an idle callback fires happily while a request is
+ * still in flight, so it yields the CPU but not the network. So each page
+ * publishes its render-critical request as window.__criticalReady and this
+ * waits for that to settle first (rejections included - a failed load must not
+ * strand the badges forever).
+ *
+ * The setTimeout(0) matters: this is called from DOMContentLoaded handlers,
+ * and script order means chat-window.js and bottom-nav.js run before the page
+ * script that sets __criticalReady. Yielding once lets every handler register
+ * its request before we look for one.
+ *
+ * requestIdleCallback isn't in Safari, so fall back to a short timeout - the
+ * point is only to get off the critical path, not to be precise about when.
+ */
+function whenIdle(fn, timeoutMs) {
+  const idle = () => {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(fn, { timeout: timeoutMs || 1500 });
+    } else {
+      setTimeout(fn, 200);
+    }
+  };
+  setTimeout(() => {
+    const critical = window.__criticalReady;
+    if (critical && typeof critical.then === 'function') {
+      critical.then(idle, idle);
+    } else {
+      idle();
+    }
+  }, 0);
+}
+
+/**
  * Sets el's content to "Loading" + moving dots immediately, then to
  * "Please wait" + moving dots after LOADING_MESSAGE_STAGE2_DELAY_MS if it's
  * still going. Returns a stop() function - callers MUST call it as soon as
@@ -77,6 +179,12 @@ function startLoadingMessage(el) {
   }, LOADING_MESSAGE_STAGE2_DELAY_MS);
   return function stopLoadingMessage() {
     clearTimeout(timer);
+    // Release the space the markup reserved for this list (see
+    // .is-reserving-space in styles.css). The class is set in the HTML, not
+    // added here: adding it after first paint would itself be a layout shift,
+    // which is what it exists to prevent. Every caller calls stop() and
+    // renders in the same task, so the release and the fill land together.
+    el.classList.remove('is-reserving-space');
   };
 }
 
@@ -347,7 +455,7 @@ function recordProductViewsOnce(productIds) {
   if (newIds.length === 0) return;
   newIds.forEach((id) => seen.add(id));
   saveLocalIdSet('skiri_viewed_products', seen);
-  Api.post('recordProductViews', { productIds: newIds }).catch(() => {});
+  whenIdle(() => Api.post('recordProductViews', { productIds: newIds }).catch(() => {}));
 }
 
 // Same idea as recordProductViewsOnce, for a single store visit.
@@ -357,7 +465,7 @@ function recordStoreVisitOnce(storeSlug) {
   if (seen.has(storeSlug)) return;
   seen.add(storeSlug);
   saveLocalIdSet('skiri_visited_stores', seen);
-  Api.post('recordStoreVisit', { storeSlug }).catch(() => {});
+  whenIdle(() => Api.post('recordStoreVisit', { storeSlug }).catch(() => {}));
 }
 
 // Downscale/compress a photo client-side before upload - mobile camera
@@ -434,8 +542,17 @@ const CATEGORIES = [
   { id: 'services', label: 'Services' }
 ];
 
+/**
+ * The category row is a fixed list that never depends on the backend. Its
+ * height is reserved in CSS (.category-buttons min-height) so filling it in
+ * doesn't push the page down.
+ *
+ * Returns silently if the container isn't on this page.
+ */
 function renderCategoryButtons(containerId) {
-  document.getElementById(containerId).innerHTML = CATEGORIES.map(
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = CATEGORIES.map(
     (c) => `<a class="btn category-btn category-btn--${c.id}" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
   ).join('');
 }

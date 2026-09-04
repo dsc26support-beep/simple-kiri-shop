@@ -24,7 +24,10 @@ async function loadHomePageData() {
   const stopProductsLoading = startLoadingMessage(productsStatusEl);
   const stopStoresLoading = startLoadingMessage(storesStatusEl);
 
-  const res = await Api.get('getHomePageData', {});
+  const request = Api.get('getHomePageData', {});
+  // The request this page paints from; whenIdle() waits for it (helpers.js).
+  window.__criticalReady = request;
+  const res = await request;
   stopProductsLoading();
   stopStoresLoading();
   if (!res.ok) {

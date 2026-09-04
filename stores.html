@@ -7,6 +7,41 @@
   <meta name="description" content="Browse all local Kiribati stores on Mwakete.">
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
   <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    /* Runs before the first paint - the only place that can. Whether this
+       device has carts is in localStorage, which is readable synchronously,
+       and revealing the "pick up where you left off" row any later pushes the
+       directory down the page under the reader's thumb. So the row's height is
+       reserved here, in the paint it first appears in.
+
+       Only phone widths (one column) get the reservation: that is where the
+       shift is felt, and where the row geometry is a simple N-rows sum. The
+       card metrics live in .cart-stores in styles.css and are pinned by a test.
+       Scan kept in step with cartStoreSlugs() in assets/js/directory.js. */
+    (function () {
+      try {
+        var n = 0;
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('skiri_cart_') === 0) {
+            try {
+              var cart = JSON.parse(localStorage.getItem(k));
+              if (Array.isArray(cart) && cart.length) n++;
+            } catch (e) { /* skip malformed cart */ }
+          }
+        }
+        if (!n) return;
+        var root = document.documentElement;
+        root.classList.add('has-cart-stores');
+        root.style.setProperty('--cart-store-rows', String(n));
+      } catch (e) { /* storage unavailable - no reservation, no row */ }
+    })();
+  </script>
+  <!-- The Apps Script backend gates whether the page has any content at all.
+       /exec answers with a 302 to script.googleusercontent.com, so both origins
+       need warming or the first data request pays two cold handshakes. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
   <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
   <link rel="manifest" href="manifest.json">
@@ -16,7 +51,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
 </head>
-<body>
+<body class="has-bottom-nav">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
@@ -42,7 +77,15 @@
           <input id="stores-search-input" type="search" placeholder="Search All Stores (e.g. Betio or Beru)">
           <button type="submit" class="btn btn-primary">Search</button>
         </form>
-        <p id="stores-status" class="helper-text" role="status">Loading stores…</p>
+        <!-- Stores this device has an unfinished cart with. Hidden until
+             loadCartStores (directory.js) finds one, so the page is unchanged
+             for a visitor without carts. -->
+        <section id="cart-stores" class="cart-stores" aria-labelledby="cart-stores-heading">
+          <h2 id="cart-stores-heading">Pick up where you left off</h2>
+          <div id="cart-store-list" class="store-grid"></div>
+        </section>
+
+        <p id="stores-status" class="helper-text is-reserving-space" role="status">Loading stores…</p>
         <div id="store-list" class="store-grid"></div>
         <p class="load-more-row"><button type="button" id="stores-load-more" class="btn btn-small hidden">Load More Stores</button></p>
         <noscript><p>Please enable JavaScript in your browser to browse stores.</p></noscript>
@@ -58,13 +101,14 @@
     </div>
   </footer>
 
-  <script src="assets/js/config.js"></script>
-  <script src="assets/js/api.js"></script>
-  <script src="assets/js/helpers.js"></script>
-  <script src="assets/js/cookie-consent.js"></script>
-  <script src="assets/js/directory.js"></script>
-  <script src="assets/js/customer-auth.js"></script>
-  <script src="assets/js/bottom-nav.js"></script>
-  <script src="assets/js/register-sw.js"></script>
+  <script defer src="assets/js/config.js"></script>
+  <script defer src="assets/js/api.js"></script>
+  <script defer src="assets/js/helpers.js"></script>
+  <script defer src="assets/js/cookie-consent.js"></script>
+  <script defer src="assets/js/directory.js"></script>
+  <script defer src="assets/js/customer-auth.js"></script>
+  <script defer src="assets/js/header-cart.js"></script>
+  <script defer src="assets/js/bottom-nav.js"></script>
+  <script defer src="assets/js/register-sw.js"></script>
 </body>
 </html>

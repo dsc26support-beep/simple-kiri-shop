@@ -21,7 +21,14 @@ async function init() {
   viewStore.href = storeHref;
 
   const stop = startLoadingMessage(statusEl);
-  const res = await Api.get('listProducts', { storeSlug: slug });
+  const request = Api.get('listProducts', { storeSlug: slug });
+  // The request this page paints from; whenIdle() waits for it (helpers.js).
+  window.__criticalReady = request;
+  // See store.js - lets the chat window skip a duplicate store lookup.
+  window.__storeInfoPromise = request.then(
+    (r) => (r && r.ok ? { storeName: r.storeName, logoUrl: r.storeLogoUrl } : null)
+  );
+  const res = await request;
   stop();
   if (!res.ok) {
     showLoadFailedMessage(statusEl);

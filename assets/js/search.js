@@ -394,7 +394,10 @@ async function runSearch(q, category) {
   }
 
   const stopLoading = startLoadingMessage(statusEl);
-  const res = await Api.get('searchProducts', { q, category });
+  const request = Api.get('searchProducts', { q, category });
+  // The request this page paints from; whenIdle() waits for it (helpers.js).
+  window.__criticalReady = request;
+  const res = await request;
   stopLoading();
 
   if (!res.ok) {

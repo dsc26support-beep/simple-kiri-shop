@@ -3,19 +3,44 @@ document.addEventListener('DOMContentLoaded', init);
 let currentSlug = null;
 
 async function init() {
-  currentSlug = localStorage.getItem('skiri_active_store');
+  // ?store= wins over the remembered store. Carts are per-store, so arriving
+  // from the "Your Carts" list has to be able to say WHICH cart - without this
+  // every row opened whichever store happened to be visited last.
+  currentSlug = getQueryParam('store') || localStorage.getItem('skiri_active_store');
 
   if (!currentSlug) {
     render();
     return;
   }
 
+  // Keep the remembered store in step, so Checkout and the chat window (both
+  // of which read skiri_active_store) act on the cart actually being shown.
+  try {
+    localStorage.setItem('skiri_active_store', currentSlug);
+  } catch (e) {
+    // storage unavailable - the query param still carries this page
+  }
+
   document.getElementById('back-to-store-link').href = `store.html?store=${encodeURIComponent(currentSlug)}`;
 
   const hideOverlay = showLoadingOverlay();
-  const res = await Api.get('getStorePublicInfo', { storeSlug: currentSlug });
+  const request = Api.get('getStorePublicInfo', { storeSlug: currentSlug });
+  // The request this page paints from; whenIdle() waits for it (helpers.js).
+  window.__criticalReady = request;
+  // See store.js - without this the chat window repeats this exact call.
+  window.__storeInfoPromise = request.then(
+    (r) => (r && r.ok && r.store ? { storeName: r.store.storeName, logoUrl: r.store.logoUrl } : null)
+  );
+  const res = await request;
   hideOverlay();
   if (res.ok) {
+    // Shared with the chat window (storeIsOpen in chat-window.js). Without
+    // this the cart page was the one place a closed store still showed
+    // "Online" in the chat header - store.js, product-page.js and checkout.js
+    // all published it, cart-page.js didn't. Only an explicit false closes, so
+    // an older backend still reads as open.
+    window.__storeOpen = res.store.isOpen !== false;
+
     document.getElementById('store-name-tagline').textContent = `Your cart — ${res.store.storeName}`;
     if (res.store.logoUrl) {
       const logoImg = document.getElementById('store-logo-img');

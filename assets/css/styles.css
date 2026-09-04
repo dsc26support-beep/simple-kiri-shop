@@ -374,6 +374,22 @@ section {
   flex-wrap: wrap;
   gap: var(--space-2);
   justify-content: center;
+  /* Hold the row's height before renderCategoryButtons (helpers.js) fills it.
+     The buttons are a fixed list, so the wrapped height is knowable per width
+     and measured rather than guessed: 3 rows on a phone, 2 on a small tablet,
+     1 from 900px up. Without this the row appeared a moment after first paint
+     and pushed 158px of page down under the reader - the homepage's and search
+     page's largest layout shift. Keep in step with CATEGORIES in helpers.js:
+     changing how many categories there are changes these numbers. */
+  min-height: 158px;
+}
+
+@media (min-width: 430px) {
+  .category-buttons { min-height: 102px; }
+}
+
+@media (min-width: 900px) {
+  .category-buttons { min-height: 47px; }
 }
 
 .category-btn {
@@ -723,7 +739,9 @@ footer.site-footer .copyright {
  */
 .chat-window {
   position: fixed;
-  z-index: 1002; /* above the FAB (1001); below the bottom nav and consent banner (1003) */
+  z-index: 1002; /* above the FAB (1001); below the bottom nav and consent
+                    banner (1003). Raised to 1004 on mobile, where this window
+                    goes full-screen - see the max-width: 600px block below. */
   right: max(var(--space-3), env(safe-area-inset-right));
   bottom: calc(56px + var(--space-3) * 2 + env(safe-area-inset-bottom));
   width: 360px;
@@ -759,6 +777,14 @@ footer.site-footer .copyright {
    the bottom instead of the desktop scale animation. */
 @media (max-width: 600px) {
   .chat-window {
+    /* Above the bottom nav (1003). On desktop this window is a small
+       bottom-right panel and sitting under the nav costs nothing, but here it
+       IS the screen - and the nav was covering the message box, so the
+       composer could not be reached while the chat was open. A full-screen
+       chat has its own close button, so nothing is lost by hiding the bar
+       behind it. Still below the modal overlays, which are raised to 1005/1006
+       to keep that true. */
+    z-index: 1004;
     inset: 0;
     right: 0;
     bottom: 0;
@@ -1762,8 +1788,8 @@ footer.site-footer .copyright {
   bottom: 0;
   /* Above the chat FAB (1001) and chat window (1002), which are bottom-right
      anchored and would otherwise sit on top of this full-width bar.
-     Deliberately NOT above the blocking overlays - .loading-overlay (1004)
-     and .login-chooser-overlay (1005) are modal and must stay on top. Ties
+     Deliberately NOT above the blocking overlays - .loading-overlay (1005)
+     and .login-chooser-overlay (1006) are modal and must stay on top. Ties
      with .chat-notification-toast (1003), which is top-anchored and so never
      meets a bottom-anchored bar. */
   z-index: 1003;
@@ -1871,11 +1897,12 @@ footer.site-footer .copyright {
 /* Centered full-screen "Loading… / Please wait…" overlay (see
    showLoadingOverlay in helpers.js) - used for waits with no inline status
    spot, e.g. checkout's initial load and while placing an order. Above the
-   FABs/toast layer (1003) so nothing sits on top of it. */
+   FABs/toast/bottom-nav layer (1003) AND above the full-screen mobile chat
+   (1004) so nothing sits on top of it. */
 .loading-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1004;
+  z-index: 1005;
   display: none;
   align-items: center;
   justify-content: center;
@@ -2040,7 +2067,7 @@ footer.site-footer .copyright {
 .login-chooser-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1005;
+  z-index: 1006;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2161,6 +2188,228 @@ footer.site-footer .copyright {
 
 /* Mobile bottom navigation (§7) - injected by bottom-nav.js, mobile only. */
 :root { --bottom-nav-h: 56px; }
+
+/* Space held open for a list that is still loading. Set in the HTML so it
+   exists at first paint, and removed by startLoadingMessage's stop() in
+   helpers.js when the results render.
+   A whole viewport, deliberately: the point is that the footer and anything
+   else below the list start off-screen and stay off-screen when the real
+   content lands, so nothing the shopper is actually looking at moves. This was
+   the largest source of layout shift on the site (CLS 0.9 on a store page). */
+/* Doubled class on purpose. [aria-live] further down this file also sets a
+   min-height, and at equal specificity the later rule wins - which silently
+   reduced this reservation to one line on the first page that used both, and
+   put the layout shift straight back. Same specificity trick as
+   .category-btn.category-btn--rentals below. */
+.is-reserving-space.is-reserving-space { min-height: 100vh; }
+
+/* ---------- Browse by category (categories.html) ----------------------- */
+
+.category-browser {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  align-items: start;
+}
+
+@media (min-width: 600px) {
+  .category-browser {
+    grid-template-columns: 190px 1fr;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+}
+
+/* Six entries, fixed - so the rail's height is known and held here rather than
+   appearing a moment after first paint and pushing the pane down. Keep in step
+   with CATEGORIES in assets/js/helpers.js: more categories means a taller
+   reservation, and a test re-measures a rendered item and fails if it drifts. */
+.category-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: var(--space-2);
+  min-height: 348px;
+  border-right: 1px solid var(--color-border);
+  padding-right: var(--space-2);
+}
+
+.category-rail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-rail-item.is-selected {
+  background: var(--color-bg-alt);
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--color-blue);
+}
+
+.category-rail-item:hover,
+.category-rail-item:focus-visible {
+  background: var(--color-bg-alt);
+}
+
+/* Reuses the per-category colours already defined for product placeholders,
+   so a category reads the same here as it does on a card without a photo. */
+.category-rail-swatch {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.category-rail-label {
+  line-height: 1.25;
+}
+
+.category-pane-heading {
+  margin: 0 0 var(--space-2);
+  font-size: 1.05rem;
+}
+
+.category-pane .product-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 900px) {
+  .category-pane .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ---------- Your Carts (my-carts.html) --------------------------------- */
+
+.my-cart-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+@media (min-width: 700px) {
+  .my-cart-list { grid-template-columns: repeat(2, 1fr); }
+}
+
+.my-cart-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.my-cart-logo-slot,
+.my-cart-logo,
+.my-cart-logo-placeholder {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.my-cart-logo { object-fit: cover; background: var(--color-bg-alt); }
+
+.my-cart-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-blue);
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.my-cart-info { min-width: 0; flex: 1; }
+
+/* One line, always. The row is drawn from localStorage with the slug as a
+   stand-in and the real store name arrives a moment later; if either could wrap
+   to two lines the row would change height and shove the page. */
+.my-cart-name {
+  margin: 0 0 2px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.my-cart-meta {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.my-cart-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+/* ---------- Cart button in the page header ----------------------------- */
+
+/* Absolutely positioned on purpose: header-cart.js injects this at
+   DOMContentLoaded, and anything injected into the flow at that point shifts
+   the page. Out of flow it costs nothing, the same reason
+   .header-logo-mark is positioned this way. */
+.header-cart {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  text-decoration: none;
+}
+
+/* index.html carries the logo mark in that corner; sit to the left of it. */
+.site-header .header-logo-mark ~ .header-cart,
+.header-top-row:has(.header-logo-mark) .header-cart {
+  right: calc(var(--space-2) + 48px);
+}
+
+.header-cart:hover,
+.header-cart:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.header-cart-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
 
 .bottom-nav { display: none; }
 
@@ -2731,6 +2980,81 @@ legend {
 .store-card:hover,
 .store-card:focus-visible {
   border-color: var(--color-blue);
+}
+
+/* --- Stores the shopper already has a cart with (directory.js) ------------
+   Carts are per-store, so someone who browsed three shops has three of them
+   and, until now, no way back except remembering the name. */
+
+.cart-stores {
+  display: none;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* has-cart-stores is set by the inline script in stores.html <head>, before
+   the first paint, so this row is part of the initial layout rather than
+   something that appears later and shoves the directory down. */
+:root.has-cart-stores .cart-stores {
+  display: block;
+}
+
+/* Height held until the real cards arrive. One column below 600px, so the
+   height is rows x card + gaps + the heading/padding/border around them.
+   MEASURED, not guessed - and verify-cartstores.js re-measures a rendered card
+   and fails if these drift. */
+@media (max-width: 599px) {
+  :root.has-cart-stores .cart-stores:not(.is-loaded) #cart-store-list {
+    min-height: calc(
+      var(--cart-store-rows, 1) * 147px + (var(--cart-store-rows, 1) - 1) * 16px
+    );
+  }
+}
+
+.cart-stores h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 1rem;
+}
+
+/* Pinned card: tinted so the section reads as different from the directory
+   below it, without shouting. */
+.store-card--resume {
+  background: var(--color-bg-alt);
+  border-color: var(--color-blue);
+}
+
+.store-card-resume {
+  font-weight: 600;
+  color: var(--color-blue);
+}
+
+/* One line, always. The placeholder above can't know how long the real store
+   name will be, and a name that wraps to two lines where the placeholder had
+   one puts the shift straight back. On a "pick up where you left off" card the
+   name is for recognition, so trimming the tail costs nothing. */
+.store-card--resume .store-card-info h3 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Inline marker on a directory card. The label carries the meaning; the border
+   only reinforces it, so this never depends on colour alone. */
+.store-card.is-in-cart {
+  border-color: var(--color-blue);
+}
+
+.store-card-cart-flag {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-blue);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.6;
 }
 
 .store-card h3 {

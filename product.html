@@ -6,6 +6,11 @@
   <title>Product — Mwakete</title>
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
   <link rel="stylesheet" href="assets/css/styles.css">
+  <!-- The Apps Script backend gates whether the page has any content at all.
+       /exec answers with a 302 to script.googleusercontent.com, so both origins
+       need warming or the first data request pays two cold handshakes. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
   <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
   <link rel="manifest" href="manifest.json">
@@ -15,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
 </head>
-<body>
+<body class="has-bottom-nav">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
@@ -122,16 +127,17 @@
     </div>
   </footer>
 
-  <script src="assets/js/config.js"></script>
-  <script src="assets/js/api.js"></script>
-  <script src="assets/js/helpers.js"></script>
-  <script src="assets/js/cookie-consent.js"></script>
-  <script src="assets/js/chat-window.js"></script>
-  <script src="assets/js/cart.js"></script>
-  <script src="assets/js/product-card.js"></script>
-  <script src="assets/js/customer-auth.js"></script>
-  <script src="assets/js/bottom-nav.js"></script>
-  <script src="assets/js/product-page.js"></script>
-  <script src="assets/js/register-sw.js"></script>
+  <script defer src="assets/js/config.js"></script>
+  <script defer src="assets/js/api.js"></script>
+  <script defer src="assets/js/helpers.js"></script>
+  <script defer src="assets/js/cookie-consent.js"></script>
+  <script defer src="assets/js/chat-window.js"></script>
+  <script defer src="assets/js/cart.js"></script>
+  <script defer src="assets/js/product-card.js"></script>
+  <script defer src="assets/js/customer-auth.js"></script>
+  <script defer src="assets/js/header-cart.js"></script>
+  <script defer src="assets/js/bottom-nav.js"></script>
+  <script defer src="assets/js/product-page.js"></script>
+  <script defer src="assets/js/register-sw.js"></script>
 </body>
 </html>
