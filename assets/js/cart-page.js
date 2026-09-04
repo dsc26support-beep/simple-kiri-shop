@@ -3,11 +3,22 @@ document.addEventListener('DOMContentLoaded', init);
 let currentSlug = null;
 
 async function init() {
-  currentSlug = localStorage.getItem('skiri_active_store');
+  // ?store= wins over the remembered store. Carts are per-store, so arriving
+  // from the "Your Carts" list has to be able to say WHICH cart - without this
+  // every row opened whichever store happened to be visited last.
+  currentSlug = getQueryParam('store') || localStorage.getItem('skiri_active_store');
 
   if (!currentSlug) {
     render();
     return;
+  }
+
+  // Keep the remembered store in step, so Checkout and the chat window (both
+  // of which read skiri_active_store) act on the cart actually being shown.
+  try {
+    localStorage.setItem('skiri_active_store', currentSlug);
+  } catch (e) {
+    // storage unavailable - the query param still carries this page
   }
 
   document.getElementById('back-to-store-link').href = `store.html?store=${encodeURIComponent(currentSlug)}`;

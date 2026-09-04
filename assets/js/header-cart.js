@@ -1,9 +1,14 @@
 // Cart button in the page header, on every customer-facing page.
 //
-// It exists because the bottom bar's Cart tab became Categories: without this
+// It exists because the bottom bar's Cart tab became Browse: without this
 // there would be no way to the cart from the homepage, search, or the category
 // page itself. The store page's floating "Cart (N)" button is untouched and
 // still does its own job.
+//
+// It points at my-carts.html rather than cart.html because carts are
+// per-store: cart.html shows ONE store's cart and, with nothing to tell it
+// which, fell back to whichever store was visited last. my-carts.html lists
+// them all, and sends a shopper with a single cart straight into it.
 //
 // Injected rather than written into each page's markup, because the headers
 // are not a shared component - index, store, search and cart all differ - and
@@ -22,8 +27,8 @@ function initHeaderCart() {
   const link = document.createElement('a');
   link.id = 'header-cart-link';
   link.className = 'header-cart';
-  link.href = 'cart.html';
-  link.setAttribute('aria-label', 'View cart');
+  link.href = 'my-carts.html';
+  link.setAttribute('aria-label', 'Your carts');
   link.innerHTML =
     '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>' +

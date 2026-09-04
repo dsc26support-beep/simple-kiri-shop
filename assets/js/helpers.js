@@ -63,6 +63,37 @@ const LOADING_MESSAGE_STAGE2_DELAY_MS = 3000;
 const LOADING_DOTS_HTML = '<span class="loading-dots"><span></span><span></span><span></span></span>';
 
 /**
+ * Slugs this device has a non-empty cart for. Carts are per-store
+ * (skiri_cart_<slug>, see cart.js), so a shopper who browsed three shops has
+ * three of them and no way back to any but the one they remember.
+ *
+ * Same localStorage scan as bottom-nav.js's updateBottomNavCartBadge and
+ * customer-messages.js's collectChatStores, including their try/catch: storage
+ * can be unavailable in private mode, and a malformed entry must not take the
+ * page down with it.
+ */
+function cartStoreSlugs() {
+  const prefix = 'skiri_cart_';
+  const slugs = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf(prefix) === 0) {
+        const slug = key.slice(prefix.length);
+        if (!slug) continue;
+        try {
+          const cart = JSON.parse(localStorage.getItem(key));
+          if (Array.isArray(cart) && cart.length > 0) slugs.push(slug);
+        } catch (e) { /* skip malformed cart */ }
+      }
+    }
+  } catch (e) {
+    // storage unavailable - treated as no carts
+  }
+  return slugs;
+}
+
+/**
  * Total items across every per-store cart on this device.
  *
  * Carts are scoped per store (skiri_cart_<slug>, see cart.js), so "the cart"

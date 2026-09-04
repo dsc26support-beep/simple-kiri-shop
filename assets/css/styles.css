@@ -2283,6 +2283,76 @@ footer.site-footer .copyright {
   }
 }
 
+/* ---------- Your Carts (my-carts.html) --------------------------------- */
+
+.my-cart-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+@media (min-width: 700px) {
+  .my-cart-list { grid-template-columns: repeat(2, 1fr); }
+}
+
+.my-cart-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.my-cart-logo-slot,
+.my-cart-logo,
+.my-cart-logo-placeholder {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.my-cart-logo { object-fit: cover; background: var(--color-bg-alt); }
+
+.my-cart-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-blue);
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.my-cart-info { min-width: 0; flex: 1; }
+
+/* One line, always. The row is drawn from localStorage with the slug as a
+   stand-in and the real store name arrives a moment later; if either could wrap
+   to two lines the row would change height and shove the page. */
+.my-cart-name {
+  margin: 0 0 2px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.my-cart-meta {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.my-cart-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+}
+
 /* ---------- Cart button in the page header ----------------------------- */
 
 /* Absolutely positioned on purpose: header-cart.js injects this at
