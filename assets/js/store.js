@@ -76,7 +76,7 @@ async function init() {
     statusEl.textContent = 'This store has no products listed yet.';
   } else {
     statusEl.textContent = '';
-    listEl.innerHTML = currentProducts.map(renderProductCard).join('');
+    listEl.innerHTML = currentProducts.map((p) => renderProductCard(p, { storeSlug: currentSlug })).join('');
     disableOrderingControls();
     fitPriceLabels(listEl);
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
@@ -116,7 +116,7 @@ function renderFilteredProducts(query) {
   }
 
   statusEl.textContent = '';
-  listEl.innerHTML = filtered.map(renderProductCard).join('');
+  listEl.innerHTML = filtered.map((p) => renderProductCard(p, { storeSlug: currentSlug })).join('');
   disableOrderingControls();
   fitPriceLabels(listEl);
   // Re-render replaces the gallery track elements, and their scroll sync

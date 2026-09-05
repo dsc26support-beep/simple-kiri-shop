@@ -1599,9 +1599,11 @@ footer.site-footer .copyright {
   color: var(--color-gold);
 }
 
+/* The numeric score, in the Mwakete purple from :root - not a new shade.
+   The stars beside it stay --color-gold, which they already were. */
 .rating-value {
   font-weight: 700;
-  color: var(--color-ink);
+  color: var(--color-purple);
 }
 
 .reviews-section {
@@ -1625,6 +1627,19 @@ footer.site-footer .copyright {
 .reviews-average-value {
   font-size: 2rem;
   line-height: 1;
+  color: var(--color-purple);
+}
+
+/* The "5 ★" row labels: the digit reads as a rating number, the glyph as a
+   star, so they take the same two colours as everything else here rather
+   than one grey blend of both. */
+.rating-bar-star-num {
+  color: var(--color-purple);
+  font-weight: 700;
+}
+
+.rating-bar-star {
+  color: var(--color-gold);
 }
 
 .rating-bars {
@@ -2150,6 +2165,108 @@ footer.site-footer .copyright {
   min-width: 0;
 }
 
+/* Filter row for My Orders / My Bookings. A scrolling strip rather than a
+   wrapping block, so however many statuses a customer has accumulated the
+   section header never grows a second and third line on a phone. */
+.dash-filters {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.dash-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.dash-filter {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  /* Big enough to hit with a thumb without making the strip tall. */
+  min-height: 34px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dash-filter.is-active {
+  background: var(--color-purple);
+  border-color: var(--color-purple);
+  color: #fff;
+  font-weight: 600;
+}
+
+.dash-item-actions,
+.dash-item-locked {
+  margin: var(--space-1) 0 0;
+}
+
+.dash-item-locked {
+  font-size: 0.78rem;
+}
+
+/* Empty until something goes wrong, so it must not hold a line of space open
+   the rest of the time. */
+.dash-item-error:empty {
+  display: none;
+}
+
+.dash-item-error {
+  margin: var(--space-1) 0 0;
+  font-size: 0.8rem;
+}
+
+/* The inline editor swaps into the row's own body, the way the profile editor
+   directly above swaps view for form. It needs the full row width, which the
+   flex row does not give a nested form by default. */
+.dash-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.dash-edit-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font: inherit;
+  /* 16px stops iOS zooming the page in when a field takes focus. */
+  font-size: 16px;
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+.dash-edit-input:focus-visible {
+  border-color: var(--color-purple);
+}
+
+.dash-edit-label {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.dash-edit-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+/* A row holding the editor is no longer a one-line summary - let its two
+   halves stack rather than squeezing the form into half the width. */
+.dash-item:has(.dash-edit-form) {
+  align-items: flex-start;
+}
+
 .dash-item-side {
   display: flex;
   flex-direction: column;
@@ -2172,6 +2289,9 @@ footer.site-footer .copyright {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* Two text lines plus a 48px avatar, so the row has a real height even
+     before the logo loads - the initials stand-in is the same size. */
+  min-height: 64px;
   width: 100%;
   padding: var(--space-2) 0;
   text-align: left;
@@ -2187,20 +2307,85 @@ footer.site-footer .copyright {
   border-top: none;
 }
 
-.inbox-thread .dash-item-main {
-  flex: 1 1 auto;
-}
-
-.inbox-dot {
+/* Inbox rows: avatar with its unread count, store name over the last message,
+   date on the right. Replaced a bare unread dot and a shared .dash-item-main,
+   which is still used by the dashboard and admin lists and so was left alone. */
+.inbox-avatar {
+  position: relative;
   flex: 0 0 auto;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: transparent;
+  width: 48px;
+  height: 48px;
 }
 
-.inbox-dot.is-unread {
-  background: var(--color-blue);
+.inbox-avatar-img,
+.inbox-avatar-initials {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-bg-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+/* Sits ON the avatar, as in the reference. Translated by half its own size
+   rather than a fixed offset, so a "99+" pill and a "1" pill both stay
+   pinned to the same corner instead of drifting as the text widens. */
+.inbox-unread-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-35%, -35%);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* min-width:0 is what lets the two lines below actually truncate. Without it
+   a flex item refuses to shrink past its content and a long message pushes
+   the date off the row instead of ellipsing. */
+.inbox-thread-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inbox-thread-name,
+.inbox-thread-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbox-thread-name {
+  font-weight: 700;
+}
+
+.inbox-thread-preview {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.inbox-thread-date {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 /* Mobile bottom navigation (§7) - injected by bottom-nav.js, mobile only. */
@@ -2503,15 +2688,6 @@ footer.site-footer .copyright {
   text-align: center;
 }
 
-.bottom-nav-badge.is-dot {
-  min-width: 10px;
-  width: 10px;
-  height: 10px;
-  padding: 0;
-  top: -2px;
-  right: -4px;
-}
-
 @media (max-width: 700px) {
   .bottom-nav {
     display: grid;
@@ -2529,6 +2705,35 @@ footer.site-footer .copyright {
 
   /* Keep page content clear of the fixed bar. */
   body.has-bottom-nav { padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+
+  /* Parking space for a page's secondary control, directly above the Account
+     tab (the 5th of 5 equal columns, hence right:0 / width:20%).
+
+     bottom:100% puts it entirely ABOVE the bar, so it cannot overlap the
+     Account icon or any other tab however wide its label grows. The slot has
+     no background or height of its own and no pointer events, so an empty one
+     - every page but Browse - is completely inert and the bar is unchanged. */
+  .bottom-nav-more-slot {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    width: 20%;
+    display: flex;
+    justify-content: center;
+    padding-bottom: var(--space-2);
+    pointer-events: none;
+  }
+
+  .bottom-nav-more-slot > * {
+    pointer-events: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  }
+
+  /* The empty <p> the button leaves behind on mobile would otherwise still
+     hold its own margin open under the last row of products. */
+  .load-more-row:empty {
+    display: none;
+  }
 
   /* Lift existing floating buttons above the bar (only where the bar exists). */
   body.has-bottom-nav .chat-fab-btn,
@@ -2813,6 +3018,39 @@ legend {
 .product-gallery-track .product-image {
   flex: 0 0 100%;
   scroll-snap-align: start;
+}
+
+/* Photo and name link to the product's own page (product-card.js, opts.storeSlug).
+   The card is NOT one big <a>: it holds a variant <select>, a quantity input,
+   Add to Cart and, on a rental, a whole booking form, and interactive controls
+   cannot nest inside a link. */
+.product-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The anchor now wraps each gallery photo, so the ANCHOR is the flex item the
+   track snaps to - not the <img>, which the rule above this one still targets
+   by descendant. Without this the panes size to content and a swipe stops
+   landing on whole photos. */
+.product-gallery-track > .product-card-link {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+}
+
+/* Compound selector on purpose. This shares an element with .product-card-link
+   and both set display, so at equal specificity the later rule in the file
+   would win - the ordering trap that has bitten .is-reserving-space and
+   .category-rail-swatch here before. Doubling the class settles it whatever the
+   order. */
+.product-card-link.product-name-link {
+  display: inline;
+}
+
+.product-name-link:hover,
+.product-name-link:focus-visible {
+  text-decoration: underline;
 }
 
 .product-gallery-thumbs {

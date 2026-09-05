@@ -73,23 +73,41 @@ function findConversation(storeSlug, customerToken) {
 // existing conversation - WITHOUT marking anything read (unlike getConversation,
 // which does). Reads the Conversations sheet once. Tokens are secret UUIDs, so a
 // caller can only ever see their own threads.
+//
+// Each entry may also carry `seenAt` - an ISO timestamp of the last time this
+// device opened that thread from the inbox (skiri_inbox_seen_<slug> in
+// localStorage). When any are present the Messages sheet is read ONCE and each
+// conversation gets an `unreadCount`: vendor messages newer than that device's
+// seenAt. The count has to be computed against a client-supplied mark rather
+// than a server read-flag, because getConversation marks threads read the
+// moment the chat window opens - the flag is meaningless for a passive list,
+// which is exactly why the old boolean lived in the frontend.
+//
+// A device that sends no seenAt at all pays nothing: the Messages read is
+// skipped entirely and the response is shaped exactly as before.
 function actionGetCustomerInbox(body) {
   var stores = Array.isArray(body.stores) ? body.stores.slice(0, 50) : [];
   if (stores.length === 0) return ok({ conversations: [] });
 
   var want = {};
+  var anySeen = false;
   for (var i = 0; i < stores.length; i++) {
     var slug = String(stores[i].storeSlug || '');
     var token = String(stores[i].customerToken || '');
-    if (slug && token) want[slug + '|' + token] = true;
+    if (!slug || !token) continue;
+    // A missing or unparseable seenAt means "never opened", so every vendor
+    // message counts - not zero, which would hide a brand-new thread.
+    var seen = stores[i].seenAt ? new Date(stores[i].seenAt).getTime() : 0;
+    if (!seen || isNaN(seen)) seen = 0; else anySeen = true;
+    want[slug + '|' + token] = { seen: seen };
   }
 
-  var nameCache = {};
-  function storeName(slug) {
-    if (Object.prototype.hasOwnProperty.call(nameCache, slug)) return nameCache[slug];
-    var owner = getOwnerBySlug(slug);
-    nameCache[slug] = owner ? owner.StoreName : slug;
-    return nameCache[slug];
+  // One lookup per store, reused for both the name and the logo - the logo is
+  // free here precisely because this row is already being fetched.
+  var ownerCache = {};
+  function ownerFor(slug) {
+    if (!Object.prototype.hasOwnProperty.call(ownerCache, slug)) ownerCache[slug] = getOwnerBySlug(slug);
+    return ownerCache[slug];
   }
 
   var out = [];
@@ -97,17 +115,52 @@ function actionGetCustomerInbox(body) {
   for (var j = 0; j < convs.length; j++) {
     var c = convs[j];
     if (c.Status === 'deleted') continue;
-    if (!want[c.StoreSlug + '|' + c.CustomerToken]) continue;
+    var match = want[c.StoreSlug + '|' + c.CustomerToken];
+    if (!match) continue;
+    var owner = ownerFor(c.StoreSlug);
     out.push({
+      conversationId: c.ConversationId,
       storeSlug: c.StoreSlug,
-      storeName: storeName(c.StoreSlug),
+      storeName: owner ? owner.StoreName : c.StoreSlug,
+      storeLogoUrl: owner ? (owner.LogoUrl || '') : '',
       lastMessagePreview: c.LastMessagePreview,
       lastMessageAt: c.LastMessageAt,
-      lastSenderType: c.LastSenderType
+      lastSenderType: c.LastSenderType,
+      unreadCount: 0,
+      _seen: match.seen
     });
   }
+
+  if (out.length > 0) countUnreadInto(out);
+
+  for (var k = 0; k < out.length; k++) delete out[k]._seen;
   out.sort(function (a, b) { return new Date(b.lastMessageAt) - new Date(a.lastMessageAt); });
   return ok({ conversations: out });
+}
+
+/**
+ * Fills in unreadCount on each row of `rows`, in place.
+ *
+ * Reads the Messages sheet once for the whole inbox rather than once per
+ * conversation: the sheet has no per-conversation query (see
+ * getConversationMessagesRaw's note), so N conversations would otherwise mean
+ * N full scans. Only the conversations actually in this inbox are counted, so
+ * one pass over the rows is enough whatever the sheet's size.
+ */
+function countUnreadInto(rows) {
+  var byId = {};
+  for (var i = 0; i < rows.length; i++) byId[rows[i].conversationId] = rows[i];
+
+  var messages = sheetToObjects(getSheet('Messages'));
+  for (var j = 0; j < messages.length; j++) {
+    var m = messages[j];
+    var row = byId[m.ConversationId];
+    if (!row) continue;
+    if (m.SenderType !== 'vendor') continue;
+    var at = new Date(m.CreatedAt).getTime();
+    if (!at || isNaN(at)) continue;
+    if (at > row._seen) row.unreadCount++;
+  }
 }
 
 function getConversationById(conversationId) {

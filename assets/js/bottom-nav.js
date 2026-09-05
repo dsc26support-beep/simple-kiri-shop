@@ -38,6 +38,16 @@ function initBottomNav() {
     </a>`;
   }).join('');
 
+  // Somewhere for a page to park a secondary control directly above the
+  // Account tab. Empty and invisible unless a page fills it - only the Browse
+  // page does (categories.js moves its More... button in here). It is a slot
+  // rather than a button so the nav owns the POSITION and the page owns the
+  // control, which keeps the one existing button the one existing button.
+  const moreSlot = document.createElement('div');
+  moreSlot.className = 'bottom-nav-more-slot';
+  moreSlot.id = 'bottom-nav-more-slot';
+  nav.appendChild(moreSlot);
+
   document.body.appendChild(nav);
   document.body.classList.add('has-bottom-nav');
 
@@ -47,10 +57,17 @@ function initBottomNav() {
   whenIdle(updateBottomNavMessagesBadge);
 }
 
-// Best-effort unread dot: only calls the backend if this device has chatted.
+// Best-effort unread count on the Messages tab: only calls the backend if this
+// device has actually chatted with someone.
+//
+// This was a bare dot, because the frontend had no way to know how many
+// messages were waiting - the inbox payload carried only the last one.
+// actionGetCustomerInbox now counts vendor messages newer than the seenAt each
+// device sends, so the tab can show the real total across every store.
 async function updateBottomNavMessagesBadge() {
   const badge = document.querySelector('.bottom-nav-badge[data-badge="messages"]');
   if (!badge) return;
+
   const stores = [];
   const prefix = 'skiri_chat_token_';
   try {
@@ -59,7 +76,9 @@ async function updateBottomNavMessagesBadge() {
       if (k && k.indexOf(prefix) === 0) {
         const slug = k.slice(prefix.length);
         const token = localStorage.getItem(k);
-        if (slug && token) stores.push({ storeSlug: slug, customerToken: token });
+        if (slug && token) {
+          stores.push({ storeSlug: slug, customerToken: token, seenAt: navInboxSeenAt(slug) });
+        }
       }
     }
   } catch (e) { return; }
@@ -67,19 +86,33 @@ async function updateBottomNavMessagesBadge() {
 
   const res = await Api.post('getCustomerInbox', { stores });
   if (!res.ok) return;
-  const anyUnread = (res.conversations || []).some((c) => {
-    if (c.lastSenderType !== 'vendor') return false;
-    let seen = 0;
-    try {
-      const raw = localStorage.getItem('skiri_inbox_seen_' + c.storeSlug);
-      seen = raw ? new Date(raw).getTime() : 0;
-    } catch (e) { seen = 0; }
-    const at = new Date(c.lastMessageAt).getTime();
-    return !!at && at > seen;
-  });
-  if (anyUnread) {
-    badge.classList.add('is-dot');
-    badge.textContent = '';
-    badge.hidden = false;
+
+  const total = (res.conversations || []).reduce((sum, c) => sum + navUnreadCountOf(c), 0);
+  if (total <= 0) return;
+
+  // 99+ keeps the pill from growing wide enough to shove the tab's label
+  // off-centre, the same cap the header cart badge uses.
+  badge.textContent = total > 99 ? '99+' : String(total);
+  badge.setAttribute('aria-label', `${total} unread message${total === 1 ? '' : 's'}`);
+  badge.hidden = false;
+}
+
+function navInboxSeenAt(slug) {
+  try {
+    return localStorage.getItem('skiri_inbox_seen_' + slug) || '';
+  } catch (e) {
+    return '';
   }
+}
+
+// Same fallback as the inbox page: a backend that has not been redeployed yet
+// sends no unreadCount, and one-per-unread-thread is the most this device can
+// honestly work out on its own. Never a made-up number.
+function navUnreadCountOf(c) {
+  if (typeof c.unreadCount === 'number') return c.unreadCount;
+  if (c.lastSenderType !== 'vendor') return 0;
+  const at = new Date(c.lastMessageAt).getTime();
+  const seenRaw = navInboxSeenAt(c.storeSlug);
+  const seen = seenRaw ? new Date(seenRaw).getTime() : 0;
+  return at && at > seen ? 1 : 0;
 }

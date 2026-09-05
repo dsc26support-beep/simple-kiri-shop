@@ -91,6 +91,30 @@ function appendRowFromObject(sheet, obj) {
 }
 
 /** Updates only the fields present in obj; every other column on that row is left untouched. */
+/**
+ * Makes sure `name` exists as a header, appending it after the last column if
+ * it does not. Returns nothing; call it before writing a field that older
+ * sheets may predate.
+ *
+ * This exists because updateRowFromObject/appendRowFromObject match columns by
+ * header NAME and silently DROP any key with no matching header - so writing a
+ * new field to a sheet created before that field existed would appear to work
+ * and store nothing.
+ *
+ * Appending is the only safe way to do it on a live tab. setupSheets() repairs
+ * a tab by rewriting row 1 wholesale, which reorders columns; Orders and
+ * Bookings hold real transactions and are deliberately NOT in REQUIRED_TABS,
+ * so they must never be repaired that way. Adding one header cell past the end
+ * moves no existing column and touches no data row - the cells beneath the new
+ * header are empty by construction, which is exactly the "not set" state every
+ * reader here already treats as the default.
+ */
+function ensureColumn(sheet, name) {
+  var headers = getHeaders(sheet).map(function (h) { return String(h); });
+  if (headers.indexOf(name) !== -1) return;
+  sheet.getRange(1, headers.length + 1).setValue(name);
+}
+
 function updateRowFromObject(sheet, rowNumber, obj) {
   var headers = getHeaders(sheet);
   var existing = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];

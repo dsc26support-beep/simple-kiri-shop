@@ -230,7 +230,7 @@ function renderReviewSummary(data) {
       const n = Number(dist[star - 1]) || 0;
       const pct = count ? Math.round((n / count) * 100) : 0;
       return `<div class="rating-bar-row">
-          <span class="rating-bar-label">${star}★</span>
+          <span class="rating-bar-label"><span class="rating-bar-star-num">${star}</span><span class="rating-bar-star">★</span></span>
           <span class="rating-bar"><span class="rating-bar-fill" style="width:${pct}%"></span></span>
           <span class="rating-bar-count">${n}</span>
         </div>`;
