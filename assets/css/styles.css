@@ -2172,6 +2172,9 @@ footer.site-footer .copyright {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* Two text lines plus a 48px avatar, so the row has a real height even
+     before the logo loads - the initials stand-in is the same size. */
+  min-height: 64px;
   width: 100%;
   padding: var(--space-2) 0;
   text-align: left;
@@ -2187,20 +2190,85 @@ footer.site-footer .copyright {
   border-top: none;
 }
 
-.inbox-thread .dash-item-main {
-  flex: 1 1 auto;
-}
-
-.inbox-dot {
+/* Inbox rows: avatar with its unread count, store name over the last message,
+   date on the right. Replaced a bare unread dot and a shared .dash-item-main,
+   which is still used by the dashboard and admin lists and so was left alone. */
+.inbox-avatar {
+  position: relative;
   flex: 0 0 auto;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: transparent;
+  width: 48px;
+  height: 48px;
 }
 
-.inbox-dot.is-unread {
-  background: var(--color-blue);
+.inbox-avatar-img,
+.inbox-avatar-initials {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-bg-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+/* Sits ON the avatar, as in the reference. Translated by half its own size
+   rather than a fixed offset, so a "99+" pill and a "1" pill both stay
+   pinned to the same corner instead of drifting as the text widens. */
+.inbox-unread-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-35%, -35%);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* min-width:0 is what lets the two lines below actually truncate. Without it
+   a flex item refuses to shrink past its content and a long message pushes
+   the date off the row instead of ellipsing. */
+.inbox-thread-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inbox-thread-name,
+.inbox-thread-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inbox-thread-name {
+  font-weight: 700;
+}
+
+.inbox-thread-preview {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.inbox-thread-date {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 /* Mobile bottom navigation (§7) - injected by bottom-nav.js, mobile only. */
@@ -2501,15 +2569,6 @@ footer.site-footer .copyright {
   font-size: 0.65rem;
   line-height: 16px;
   text-align: center;
-}
-
-.bottom-nav-badge.is-dot {
-  min-width: 10px;
-  width: 10px;
-  height: 10px;
-  padding: 0;
-  top: -2px;
-  right: -4px;
 }
 
 @media (max-width: 700px) {
