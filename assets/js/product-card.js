@@ -1,5 +1,31 @@
-// Shared storefront product-card renderer, used by store.html.
-function renderProductCard(product) {
+// Shared storefront product-card renderer, used by store.html and product.html.
+//
+// opts.storeSlug turns the photo and the product name into links to that
+// product's own page, which is where the ratings, the review form and the
+// shipping note live. store.html passes it; product.html deliberately does not
+// - the card there IS the product page, and a card that links to itself is a
+// dead tap.
+//
+// Only the photo and the name are links, never the whole card. The card also
+// holds a variant <select>, a quantity <input>, Add to Cart and, on a rental, a
+// whole booking form: interactive controls cannot nest inside a link, and a
+// stray tap that navigated away mid-booking would throw away what the customer
+// had typed.
+function renderProductCard(product, opts) {
+  const href = opts && opts.storeSlug
+    ? `product.html?store=${encodeURIComponent(opts.storeSlug)}&product=${encodeURIComponent(product.productId)}`
+    : '';
+
+  // Photo links carry tabindex="-1": they lead to the same place as the name
+  // link directly below them, so a second tab stop on every card is noise.
+  // Deliberately NOT aria-hidden, which would take the photo's alt text with
+  // it. draggable="false" keeps a mouse drag across the gallery from picking
+  // the link up instead of swiping the photos.
+  const photoLink = (inner) => (href
+    ? `<a class="product-card-link" href="${escapeHtml(href)}" tabindex="-1">${inner}</a>`
+    : inner);
+  const drag = href ? ' draggable="false"' : '';
+
   const options = product.variants
     .map((v) => `<option value="${v.variantId}" data-price="${v.price}">${escapeHtml(v.label)} — ${formatMoney(v.price)}</option>`)
     .join('');
@@ -7,12 +33,12 @@ function renderProductCard(product) {
   const media =
     product.imageUrl && product.imageUrl2
       ? `<div class="product-gallery-track">
-          <img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy" decoding="async">
-          <img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl2, IMG_W.card))}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy" decoding="async">
+          ${photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)}
+          ${photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl2, IMG_W.card))}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)}
         </div>`
       : product.imageUrl
-      ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
-      : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
+      ? photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)
+      : photoLink(`<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`);
 
   const thumbs =
     product.imageUrl && product.imageUrl2
@@ -23,6 +49,13 @@ function renderProductCard(product) {
       : '';
 
   const pid = escapeHtml(product.productId);
+
+  // The one link per card that keyboard and screen-reader users actually land
+  // on, which is why this one keeps its tab stop while the photo above drops
+  // its own.
+  const nameHtml = href
+    ? `<a class="product-card-link product-name-link" href="${escapeHtml(href)}">${escapeHtml(product.name)}</a>`
+    : escapeHtml(product.name);
 
   // Same label as the browse cards use (formatPriceLabel in helpers.js), so
   // a product's price reads identically whether you meet it while browsing
@@ -42,7 +75,7 @@ function renderProductCard(product) {
         ${media}
         ${thumbs}
         <div class="product-card-body">
-          <h3 class="product-name">${escapeHtml(product.name)} ${availabilityBadge}</h3>
+          <h3 class="product-name">${nameHtml} ${availabilityBadge}</h3>
           <strong class="product-price">${priceText}</strong>
           ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
           <div class="product-controls">
@@ -84,7 +117,7 @@ function renderProductCard(product) {
       ${media}
       ${thumbs}
       <div class="product-card-body">
-        <h3 class="product-name">${escapeHtml(product.name)}</h3>
+        <h3 class="product-name">${nameHtml}</h3>
         <strong class="product-price">${priceText}</strong>
         ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
         <div class="product-controls">
