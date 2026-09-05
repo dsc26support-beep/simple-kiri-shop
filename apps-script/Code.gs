@@ -23,6 +23,12 @@ var PUBLIC_POST_ACTIONS = [
   'getCustomerProfile', 'logoutCustomer',
   'listCustomerOrders', 'listCustomerBookings', 'updateCustomerProfile',
   'getCustomerInbox',
+  // Customer-managed orders/bookings. Public in the same sense as the rest of
+  // this block: each one calls requireCustomerAuth on body.token internally
+  // (via findOwnRow in Customers.gs) and refuses any row that is not the
+  // authenticated customer's own.
+  'updateCustomerOrder', 'updateCustomerBooking',
+  'setCustomerOrderArchived', 'setCustomerBookingArchived',
   // Reviews: submitReview does its own customer auth internally (a review
   // requires a signed-in customer), same pattern as the account actions above.
   'submitReview'
@@ -55,7 +61,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'inbox1-2026-09-05';
+var APP_VERSION = 'myorders1-2026-09-05';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -361,6 +367,10 @@ function doPost(e) {
         case 'verifyCustomerLogin': return jsonOut(actionVerifyCustomerLogin(body));
         case 'getCustomerProfile': return jsonOut(actionGetCustomerProfile(body));
         case 'logoutCustomer': return jsonOut(actionLogoutCustomer(body));
+        case 'updateCustomerOrder': return jsonOut(actionUpdateCustomerOrder(body));
+        case 'updateCustomerBooking': return jsonOut(actionUpdateCustomerBooking(body));
+        case 'setCustomerOrderArchived': return jsonOut(actionSetCustomerOrderArchived(body));
+        case 'setCustomerBookingArchived': return jsonOut(actionSetCustomerBookingArchived(body));
         case 'listCustomerOrders': return jsonOut(actionListCustomerOrders(body));
         case 'listCustomerBookings': return jsonOut(actionListCustomerBookings(body));
         case 'updateCustomerProfile': return jsonOut(actionUpdateCustomerProfile(body));

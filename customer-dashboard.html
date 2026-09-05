@@ -71,12 +71,18 @@
 
       <section class="dash-section">
         <h2>My Orders</h2>
+        <!-- Filters are rendered by customer-dashboard.js from the statuses
+             actually present, so a status the shop never uses never appears
+             as an empty tab. Filtering is done over the already-loaded list -
+             no second request. -->
+        <div class="dash-filters" id="orders-filters" role="group" aria-label="Filter orders"></div>
         <p id="orders-status" class="helper-text" aria-live="polite"></p>
         <div id="orders-list"></div>
       </section>
 
       <section class="dash-section">
         <h2>My Bookings</h2>
+        <div class="dash-filters" id="bookings-filters" role="group" aria-label="Filter bookings"></div>
         <p id="bookings-status" class="helper-text" aria-live="polite"></p>
         <div id="bookings-list"></div>
       </section>

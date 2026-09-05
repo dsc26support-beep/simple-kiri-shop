@@ -250,14 +250,290 @@ function makeStoreNameResolver() {
   };
 }
 
+/* ===================== Customer-managed orders & bookings =====================
+ *
+ * Everything below answers one question: may THIS signed-in customer change
+ * THIS row, right now? Three rules, applied on the server, never inferred from
+ * anything the browser sends:
+ *
+ *   ownership - the row's CustomerEmail (or, for a booking, phone) must match
+ *               the account behind the token. The frontend never sends an
+ *               identity; requireCustomerAuth resolves it from the session.
+ *   status    - only a transaction that has not been acted on yet is editable,
+ *               and only a finished one can be removed from the list.
+ *   fields    - a fixed allowlist. Money, items, delivery costs, payment
+ *               references, order/booking status and any seller-owned column
+ *               are simply not reachable from these actions.
+ *
+ * Removal never deletes. It writes a CustomerHidden flag on the row, so the
+ * transaction stays in the sheet in full, still visible to the seller and to
+ * admin, still counted by every report - it just leaves the customer's list.
+ * ============================================================================ */
+
+var CUSTOMER_HIDDEN_COLUMN = 'CustomerHidden';
+var CUSTOMER_HIDDEN_AT_COLUMN = 'CustomerHiddenAt';
+
+// An order the seller has not yet acted on. Once it is Paid, Fulfilled or
+// Cancelled the details have been acted on and must stop moving underneath
+// the seller.
+var CUSTOMER_EDITABLE_ORDER_STATUSES = ['Pending Payment'];
+// Finished, one way or the other. A live order cannot be tidied away.
+var CUSTOMER_ARCHIVABLE_ORDER_STATUSES = ['Fulfilled', 'Cancelled'];
+
+var CUSTOMER_EDITABLE_BOOKING_STATUSES = ['Pending'];
+var CUSTOMER_ARCHIVABLE_BOOKING_STATUSES = ['Declined', 'Cancelled'];
+
+function isCustomerArchived(row) {
+  return String(row[CUSTOMER_HIDDEN_COLUMN] || '').toLowerCase() === 'yes';
+}
+
+function orderIsEditable(o) {
+  return !isCustomerArchived(o) && CUSTOMER_EDITABLE_ORDER_STATUSES.indexOf(o.Status) !== -1;
+}
+
+function orderIsArchivable(o) {
+  return CUSTOMER_ARCHIVABLE_ORDER_STATUSES.indexOf(o.Status) !== -1;
+}
+
+function bookingIsEditable(b) {
+  return !isCustomerArchived(b) && CUSTOMER_EDITABLE_BOOKING_STATUSES.indexOf(b.Status) !== -1;
+}
+
+/**
+ * Terminal bookings, plus a Confirmed one whose return date has passed.
+ *
+ * Without that second case a Confirmed booking would be unremovable forever:
+ * nothing ever moves it out of Confirmed, so a hire from last year would sit
+ * at the top of the list with no way to clear it.
+ */
+function bookingIsArchivable(b) {
+  if (CUSTOMER_ARCHIVABLE_BOOKING_STATUSES.indexOf(b.Status) !== -1) return true;
+  if (b.Status !== 'Confirmed') return false;
+  var end = new Date(b.EndDate).getTime();
+  // Midnight today, the same way validateBookingDates gets it - so a booking
+  // ending today is still current, not already archivable.
+  var startOfToday = new Date(new Date().toDateString()).getTime();
+  return !!end && !isNaN(end) && end < startOfToday;
+}
+
+function customerOwnsBooking(b, email, phone) {
+  var byEmail = b.CustomerEmail && normalizeEmail(b.CustomerEmail) === email;
+  var byPhone = phone && digitsOnly(b.CustomerPhone) === phone;
+  return !!(byEmail || byPhone);
+}
+
+/**
+ * Resolves the caller, then the row, then checks the row is theirs.
+ *
+ * Returns { error: ... } rather than throwing so each action reads as a flat
+ * list of guards. The "not found" message is identical whether the row does
+ * not exist or belongs to somebody else - a different message for each would
+ * let anyone probe for valid order ids.
+ */
+function findOwnRow(body, sheetName, idField, idValue) {
+  var customer;
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return { error: e.message || 'Not signed in' }; }
+  if (!idValue) return { error: 'Missing id' };
+
+  var sheet = getSheet(sheetName);
+  var email = normalizeEmail(customer.Email);
+  var phone = digitsOnly(customer.Phone);
+  var rows = sheetToObjects(sheet);
+  var row = null;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][idField]) !== String(idValue)) continue;
+    var mine = sheetName === 'Bookings'
+      ? customerOwnsBooking(rows[i], email, phone)
+      : normalizeEmail(rows[i].CustomerEmail) === email;
+    if (!mine) break;
+    row = rows[i];
+    break;
+  }
+  if (!row) return { error: 'That record was not found in your account' };
+  return { customer: customer, sheet: sheet, row: row };
+}
+
+/**
+ * Edit the contact and delivery details on an order the seller has not acted
+ * on yet.
+ *
+ * Deliberately cannot touch DeliveryMethod. The method a store offers, and
+ * what it costs, is re-derived server-side at checkout from that store's live
+ * configuration; letting it be changed here would mean re-running that whole
+ * pricing path and silently moving the order total. Changing the method is a
+ * conversation with the store, which the chat already handles.
+ */
+function actionUpdateCustomerOrder(body) {
+  var found = findOwnRow(body, 'Orders', 'OrderId', body.orderId);
+  if (found.error) return fail(found.error);
+  var o = found.row;
+
+  if (isCustomerArchived(o)) return fail('This order has been removed from your list and can no longer be edited.');
+  if (!orderIsEditable(o)) return fail('This order can no longer be edited.');
+
+  var name = String(body.customerName || '').trim();
+  var phone = String(body.customerPhone || '').trim();
+  if (!name) return fail('Please enter your name');
+  if (!phone) return fail('Please enter your phone number');
+  var nameErr = capLength(name, 100, 'Name');
+  if (nameErr) return nameErr;
+  var phoneErr = capLength(phone, 30, 'Phone number');
+  if (phoneErr) return phoneErr;
+  if (!isCustomerPhoneValid(phone)) {
+    return fail('Local phone numbers must start with 730 or 630. For an overseas number, include your country code.');
+  }
+  var island = String(body.island || '').trim();
+  var village = String(body.village || '').trim();
+  var islandErr = capLength(island, 100, 'Island');
+  if (islandErr) return islandErr;
+  var villageErr = capLength(village, 100, 'Village');
+  if (villageErr) return villageErr;
+  var notes = String(body.notes || '');
+  var notesErr = capLength(notes, 2000, 'Notes');
+  if (notesErr) return notesErr;
+
+  updateRowFromObject(found.sheet, o.__row, {
+    CustomerName: name,
+    CustomerPhone: phone,
+    Island: island,
+    Village: village,
+    // Kept consistent with how actionCreateOrder composes it.
+    DeliveryAddress: village + ', ' + island,
+    Notes: notes,
+    UpdatedAt: nowIso()
+  });
+
+  return ok({ updated: true });
+}
+
+/**
+ * Edit a booking request the store has not answered yet, dates included.
+ *
+ * New dates go through the SAME two checks a new request does: the shared
+ * validateBookingDates, and a fresh uncached scan for an overlapping Confirmed
+ * booking on the same product - excluding this row, or a booking would collide
+ * with itself. Reusing them is the point: the rule about what a valid booking
+ * window is lives in one place, not two that drift.
+ */
+function actionUpdateCustomerBooking(body) {
+  var found = findOwnRow(body, 'Bookings', 'BookingId', body.bookingId);
+  if (found.error) return fail(found.error);
+  var b = found.row;
+
+  if (isCustomerArchived(b)) return fail('This booking has been removed from your list and can no longer be edited.');
+  if (!bookingIsEditable(b)) return fail('This booking can no longer be edited.');
+
+  var name = String(body.customerName || '').trim();
+  var phone = String(body.customerPhone || '').trim();
+  if (!name || !phone) return fail('Name and phone number are required');
+  var nameErr = capLength(name, 100, 'Name');
+  if (nameErr) return nameErr;
+  var phoneErr = capLength(phone, 30, 'Phone number');
+  if (phoneErr) return phoneErr;
+  var notes = String(body.notes || '');
+  var notesErr = capLength(notes, 2000, 'Notes');
+  if (notesErr) return notesErr;
+
+  var startDate = String(body.startDate || '').trim();
+  var endDate = String(body.endDate || '').trim();
+  var dateErr = validateBookingDates(startDate, endDate);
+  if (dateErr) return dateErr;
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var sheet = getSheet('Bookings');
+    // Re-read inside the lock: the status may have changed between the check
+    // above and here, and a booking confirmed in that gap must not be edited.
+    var fresh = findRowById(sheet, 'BookingId', b.BookingId);
+    if (!fresh) return fail('That record was not found in your account');
+    if (!bookingIsEditable(fresh)) return fail('This booking can no longer be edited.');
+
+    var clash = sheetToObjects(sheet).some(function (other) {
+      return other.BookingId !== fresh.BookingId &&
+        other.ProductId === fresh.ProductId &&
+        other.Status === 'Confirmed' &&
+        datesOverlap(startDate, endDate, other.StartDate, other.EndDate);
+    });
+    if (clash) return fail('Those dates are already booked. Please choose different dates.');
+
+    updateRowFromObject(sheet, fresh.__row, {
+      CustomerName: name,
+      CustomerPhone: phone,
+      StartDate: startDate,
+      EndDate: endDate,
+      Notes: notes,
+      UpdatedAt: nowIso()
+    });
+  } finally {
+    lock.releaseLock();
+  }
+
+  return ok({ updated: true });
+}
+
+/**
+ * Hide a finished order from the customer's list, or put it back.
+ *
+ * Writes a flag. The row is never deleted, never emptied and never moved: the
+ * seller's list, the admin views and every total still see it exactly as
+ * before. ensureColumn creates the flag column on first use, appended past the
+ * last header so no existing column shifts.
+ */
+function actionSetCustomerOrderArchived(body) {
+  var found = findOwnRow(body, 'Orders', 'OrderId', body.orderId);
+  if (found.error) return fail(found.error);
+  var o = found.row;
+  var archived = body.archived !== false;
+
+  if (archived && !orderIsArchivable(o)) {
+    return fail('An order can only be removed from your list once it is completed or cancelled.');
+  }
+
+  ensureColumn(found.sheet, CUSTOMER_HIDDEN_COLUMN);
+  ensureColumn(found.sheet, CUSTOMER_HIDDEN_AT_COLUMN);
+  var patch = {};
+  patch[CUSTOMER_HIDDEN_COLUMN] = archived ? 'yes' : '';
+  patch[CUSTOMER_HIDDEN_AT_COLUMN] = archived ? nowIso() : '';
+  updateRowFromObject(found.sheet, o.__row, patch);
+
+  return ok({ archived: archived });
+}
+
+function actionSetCustomerBookingArchived(body) {
+  var found = findOwnRow(body, 'Bookings', 'BookingId', body.bookingId);
+  if (found.error) return fail(found.error);
+  var b = found.row;
+  var archived = body.archived !== false;
+
+  if (archived && !bookingIsArchivable(b)) {
+    return fail('A booking can only be removed from your list once it is finished, declined or cancelled.');
+  }
+
+  ensureColumn(found.sheet, CUSTOMER_HIDDEN_COLUMN);
+  ensureColumn(found.sheet, CUSTOMER_HIDDEN_AT_COLUMN);
+  var patch = {};
+  patch[CUSTOMER_HIDDEN_COLUMN] = archived ? 'yes' : '';
+  patch[CUSTOMER_HIDDEN_AT_COLUMN] = archived ? nowIso() : '';
+  updateRowFromObject(found.sheet, b.__row, patch);
+
+  return ok({ archived: archived });
+}
+
 function actionListCustomerOrders(body) {
   var customer;
   try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
 
   var email = normalizeEmail(customer.Email);
   var storeName = makeStoreNameResolver();
+  // includeArchived is how the Archived filter asks for the hidden ones back.
+  // Default false, so nothing a customer removed reappears by accident.
+  var includeArchived = body.includeArchived === true;
   var orders = sheetToObjects(getSheet('Orders'))
-    .filter(function (o) { return normalizeEmail(o.CustomerEmail) === email; });
+    .filter(function (o) {
+      if (normalizeEmail(o.CustomerEmail) !== email) return false;
+      return includeArchived || !isCustomerArchived(o);
+    });
   orders.sort(function (a, b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); });
 
   var out = orders.map(function (o) {
@@ -273,7 +549,17 @@ function actionListCustomerOrders(body) {
       deliveryCost: o.DeliveryCost,
       total: o.Total,
       status: o.Status,
-      createdAt: o.CreatedAt
+      createdAt: o.CreatedAt,
+      island: o.Island,
+      village: o.Village,
+      customerName: o.CustomerName,
+      customerPhone: o.CustomerPhone,
+      notes: o.Notes,
+      // Computed here, from the same rules the write actions enforce, so the
+      // page never has to guess - and never becomes the thing deciding.
+      archived: isCustomerArchived(o),
+      canEdit: orderIsEditable(o),
+      canArchive: orderIsArchivable(o)
     };
   });
   return ok({ orders: out });
@@ -286,10 +572,10 @@ function actionListCustomerBookings(body) {
   var email = normalizeEmail(customer.Email);
   var phone = digitsOnly(customer.Phone);
   var storeName = makeStoreNameResolver();
+  var includeArchived = body.includeArchived === true;
   var rows = sheetToObjects(getSheet('Bookings')).filter(function (b) {
-    var byEmail = b.CustomerEmail && normalizeEmail(b.CustomerEmail) === email;
-    var byPhone = phone && digitsOnly(b.CustomerPhone) === phone;
-    return byEmail || byPhone;
+    if (!customerOwnsBooking(b, email, phone)) return false;
+    return includeArchived || !isCustomerArchived(b);
   });
   rows.sort(function (a, b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); });
 
@@ -303,7 +589,13 @@ function actionListCustomerBookings(body) {
       startDate: b.StartDate,
       endDate: b.EndDate,
       status: b.Status,
-      createdAt: b.CreatedAt
+      createdAt: b.CreatedAt,
+      customerName: b.CustomerName,
+      customerPhone: b.CustomerPhone,
+      notes: b.Notes,
+      archived: isCustomerArchived(b),
+      canEdit: bookingIsEditable(b),
+      canArchive: bookingIsArchivable(b)
     };
   });
   return ok({ bookings: out });

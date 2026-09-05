@@ -24,6 +24,7 @@ const categoryCache = {};
 async function init() {
   renderRail();
   document.getElementById('category-more').addEventListener('click', onShowMore);
+  homeMoreButton();
 
   const requested = getQueryParam('category');
   // An unknown slug (a stale link, a renamed category) falls back to the first
@@ -165,4 +166,37 @@ function renderCategoryTile(product) {
 function onShowMore() {
   shownCount += CATEGORY_PAGE_SIZE;
   render();
+}
+
+/**
+ * Puts the ONE "More..." button where it belongs for the current viewport.
+ *
+ * The same element either way - moved, never duplicated - so its click
+ * handler, its hidden state and everything render() does to it carry across
+ * untouched. A second copy in the nav would be a second thing to keep in sync
+ * with how much of the category is already shown.
+ *
+ * The bottom nav is display:none above 700px (styles.css), so on a desktop
+ * the button has to stay in the page or it would be invisible and the paging
+ * unreachable. matchMedia re-homes it when the window is resized or a phone is
+ * rotated across that boundary.
+ */
+function homeMoreButton() {
+  const btn = document.getElementById('category-more');
+  const inPage = document.querySelector('.load-more-row');
+  if (!btn || !inPage) return;
+
+  const mq = window.matchMedia('(max-width: 700px)');
+  const place = () => {
+    const slot = document.getElementById('bottom-nav-more-slot');
+    const target = mq.matches && slot ? slot : inPage;
+    if (btn.parentElement !== target) target.appendChild(btn);
+  };
+
+  place();
+  // bottom-nav.js builds the slot on DOMContentLoaded too, and script order
+  // is not a guarantee worth relying on - try again once the frame settles.
+  requestAnimationFrame(place);
+  if (mq.addEventListener) mq.addEventListener('change', place);
+  else if (mq.addListener) mq.addListener(place);
 }

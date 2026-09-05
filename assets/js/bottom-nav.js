@@ -38,6 +38,16 @@ function initBottomNav() {
     </a>`;
   }).join('');
 
+  // Somewhere for a page to park a secondary control directly above the
+  // Account tab. Empty and invisible unless a page fills it - only the Browse
+  // page does (categories.js moves its More... button in here). It is a slot
+  // rather than a button so the nav owns the POSITION and the page owns the
+  // control, which keeps the one existing button the one existing button.
+  const moreSlot = document.createElement('div');
+  moreSlot.className = 'bottom-nav-more-slot';
+  moreSlot.id = 'bottom-nav-more-slot';
+  nav.appendChild(moreSlot);
+
   document.body.appendChild(nav);
   document.body.classList.add('has-bottom-nav');
 
