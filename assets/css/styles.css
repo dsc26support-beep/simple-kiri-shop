@@ -2815,6 +2815,39 @@ legend {
   scroll-snap-align: start;
 }
 
+/* Photo and name link to the product's own page (product-card.js, opts.storeSlug).
+   The card is NOT one big <a>: it holds a variant <select>, a quantity input,
+   Add to Cart and, on a rental, a whole booking form, and interactive controls
+   cannot nest inside a link. */
+.product-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The anchor now wraps each gallery photo, so the ANCHOR is the flex item the
+   track snaps to - not the <img>, which the rule above this one still targets
+   by descendant. Without this the panes size to content and a swipe stops
+   landing on whole photos. */
+.product-gallery-track > .product-card-link {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+}
+
+/* Compound selector on purpose. This shares an element with .product-card-link
+   and both set display, so at equal specificity the later rule in the file
+   would win - the ordering trap that has bitten .is-reserving-space and
+   .category-rail-swatch here before. Doubling the class settles it whatever the
+   order. */
+.product-card-link.product-name-link {
+  display: inline;
+}
+
+.product-name-link:hover,
+.product-name-link:focus-visible {
+  text-decoration: underline;
+}
+
 .product-gallery-thumbs {
   display: flex;
   gap: var(--space-1);
