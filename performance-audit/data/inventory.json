@@ -1,0 +1,1836 @@
+{
+  "generatedAt": "2026-09-08T23:32:51.171Z",
+  "totals": {
+    "HTML": {
+      "count": 23,
+      "bytes": 120330,
+      "gzip": 36483
+    },
+    "CSS": {
+      "count": 2,
+      "bytes": 95472,
+      "gzip": 23760
+    },
+    "JS": {
+      "count": 38,
+      "bytes": 329538,
+      "gzip": 107970
+    },
+    "AppsScript": {
+      "count": 13,
+      "bytes": 213865,
+      "gzip": 68957
+    },
+    "Image": {
+      "count": 7,
+      "bytes": 175108,
+      "gzip": 626
+    },
+    "Config": {
+      "count": 1,
+      "bytes": 668,
+      "gzip": null
+    },
+    "Docs": {
+      "count": 7,
+      "bytes": 170101,
+      "gzip": null
+    },
+    "Data": {
+      "count": 0,
+      "bytes": 0,
+      "gzip": null
+    },
+    "Other": {
+      "count": 1,
+      "bytes": 11,
+      "gzip": null
+    }
+  },
+  "files": [
+    {
+      "path": "assets/img/app-icon-ios-1024.png",
+      "bytes": 131846,
+      "kind": "Image",
+      "gzip": null
+    },
+    {
+      "path": "assets/css/styles.css",
+      "bytes": 80827,
+      "kind": "CSS",
+      "gzip": 20207
+    },
+    {
+      "path": "README.md",
+      "bytes": 43990,
+      "kind": "Docs",
+      "gzip": null
+    },
+    {
+      "path": "assets/js/helpers.js",
+      "bytes": 37741,
+      "kind": "JS",
+      "gzip": 13812
+    },
+    {
+      "path": "apps-script/Chat.gs",
+      "bytes": 36282,
+      "kind": "AppsScript",
+      "gzip": 11456
+    },
+    {
+      "path": "docs/architecture.md",
+      "bytes": 30454,
+      "kind": "Docs",
+      "gzip": null
+    },
+    {
+      "path": "assets/js/chat-window.js",
+      "bytes": 29581,
+      "kind": "JS",
+      "gzip": 8884
+    },
+    {
+      "path": "apps-script/Products.gs",
+      "bytes": 29556,
+      "kind": "AppsScript",
+      "gzip": 7737
+    },
+    {
+      "path": "assets/img/app-icon-android-512.png",
+      "bytes": 26329,
+      "kind": "Image",
+      "gzip": null
+    },
+    {
+      "path": "assets/js/owner-messages.js",
+      "bytes": 25215,
+      "kind": "JS",
+      "gzip": 6361
+    },
+    {
+      "path": "apps-script/Customers.gs",
+      "bytes": 24491,
+      "kind": "AppsScript",
+      "gzip": 6797
+    },
+    {
+      "path": "docs/production-readiness-report.md",
+      "bytes": 23947,
+      "kind": "Docs",
+      "gzip": null
+    },
+    {
+      "path": "assets/js/checkout.js",
+      "bytes": 23452,
+      "kind": "JS",
+      "gzip": 7013
+    },
+    {
+      "path": "docs/vendor-chat-design.md",
+      "bytes": 23419,
+      "kind": "Docs",
+      "gzip": null
+    },
+    {
+      "path": "apps-script/Auth.gs",
+      "bytes": 21585,
+      "kind": "AppsScript",
+      "gzip": 6531
+    },
+    {
+      "path": "docs/security-audit.md",
+      "bytes": 20557,
+      "kind": "Docs",
+      "gzip": null
+    },
+    {
+      "path": "assets/js/owner-settings.js",
+      "bytes": 20308,
+      "kind": "JS",
+      "gzip": 4790
+    },
+    {
+      "path": "apps-script/Code.gs",
+      "bytes": 20118,
+      "kind": "AppsScript",
+      "gzip": 6331
+    },
+    {
+      "path": "assets/js/customer-dashboard.js",
+      "bytes": 17471,
+      "kind": "JS",
+      "gzip": 4715
+    },
+    {
+      "path": "docs/chat-performance-optimizations.md",
+      "bytes": 17262,
+      "kind": "Docs",
+      "gzip": null
+    },
+    {
+      "path": "apps-script/Utils.gs",
+      "bytes": 16826,
+      "kind": "AppsScript",
+      "gzip": 6545
+    },
+    {
+      "path": "assets/js/store.js",
+      "bytes": 16710,
+      "kind": "JS",
+      "gzip": 5466
+    },
+    {
+      "path": "assets/js/search.js",
+      "bytes": 15627,
+      "kind": "JS",
+      "gzip": 5117
+    },
+    {
+      "path": "apps-script/Orders.gs",
+      "bytes": 15068,
+      "kind": "AppsScript",
+      "gzip": 5366
+    },
+    {
+      "path": "assets/css/owner.css",
+      "bytes": 14645,
+      "kind": "CSS",
+      "gzip": 3553
+    },
+    {
+      "path": "assets/js/owner-products.js",
+      "bytes": 14611,
+      "kind": "JS",
+      "gzip": 4216
+    },
+    {
+      "path": "apps-script/Reminders.gs",
+      "bytes": 13531,
+      "kind": "AppsScript",
+      "gzip": 5127
+    },
+    {
+      "path": "assets/js/product-page.js",
+      "bytes": 12973,
+      "kind": "JS",
+      "gzip": 4177
+    },
+    {
+      "path": "apps-script/Bookings.gs",
+      "bytes": 12003,
+      "kind": "AppsScript",
+      "gzip": 4262
+    },
+    {
+      "path": "checkout.html",
+      "bytes": 11627,
+      "kind": "HTML",
+      "gzip": 3096
+    },
+    {
+      "path": "owner/settings.html",
+      "bytes": 11081,
+      "kind": "HTML",
+      "gzip": 2675
+    },
+    {
+      "path": "docs/api-testing-report.md",
+      "bytes": 10472,
+      "kind": "Docs",
+      "gzip": null
+    },
+    {
+      "path": "assets/img/app-icon-maskable-512.png",
+      "bytes": 9598,
+      "kind": "Image",
+      "gzip": null
+    },
+    {
+      "path": "store.html",
+      "bytes": 8912,
+      "kind": "HTML",
+      "gzip": 2525
+    },
+    {
+      "path": "sw.js",
+      "bytes": 8452,
+      "kind": "JS",
+      "gzip": 3105
+    },
+    {
+      "path": "assets/js/categories.js",
+      "bytes": 8184,
+      "kind": "JS",
+      "gzip": 3257
+    },
+    {
+      "path": "cart.html",
+      "bytes": 8137,
+      "kind": "HTML",
+      "gzip": 2307
+    },
+    {
+      "path": "assets/js/directory.js",
+      "bytes": 8102,
+      "kind": "JS",
+      "gzip": 3180
+    },
+    {
+      "path": "product.html",
+      "bytes": 7968,
+      "kind": "HTML",
+      "gzip": 2308
+    },
+    {
+      "path": "assets/js/product-card.js",
+      "bytes": 7676,
+      "kind": "JS",
+      "gzip": 2219
+    },
+    {
+      "path": "apps-script/Reviews.gs",
+      "bytes": 6981,
+      "kind": "AppsScript",
+      "gzip": 2638
+    },
+    {
+      "path": "assets/js/bottom-nav.js",
+      "bytes": 6548,
+      "kind": "JS",
+      "gzip": 2566
+    },
+    {
+      "path": "apps-script/Images.gs",
+      "bytes": 6507,
+      "kind": "AppsScript",
+      "gzip": 1991
+    },
+    {
+      "path": "assets/js/cart-page.js",
+      "bytes": 6468,
+      "kind": "JS",
+      "gzip": 2340
+    },
+    {
+      "path": "assets/js/register-sw.js",
+      "bytes": 6453,
+      "kind": "JS",
+      "gzip": 2524
+    },
+    {
+      "path": "assets/js/customer-messages.js",
+      "bytes": 6402,
+      "kind": "JS",
+      "gzip": 2659
+    },
+    {
+      "path": "assets/js/customer-login.js",
+      "bytes": 6365,
+      "kind": "JS",
+      "gzip": 1503
+    },
+    {
+      "path": "owner/messages.html",
+      "bytes": 6143,
+      "kind": "HTML",
+      "gzip": 1638
+    },
+    {
+      "path": "search.html",
+      "bytes": 5951,
+      "kind": "HTML",
+      "gzip": 1758
+    },
+    {
+      "path": "owner/login.html",
+      "bytes": 5749,
+      "kind": "HTML",
+      "gzip": 1624
+    },
+    {
+      "path": "customer-login.html",
+      "bytes": 5740,
+      "kind": "HTML",
+      "gzip": 1640
+    },
+    {
+      "path": "apps-script/Admin.gs",
+      "bytes": 5722,
+      "kind": "AppsScript",
+      "gzip": 1906
+    },
+    {
+      "path": "owner/products.html",
+      "bytes": 5349,
+      "kind": "HTML",
+      "gzip": 1566
+    },
+    {
+      "path": "apps-script/Db.gs",
+      "bytes": 5195,
+      "kind": "AppsScript",
+      "gzip": 2270
+    },
+    {
+      "path": "assets/js/owner-dashboard.js",
+      "bytes": 5146,
+      "kind": "JS",
+      "gzip": 1958
+    },
+    {
+      "path": "assets/js/owner-login.js",
+      "bytes": 5066,
+      "kind": "JS",
+      "gzip": 1423
+    },
+    {
+      "path": "stores.html",
+      "bytes": 5049,
+      "kind": "HTML",
+      "gzip": 1935
+    },
+    {
+      "path": "assets/js/owner-bookings.js",
+      "bytes": 4855,
+      "kind": "JS",
+      "gzip": 1820
+    },
+    {
+      "path": "index.html",
+      "bytes": 4738,
+      "kind": "HTML",
+      "gzip": 1544
+    },
+    {
+      "path": "customer-dashboard.html",
+      "bytes": 4654,
+      "kind": "HTML",
+      "gzip": 1530
+    },
+    {
+      "path": "assets/js/owner-orders.js",
+      "bytes": 4352,
+      "kind": "JS",
+      "gzip": 1686
+    },
+    {
+      "path": "assets/js/my-carts.js",
+      "bytes": 4317,
+      "kind": "JS",
+      "gzip": 1826
+    },
+    {
+      "path": "owner/dashboard.html",
+      "bytes": 4028,
+      "kind": "HTML",
+      "gzip": 1173
+    },
+    {
+      "path": "categories.html",
+      "bytes": 3745,
+      "kind": "HTML",
+      "gzip": 1435
+    },
+    {
+      "path": "assets/js/admin.js",
+      "bytes": 3680,
+      "kind": "JS",
+      "gzip": 1100
+    },
+    {
+      "path": "owner/forgot-password.html",
+      "bytes": 3499,
+      "kind": "HTML",
+      "gzip": 1185
+    },
+    {
+      "path": "assets/img/app-icon-192.png",
+      "bytes": 3233,
+      "kind": "Image",
+      "gzip": null
+    },
+    {
+      "path": "assets/js/kiribati-locations.js",
+      "bytes": 3193,
+      "kind": "JS",
+      "gzip": 1376
+    },
+    {
+      "path": "owner/admin.html",
+      "bytes": 3086,
+      "kind": "HTML",
+      "gzip": 954
+    },
+    {
+      "path": "my-carts.html",
+      "bytes": 3058,
+      "kind": "HTML",
+      "gzip": 1129
+    },
+    {
+      "path": "customer-tips.html",
+      "bytes": 3028,
+      "kind": "HTML",
+      "gzip": 1034
+    },
+    {
+      "path": "assets/img/apple-touch-icon-180.png",
+      "bytes": 2954,
+      "kind": "Image",
+      "gzip": null
+    },
+    {
+      "path": "customer-messages.html",
+      "bytes": 2632,
+      "kind": "HTML",
+      "gzip": 980
+    },
+    {
+      "path": "assets/js/header-cart.js",
+      "bytes": 2490,
+      "kind": "JS",
+      "gzip": 1207
+    },
+    {
+      "path": "assets/js/home.js",
+      "bytes": 2473,
+      "kind": "JS",
+      "gzip": 949
+    },
+    {
+      "path": "assets/js/home-nav.js",
+      "bytes": 2434,
+      "kind": "JS",
+      "gzip": 1070
+    },
+    {
+      "path": "assets/js/customer-auth.js",
+      "bytes": 2330,
+      "kind": "JS",
+      "gzip": 896
+    },
+    {
+      "path": "assets/js/cart.js",
+      "bytes": 2312,
+      "kind": "JS",
+      "gzip": 849
+    },
+    {
+      "path": "owner/bookings.html",
+      "bytes": 2113,
+      "kind": "HTML",
+      "gzip": 750
+    },
+    {
+      "path": "owner/orders.html",
+      "bytes": 2097,
+      "kind": "HTML",
+      "gzip": 747
+    },
+    {
+      "path": "offline.html",
+      "bytes": 1946,
+      "kind": "HTML",
+      "gzip": 950
+    },
+    {
+      "path": "assets/js/api.js",
+      "bytes": 1781,
+      "kind": "JS",
+      "gzip": 841
+    },
+    {
+      "path": "assets/js/owner-forgot-password.js",
+      "bytes": 1721,
+      "kind": "JS",
+      "gzip": 566
+    },
+    {
+      "path": "assets/js/auth.js",
+      "bytes": 1628,
+      "kind": "JS",
+      "gzip": 635
+    },
+    {
+      "path": "assets/js/cookie-consent.js",
+      "bytes": 1167,
+      "kind": "JS",
+      "gzip": 633
+    },
+    {
+      "path": "assets/js/customer-tips.js",
+      "bytes": 980,
+      "kind": "JS",
+      "gzip": 430
+    },
+    {
+      "path": "assets/js/owner-nav.js",
+      "bytes": 931,
+      "kind": "JS",
+      "gzip": 503
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 668,
+      "kind": "Config",
+      "gzip": null
+    },
+    {
+      "path": "assets/img/app-icon-source.svg",
+      "bytes": 599,
+      "kind": "Image",
+      "gzip": 324
+    },
+    {
+      "path": "assets/img/favicon.svg",
+      "bytes": 549,
+      "kind": "Image",
+      "gzip": 302
+    },
+    {
+      "path": "assets/js/config.js",
+      "bytes": 343,
+      "kind": "JS",
+      "gzip": 298
+    },
+    {
+      "path": "CNAME",
+      "bytes": 11,
+      "kind": "Other",
+      "gzip": null
+    }
+  ],
+  "pages": [
+    {
+      "page": "cart.html",
+      "htmlBytes": 8137,
+      "htmlGzip": 2307,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/chat-window.js",
+        "assets/js/cart.js",
+        "assets/js/cart-page.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 11,
+      "jsBytes": 97214,
+      "jsGzip": 34850,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "categories.html",
+      "htmlBytes": 3745,
+      "htmlGzip": 1435,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/categories.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 9,
+      "jsBytes": 67037,
+      "jsGzip": 26034,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "checkout.html",
+      "htmlBytes": 11627,
+      "htmlGzip": 3096,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/chat-window.js",
+        "assets/js/kiribati-locations.js",
+        "assets/js/cart.js",
+        "assets/js/checkout.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 12,
+      "jsBytes": 117391,
+      "jsGzip": 40899,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "customer-dashboard.html",
+      "htmlBytes": 4654,
+      "htmlGzip": 1530,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/auth.js",
+        "assets/js/customer-auth.js",
+        "assets/js/customer-dashboard.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 10,
+      "jsBytes": 77952,
+      "jsGzip": 28127,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com"
+      ],
+      "imgs": [
+        "assets/img/favicon.svg"
+      ],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "customer-login.html",
+      "htmlBytes": 5740,
+      "htmlGzip": 1640,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/customer-auth.js",
+        "assets/js/customer-login.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 7,
+      "jsBytes": 56180,
+      "jsGzip": 20507,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com"
+      ],
+      "imgs": [
+        "assets/img/favicon.svg"
+      ],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "customer-messages.html",
+      "htmlBytes": 2632,
+      "htmlGzip": 980,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/customer-messages.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 9,
+      "jsBytes": 65255,
+      "jsGzip": 25436,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com"
+      ],
+      "imgs": [
+        "assets/img/favicon.svg"
+      ],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "customer-tips.html",
+      "htmlBytes": 3028,
+      "htmlGzip": 1034,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/customer-tips.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 9,
+      "jsBytes": 59833,
+      "jsGzip": 23207,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [
+        "assets/img/favicon.svg"
+      ],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "index.html",
+      "htmlBytes": 4738,
+      "htmlGzip": 1544,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/auth.js",
+        "assets/js/customer-auth.js",
+        "assets/js/home-nav.js",
+        "assets/js/home.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 11,
+      "jsBytes": 65388,
+      "jsGzip": 25431,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [
+        "assets/img/favicon.svg"
+      ],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "my-carts.html",
+      "htmlBytes": 3058,
+      "htmlGzip": 1129,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/cart.js",
+        "assets/js/my-carts.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 10,
+      "jsBytes": 65482,
+      "jsGzip": 25452,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "offline.html",
+      "htmlBytes": 1946,
+      "htmlGzip": 950,
+      "scripts": [],
+      "scriptCount": 0,
+      "jsBytes": 0,
+      "jsGzip": 0,
+      "styles": [],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 1,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/admin.html",
+      "htmlBytes": 3086,
+      "htmlGzip": 954,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/auth.js",
+        "../assets/js/admin.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 7,
+      "jsBytes": 52793,
+      "jsGzip": 19843,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/bookings.html",
+      "htmlBytes": 2113,
+      "htmlGzip": 750,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/auth.js",
+        "../assets/js/owner-nav.js",
+        "../assets/js/owner-bookings.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 8,
+      "jsBytes": 54899,
+      "jsGzip": 21066,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/dashboard.html",
+      "htmlBytes": 4028,
+      "htmlGzip": 1173,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/auth.js",
+        "../assets/js/owner-nav.js",
+        "../assets/js/owner-dashboard.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 8,
+      "jsBytes": 55190,
+      "jsGzip": 21204,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/forgot-password.html",
+      "htmlBytes": 3499,
+      "htmlGzip": 1185,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/owner-forgot-password.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 6,
+      "jsBytes": 49206,
+      "jsGzip": 18674,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/login.html",
+      "htmlBytes": 5749,
+      "htmlGzip": 1624,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/auth.js",
+        "../assets/js/owner-login.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 7,
+      "jsBytes": 54179,
+      "jsGzip": 20166,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/messages.html",
+      "htmlBytes": 6143,
+      "htmlGzip": 1638,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/auth.js",
+        "../assets/js/owner-nav.js",
+        "../assets/js/owner-messages.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 8,
+      "jsBytes": 75259,
+      "jsGzip": 25607,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/orders.html",
+      "htmlBytes": 2097,
+      "htmlGzip": 747,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/auth.js",
+        "../assets/js/owner-nav.js",
+        "../assets/js/owner-orders.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 8,
+      "jsBytes": 54396,
+      "jsGzip": 20932,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/products.html",
+      "htmlBytes": 5349,
+      "htmlGzip": 1566,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/auth.js",
+        "../assets/js/owner-nav.js",
+        "../assets/js/owner-products.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 8,
+      "jsBytes": 64655,
+      "jsGzip": 23462,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "owner/settings.html",
+      "htmlBytes": 11081,
+      "htmlGzip": 2675,
+      "scripts": [
+        "../assets/js/config.js",
+        "../assets/js/api.js",
+        "../assets/js/helpers.js",
+        "../assets/js/cookie-consent.js",
+        "../assets/js/kiribati-locations.js",
+        "../assets/js/auth.js",
+        "../assets/js/owner-nav.js",
+        "../assets/js/owner-settings.js",
+        "../assets/js/register-sw.js"
+      ],
+      "scriptCount": 9,
+      "jsBytes": 73545,
+      "jsGzip": 25412,
+      "styles": [
+        "../assets/css/styles.css",
+        "../assets/css/owner.css"
+      ],
+      "preconnects": [],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": []
+    },
+    {
+      "page": "product.html",
+      "htmlBytes": 7968,
+      "htmlGzip": 2308,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/chat-window.js",
+        "assets/js/cart.js",
+        "assets/js/product-card.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/product-page.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 12,
+      "jsBytes": 111395,
+      "jsGzip": 38906,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "search.html",
+      "htmlBytes": 5951,
+      "htmlGzip": 1758,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/search.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 9,
+      "jsBytes": 74480,
+      "jsGzip": 27894,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "store.html",
+      "htmlBytes": 8912,
+      "htmlGzip": 2525,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/chat-window.js",
+        "assets/js/cart.js",
+        "assets/js/product-card.js",
+        "assets/js/store.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 12,
+      "jsBytes": 115132,
+      "jsGzip": 40195,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [],
+      "inlineScripts": 0,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    },
+    {
+      "page": "stores.html",
+      "htmlBytes": 5049,
+      "htmlGzip": 1935,
+      "scripts": [
+        "assets/js/config.js",
+        "assets/js/api.js",
+        "assets/js/helpers.js",
+        "assets/js/cookie-consent.js",
+        "assets/js/directory.js",
+        "assets/js/customer-auth.js",
+        "assets/js/header-cart.js",
+        "assets/js/bottom-nav.js",
+        "assets/js/register-sw.js"
+      ],
+      "scriptCount": 9,
+      "jsBytes": 66955,
+      "jsGzip": 25957,
+      "styles": [
+        "assets/css/styles.css"
+      ],
+      "preconnects": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ],
+      "imgs": [],
+      "inlineScripts": 1,
+      "inlineStyles": 0,
+      "externalRefs": [
+        "https://script.google.com",
+        "https://script.googleusercontent.com",
+        "https://res.cloudinary.com",
+        "https://lh3.googleusercontent.com"
+      ]
+    }
+  ],
+  "apiCalls": [
+    {
+      "file": "assets/js/admin.js",
+      "method": "get",
+      "action": "listStores"
+    },
+    {
+      "file": "assets/js/admin.js",
+      "method": "get",
+      "action": "listProducts"
+    },
+    {
+      "file": "assets/js/admin.js",
+      "method": "post",
+      "action": "addFeatured"
+    },
+    {
+      "file": "assets/js/admin.js",
+      "method": "post",
+      "action": "listFeatured"
+    },
+    {
+      "file": "assets/js/admin.js",
+      "method": "post",
+      "action": "removeFeatured"
+    },
+    {
+      "file": "assets/js/auth.js",
+      "method": "post",
+      "action": "logoutOwner"
+    },
+    {
+      "file": "assets/js/auth.js",
+      "method": "post",
+      "action": "getOwnerProfile"
+    },
+    {
+      "file": "assets/js/bottom-nav.js",
+      "method": "post",
+      "action": "getCustomerInbox"
+    },
+    {
+      "file": "assets/js/cart-page.js",
+      "method": "get",
+      "action": "getStorePublicInfo"
+    },
+    {
+      "file": "assets/js/categories.js",
+      "method": "get",
+      "action": "searchProducts"
+    },
+    {
+      "file": "assets/js/chat-window.js",
+      "method": "get",
+      "action": "getStorePublicInfo"
+    },
+    {
+      "file": "assets/js/chat-window.js",
+      "method": "post",
+      "action": "getConversation"
+    },
+    {
+      "file": "assets/js/chat-window.js",
+      "method": "post",
+      "action": "setTyping"
+    },
+    {
+      "file": "assets/js/chat-window.js",
+      "method": "post",
+      "action": "getConversation"
+    },
+    {
+      "file": "assets/js/chat-window.js",
+      "method": "post",
+      "action": "getConversation"
+    },
+    {
+      "file": "assets/js/chat-window.js",
+      "method": "post",
+      "action": "sendMessage"
+    },
+    {
+      "file": "assets/js/chat-window.js",
+      "method": "post",
+      "action": "sendChatImage"
+    },
+    {
+      "file": "assets/js/checkout.js",
+      "method": "get",
+      "action": "getStorePublicInfo"
+    },
+    {
+      "file": "assets/js/checkout.js",
+      "method": "post",
+      "action": "saveAbandonedCart"
+    },
+    {
+      "file": "assets/js/checkout.js",
+      "method": "post",
+      "action": "createOrder"
+    },
+    {
+      "file": "assets/js/customer-auth.js",
+      "method": "post",
+      "action": "logoutCustomer"
+    },
+    {
+      "file": "assets/js/customer-auth.js",
+      "method": "post",
+      "action": "getCustomerProfile"
+    },
+    {
+      "file": "assets/js/customer-dashboard.js",
+      "method": "post",
+      "action": "updateCustomerProfile"
+    },
+    {
+      "file": "assets/js/customer-dashboard.js",
+      "method": "post",
+      "action": "listCustomerOrders"
+    },
+    {
+      "file": "assets/js/customer-dashboard.js",
+      "method": "post",
+      "action": "listCustomerBookings"
+    },
+    {
+      "file": "assets/js/customer-login.js",
+      "method": "post",
+      "action": "loginCustomer"
+    },
+    {
+      "file": "assets/js/customer-login.js",
+      "method": "post",
+      "action": "verifyCustomerLogin"
+    },
+    {
+      "file": "assets/js/customer-login.js",
+      "method": "post",
+      "action": "registerCustomer"
+    },
+    {
+      "file": "assets/js/customer-login.js",
+      "method": "post",
+      "action": "verifyCustomerEmail"
+    },
+    {
+      "file": "assets/js/customer-messages.js",
+      "method": "post",
+      "action": "getCustomerInbox"
+    },
+    {
+      "file": "assets/js/customer-tips.js",
+      "method": "get",
+      "action": "getTips"
+    },
+    {
+      "file": "assets/js/directory.js",
+      "method": "get",
+      "action": "listStores"
+    },
+    {
+      "file": "assets/js/directory.js",
+      "method": "get",
+      "action": "getStorePublicInfo"
+    },
+    {
+      "file": "assets/js/helpers.js",
+      "method": "post",
+      "action": "recordProductViews"
+    },
+    {
+      "file": "assets/js/helpers.js",
+      "method": "post",
+      "action": "recordStoreVisit"
+    },
+    {
+      "file": "assets/js/home.js",
+      "method": "get",
+      "action": "getHomePageData"
+    },
+    {
+      "file": "assets/js/my-carts.js",
+      "method": "get",
+      "action": "getStorePublicInfo"
+    },
+    {
+      "file": "assets/js/owner-bookings.js",
+      "method": "post",
+      "action": "listOwnerBookings"
+    },
+    {
+      "file": "assets/js/owner-bookings.js",
+      "method": "post",
+      "action": "updateBookingStatus"
+    },
+    {
+      "file": "assets/js/owner-dashboard.js",
+      "method": "post",
+      "action": "listOwnerProducts"
+    },
+    {
+      "file": "assets/js/owner-dashboard.js",
+      "method": "post",
+      "action": "listOwnerOrders"
+    },
+    {
+      "file": "assets/js/owner-dashboard.js",
+      "method": "post",
+      "action": "listOwnerBookings"
+    },
+    {
+      "file": "assets/js/owner-dashboard.js",
+      "method": "post",
+      "action": "setStoreStatus"
+    },
+    {
+      "file": "assets/js/owner-forgot-password.js",
+      "method": "post",
+      "action": "requestPasswordReset"
+    },
+    {
+      "file": "assets/js/owner-forgot-password.js",
+      "method": "post",
+      "action": "resetPasswordWithCode"
+    },
+    {
+      "file": "assets/js/owner-login.js",
+      "method": "post",
+      "action": "loginOwner"
+    },
+    {
+      "file": "assets/js/owner-login.js",
+      "method": "post",
+      "action": "verifyLoginCode"
+    },
+    {
+      "file": "assets/js/owner-login.js",
+      "method": "post",
+      "action": "registerOwner"
+    },
+    {
+      "file": "assets/js/owner-messages.js",
+      "method": "post",
+      "action": "getVendorConversations"
+    },
+    {
+      "file": "assets/js/owner-messages.js",
+      "method": "post",
+      "action": "setTyping"
+    },
+    {
+      "file": "assets/js/owner-messages.js",
+      "method": "post",
+      "action": "getConversation"
+    },
+    {
+      "file": "assets/js/owner-messages.js",
+      "method": "post",
+      "action": "getConversation"
+    },
+    {
+      "file": "assets/js/owner-messages.js",
+      "method": "post",
+      "action": "sendMessage"
+    },
+    {
+      "file": "assets/js/owner-messages.js",
+      "method": "post",
+      "action": "sendChatImage"
+    },
+    {
+      "file": "assets/js/owner-messages.js",
+      "method": "post",
+      "action": "archiveConversation"
+    },
+    {
+      "file": "assets/js/owner-messages.js",
+      "method": "post",
+      "action": "deleteConversation"
+    },
+    {
+      "file": "assets/js/owner-nav.js",
+      "method": "post",
+      "action": "getUnreadCount"
+    },
+    {
+      "file": "assets/js/owner-orders.js",
+      "method": "post",
+      "action": "listOwnerOrders"
+    },
+    {
+      "file": "assets/js/owner-orders.js",
+      "method": "post",
+      "action": "updateOrderStatus"
+    },
+    {
+      "file": "assets/js/owner-products.js",
+      "method": "post",
+      "action": "listOwnerProducts"
+    },
+    {
+      "file": "assets/js/owner-products.js",
+      "method": "post",
+      "action": "deleteProduct"
+    },
+    {
+      "file": "assets/js/owner-products.js",
+      "method": "post",
+      "action": "uploadProductImage"
+    },
+    {
+      "file": "assets/js/owner-products.js",
+      "method": "post",
+      "action": "uploadProductImage"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "uploadStoreLogo"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "uploadOwnerIdLicense"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "updateOwnerProfile"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "updateOwnerProfile"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "enable2FARequest"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "confirm2FASetup"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "disable2FA"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "setStoreStatus"
+    },
+    {
+      "file": "assets/js/owner-settings.js",
+      "method": "post",
+      "action": "setStoreStatus"
+    },
+    {
+      "file": "assets/js/product-page.js",
+      "method": "get",
+      "action": "listProducts"
+    },
+    {
+      "file": "assets/js/product-page.js",
+      "method": "post",
+      "action": "createBookingRequest"
+    },
+    {
+      "file": "assets/js/product-page.js",
+      "method": "get",
+      "action": "listProductReviews"
+    },
+    {
+      "file": "assets/js/product-page.js",
+      "method": "post",
+      "action": "submitReview"
+    },
+    {
+      "file": "assets/js/search.js",
+      "method": "get",
+      "action": "searchProducts"
+    },
+    {
+      "file": "assets/js/store.js",
+      "method": "get",
+      "action": "listProducts"
+    },
+    {
+      "file": "assets/js/store.js",
+      "method": "get",
+      "action": "searchProducts"
+    },
+    {
+      "file": "assets/js/store.js",
+      "method": "post",
+      "action": "createBookingRequest"
+    }
+  ],
+  "origins": [
+    {
+      "host": "lh3.googleusercontent.com",
+      "referencedIn": [
+        "cart.html",
+        "categories.html",
+        "checkout.html",
+        "customer-tips.html",
+        "index.html",
+        "my-carts.html",
+        "product.html",
+        "search.html",
+        "store.html",
+        "stores.html"
+      ]
+    },
+    {
+      "host": "m.me",
+      "referencedIn": [
+        "assets/js/helpers.js"
+      ]
+    },
+    {
+      "host": "res.cloudinary.com",
+      "referencedIn": [
+        "cart.html",
+        "categories.html",
+        "checkout.html",
+        "customer-tips.html",
+        "index.html",
+        "my-carts.html",
+        "product.html",
+        "search.html",
+        "store.html",
+        "stores.html"
+      ]
+    },
+    {
+      "host": "script.google.com",
+      "referencedIn": [
+        "assets/js/config.js",
+        "cart.html",
+        "categories.html",
+        "checkout.html",
+        "customer-dashboard.html",
+        "customer-login.html",
+        "customer-messages.html",
+        "customer-tips.html",
+        "index.html",
+        "my-carts.html",
+        "product.html",
+        "search.html",
+        "store.html",
+        "stores.html"
+      ]
+    },
+    {
+      "host": "script.googleusercontent.com",
+      "referencedIn": [
+        "cart.html",
+        "categories.html",
+        "checkout.html",
+        "customer-dashboard.html",
+        "customer-login.html",
+        "customer-messages.html",
+        "customer-tips.html",
+        "index.html",
+        "my-carts.html",
+        "product.html",
+        "search.html",
+        "store.html",
+        "stores.html"
+      ]
+    },
+    {
+      "host": "www.w3.org",
+      "referencedIn": [
+        "offline.html"
+      ]
+    }
+  ]
+}

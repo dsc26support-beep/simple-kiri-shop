@@ -1,0 +1,1102 @@
+{
+  "rows": [
+    {
+      "action": "addFeatured",
+      "fn": "actionAddFeatured",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Owners": 1
+      },
+      "fullScansOnVar": 3,
+      "indexedLookups": 1,
+      "writes": 2,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getOwnerBySlug",
+        "appendRowFromObject"
+      ]
+    },
+    {
+      "action": "archiveConversation",
+      "fn": "actionArchiveConversation",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 2,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 2,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getConversationById",
+        "setConversationStatus"
+      ]
+    },
+    {
+      "action": "confirm2FASetup",
+      "fn": "actionConfirm2FASetup",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 2,
+      "indexedLookups": 1,
+      "writes": 6,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "consumeTwoFACode",
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "createBookingRequest",
+      "fn": "actionCreateBookingRequest",
+      "fullScanCount": 3,
+      "fullScanTabs": {
+        "Products": 1,
+        "Variants": 1,
+        "Owners": 1
+      },
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 2,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getOwnerBySlug",
+        "appendRowFromObject"
+      ]
+    },
+    {
+      "action": "createOrder",
+      "fn": "actionCreateOrder",
+      "fullScanCount": 3,
+      "fullScanTabs": {
+        "Variants": 1,
+        "Products": 1,
+        "Owners": 1
+      },
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 4,
+      "drive": 0,
+      "via": [
+        "getOwnerBySlug",
+        "appendRowFromObject",
+        "markAbandonedCartConverted"
+      ]
+    },
+    {
+      "action": "deleteConversation",
+      "fn": "actionDeleteConversation",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 2,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 2,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getConversationById",
+        "setConversationStatus"
+      ]
+    },
+    {
+      "action": "deleteProduct",
+      "fn": "actionDeleteProduct",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 2,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "disable2FA",
+      "fn": "actionDisable2FA",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 2,
+      "indexedLookups": 1,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "enable2FARequest",
+      "fn": "actionEnable2FARequest",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 0,
+      "indexedLookups": 0,
+      "writes": 2,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 4,
+      "drive": 0,
+      "via": [
+        "issueTwoFACode"
+      ]
+    },
+    {
+      "action": "getConversation",
+      "fn": "actionGetConversation",
+      "fullScanCount": 3,
+      "fullScanTabs": {
+        "Owners": 1,
+        "Conversations": 1,
+        "Messages": 1
+      },
+      "fullScansOnVar": 4,
+      "indexedLookups": 3,
+      "writes": 3,
+      "cached": true,
+      "invalidates": 1,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "resolveChatRequest",
+        "listMessagesForConversation",
+        "markConversationReadByVendor",
+        "markConversationReadByCustomer"
+      ]
+    },
+    {
+      "action": "getCustomerInbox",
+      "fn": "actionGetCustomerInbox",
+      "fullScanCount": 3,
+      "fullScanTabs": {
+        "Conversations": 1,
+        "Owners": 1,
+        "Messages": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getOwnerBySlug",
+        "countUnreadInto"
+      ]
+    },
+    {
+      "action": "getCustomerProfile",
+      "fn": "actionGetCustomerProfile",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 3,
+      "indexedLookups": 2,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "requireCustomerAuth"
+      ]
+    },
+    {
+      "action": "getHomePageData",
+      "fn": "actionGetHomePageData",
+      "fullScanCount": 5,
+      "fullScanTabs": {
+        "Owners": 2,
+        "Variants": 1,
+        "Products": 1,
+        "Reviews": 1
+      },
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": true,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getTopProductsCached",
+        "getTopStoresCached"
+      ]
+    },
+    {
+      "action": "getOwnerProfile",
+      "fn": "actionGetOwnerProfile",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 0,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "getStorePublicInfo",
+      "fn": "actionGetStorePublicInfo",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Owners": 1
+      },
+      "fullScansOnVar": 0,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": true,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getOwnerBySlug"
+      ]
+    },
+    {
+      "action": "getTips",
+      "fn": "actionGetTips",
+      "fullScanCount": 4,
+      "fullScanTabs": {
+        "Featured": 1,
+        "Owners": 1,
+        "Variants": 1,
+        "Products": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "getUnreadCount",
+      "fn": "actionGetUnreadCount",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Conversations": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": true,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "listConversationsForOwner"
+      ]
+    },
+    {
+      "action": "getVendorConversations",
+      "fn": "actionGetVendorConversations",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Conversations": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": true,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "listConversationsForOwner"
+      ]
+    },
+    {
+      "action": "listCustomerBookings",
+      "fn": "actionListCustomerBookings",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Bookings": 1
+      },
+      "fullScansOnVar": 4,
+      "indexedLookups": 2,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "requireCustomerAuth"
+      ]
+    },
+    {
+      "action": "listCustomerOrders",
+      "fn": "actionListCustomerOrders",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Orders": 1
+      },
+      "fullScansOnVar": 4,
+      "indexedLookups": 2,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "requireCustomerAuth"
+      ]
+    },
+    {
+      "action": "listFeatured",
+      "fn": "actionListFeatured",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Featured": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 1,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "featuredLabel"
+      ]
+    },
+    {
+      "action": "listOwnerBookings",
+      "fn": "actionListOwnerBookings",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Bookings": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "listOwnerOrders",
+      "fn": "actionListOwnerOrders",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Orders": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "listOwnerProducts",
+      "fn": "actionListOwnerProducts",
+      "fullScanCount": 2,
+      "fullScanTabs": {
+        "Products": 1,
+        "Variants": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "listProductReviews",
+      "fn": "actionListProductReviews",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Reviews": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "listProducts",
+      "fn": "actionListProducts",
+      "fullScanCount": 4,
+      "fullScanTabs": {
+        "Products": 1,
+        "Variants": 1,
+        "Owners": 1,
+        "Reviews": 1
+      },
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": true,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getOwnerBySlug",
+        "productRatingIndex"
+      ]
+    },
+    {
+      "action": "listStores",
+      "fn": "actionListStores",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Owners": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": true,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "loginCustomer",
+      "fn": "actionLoginCustomer",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Customers": 1
+      },
+      "fullScansOnVar": 0,
+      "indexedLookups": 0,
+      "writes": 2,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 4,
+      "drive": 0,
+      "via": [
+        "findCustomerByEmail",
+        "issueCustomerEmailCode"
+      ]
+    },
+    {
+      "action": "loginOwner",
+      "fn": "actionLoginOwner",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Owners": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 4,
+      "drive": 0,
+      "via": [
+        "issueTwoFACode",
+        "issueSession"
+      ]
+    },
+    {
+      "action": "logoutCustomer",
+      "fn": "actionLogoutCustomer",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "logoutOwner",
+      "fn": "actionLogoutOwner",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "recordProductViews",
+      "fn": "actionRecordProductViews",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "recordStoreVisit",
+      "fn": "actionRecordStoreVisit",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "registerCustomer",
+      "fn": "actionRegisterCustomer",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Customers": 1
+      },
+      "fullScansOnVar": 0,
+      "indexedLookups": 0,
+      "writes": 1,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 1,
+      "drive": 0,
+      "via": [
+        "findCustomerByEmail",
+        "issueCustomerEmailCode"
+      ]
+    },
+    {
+      "action": "registerOwner",
+      "fn": "actionRegisterOwner",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Owners": 1
+      },
+      "fullScansOnVar": 3,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "validateOwnerEmail",
+        "appendRowFromObject",
+        "issueSession"
+      ]
+    },
+    {
+      "action": "removeFeatured",
+      "fn": "actionRemoveFeatured",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": []
+    },
+    {
+      "action": "requestPasswordReset",
+      "fn": "actionRequestPasswordReset",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Owners": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 2,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 4,
+      "drive": 0,
+      "via": [
+        "issueTwoFACode"
+      ]
+    },
+    {
+      "action": "resetPasswordWithCode",
+      "fn": "actionResetPasswordWithCode",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 3,
+      "indexedLookups": 0,
+      "writes": 6,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "consumeTwoFACode",
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "saveAbandonedCart",
+      "fn": "actionSaveAbandonedCart",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Owners": 1
+      },
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 5,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "getOwnerBySlug",
+        "updateRowFromObject",
+        "appendRowFromObject"
+      ]
+    },
+    {
+      "action": "searchProducts",
+      "fn": "actionSearchProducts",
+      "fullScanCount": 4,
+      "fullScanTabs": {
+        "Owners": 1,
+        "Variants": 1,
+        "Products": 1,
+        "Reviews": 1
+      },
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 0,
+      "cached": true,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "productRatingIndex"
+      ]
+    },
+    {
+      "action": "sendChatImage",
+      "fn": "actionSendChatImage",
+      "fullScanCount": 2,
+      "fullScanTabs": {
+        "Owners": 1,
+        "Conversations": 1
+      },
+      "fullScansOnVar": 3,
+      "indexedLookups": 4,
+      "writes": 2,
+      "cached": false,
+      "invalidates": 1,
+      "lock": true,
+      "mail": 1,
+      "drive": 2,
+      "via": [
+        "resolveChatRequest",
+        "appendMessage",
+        "notifyVendorOfNewMessage"
+      ]
+    },
+    {
+      "action": "sendMessage",
+      "fn": "actionSendMessage",
+      "fullScanCount": 2,
+      "fullScanTabs": {
+        "Owners": 1,
+        "Conversations": 1
+      },
+      "fullScansOnVar": 5,
+      "indexedLookups": 4,
+      "writes": 4,
+      "cached": false,
+      "invalidates": 3,
+      "lock": true,
+      "mail": 4,
+      "drive": 0,
+      "via": [
+        "resolveChatRequest",
+        "appendMessage",
+        "notifyVendorOfNewMessage"
+      ]
+    },
+    {
+      "action": "setStoreStatus",
+      "fn": "actionSetStoreStatus",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 2,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 2,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "setTyping",
+      "fn": "actionSetTyping",
+      "fullScanCount": 2,
+      "fullScanTabs": {
+        "Owners": 1,
+        "Conversations": 1
+      },
+      "fullScansOnVar": 3,
+      "indexedLookups": 3,
+      "writes": 1,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "resolveChatRequest"
+      ]
+    },
+    {
+      "action": "submitReview",
+      "fn": "actionSubmitReview",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Orders": 1
+      },
+      "fullScansOnVar": 6,
+      "indexedLookups": 4,
+      "writes": 2,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "requireCustomerAuth",
+        "appendRowFromObject",
+        "customerBoughtProduct"
+      ]
+    },
+    {
+      "action": "updateBookingStatus",
+      "fn": "actionUpdateBookingStatus",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 3,
+      "indexedLookups": 0,
+      "writes": 4,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "updateCustomerProfile",
+      "fn": "actionUpdateCustomerProfile",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 3,
+      "indexedLookups": 2,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "requireCustomerAuth",
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "updateOrderStatus",
+      "fn": "actionUpdateOrderStatus",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "updateOwnerProfile",
+      "fn": "actionUpdateOwnerProfile",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Owners": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 2,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "validateOwnerEmail",
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "uploadOwnerIdLicense",
+      "fn": "actionUploadOwnerIdLicense",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 0,
+      "lock": false,
+      "mail": 0,
+      "drive": 3,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "uploadProductImage",
+      "fn": "actionUploadProductImage",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 1,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 2,
+      "lock": false,
+      "mail": 0,
+      "drive": 3,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "uploadStoreLogo",
+      "fn": "actionUploadStoreLogo",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 3,
+      "cached": false,
+      "invalidates": 2,
+      "lock": false,
+      "mail": 0,
+      "drive": 3,
+      "via": [
+        "updateRowFromObject"
+      ]
+    },
+    {
+      "action": "verifyCustomerEmail",
+      "fn": "actionVerifyCustomerEmail",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Customers": 1
+      },
+      "fullScansOnVar": 2,
+      "indexedLookups": 1,
+      "writes": 9,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "consumeCustomerEmailCode",
+        "findCustomerByEmail",
+        "appendRowFromObject",
+        "updateRowFromObject",
+        "issueCustomerSession"
+      ]
+    },
+    {
+      "action": "verifyCustomerLogin",
+      "fn": "actionVerifyCustomerLogin",
+      "fullScanCount": 1,
+      "fullScanTabs": {
+        "Customers": 1
+      },
+      "fullScansOnVar": 1,
+      "indexedLookups": 0,
+      "writes": 5,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "consumeCustomerEmailCode",
+        "findCustomerByEmail",
+        "issueCustomerSession"
+      ]
+    },
+    {
+      "action": "verifyLoginCode",
+      "fn": "actionVerifyLoginCode",
+      "fullScanCount": 0,
+      "fullScanTabs": {},
+      "fullScansOnVar": 2,
+      "indexedLookups": 1,
+      "writes": 5,
+      "cached": false,
+      "invalidates": 0,
+      "lock": true,
+      "mail": 0,
+      "drive": 0,
+      "via": [
+        "consumeTwoFACode",
+        "issueSession"
+      ]
+    }
+  ],
+  "used": [
+    "addFeatured",
+    "archiveConversation",
+    "confirm2FASetup",
+    "createBookingRequest",
+    "createOrder",
+    "deleteConversation",
+    "deleteProduct",
+    "disable2FA",
+    "enable2FARequest",
+    "getConversation",
+    "getCustomerInbox",
+    "getCustomerProfile",
+    "getHomePageData",
+    "getOwnerProfile",
+    "getStorePublicInfo",
+    "getTips",
+    "getUnreadCount",
+    "getVendorConversations",
+    "listCustomerBookings",
+    "listCustomerOrders",
+    "listFeatured",
+    "listOwnerBookings",
+    "listOwnerOrders",
+    "listOwnerProducts",
+    "listProductReviews",
+    "listProducts",
+    "listStores",
+    "loginCustomer",
+    "loginOwner",
+    "logoutCustomer",
+    "logoutOwner",
+    "recordProductViews",
+    "recordStoreVisit",
+    "registerCustomer",
+    "registerOwner",
+    "removeFeatured",
+    "requestPasswordReset",
+    "resetPasswordWithCode",
+    "saveAbandonedCart",
+    "searchProducts",
+    "sendChatImage",
+    "sendMessage",
+    "setStoreStatus",
+    "setTyping",
+    "submitReview",
+    "updateBookingStatus",
+    "updateCustomerProfile",
+    "updateOrderStatus",
+    "updateOwnerProfile",
+    "uploadOwnerIdLicense",
+    "uploadProductImage",
+    "uploadStoreLogo",
+    "verifyCustomerEmail",
+    "verifyCustomerLogin",
+    "verifyLoginCode"
+  ]
+}

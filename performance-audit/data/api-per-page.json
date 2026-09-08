@@ -1,0 +1,231 @@
+[
+  {
+    "path": "/index.html",
+    "auth": false,
+    "count": 2,
+    "actions": [
+      "getHomePageData+0ms",
+      "getCustomerInbox*+613ms"
+    ]
+  },
+  {
+    "path": "/store.html?store=bong",
+    "auth": false,
+    "count": 4,
+    "actions": [
+      "listProducts+0ms",
+      "getConversation*+615ms",
+      "getCustomerInbox*+616ms",
+      "recordStoreVisit*+617ms"
+    ]
+  },
+  {
+    "path": "/product.html?store=bong&product=p0",
+    "auth": false,
+    "count": 3,
+    "actions": [
+      "listProducts+0ms",
+      "getConversation*+619ms",
+      "getCustomerInbox*+620ms"
+    ]
+  },
+  {
+    "path": "/search.html?q=rice",
+    "auth": false,
+    "count": 2,
+    "actions": [
+      "searchProducts+0ms",
+      "getCustomerInbox*+619ms"
+    ]
+  },
+  {
+    "path": "/stores.html",
+    "auth": false,
+    "count": 2,
+    "actions": [
+      "listStores+0ms",
+      "getCustomerInbox*+617ms"
+    ]
+  },
+  {
+    "path": "/categories.html",
+    "auth": false,
+    "count": 2,
+    "actions": [
+      "searchProducts+0ms",
+      "getCustomerInbox*+617ms"
+    ]
+  },
+  {
+    "path": "/cart.html",
+    "auth": false,
+    "count": 3,
+    "actions": [
+      "getStorePublicInfo+0ms",
+      "getConversation*+619ms",
+      "getCustomerInbox*+619ms"
+    ]
+  },
+  {
+    "path": "/checkout.html",
+    "auth": false,
+    "count": 6,
+    "actions": [
+      "getStorePublicInfo+0ms",
+      "getCustomerInbox*+1ms",
+      "getConversation*+14ms",
+      "getStorePublicInfo+64ms",
+      "getConversation*+688ms",
+      "getCustomerInbox*+688ms"
+    ]
+  },
+  {
+    "path": "/customer-dashboard.html",
+    "auth": false,
+    "count": 0,
+    "actions": []
+  },
+  {
+    "path": "/customer-messages.html",
+    "auth": false,
+    "count": 2,
+    "actions": [
+      "getCustomerInbox*+0ms",
+      "getCustomerInbox*+17ms"
+    ]
+  },
+  {
+    "path": "/customer-tips.html",
+    "auth": false,
+    "count": 2,
+    "actions": [
+      "getTips+0ms",
+      "getCustomerInbox*+23ms"
+    ]
+  },
+  {
+    "path": "/my-carts.html",
+    "auth": false,
+    "count": 1,
+    "actions": [
+      "getCustomerInbox*+0ms"
+    ]
+  },
+  {
+    "path": "/index.html",
+    "auth": true,
+    "count": 2,
+    "actions": [
+      "getHomePageData+0ms",
+      "getCustomerInbox*+609ms"
+    ]
+  },
+  {
+    "path": "/store.html?store=bong",
+    "auth": true,
+    "count": 4,
+    "actions": [
+      "listProducts+0ms",
+      "getConversation*+609ms",
+      "getCustomerInbox*+610ms",
+      "recordStoreVisit*+623ms"
+    ]
+  },
+  {
+    "path": "/product.html?store=bong&product=p0",
+    "auth": true,
+    "count": 3,
+    "actions": [
+      "listProducts+0ms",
+      "getConversation*+614ms",
+      "getCustomerInbox*+615ms"
+    ]
+  },
+  {
+    "path": "/search.html?q=rice",
+    "auth": true,
+    "count": 2,
+    "actions": [
+      "searchProducts+0ms",
+      "getCustomerInbox*+614ms"
+    ]
+  },
+  {
+    "path": "/stores.html",
+    "auth": true,
+    "count": 2,
+    "actions": [
+      "listStores+0ms",
+      "getCustomerInbox*+618ms"
+    ]
+  },
+  {
+    "path": "/categories.html",
+    "auth": true,
+    "count": 2,
+    "actions": [
+      "searchProducts+0ms",
+      "getCustomerInbox*+619ms"
+    ]
+  },
+  {
+    "path": "/cart.html",
+    "auth": true,
+    "count": 3,
+    "actions": [
+      "getStorePublicInfo+0ms",
+      "getConversation*+626ms",
+      "getCustomerInbox*+626ms"
+    ]
+  },
+  {
+    "path": "/checkout.html",
+    "auth": true,
+    "count": 6,
+    "actions": [
+      "getStorePublicInfo+0ms",
+      "getCustomerInbox*+1ms",
+      "getConversation*+7ms",
+      "getStorePublicInfo+65ms",
+      "getConversation*+689ms",
+      "getCustomerInbox*+690ms"
+    ]
+  },
+  {
+    "path": "/customer-dashboard.html",
+    "auth": true,
+    "count": 4,
+    "actions": [
+      "getCustomerProfile*+0ms",
+      "getCustomerInbox*+16ms",
+      "listCustomerOrders*+608ms",
+      "listCustomerBookings*+609ms"
+    ]
+  },
+  {
+    "path": "/customer-messages.html",
+    "auth": true,
+    "count": 2,
+    "actions": [
+      "getCustomerInbox*+0ms",
+      "getCustomerInbox*+17ms"
+    ]
+  },
+  {
+    "path": "/customer-tips.html",
+    "auth": true,
+    "count": 2,
+    "actions": [
+      "getTips+0ms",
+      "getCustomerInbox*+12ms"
+    ]
+  },
+  {
+    "path": "/my-carts.html",
+    "auth": true,
+    "count": 1,
+    "actions": [
+      "getCustomerInbox*+0ms"
+    ]
+  }
+]
