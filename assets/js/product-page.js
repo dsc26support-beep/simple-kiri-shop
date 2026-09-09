@@ -233,12 +233,33 @@ async function loadReviews(productId) {
   renderReviewForm(productId, res.reviews || []);
 }
 
+/**
+ * The line on the closed toggle.
+ *
+ * The section is shut when the page loads, so this is the only thing most
+ * shoppers ever see of the reviews - it has to carry the score, or a product
+ * with twelve happy customers looks identical to one with none.
+ */
+function renderReviewToggleScore(data) {
+  const el = document.getElementById('reviews-toggle-score');
+  if (!el) return;
+  const count = Number(data.count) || 0;
+  if (count === 0) {
+    el.textContent = 'No reviews yet';
+    return;
+  }
+  const avg = Number(data.average);
+  el.textContent = `★ ${avg.toFixed(1)} · ${count} review${count === 1 ? '' : 's'}`;
+}
+
 function renderReviewSummary(data) {
+  renderReviewToggleScore(data);
   const el = document.getElementById('reviews-summary');
   const count = Number(data.count) || 0;
   if (count === 0) {
-    // Explicitly "none yet" rather than zero stars, which reads as a bad score.
-    el.innerHTML = '<p class="helper-text">No reviews yet. Be the first to review this product.</p>';
+    // The toggle already says "No reviews yet", so this line does not repeat it.
+    // Still explicitly words rather than zero stars, which reads as a bad score.
+    el.innerHTML = '<p class="helper-text">Be the first to review this product.</p>';
     return;
   }
 
