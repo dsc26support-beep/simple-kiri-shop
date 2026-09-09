@@ -27,6 +27,19 @@
   box-sizing: border-box;
 }
 
+/* The browser's own [hidden] rule is `display: none` at the very bottom of the
+   cascade, so ANY class that sets display beats it and the element stays on
+   screen with its hidden attribute quietly doing nothing. That is how the
+   category page's "More..." pill sat in the corner of a two-product category:
+   .btn made it a flex box. It also affected #results-toolbar (display:flex) and
+   #filters-count (display:inline-flex) on the search page.
+
+   One rule, so setting el.hidden always actually hides. !important because the
+   whole point is to outrank a component class. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -3005,16 +3018,30 @@ footer.site-footer .copyright {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   }
 
+  /* Tips lives in the bottom nav at this width - one of its five tabs - so the
+     header link would be the same destination twice on one screen. Above 700px
+     the bottom nav is display:none and the header link is the only way in. */
+  .site-nav .nav-tips {
+    display: none;
+  }
+
   /* The empty <p> the button leaves behind on mobile would otherwise still
      hold its own margin open under the last row of products. */
   .load-more-row:empty {
     display: none;
   }
 
-  /* Lift existing floating buttons above the bar (only where the bar exists). */
+  /* Lift existing floating buttons above the bar (only where the bar exists).
+
+     :not(.cart-fab--corner) matters. The cart FAB moves to the TOP-right at 2+
+     items, and that variant sets `bottom: auto` - but this selector is more
+     specific (0,3,1 vs 0,2,0), so it put `bottom` back. With both `top` and
+     `bottom` resolved, a fixed element stretches between them: the pill grew
+     into a 760px-tall blue column down the middle of the phone. Nothing to
+     lift anyway - the corner button is nowhere near the bottom bar. */
   body.has-bottom-nav .chat-fab-btn,
   body.has-bottom-nav .floating-action-btn--right,
-  body.has-bottom-nav .floating-action-btn--left {
+  body.has-bottom-nav .floating-action-btn--left:not(.cart-fab--corner) {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
   }
 
