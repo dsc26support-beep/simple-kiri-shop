@@ -101,6 +101,15 @@ function publicOwnerFields(owner) {
     deliveryShipCost: owner.DeliveryShipCost === '' || owner.DeliveryShipCost == null ? null : Number(owner.DeliveryShipCost),
     deliveryAirCargoCost: owner.DeliveryAirCargoCost === '' || owner.DeliveryAirCargoCost == null ? null : Number(owner.DeliveryAirCargoCost),
     twoFAEnabled: String(owner.TwoFAEnabled) === 'true',
+    // Where this vendor's one-time codes go. Blank means email. Deliberately
+    // NOT on publicStoreFields - a shopper has no business knowing how a seller
+    // logs in.
+    authChannel: owner.AuthChannel || 'email',
+    // What a code would ACTUALLY use today, which is not the same thing: with
+    // no SMS sender configured, a stored 'sms' preference still sends email.
+    // The settings copy reads this one, so it can never promise a text that
+    // will not arrive.
+    authChannelEffective: effectiveAuthChannel(owner),
     isAdmin: isOwnerAdmin(owner)
   };
 }
@@ -327,7 +336,7 @@ function actionLoginOwner(body) {
       // Shouldn't happen - email is required to enable 2FA - but fail safe.
       return fail('Two-factor authentication is enabled but no contact email is on file. Please contact support.');
     }
-    var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'login');
+    var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'login', owner);
     return ok({ twoFactorRequired: true, pendingToken: pending.token });
   }
 
@@ -399,7 +408,15 @@ function pruneExpiredSessions() {
 var TWOFA_CODE_EXPIRY_MINUTES = 10;
 var TWOFA_MAX_ATTEMPTS = 5;
 
-function issueTwoFACode(ownerId, email, storeName, purpose) {
+/**
+ * Mints a one-time code and sends it.
+ *
+ * `ownerRow` is optional and additive: called with the original four arguments
+ * this behaves exactly as it did, sending by email. Passing the row lets the
+ * code go by the vendor's chosen channel instead - and today that still
+ * resolves to email, because no SMS sender exists (see Notify.gs).
+ */
+function issueTwoFACode(ownerId, email, storeName, purpose, ownerRow) {
   var token = generateToken();
   var code = generate6DigitCode();
   var expiresAt = new Date(Date.now() + TWOFA_CODE_EXPIRY_MINUTES * 60 * 1000).toISOString();
@@ -413,24 +430,37 @@ function issueTwoFACode(ownerId, email, storeName, purpose) {
     Attempts: 0
   });
 
-  var subject, body;
+  var subject, body, smsBody;
   if (purpose === 'reset') {
     subject = 'Your Mwakete password reset code';
     body = 'Hi ' + storeName + ',\n\nYour password reset code is: ' + code + '\n\n' +
       'Enter this code on the password reset page to choose a new password. This code expires in ' +
       TWOFA_CODE_EXPIRY_MINUTES + ' minutes.\n\nIf you did not request this, you can ignore this email.';
+    smsBody = 'Mwakete password reset code: ' + code + ' (expires in ' +
+      TWOFA_CODE_EXPIRY_MINUTES + ' min). Not you? Ignore this.';
   } else if (purpose === 'setup') {
     subject = 'Confirm two-factor authentication for Mwakete';
     body = 'Hi ' + storeName + ',\n\nYour verification code is: ' + code + '\n\n' +
       'Enter this code to finish turning on two-factor authentication for your store account. ' +
       'This code expires in ' + TWOFA_CODE_EXPIRY_MINUTES + ' minutes.';
+    smsBody = 'Mwakete 2FA setup code: ' + code + ' (expires in ' +
+      TWOFA_CODE_EXPIRY_MINUTES + ' min).';
   } else {
     subject = 'Your Mwakete login code';
     body = 'Hi ' + storeName + ',\n\nYour login code is: ' + code + '\n\n' +
       'Enter this code to finish logging in. This code expires in ' + TWOFA_CODE_EXPIRY_MINUTES + ' minutes.\n\n' +
       'If this was not you, someone may have your password - consider resetting it.';
+    smsBody = 'Mwakete login code: ' + code + ' (expires in ' +
+      TWOFA_CODE_EXPIRY_MINUTES + ' min). Not you? Change your password.';
   }
-  sendAppEmail(email, subject, body);
+
+  // Routed rather than emailed directly, so a future SMS sender needs no change
+  // here. Falls back to email on its own - see Notify.gs.
+  sendAuthCode({
+    email: email,
+    phone: ownerRow ? ownerRow.Phone : '',
+    channel: ownerRow ? ownerRow.AuthChannel : ''
+  }, { subject: subject, body: body, smsBody: smsBody });
 
   return { token: token };
 }
@@ -481,7 +511,7 @@ function actionRequestPasswordReset(body) {
   // Always return a token so the response looks the same whether or not the
   // account exists - this endpoint must not be usable to enumerate usernames.
   if (ownerCanLogIn(owner) && owner.Email) {
-    var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'reset');
+    var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'reset', owner);
     return ok({ token: pending.token });
   }
   return ok({ token: generateToken() });
@@ -528,7 +558,7 @@ function revokeAllSessions(ownerId) {
 
 function actionEnable2FARequest(owner) {
   if (!owner.Email) return fail('Add a contact email in Settings before enabling 2FA');
-  var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'setup');
+  var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'setup', owner);
   return ok({ verifyToken: pending.token });
 }
 
