@@ -506,6 +506,28 @@ section {
   display: none;
 }
 
+/* The search page stacks the search box and BOTH chip strips inside one .hero
+   container, with nothing between them - the box and the first row of chips
+   were touching at exactly 0px, which is why the field's focus ring landed on
+   top of the chips. 24px between each, so the box, the type chips and the
+   category chips read as three separate things.
+
+   Reaches search.html alone: index.html keeps its two strips in their own
+   .listing-types / .categories sections OUTSIDE the hero, where they already
+   sit 88px and 99px clear and need nothing.
+
+   The second strip asks for 16px, not 24px: .chip-strip carries an 8px
+   padding-bottom as its scroll gutter, so 16 + 8 lands the two rows the same
+   24px apart as the first pair. Change that gutter and this number moves with
+   it. */
+.hero .chip-strip {
+  margin-top: var(--space-4);
+}
+
+.hero .chip-strip + .chip-strip {
+  margin-top: var(--space-3);
+}
+
 .chip-strip-item {
   flex: 0 0 auto;
   scroll-snap-align: start;
