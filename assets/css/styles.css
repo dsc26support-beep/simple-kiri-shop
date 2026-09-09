@@ -2095,6 +2095,17 @@ footer.site-footer .copyright {
   color: #fff;
 }
 
+/* Same card, no green tick - for popups that report something rather than
+   confirm it (e.g. "this seller has no WhatsApp"). */
+.order-sent-popup--plain .order-sent-check {
+  display: none;
+}
+
+.order-sent-popup--plain .order-sent-card {
+  font-weight: 500;
+  text-align: center;
+}
+
 .loading-dots {
   display: inline-flex;
   align-items: center;
@@ -3410,7 +3421,19 @@ legend {
 }
 
 .booking-vendor-contact .btn {
+  /* Three across on the narrowest phone. min-width:0 is what actually allows
+     it - a flex item refuses to shrink below its content otherwise, so the row
+     would overflow rather than divide. */
   flex: 1 1 0;
+  min-width: 0;
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+}
+
+@media (max-width: 380px) {
+  .booking-vendor-contact .btn {
+    font-size: 0.85rem;
+  }
 }
 
 .btn-call {
@@ -3421,6 +3444,21 @@ legend {
 .btn-messenger {
   background: #0084ff;
   color: #fff;
+}
+
+.btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+}
+
+/* A contact the seller never gave. Still a real button - tapping it explains
+   why it does nothing - so it must not look disabled-and-inert, only muted.
+   The doubled class beats .btn-call/.btn-whatsapp/.btn-messenger, which are
+   equal specificity and would otherwise win on source order. */
+.btn.is-unavailable.is-unavailable {
+  background: var(--color-bg-alt);
+  color: var(--color-muted);
+  border: 2px dashed var(--color-border);
 }
 
 /* Store directory */

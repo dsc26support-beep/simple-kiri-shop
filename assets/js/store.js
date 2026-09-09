@@ -4,6 +4,7 @@ let currentProducts = [];
 let currentSlug = null;
 let currentStorePhone = null;
 let currentStoreMessenger = null;
+let currentStoreWhatsapp = null;
 
 async function init() {
   currentSlug = getQueryParam('store');
@@ -51,6 +52,7 @@ async function init() {
 
   currentStorePhone = res.storePhone || null;
   currentStoreMessenger = res.storeMessenger || null;
+  currentStoreWhatsapp = res.storeWhatsapp || null;
 
   const phoneLine = document.getElementById('store-phone-line');
   if (res.storePhone) {
@@ -267,17 +269,16 @@ function renderBookingVendorContact(productId) {
   const contactEl = document.getElementById(`booking-contact-${productId}`);
   if (!contactEl) return;
 
-  const buttons = [];
-  if (currentStorePhone) {
-    buttons.push(`<a class="btn btn-call" href="tel:${escapeHtml(currentStorePhone)}">${PHONE_ICON_SVG}Call Now</a>`);
-  }
-  if (currentStoreMessenger) {
-    buttons.push(`<a class="btn btn-messenger" href="${escapeHtml(messengerUrl(currentStoreMessenger))}" target="_blank" rel="noopener">${MESSENGER_ICON_SVG}Messenger</a>`);
-  }
-  if (buttons.length === 0) return;
-
-  contactEl.innerHTML = buttons.join('');
+  // All three, whether or not the seller has them: a missing button used to
+  // just vanish, which reads as Mwakete being broken rather than as the seller
+  // not having WhatsApp. An unavailable one says so when tapped.
+  contactEl.innerHTML = sellerContactButtons({
+    phone: currentStorePhone,
+    whatsapp: currentStoreWhatsapp,
+    messenger: currentStoreMessenger
+  });
   contactEl.classList.remove('hidden');
+  wireContactUnavailable();
 }
 
 function wireProductEvents() {
