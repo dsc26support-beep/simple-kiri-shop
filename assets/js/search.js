@@ -67,6 +67,10 @@ async function init() {
   });
 
   document.getElementById('search-input').value = currentQuery;
+  // Setting .value fires no 'input' event, so the submit button would sit
+  // collapsed until the shopper touched the field. Sync it here rather than
+  // waiting for the rAF fallback in helpers.js, which would show a flicker.
+  syncSearchSubmit(document.getElementById('search-form'));
   document.getElementById('search-form').addEventListener('submit', onSearchSubmit);
 
   wireControls();

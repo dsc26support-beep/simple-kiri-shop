@@ -1027,6 +1027,40 @@ function showChatNotificationToast(text, onClick) {
   setTimeout(dismiss, CHAT_TOAST_AUTO_DISMISS_MS);
 }
 
+/* ===================== Search submit reveal =====================
+ *
+ * On a phone the search bar has no submit button until there is something to
+ * submit - the first keystroke fades one in. All the visual work is in
+ * styles.css; this only keeps the .is-empty class in step with the field.
+ *
+ * Wired for EVERY .search-box on the site (home, search, store directory, and
+ * inside a store) from one place, because all four are the same bar and a
+ * shopper moving between them should not meet two different behaviours.
+ */
+function syncSearchSubmit(form) {
+  if (!form) return;
+  const input = form.querySelector('input[type="search"]');
+  if (!input) return;
+  form.classList.toggle('is-empty', input.value.trim() === '');
+}
+
+function wireSearchSubmitReveal() {
+  const forms = document.querySelectorAll('.search-box');
+  forms.forEach((form) => {
+    const input = form.querySelector('input[type="search"]');
+    if (!input) return;
+    syncSearchSubmit(form);
+    input.addEventListener('input', () => syncSearchSubmit(form));
+    // 'input' does not fire for a value set from script, and search.html
+    // prefills from ?q= in its own DOMContentLoaded handler - which runs AFTER
+    // this one, since this listener is registered first. Without the re-check,
+    // arriving with a query would show the field as empty.
+    requestAnimationFrame(() => syncSearchSubmit(form));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', wireSearchSubmitReveal);
+
 /**
  * A vendor's Messenger field can be a bare username ("my.store.page"), an
  * @handle, or a full URL they pasted themselves - normalize all three into

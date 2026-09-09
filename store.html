@@ -118,7 +118,13 @@
         <form id="products-search-form" class="search-box" role="search">
           <label class="sr-only" for="products-search-input">Search products</label>
           <input id="products-search-input" type="search" placeholder="Search Products (e.g. rice, t-shirt)">
-          <button type="submit" class="btn btn-primary">Search</button>
+          <!-- The label stays in the markup at every width: on the phone it is
+               clipped rather than removed, so the button's accessible name is
+               still "Search" even when only the glass is drawn. -->
+          <button type="submit" class="btn btn-primary search-submit">
+            <svg class="search-submit-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+            <span class="search-submit-label">Search</span>
+          </button>
         </form>
         <p id="products-status" class="helper-text is-reserving-space" role="status">Loading products…</p>
         <div id="product-list" class="product-grid"></div>
