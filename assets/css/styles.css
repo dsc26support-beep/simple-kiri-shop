@@ -1878,8 +1878,68 @@ footer.site-footer .copyright {
   color: var(--color-purple);
 }
 
+/* The reviews block is a <details>. Shut on arrival, because on a phone the
+   open form alone (five star radios, a textarea and a button) ran taller than
+   the product it belongs to. */
 .reviews-section {
-  margin-top: var(--space-5);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.reviews-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  font-weight: 700;
+  /* Both needed: the first kills Safari's triangle, the second every other
+     browser's. The chevron below replaces it. */
+  list-style: none;
+}
+
+.reviews-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.reviews-toggle-title {
+  font-size: 1.05rem;
+}
+
+/* The score, so a shut section still tells a shopper what people think. */
+.reviews-toggle-score {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-muted);
+}
+
+/* Chevron, pushed to the far edge and turned when open. */
+.reviews-toggle::after {
+  content: "";
+  margin-left: auto;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--color-muted);
+  border-bottom: 2px solid var(--color-muted);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform .15s ease;
+}
+
+.reviews-section[open] .reviews-toggle::after {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reviews-toggle::after {
+    transition: none;
+  }
+}
+
+/* Tight under the toggle: the heading and "No reviews yet" read as one block
+   rather than two things with a hole between them. */
+.reviews-body {
+  padding-bottom: var(--space-3);
 }
 
 .reviews-summary {
@@ -1888,6 +1948,20 @@ footer.site-footer .copyright {
   align-items: center;
   gap: var(--space-4);
   margin-bottom: var(--space-3);
+}
+
+/* The empty state is one line of text, not a panel - it needs no gap above it
+   and only a small one below. */
+.reviews-summary:has(.helper-text:only-child) {
+  gap: 0;
+  margin-bottom: var(--space-2);
+}
+
+/* The first line of the body sits right under the toggle. A paragraph's own
+   top margin is what put a hole between the heading and "Be the first...". */
+.reviews-body > :first-child,
+.reviews-summary > .helper-text:only-child {
+  margin-top: 0;
 }
 
 .reviews-average {

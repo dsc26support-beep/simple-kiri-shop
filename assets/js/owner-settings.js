@@ -525,7 +525,7 @@ async function onSetStoreStatus(status) {
 async function onDeleteStore() {
   const confirmed = confirm(
     'Delete your store? It will disappear from the directory immediately and you\'ll be signed out and unable to log back in. ' +
-    'Your data stays on file - contact admin@mwakete.com if you ever need it restored. This cannot be undone from the dashboard.'
+    'Your data stays on file - contact now via the Enquiry link below if you ever need it restored. This cannot be undone from the dashboard.'
   );
   if (!confirmed) return;
 
