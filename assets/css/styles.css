@@ -27,6 +27,19 @@
   box-sizing: border-box;
 }
 
+/* The browser's own [hidden] rule is `display: none` at the very bottom of the
+   cascade, so ANY class that sets display beats it and the element stays on
+   screen with its hidden attribute quietly doing nothing. That is how the
+   category page's "More..." pill sat in the corner of a two-product category:
+   .btn made it a flex box. It also affected #results-toolbar (display:flex) and
+   #filters-count (display:inline-flex) on the search page.
+
+   One rule, so setting el.hidden always actually hides. !important because the
+   whole point is to outrank a component class. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
