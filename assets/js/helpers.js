@@ -654,10 +654,13 @@ function initials(name) {
  * seller's form short. It is guidance, not a constraint the backend enforces.
  * `popular` is the small set the homepage shows before "View all categories".
  */
+// label  - what a shopper sees (the homepage strip: Products / Rentals / Services).
+// seller  - what the seller sees when filing ONE listing, so it is singular:
+//           "Mushroom is a Product", not "a Products".
 const LISTING_TYPES = [
-  { id: 'product', label: 'Products', seller: 'Something to sell', order: 1 },
-  { id: 'rental',  label: 'Rentals',  seller: 'Something to rent out', order: 2 },
-  { id: 'service', label: 'Services', seller: 'A service to offer', order: 3 }
+  { id: 'product', label: 'Products', seller: 'Product', order: 1 },
+  { id: 'rental',  label: 'Rentals',  seller: 'Rental',  order: 2 },
+  { id: 'service', label: 'Services', seller: 'Service', order: 3 }
 ];
 
 const ALL_TYPES = ['product', 'rental', 'service'];
