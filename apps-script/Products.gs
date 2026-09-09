@@ -499,6 +499,7 @@ function actionListProducts(params) {
       storeName: owner.StoreName,
       storePhone: owner.Phone,
       storeMessenger: owner.Messenger,
+      storeWhatsapp: owner.WhatsApp,
       storeLogoUrl: owner.LogoUrl,
       storeIsland: owner.Island,
       storeVillage: owner.Village,
@@ -706,6 +707,11 @@ function actionGetOwnerProfile(owner) {
 
 function actionUpdateOwnerProfile(owner, body) {
   var sheet = getSheet('Owners');
+  // WhatsApp is new. Created past the last header so no existing column moves
+  // and no data row is touched - Owners is not in REQUIRED_TABS, so setupSheets
+  // must never rewrite its header row. Without this the write would be silently
+  // DROPPED: updateRowFromObject matches by header name.
+  ensureColumn(sheet, 'WhatsApp');
   var update = {};
 
   if (body.storeName !== undefined) {
@@ -722,6 +728,11 @@ function actionUpdateOwnerProfile(owner, body) {
     var messengerErr = capLength(body.messenger, 100, 'Facebook Messenger');
     if (messengerErr) return messengerErr;
     update.Messenger = body.messenger;
+  }
+  if (body.whatsapp !== undefined) {
+    var whatsappErr = capLength(body.whatsapp, 30, 'WhatsApp number');
+    if (whatsappErr) return whatsappErr;
+    update.WhatsApp = body.whatsapp;
   }
   if (body.island !== undefined) {
     var islandErr = capLength(body.island, 100, 'Island');

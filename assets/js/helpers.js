@@ -219,7 +219,7 @@ function showLoadingOverlay() {
 // and resolves - the caller awaits it before revealing the next screen.
 // Used on checkout to confirm "the seller has been emailed" for a beat
 // before the Order Received page appears.
-function showOrderSentPopup(message, ms) {
+function showOrderSentPopup(message, ms, opts) {
   return new Promise((resolve) => {
     let overlay = document.getElementById('order-sent-popup');
     if (!overlay) {
@@ -234,6 +234,11 @@ function showOrderSentPopup(message, ms) {
       document.body.appendChild(overlay);
     }
     overlay.querySelector('.order-sent-text').textContent = message;
+    // The green tick means "done". A popup that says the seller has no
+    // WhatsApp is not a success, so it asks for the plain variant - and the
+    // class is toggled, not just added, because this overlay is created once
+    // and reused for every popup on the page.
+    overlay.classList.toggle('order-sent-popup--plain', !!(opts && opts.icon === false));
     overlay.classList.add('is-visible');
     setTimeout(() => {
       overlay.classList.remove('is-visible');
@@ -261,6 +266,18 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = String(str == null ? '' : str);
   return div.innerHTML;
+}
+
+/**
+ * escapeHtml for a value going inside an HTML *attribute*.
+ *
+ * textContent -> innerHTML escapes &, < and >, but NOT quotes - which is
+ * exactly what an attribute needs escaped. A seller-entered value dropped into
+ * href="..." with only escapeHtml could close the quote and add an attribute of
+ * its own, so anything interpolated into an attribute goes through this.
+ */
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // Word-level fuzzy matching for "similar products": case differences never
@@ -637,10 +654,13 @@ function initials(name) {
  * seller's form short. It is guidance, not a constraint the backend enforces.
  * `popular` is the small set the homepage shows before "View all categories".
  */
+// label  - what a shopper sees (the homepage strip: Products / Rentals / Services).
+// seller  - what the seller sees when filing ONE listing, so it is singular:
+//           "Mushroom is a Product", not "a Products".
 const LISTING_TYPES = [
-  { id: 'product', label: 'Products', seller: 'Something to sell', order: 1 },
-  { id: 'rental',  label: 'Rentals',  seller: 'Something to rent out', order: 2 },
-  { id: 'service', label: 'Services', seller: 'A service to offer', order: 3 }
+  { id: 'product', label: 'Products', seller: 'Product', order: 1 },
+  { id: 'rental',  label: 'Rentals',  seller: 'Rental',  order: 2 },
+  { id: 'service', label: 'Services', seller: 'Service', order: 3 }
 ];
 
 const ALL_TYPES = ['product', 'rental', 'service'];
@@ -924,6 +944,12 @@ const PHONE_ICON_SVG =
 const MESSENGER_ICON_SVG =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.15 2 11.25c0 2.9 1.44 5.49 3.7 7.19V22l3.38-1.86c.9.25 1.86.38 2.92.38 5.52 0 10-4.15 10-9.27S17.52 2 12 2z"></path><path d="M7 13.5l3.5-3.5 2.5 2.5 3.5-3.5"></path></svg>';
 
+// Inline like every other icon here: no icon library, no extra request. Drawn
+// in the same 24-box, single-stroke style as the phone and messenger glyphs so
+// the three buttons sit together as a set.
+const WHATSAPP_ICON_SVG =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path><path d="M8.5 10.5c.5 2 2.5 4 4.5 4.5l1.2-1.2 2 .9v1.6c-2.6.4-6.2-2.2-7.4-5.4l1.4-1.2z"></path></svg>';
+
 const CHAT_NOTIFICATION_ICON_SVG =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>';
 
@@ -1001,6 +1027,40 @@ function showChatNotificationToast(text, onClick) {
   setTimeout(dismiss, CHAT_TOAST_AUTO_DISMISS_MS);
 }
 
+/* ===================== Search submit reveal =====================
+ *
+ * On a phone the search bar has no submit button until there is something to
+ * submit - the first keystroke fades one in. All the visual work is in
+ * styles.css; this only keeps the .is-empty class in step with the field.
+ *
+ * Wired for EVERY .search-box on the site (home, search, store directory, and
+ * inside a store) from one place, because all four are the same bar and a
+ * shopper moving between them should not meet two different behaviours.
+ */
+function syncSearchSubmit(form) {
+  if (!form) return;
+  const input = form.querySelector('input[type="search"]');
+  if (!input) return;
+  form.classList.toggle('is-empty', input.value.trim() === '');
+}
+
+function wireSearchSubmitReveal() {
+  const forms = document.querySelectorAll('.search-box');
+  forms.forEach((form) => {
+    const input = form.querySelector('input[type="search"]');
+    if (!input) return;
+    syncSearchSubmit(form);
+    input.addEventListener('input', () => syncSearchSubmit(form));
+    // 'input' does not fire for a value set from script, and search.html
+    // prefills from ?q= in its own DOMContentLoaded handler - which runs AFTER
+    // this one, since this listener is registered first. Without the re-check,
+    // arriving with a query would show the field as empty.
+    requestAnimationFrame(() => syncSearchSubmit(form));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', wireSearchSubmitReveal);
+
 /**
  * A vendor's Messenger field can be a bare username ("my.store.page"), an
  * @handle, or a full URL they pasted themselves - normalize all three into
@@ -1013,6 +1073,91 @@ function messengerUrl(handle) {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return 'https://m.me/' + encodeURIComponent(trimmed.replace(/^@/, '').replace(/^m\.me\//i, ''));
 }
+
+/* ===================== Seller contact buttons =====================
+ *
+ * Call / WhatsApp / Messenger, shown once a customer has sent a booking
+ * request or placed an order. Waiting on a vendor should not mean having no way
+ * to reach them.
+ *
+ * ALL THREE ARE ALWAYS SHOWN, even when the seller has not given that contact
+ * method. Hiding the missing ones - what the store page used to do - leaves the
+ * customer wondering whether the seller has no WhatsApp or whether Mwakete is
+ * broken. Tapping an unavailable one says so plainly instead.
+ */
+
+// Kiribati first, English under it. The WhatsApp line is the wording the site
+// owner gave; the other two follow its pattern.
+const NO_CONTACT_MESSAGES = {
+  call: 'Akea ana namba te seller aio — this seller has no phone number.',
+  whatsapp: 'Akea ana WhatsApp te seller aio — this seller has no WhatsApp.',
+  messenger: 'Akea ana Messenger te seller aio — this seller has no Messenger.'
+};
+
+/**
+ * wa.me needs a full international number with no plus and no punctuation.
+ *
+ * This is the part that would quietly break: a Kiribati number is stored as
+ * eight local digits (73007552), and wa.me/73007552 is not a real number
+ * anywhere - the link would open WhatsApp on an error rather than the seller.
+ * classifyKiribatiPhone already knows whether a number is local, so a local one
+ * gets Kiribati's 686 prefix and an overseas one is passed through as dialled.
+ */
+function whatsappUrl(number) {
+  const raw = String(number || '').trim();
+  if (!raw) return '';
+  const parsed = classifyKiribatiPhone(raw);
+  const digits = String(parsed.national || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return 'https://wa.me/' + (parsed.local ? '686' + digits : digits);
+}
+
+/**
+ * The three buttons, from whatever the store actually has.
+ *
+ * `contacts` is { phone, whatsapp, messenger }. WhatsApp falls back to the
+ * contact phone when the seller has not set a separate one, which is what makes
+ * this work for every existing seller on day one - most people's WhatsApp is
+ * their phone number, and asking them all to re-enter it would mean the button
+ * said "no WhatsApp" for the whole marketplace until they did.
+ */
+function sellerContactButtons(contacts) {
+  const c = contacts || {};
+  const phone = String(c.phone || '').trim();
+  const whatsapp = String(c.whatsapp || '').trim() || phone;
+  const messenger = String(c.messenger || '').trim();
+
+  const btn = (kind, href, icon, label) => (href
+    ? `<a class="btn btn-${kind}" href="${escapeAttr(href)}"${kind === 'call' ? '' : ' target="_blank" rel="noopener"'}>${icon}${label}</a>`
+    : `<button type="button" class="btn btn-${kind} is-unavailable" data-no-contact="${kind}">${icon}${label}</button>`);
+
+  return [
+    btn('call', phone ? 'tel:' + phone : '', PHONE_ICON_SVG, 'Call'),
+    btn('whatsapp', whatsappUrl(whatsapp), WHATSAPP_ICON_SVG, 'WhatsApp'),
+    btn('messenger', messengerUrl(messenger), MESSENGER_ICON_SVG, 'Messenger')
+  ].join('');
+}
+
+/**
+ * One delegated listener per page for every unavailable-contact button.
+ *
+ * Delegated on document rather than bound per button because these blocks are
+ * rendered after an async response, sometimes more than once on the store page
+ * (one per booking card), and re-binding on each render is how duplicate
+ * handlers accumulate.
+ */
+function wireContactUnavailable() {
+  if (window.__contactUnavailableWired) return;
+  window.__contactUnavailableWired = true;
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-no-contact]');
+    if (!btn) return;
+    e.preventDefault();
+    const msg = NO_CONTACT_MESSAGES[btn.dataset.noContact];
+    if (msg) showOrderSentPopup(msg, 2600, { icon: false });
+  });
+}
+
 
 /**
  * Wraps a password input with a show/hide toggle button. Safe to call once

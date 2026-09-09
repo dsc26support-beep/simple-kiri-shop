@@ -351,29 +351,91 @@ section {
   flex: 1;
 }
 
-/* Mobile only (<=600px): collapse the "Search" submit button's label to a bold
-   ">" so it takes less width next to the input. font-size:0 hides the text node
-   but leaves the real "Search" text in the DOM, so the button's accessible name
-   is unchanged for screen readers; the glyph is drawn via ::after at its own
-   size. Scoped to .search-box so the Continue/Place Order/chat Send buttons are
-   untouched. */
+/* The magnifier is the phone treatment only - desktop and tablet keep the
+   written "Search" pill, which has room for the word. */
+.search-submit-icon {
+  display: none;
+}
+
+/* Mobile only (<=600px): the submit ARRIVES WHEN YOU TYPE.
+   At rest the field is full width with nothing beside it; the first keystroke
+   fades in a purple disc carrying a magnifying glass.
+
+   This replaces a font-size:0 + ::after ">" chevron. Two things were wrong with
+   it: ">" reads as "next", not as "search", and stripping the pill to
+   transparent left it looking like a stray bracket rather than a control.
+
+   Purple, not the .btn-primary blue, so the disc rhymes with the active chip
+   sitting directly under it on the search and home pages. The desktop pill is
+   untouched.
+
+   Scoped to .search-box so the Continue / Place Order / chat Send buttons are
+   not affected. */
 @media (max-width: 600px) {
-  .search-box button[type="submit"] {
-    font-size: 0;
-    padding-left: var(--space-3);
-    padding-right: var(--space-3);
-    /* Drop the blue pill on mobile - the ">" reads as a bare dark-grey chevron.
-       Colour it (the ::after inherits this) since the .btn-primary white would be
-       invisible once the background is gone. */
-    background: transparent;
-    border-color: transparent;
-    color: var(--color-muted);
+  .search-box .search-submit {
+    /* A flex item stretches to the tallest sibling by default, which made this
+       a 44x45 ellipse rather than a disc - the field is 45px tall. Fixed height
+       plus align-self keeps it perfectly round and centred against the field. */
+    align-self: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 999px;
+    background: var(--color-purple);
+    transition: opacity .18s ease, transform .18s ease, width .18s ease,
+                min-width .18s ease, border-width .18s ease;
   }
-  .search-box button[type="submit"]::after {
-    content: ">";
-    font-size: 1.35rem;
-    font-weight: 800;
-    line-height: 1;
+
+  .search-box .search-submit-icon {
+    display: block;
+  }
+
+  /* Clipped, not display:none - a display:none label is dropped from the
+     accessible name, and the button would announce as just "button". */
+  .search-box .search-submit-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Nothing typed: the button collapses AND the flex gap closes with it, so the
+     input is genuinely full width rather than 8px short of it.
+
+     visibility:hidden, delayed to the end of the transition, is what takes the
+     collapsed button out of the tab order and the accessibility tree. A
+     zero-width button that is still focusable is worse than no button at all -
+     a keyboard or screen-reader user would land on something they cannot see. */
+  .search-box.is-empty {
+    gap: 0;
+  }
+  .search-box.is-empty .search-submit {
+    width: 0;
+    min-width: 0;
+    border-width: 0;
+    opacity: 0;
+    transform: scale(.6);
+    overflow: hidden;
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity .18s ease, transform .18s ease, width .18s ease,
+                min-width .18s ease, border-width .18s ease, visibility 0s .18s;
+  }
+}
+
+/* Both states need the reset: the .is-empty rule is more specific than the base
+   one, so a single selector here would leave the collapse animating. */
+@media (prefers-reduced-motion: reduce) {
+  .search-box .search-submit,
+  .search-box.is-empty .search-submit {
+    transition: none;
   }
 }
 
@@ -2095,6 +2157,17 @@ footer.site-footer .copyright {
   color: #fff;
 }
 
+/* Same card, no green tick - for popups that report something rather than
+   confirm it (e.g. "this seller has no WhatsApp"). */
+.order-sent-popup--plain .order-sent-check {
+  display: none;
+}
+
+.order-sent-popup--plain .order-sent-card {
+  font-weight: 500;
+  text-align: center;
+}
+
 .loading-dots {
   display: inline-flex;
   align-items: center;
@@ -3410,7 +3483,19 @@ legend {
 }
 
 .booking-vendor-contact .btn {
+  /* Three across on the narrowest phone. min-width:0 is what actually allows
+     it - a flex item refuses to shrink below its content otherwise, so the row
+     would overflow rather than divide. */
   flex: 1 1 0;
+  min-width: 0;
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+}
+
+@media (max-width: 380px) {
+  .booking-vendor-contact .btn {
+    font-size: 0.85rem;
+  }
 }
 
 .btn-call {
@@ -3421,6 +3506,21 @@ legend {
 .btn-messenger {
   background: #0084ff;
   color: #fff;
+}
+
+.btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+}
+
+/* A contact the seller never gave. Still a real button - tapping it explains
+   why it does nothing - so it must not look disabled-and-inert, only muted.
+   The doubled class beats .btn-call/.btn-whatsapp/.btn-messenger, which are
+   equal specificity and would otherwise win on source order. */
+.btn.is-unavailable.is-unavailable {
+  background: var(--color-bg-alt);
+  color: var(--color-muted);
+  border: 2px dashed var(--color-border);
 }
 
 /* Store directory */

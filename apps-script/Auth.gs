@@ -83,6 +83,10 @@ function publicOwnerFields(owner) {
     email: owner.Email,
     phone: owner.Phone,
     messenger: owner.Messenger,
+    // Optional. Sellers who use WhatsApp on a different line set it; everyone
+    // else leaves it blank and the client falls back to Phone, so an existing
+    // seller gets a working WhatsApp button without touching their settings.
+    whatsapp: owner.WhatsApp,
     logoUrl: owner.LogoUrl,
     island: owner.Island,
     village: owner.Village,
@@ -117,6 +121,10 @@ function publicStoreFields(owner) {
     storeSlug: owner.StoreSlug,
     phone: owner.Phone,
     messenger: owner.Messenger,
+    // Optional. Sellers who use WhatsApp on a different line set it; everyone
+    // else leaves it blank and the client falls back to Phone, so an existing
+    // seller gets a working WhatsApp button without touching their settings.
+    whatsapp: owner.WhatsApp,
     logoUrl: owner.LogoUrl,
     island: owner.Island,
     village: owner.Village,

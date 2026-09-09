@@ -53,6 +53,9 @@ function fillForm(owner) {
   document.getElementById('contact-email').value = owner.email || '';
   document.getElementById('contact-phone').value = owner.phone || '';
   document.getElementById('contact-messenger').value = owner.messenger || '';
+  // Blank is the normal state: an empty box means "same as the contact phone",
+  // which is what the customer-facing button falls back to.
+  document.getElementById('contact-whatsapp').value = owner.whatsapp || '';
 
   DELIVERY_BUTTONS.forEach(({ id, costId, method }) => {
     const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
@@ -298,6 +301,7 @@ async function onSaveSettings(e) {
     email: document.getElementById('contact-email').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
     messenger: document.getElementById('contact-messenger').value.trim(),
+    whatsapp: document.getElementById('contact-whatsapp').value.trim(),
     island: document.getElementById('settings-island').value,
     village: village
   };

@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', init);
 
+let storeContact = { phone: '', whatsapp: '', messenger: '' };
 let product = null;
 let slug = null;
 
@@ -46,6 +47,10 @@ async function init() {
   // Shared with the chat window (storeIsOpen in chat-window.js). Only an
   // explicit false closes, so an older backend still reads as open.
   window.__storeOpen = res.storeOpen !== false;
+  // Kept for the post-booking contact buttons below - the response is not in
+  // scope by the time a request is sent.
+  storeContact = { phone: res.storePhone || '', whatsapp: res.storeWhatsapp || '',
+                   messenger: res.storeMessenger || '' };
 
   document.getElementById('store-name-tagline').textContent = res.storeName || 'Store';
   if (res.storeLogoUrl) {
@@ -189,6 +194,20 @@ async function onRequestBooking(btn) {
   }
   btn.textContent = 'Requested';
   statusEl.textContent = 'Booking request sent — the vendor will confirm or decline.';
+
+  // This page rendered no way to reach the seller at all after a request - the
+  // store page had the contact block and this one, which is where most rental
+  // requests actually come from, silently did not.
+  const contactEl = document.getElementById(`booking-contact-${pid}`);
+  if (contactEl) {
+    contactEl.innerHTML = sellerContactButtons({
+      phone: storeContact.phone,
+      whatsapp: storeContact.whatsapp,
+      messenger: storeContact.messenger
+    });
+    contactEl.classList.remove('hidden');
+    wireContactUnavailable();
+  }
 }
 
 /* ---------- Ratings & reviews ---------- */

@@ -22,7 +22,7 @@ function renderProductCard(product, opts) {
   // it. draggable="false" keeps a mouse drag across the gallery from picking
   // the link up instead of swiping the photos.
   const photoLink = (inner) => (href
-    ? `<a class="product-card-link" href="${escapeHtml(href)}" tabindex="-1">${inner}</a>`
+    ? `<a class="product-card-link" href="${escapeAttr(href)}" tabindex="-1">${inner}</a>`
     : inner);
   const drag = href ? ' draggable="false"' : '';
 
@@ -54,7 +54,7 @@ function renderProductCard(product, opts) {
   // on, which is why this one keeps its tab stop while the photo above drops
   // its own.
   const nameHtml = href
-    ? `<a class="product-card-link product-name-link" href="${escapeHtml(href)}">${escapeHtml(product.name)}</a>`
+    ? `<a class="product-card-link product-name-link" href="${escapeAttr(href)}">${escapeHtml(product.name)}</a>`
     : escapeHtml(product.name);
 
   // Same label as the browse cards use (formatPriceLabel in helpers.js), so

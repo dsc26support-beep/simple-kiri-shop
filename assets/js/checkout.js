@@ -530,7 +530,26 @@ function showConfirmation(orderResult, payload) {
   const summaryText = buildSummaryText(orderResult.orderId, payload, orderResult.items.map((i) => ({ label: i.label, unitPrice: i.unitPrice, qty: i.qty })), orderResult.total, orderResult.deliveryCost);
   document.getElementById('order-summary-text').value = summaryText;
 
-  wireCallLink();
+  renderOrderContact();
+}
+
+/**
+ * Call / WhatsApp / Messenger under the order confirmation.
+ *
+ * The page told the customer to "CALL SELLER NOW" and then offered only a Call
+ * button - so a customer whose seller is easiest to reach on WhatsApp had to
+ * copy the number out by hand. All three are shown, and an unavailable one says
+ * so rather than being hidden.
+ */
+function renderOrderContact() {
+  const el = document.getElementById('order-contact');
+  if (!el) return;
+  el.innerHTML = sellerContactButtons({
+    phone: storeInfo ? storeInfo.phone : '',
+    whatsapp: storeInfo ? storeInfo.whatsapp : '',
+    messenger: storeInfo ? storeInfo.messenger : ''
+  });
+  wireContactUnavailable();
 }
 
 function showFallbackConfirmation(payload, cart) {
@@ -545,19 +564,8 @@ function showFallbackConfirmation(payload, cart) {
   document.getElementById('checkout-section').classList.add('hidden');
   document.getElementById('confirmation-section').classList.remove('hidden');
   document.getElementById('confirmation-intro').textContent = `We couldn't reach the store's order system, but you can still send your order directly, ${payload.customerName}.`;
+  // This path matters MORE than the happy one: the order never reached the
+  // backend, so reaching the seller by hand is the only thing that completes it.
+  renderOrderContact();
   document.getElementById('order-summary-text').value = summaryText;
-  wireCallLink();
-}
-
-// The post-order action is now a single green "Call Seller Now!" button (a tel:
-// link to the store's phone). Stores always register a phone, but guard anyway.
-function wireCallLink() {
-  const callLink = document.getElementById('call-seller-link');
-  if (storeInfo && storeInfo.phone) {
-    callLink.href = `tel:${storeInfo.phone}`;
-    callLink.innerHTML = PHONE_ICON_SVG + 'Call Seller Now!';
-    callLink.classList.remove('hidden');
-  } else {
-    callLink.classList.add('hidden');
-  }
 }
