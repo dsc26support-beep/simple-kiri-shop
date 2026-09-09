@@ -160,9 +160,23 @@ header.site-header .container.store-branding {
   padding-top: 0;
 }
 
+/* Height reserved at first paint, because everything inside it arrives from
+   the API ~900ms later and growing then pushed the whole page down.
+   Measured before this rule: the box went 20px -> 68px (store name, phone
+   line, delivery-icons row) and product.html scored CLS 0.847 - 8.5x the
+   failing threshold - because at that moment `main` was only 108px tall, so
+   the 44px displacement covered most of the viewport. store.html had the same
+   cause at 0.047, lower only because its product grid was already tall.
+
+   68px is the full three-line case (name + phone + icons), measured identical
+   at 320/390/1366px. A store with no phone and one delivery method settles at
+   44px and keeps 24px of empty space - deliberate: reserving the common case
+   costs a little whitespace on a sparse store, while under-reserving costs a
+   visible jump on every page that has the full set. */
 .store-branding-info {
   text-align: left;
   min-width: 0;
+  min-height: 68px;
 }
 
 .site-branding .site-title {

@@ -1,0 +1,114 @@
+[
+  {
+    "path": "/product.html?store=bong&product=p0",
+    "total": 0.8534,
+    "shifts": [
+      {
+        "value": 0.8532362914735139,
+        "at": 879,
+        "sources": [
+          {
+            "node": "div.store-branding-info",
+            "from": [
+              44,
+              20
+            ],
+            "to": [
+              54,
+              44
+            ]
+          },
+          {
+            "node": "p#store-name-tagline.site-tagline",
+            "from": [
+              44,
+              20
+            ],
+            "to": [
+              54,
+              20
+            ]
+          },
+          {
+            "node": "main#main.page-products",
+            "from": [
+              98,
+              108
+            ],
+            "to": [
+              142,
+              702
+            ]
+          },
+          {
+            "node": "p",
+            "from": [
+              150,
+              24
+            ],
+            "to": [
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.00014714723000209062,
+        "at": 255,
+        "sources": [
+          {
+            "node": "p",
+            "from": [
+              146,
+              24
+            ],
+            "to": [
+              150,
+              24
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/store.html?store=bong",
+    "total": 0.047,
+    "shifts": [
+      {
+        "value": 0.04704225397234034,
+        "at": 909,
+        "sources": [
+          {
+            "node": "div.store-branding-info",
+            "from": [
+              44,
+              20
+            ],
+            "to": [
+              54,
+              44
+            ]
+          },
+          {
+            "node": "main#main.page-products",
+            "from": [
+              84,
+              760
+            ],
+            "to": [
+              128,
+              716
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/index.html",
+    "total": 0,
+    "shifts": []
+  }
+]

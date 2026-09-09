@@ -69,6 +69,7 @@ function actionAddFeatured(owner, body) {
     SortOrder: maxOrder + 1,
     CreatedAt: nowIso()
   });
+  invalidateCache([TIPS_CACHE_KEY]);
   return ok({});
 }
 
@@ -77,6 +78,7 @@ function actionRemoveFeatured(owner, body) {
   var sheet = getSheet('Featured');
   var row = findRowById(sheet, 'FeaturedId', String(body.featuredId || ''));
   if (row) sheet.deleteRow(row.__row);
+  invalidateCache([TIPS_CACHE_KEY]);
   return ok({});
 }
 
@@ -85,7 +87,22 @@ function actionRemoveFeatured(owner, body) {
 // Resolves featured products to the browse-card shape (same as
 // actionSearchProducts) and featured stores to a lightweight store object,
 // skipping missing or inactive refs, preserving the admin's order.
+// Admin-curated and changed by hand a few times a week, but it costs FOUR
+// full-tab reads (Featured, Owners, Variants, Products) and was uncached, so
+// every visit to the Tips page paid all four. 300s matches the homepage's
+// top-products cache, which is the same kind of slow-moving editorial data.
+// addFeatured/removeFeatured drop the key, so an admin's change is visible
+// immediately rather than up to five minutes later.
+var TIPS_CACHE_TTL_SECONDS = 300;
+var TIPS_CACHE_KEY = 'v1:tips';
+
 function actionGetTips(params) {
+  return getCached(TIPS_CACHE_KEY, TIPS_CACHE_TTL_SECONDS, function () {
+    return buildTips();
+  });
+}
+
+function buildTips() {
   var featured = sheetToObjects(getSheet('Featured'));
   featured.sort(function (a, b) { return Number(a.SortOrder) - Number(b.SortOrder); });
 

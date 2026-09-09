@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Homepage: open category shortcut",
+    "path": "/index.html",
+    "clickToPaintMs": 295,
+    "worstEventMs": 16,
+    "inputDelayMs": 1,
+    "processingMs": 0,
+    "presentationMs": 15,
+    "eventsOver16ms": 8
+  },
+  {
+    "name": "Browse: switch category in rail",
+    "path": "/categories.html",
+    "clickToPaintMs": 118,
+    "worstEventMs": 32,
+    "inputDelayMs": 3,
+    "processingMs": 0,
+    "presentationMs": 30,
+    "eventsOver16ms": 15
+  },
+  {
+    "name": "Browse: More… (page next 12)",
+    "path": "/categories.html",
+    "clickToPaintMs": 109,
+    "worstEventMs": 32,
+    "inputDelayMs": 1,
+    "processingMs": 0,
+    "presentationMs": 32,
+    "eventsOver16ms": 13
+  },
+  {
+    "name": "Store: add to cart",
+    "path": "/store.html?store=bong",
+    "clickToPaintMs": 131,
+    "worstEventMs": 56,
+    "inputDelayMs": 2,
+    "processingMs": 0,
+    "presentationMs": 54,
+    "eventsOver16ms": 18
+  },
+  {
+    "name": "Store: open chat",
+    "path": "/store.html?store=bong",
+    "clickToPaintMs": 202,
+    "worstEventMs": 48,
+    "inputDelayMs": 4,
+    "processingMs": 0,
+    "presentationMs": 44,
+    "eventsOver16ms": 21
+  },
+  {
+    "name": "Store: filter products (type)",
+    "path": "/store.html?store=bong",
+    "clickToPaintMs": 404,
+    "worstEventMs": 48,
+    "inputDelayMs": 4,
+    "processingMs": 0,
+    "presentationMs": 44,
+    "eventsOver16ms": 35
+  },
+  {
+    "name": "Stores: open a store card",
+    "path": "/stores.html",
+    "clickToPaintMs": 272,
+    "worstEventMs": 48,
+    "inputDelayMs": 8,
+    "processingMs": 0,
+    "presentationMs": 40,
+    "eventsOver16ms": 15
+  }
+]

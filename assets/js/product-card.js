@@ -33,11 +33,11 @@ function renderProductCard(product, opts) {
   const media =
     product.imageUrl && product.imageUrl2
       ? `<div class="product-gallery-track">
-          ${photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)}
-          ${photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl2, IMG_W.card))}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)}
+          ${photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)}
+          ${photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl2, IMG_W.card))}"${srcsetAttr(product.imageUrl2, IMG_SIZES_CARD)} alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)}
         </div>`
       : product.imageUrl
-      ? photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)
+      ? photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)
       : photoLink(`<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`);
 
   const thumbs =

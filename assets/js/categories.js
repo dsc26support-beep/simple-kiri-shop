@@ -151,7 +151,7 @@ function render() {
  */
 function renderCategoryTile(product) {
   const media = product.imageUrl
-    ? `<img class="category-tile-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="" loading="lazy" decoding="async">`
+    ? `<img class="category-tile-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_TILE)} alt="" loading="lazy" decoding="async">`
     : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   return `

@@ -1,0 +1,54 @@
+{
+  "imgs": [
+    {
+      "path": "assets/img/app-icon-ios-1024.png",
+      "bytes": 131846,
+      "format": "png",
+      "w": 1024,
+      "h": 1024
+    },
+    {
+      "path": "assets/img/app-icon-android-512.png",
+      "bytes": 26329,
+      "format": "png",
+      "w": 512,
+      "h": 512
+    },
+    {
+      "path": "assets/img/app-icon-maskable-512.png",
+      "bytes": 9598,
+      "format": "png",
+      "w": 512,
+      "h": 512
+    },
+    {
+      "path": "assets/img/app-icon-192.png",
+      "bytes": 3233,
+      "format": "png",
+      "w": 192,
+      "h": 192
+    },
+    {
+      "path": "assets/img/apple-touch-icon-180.png",
+      "bytes": 2954,
+      "format": "png",
+      "w": 180,
+      "h": 180
+    },
+    {
+      "path": "assets/img/app-icon-source.svg",
+      "bytes": 599,
+      "format": "svg",
+      "w": 100,
+      "h": 100
+    },
+    {
+      "path": "assets/img/favicon.svg",
+      "bytes": 549,
+      "format": "svg",
+      "w": 100,
+      "h": 100
+    }
+  ],
+  "totalBytes": 175108
+}
