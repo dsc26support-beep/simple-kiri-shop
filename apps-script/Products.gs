@@ -712,6 +712,9 @@ function actionUpdateOwnerProfile(owner, body) {
   // must never rewrite its header row. Without this the write would be silently
   // DROPPED: updateRowFromObject matches by header name.
   ensureColumn(sheet, 'WhatsApp');
+  // Same additive treatment for the auth-code channel. Appended past the last
+  // header, so nothing moves and no vendor row is touched.
+  ensureColumn(sheet, 'AuthChannel');
   var update = {};
 
   if (body.storeName !== undefined) {
@@ -728,6 +731,13 @@ function actionUpdateOwnerProfile(owner, body) {
     var messengerErr = capLength(body.messenger, 100, 'Facebook Messenger');
     if (messengerErr) return messengerErr;
     update.Messenger = body.messenger;
+  }
+  if (body.authChannel !== undefined) {
+    // Allowlisted, not length-capped: this value is read back as a switch, so
+    // anything outside the two known channels must not reach the sheet.
+    var channel = String(body.authChannel || '').toLowerCase();
+    if (channel !== 'email' && channel !== 'sms') return fail('Choose email or SMS for your login codes');
+    update.AuthChannel = channel;
   }
   if (body.whatsapp !== undefined) {
     var whatsappErr = capLength(body.whatsapp, 30, 'WhatsApp number');

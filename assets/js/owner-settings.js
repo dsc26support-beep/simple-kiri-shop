@@ -373,13 +373,30 @@ async function onChangePassword(e) {
   setTimeout(() => { successEl.textContent = ''; }, 3000);
 }
 
+/**
+ * How a code will actually arrive, in words.
+ *
+ * Reads authChannelEffective, not authChannel: a vendor whose stored preference
+ * is 'sms' still gets email while no SMS sender is configured, and copy that
+ * says "we texted you" while the code sits in an inbox is worse than no copy.
+ */
+function authChannelPhrase(owner) {
+  return (owner && owner.authChannelEffective) === 'sms' ? 'texted' : 'emailed';
+}
+
+// The owner row as last rendered. Kept so the enable-2FA hint can name the
+// right channel without a second round trip - renderTwoFAStatus already runs on
+// load and after every save, so this is never stale by more than a save.
+let lastRenderedOwner = null;
+
 function renderTwoFAStatus(owner) {
+  lastRenderedOwner = owner;
   const statusEl = document.getElementById('twofa-status');
   const enableBtn = document.getElementById('twofa-enable-btn');
   const disableBtn = document.getElementById('twofa-disable-btn');
 
   if (owner.twoFAEnabled) {
-    statusEl.textContent = '2FA is currently ON. You’ll be emailed a code each time you log in.';
+    statusEl.textContent = `2FA is currently ON. You’ll be ${authChannelPhrase(owner)} a code each time you log in.`;
     enableBtn.classList.add('hidden');
     disableBtn.classList.remove('hidden');
   } else {
@@ -411,6 +428,10 @@ async function onRequestEnable2FA() {
   }
 
   document.getElementById('twofa-verify-token').value = res.verifyToken;
+  const hint = document.getElementById('twofa-confirm-hint');
+  if (hint) {
+    hint.textContent = `We ${authChannelPhrase(lastRenderedOwner)} you a 6-digit code. Enter it below to turn on 2FA.`;
+  }
   document.getElementById('twofa-confirm-form').classList.remove('hidden');
   document.getElementById('twofa-confirm-code').focus();
 }
