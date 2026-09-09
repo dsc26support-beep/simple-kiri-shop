@@ -1613,6 +1613,13 @@ footer.site-footer .copyright {
   cursor: pointer;
 }
 
+/* "Boat / Ship" was breaking at both spaces and stacking three lines tall
+   inside its own pill. A chip label is two or three words by definition, so it
+   never wants to wrap. */
+.filter-chip {
+  white-space: nowrap;
+}
+
 .filter-chip:focus-within {
   outline: 2px solid var(--color-blue);
   outline-offset: 2px;
@@ -1641,6 +1648,67 @@ footer.site-footer .copyright {
   font-size: 0.9rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* Phone and tablet only: tighten the results toolbar and the filter panel.
+
+   1. The sort select stood 44px tall beside a 36px Filters button, so the two
+      controls in one toolbar row did not share a height. The select matches the
+      button now and keeps its width - it still flexes to fill the row.
+
+   2. Price and Delivery put their label BESIDE the control instead of stacked
+      above it, which is two fewer lines of panel before the results. A grid
+      rather than flex so both rows share one label column and the two controls
+      start at the same x.
+
+   Named rows only. #filter-available-row has no .filters-label at all - its
+   checkbox carries its own text - so a blanket .filters-row rule would drop
+   that checkbox into the narrow label column and squash it. #filter-store-row
+   is left stacked deliberately: its select needs the full width. */
+@media (max-width: 1024px) {
+  .results-toolbar .results-sort-field select {
+    min-height: 36px;
+    height: 36px;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: 0.9rem;
+  }
+
+  .filters-panel #filter-price-row,
+  .filters-panel #filter-delivery-row {
+    display: grid;
+    grid-template-columns: minmax(0, 8em) minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-3);
+  }
+
+  .filters-panel #filter-price-row .filters-label,
+  .filters-panel #filter-delivery-row .filters-label {
+    margin-bottom: 0;
+  }
+
+  /* The delivery chips are fixed-width pills, and beside a label there is only
+     ~180px left on a 390px phone - so wrapping put ONE chip per line and made
+     the panel taller than the stacked version it replaced. One scrolling row
+     instead, the same idiom as the category strips higher up the page: the
+     label keeps its place beside the control and the row costs 44px, not 190.
+     The cut-off third chip is the cue that there is more to reach. */
+  .filters-panel #filter-delivery-row .filters-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .filters-panel #filter-delivery-row .filters-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filters-panel #filter-delivery-row .filter-chip {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
 }
 
 .checkbox-line {
