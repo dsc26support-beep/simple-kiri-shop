@@ -84,15 +84,20 @@
 
         <div class="filters-panel" id="filters-panel" hidden>
           <div class="filters-row" id="filter-price-row">
-            <span class="filters-label" id="price-range-label">Price</span>
+            <!-- Label and current value share the line ABOVE the slider so the
+                 bar itself gets the full width of the panel. Between them they
+                 were taking ~220px of a 358px row. -->
+            <div class="price-row-head">
+              <span class="filters-label" id="price-range-label">Price</span>
+              <output id="filter-price-out" for="filter-price-max"></output>
+            </div>
             <div class="price-range" role="group" aria-labelledby="price-range-label">
               <label class="sr-only" for="filter-price-max">Maximum price</label>
               <input type="range" id="filter-price-max" min="0" max="100" step="1" value="100">
-              <output id="filter-price-out" for="filter-price-max"></output>
             </div>
           </div>
           <div class="filters-row" id="filter-delivery-row">
-            <span class="filters-label" id="delivery-filter-label">Delivery available</span>
+            <span class="filters-label" id="delivery-filter-label">Delivery</span>
             <div class="filters-chips" id="filter-delivery" role="group" aria-labelledby="delivery-filter-label"></div>
           </div>
           <div class="filters-row" id="filter-store-row">

@@ -1613,37 +1613,41 @@ footer.site-footer .copyright {
 
 /* Chips are labels wrapping a real checkbox: the control stays keyboard
    reachable and screen-reader correct, the label just restyles it. */
+/* A checkbox with its word beside it - no pill, no border, no fill.
+   As buttons these were ~130px each, so three of them could not sit beside a
+   label on a 390px phone and had to scroll sideways; a shopper met a chopped
+   "/ Ship" at the edge. Plain checkboxes fit on one row with space to spare. */
 .filter-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.4em;
   min-height: 44px;
-  padding: 0.35em 0.9em;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-bg);
+  padding: 0;
+  border: 0;
+  background: none;
   font-size: 0.9rem;
   cursor: pointer;
-}
-
-/* "Boat / Ship" was breaking at both spaces and stacking three lines tall
-   inside its own pill. A chip label is two or three words by definition, so it
-   never wants to wrap. */
-.filter-chip {
+  /* Two or three words by definition, so it never wants to wrap - "Boat / Ship"
+     used to break at both spaces and stand three lines tall. */
   white-space: nowrap;
 }
 
 .filter-chip:focus-within {
   outline: 2px solid var(--color-blue);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
+/* Weight alone marks a ticked one now. The box itself already says checked;
+   a second fill behind it was the button styling talking. */
 .filter-chip:has(input:checked) {
-  border-color: var(--color-blue);
-  background: #e8f0fb;
   font-weight: 600;
 }
 
+/* The slider gets the full width of the panel. The label and the current value
+   share the line above it, so neither eats into the bar - between them they
+   were taking ~220px of a 358px row, leaving the bar shorter than the text
+   describing it. */
 .price-range {
   display: flex;
   align-items: center;
@@ -1654,6 +1658,34 @@ footer.site-footer .copyright {
   flex: 1 1 auto;
   min-width: 0;
   height: 44px;
+}
+
+#filter-price-row {
+  display: block;
+}
+
+#filter-price-row .price-range {
+  display: block;
+}
+
+#filter-price-row .price-range input[type="range"] {
+  display: block;
+  width: 100%;
+}
+
+.price-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.price-row-head output {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-muted);
 }
 
 .price-range output {
@@ -1687,7 +1719,6 @@ footer.site-footer .copyright {
     font-size: 0.9rem;
   }
 
-  .filters-panel #filter-price-row,
   .filters-panel #filter-delivery-row {
     display: grid;
     grid-template-columns: minmax(0, 8em) minmax(0, 1fr);
@@ -1695,32 +1726,27 @@ footer.site-footer .copyright {
     column-gap: var(--space-3);
   }
 
-  .filters-panel #filter-price-row .filters-label,
   .filters-panel #filter-delivery-row .filters-label {
     margin-bottom: 0;
   }
 
-  /* The delivery chips are fixed-width pills, and beside a label there is only
-     ~180px left on a 390px phone - so wrapping put ONE chip per line and made
-     the panel taller than the stacked version it replaced. One scrolling row
-     instead, the same idiom as the category strips higher up the page: the
-     label keeps its place beside the control and the row costs 44px, not 190.
-     The cut-off third chip is the cue that there is more to reach. */
-  .filters-panel #filter-delivery-row .filters-chips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
+  /* These used to scroll sideways, because as fixed-width PILLS three of them
+     could not fit beside a label and wrapping put one per line. They are plain
+     checkboxes now - 64 to 101px each instead of ~130 - so they wrap onto two
+     short lines and every option is visible at once. Scrolling hid the third
+     one behind a swipe nobody was told about, and a filter a shopper cannot
+     see is a filter they will not use.
+
+     The label column shrinks with them: "Delivery" is one short word and does
+     not need 8em. */
+  .filters-panel #filter-delivery-row {
+    grid-template-columns: minmax(0, 5.5em) minmax(0, 1fr);
+    align-items: start;
   }
 
-  .filters-panel #filter-delivery-row .filters-chips::-webkit-scrollbar {
-    display: none;
-  }
-
-  .filters-panel #filter-delivery-row .filter-chip {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
+  .filters-panel #filter-delivery-row .filters-label {
+    /* Back on the first line of chips now that the row can be two lines tall. */
+    line-height: 44px;
   }
 }
 
@@ -3154,6 +3180,46 @@ textarea {
   min-height: 44px;
   background: #fff;
   color: var(--color-ink);
+}
+
+/* A checkbox is not a text box. The rule above was giving every checkbox and
+   radio on the site a 44px height, a border, padding and width:100% - which is
+   why they rendered as big empty squares beside their labels, on the search
+   filters, the checkout delivery choices and the owner fee-mode picks alike.
+
+   The 44px thumb target is not lost: it moves to the LABEL wrapping each
+   control, which is where it belongs anyway - the whole row becomes tappable
+   rather than just the box. Every one of those wrappers is given the height
+   explicitly below, so shrinking these controls cannot shrink a tap target. */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  min-height: 0;
+  inline-size: 20px;
+  block-size: 20px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  accent-color: var(--color-blue);
+}
+
+/* The five labels that wrap a checkbox or radio. Each carries the 44px target
+   the control itself no longer provides. */
+.checkbox-line,
+.filter-chip,
+.review-star-choice,
+.delivery-method-option,
+.delivery-fee-mode-choice {
+  min-height: 44px;
+}
+
+.delivery-fee-mode-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  cursor: pointer;
 }
 
 textarea {
