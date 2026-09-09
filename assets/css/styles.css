@@ -3018,6 +3018,13 @@ footer.site-footer .copyright {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   }
 
+  /* Tips lives in the bottom nav at this width - one of its five tabs - so the
+     header link would be the same destination twice on one screen. Above 700px
+     the bottom nav is display:none and the header link is the only way in. */
+  .site-nav .nav-tips {
+    display: none;
+  }
+
   /* The empty <p> the button leaves behind on mobile would otherwise still
      hold its own margin open under the last row of products. */
   .load-more-row:empty {
