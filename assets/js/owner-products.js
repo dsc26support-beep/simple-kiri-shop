@@ -1,17 +1,27 @@
 document.addEventListener('DOMContentLoaded', init);
 
-// The "Varieties & Prices" block is reused for rentals and services, where
-// "Label (e.g. 500g, Large)" reads wrong - a rental sells a duration, a service
-// sells a named job. These relabel the heading and each row's first field.
+// The variety block is reused for rentals and services, where "Variety" reads
+// wrong - a rental sells a duration, a service sells a named job. These relabel
+// the section and each row's first field.
 //
 // Driven by the LISTING TYPE now, not the category. It used to key off
 // 'rentals'/'services' as categories; those became types, and a rental can now
 // sit in any category. Kept local to the owner form - it is portal copy, not
 // shared logic.
+//
+// The label is now just the noun. The example moved into the input's
+// placeholder: the label sits above EVERY row, so "Label (e.g. 500g, Large)"
+// repeated the same parenthetical down the whole form, and on a narrow phone it
+// wrapped onto two lines each time (see the seller's screenshot).
 function varietyRowLabelText(listingType) {
-  if (listingType === 'rental') return 'Duration (e.g. ½ day, per day, per week)';
-  if (listingType === 'service') return 'Service Name (e.g. Car Wash start price)';
-  return 'Label (e.g. 500g, Large)';
+  if (listingType === 'rental') return 'Duration';
+  if (listingType === 'service') return 'Service Name';
+  return 'Variety';
+}
+function varietyRowPlaceholderText(listingType) {
+  if (listingType === 'rental') return 'e.g. ½ day, per day, per week';
+  if (listingType === 'service') return 'e.g. Car Wash start price';
+  return 'e.g. 500g, Large';
 }
 function varietiesSectionText(listingType) {
   if (listingType === 'rental') return 'Rental Durations & Prices';
@@ -222,11 +232,13 @@ function addVariantRow(variant) {
   const wrapper = document.createElement('div');
   wrapper.className = 'variant-row';
   wrapper.dataset.variantId = variant ? variant.variantId : '';
-  const rowLabel = varietyRowLabelText(document.getElementById('product-listing-type').value);
+  const listingType = document.getElementById('product-listing-type').value;
+  const rowLabel = varietyRowLabelText(listingType);
+  const rowPlaceholder = varietyRowPlaceholderText(listingType);
   wrapper.innerHTML = `
     <div class="field">
       <label for="${rowId}-label">${escapeHtml(rowLabel)}</label>
-      <input id="${rowId}-label" class="variant-label" value="${variant ? escapeHtml(variant.label) : ''}" required>
+      <input id="${rowId}-label" class="variant-label" placeholder="${escapeAttr(rowPlaceholder)}" value="${escapeAttr(variant ? variant.label : '')}" required>
     </div>
     <div class="field">
       <label for="${rowId}-price">Price</label>
@@ -238,17 +250,23 @@ function addVariantRow(variant) {
   document.getElementById('variant-rows').appendChild(wrapper);
 }
 
-// Retitle the section heading and each already-added variety row for the
-// currently selected category. Called on category change and after openForm
-// builds the rows, so switching to Rentals/Services after adding rows keeps
-// every row's label in sync.
+// Retitle the section and each already-added variety row for the currently
+// selected listing type. Called on type change and after openForm builds the
+// rows, so switching to Rental/Service after adding rows keeps every row in
+// sync.
+//
+// The section heading is still written even though it is now visually hidden -
+// it is what names this group of fields to a screen reader, and the visible
+// "Variety"/"Price" column labels only describe one row each.
 function updateVarietyLabels() {
-  const cat = document.getElementById('product-listing-type').value;
-  document.getElementById('varieties-label').textContent = varietiesSectionText(cat);
-  const rowLabel = varietyRowLabelText(cat);
+  const listingType = document.getElementById('product-listing-type').value;
+  document.getElementById('varieties-label').textContent = varietiesSectionText(listingType);
+  const rowLabel = varietyRowLabelText(listingType);
+  const rowPlaceholder = varietyRowPlaceholderText(listingType);
   document.querySelectorAll('#variant-rows .variant-row .variant-label').forEach((input) => {
     const label = input.closest('.field').querySelector('label');
     if (label) label.textContent = rowLabel;
+    input.placeholder = rowPlaceholder;
   });
 }
 
@@ -313,7 +331,10 @@ async function onSaveProduct(e) {
   }));
 
   if (variants.some((v) => !v.label || isNaN(v.price) || v.price < 0)) {
-    errorEl.textContent = 'Please fill in a label and a valid price for every variety.';
+    // Name the field the way the form now names it - "fill in a label" points
+    // at a word that is no longer on screen.
+    const noun = varietyRowLabelText(document.getElementById('product-listing-type').value).toLowerCase();
+    errorEl.textContent = `Please fill in a ${noun} and a valid price for every row.`;
     return;
   }
   if (variants.length === 0) {

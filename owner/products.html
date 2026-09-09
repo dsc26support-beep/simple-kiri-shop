@@ -81,7 +81,11 @@
           </div>
 
           <div class="field">
-            <label id="varieties-label">Varieties &amp; Prices</label>
+            <!-- Visually removed: the "Variety" and "Price" labels on the rows
+                 below already say what this block is, so the heading only
+                 repeated itself. Kept in the markup as sr-only because it is
+                 what names the group to a screen reader. -->
+            <label id="varieties-label" class="sr-only">Varieties &amp; Prices</label>
             <div id="variant-rows"></div>
             <button type="button" id="add-variant-btn" class="btn btn-small">+ Add Variety</button>
           </div>
