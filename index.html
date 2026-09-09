@@ -43,20 +43,34 @@
   </header>
 
   <main id="main" class="home-main page-products">
+    <!-- Search first, because that is how someone who knows what they want
+         gets there fastest. Everything below is for someone who does not. -->
     <section class="hero">
       <div class="container">
         <form id="search-form" class="search-box" role="search">
-          <label class="sr-only" for="search-input">Search products</label>
-          <input id="search-input" type="search" placeholder="Search products (e.g. rice, t-shirt)">
+          <label class="sr-only" for="search-input">Search products, services and rentals</label>
+          <input id="search-input" type="search" placeholder="Search products, services, rentals…">
           <button type="submit" class="btn btn-primary">Search</button>
         </form>
       </div>
     </section>
 
+    <!-- Two strips, two different questions. This one asks what KIND of thing
+         you want; the one below asks what it IS. Both are rendered from the
+         shared taxonomy in helpers.js and scroll sideways rather than wrapping,
+         so neither eats the first screen. Their heights are reserved in CSS so
+         filling them in cannot push the products down. -->
+    <section class="listing-types" aria-labelledby="listing-types-heading">
+      <div class="container">
+        <h2 id="listing-types-heading" class="sr-only">Browse by type</h2>
+        <nav class="chip-strip" id="listing-type-strip" aria-label="Filter by listing type"></nav>
+      </div>
+    </section>
+
     <section class="categories" aria-labelledby="categories-heading">
       <div class="container">
-        <h2 id="categories-heading" class="sr-only">Shop by category</h2>
-        <div class="category-buttons" id="category-buttons"></div>
+        <h2 id="categories-heading" class="section-title-sm">Popular Categories</h2>
+        <nav class="chip-strip" id="category-strip" aria-label="Popular categories"></nav>
       </div>
     </section>
 

@@ -1,7 +1,10 @@
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
-  renderCategoryButtons('category-buttons');
+  // Both strips come from the shared taxonomy and need no backend at all, so
+  // they are on screen with the first paint rather than after a round trip.
+  renderListingTypeStrip('listing-type-strip', '');
+  renderCategoryStrip('category-strip');
   document.getElementById('search-form').addEventListener('submit', onSearchSubmit);
   loadHomePageData();
 }

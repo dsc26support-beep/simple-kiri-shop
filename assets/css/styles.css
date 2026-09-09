@@ -381,23 +381,116 @@ section {
   padding-top: var(--space-3);
 }
 
-/* Home page, mobile & tablet only (<=1024px): show the category buttons ABOVE
-   the search bar, and add one extra spacer between the stacked sections
-   (categories, search box, Trending Products). Scoped to .home-main (only
-   index.html's <main> carries that class) so no other page's #main is touched;
-   above 1024px this doesn't apply and the original block order/spacing stands.
-   Explicit order on every child so a default-0 child can't jump ahead. */
+/* Home page, mobile & tablet (<=1024px): stack the sections with one extra
+   spacer between them, in the order search -> listing types -> categories ->
+   discovery.
+
+   This used to put the categories ABOVE the search bar. Search leads now:
+   someone who knows what they want should not scroll past two rows of
+   navigation to type it, and the strips below are for the shopper who doesn't.
+
+   Explicit order on EVERY child, because a child without one defaults to 0 and
+   silently jumps to the front - which is exactly what happened when the
+   listing-type strip was added and it landed above the search box at every
+   width up to 1024px. Any new section here needs an order too.
+
+   Scoped to .home-main (only index.html's <main> carries it) so no other page's
+   #main is touched. */
 @media (max-width: 1024px) {
   .home-main {
     display: flex;
     flex-direction: column;
     row-gap: var(--space-4);
   }
-  .home-main > .categories { order: 1; }
-  .home-main > .hero { order: 2; }
-  .home-main > .trending-products { order: 3; }
-  .home-main > .trending-stores { order: 4; }
-  .home-main > noscript { order: 5; }
+  .home-main > .hero { order: 1; }
+  .home-main > .listing-types { order: 2; }
+  .home-main > .categories { order: 3; }
+  .home-main > .trending-products { order: 4; }
+  .home-main > .trending-stores { order: 5; }
+  .home-main > noscript { order: 6; }
+}
+
+/* Horizontally scrolling chip strips: the listing-type filter and the popular
+   categories on the homepage, and the category bar on the browse page. One
+   rule set, because they are the same UX pattern asking two questions.
+
+   A strip rather than a wrapping block on purpose: twelve categories wrapped
+   into rows fill a phone's first screen, and the whole point is that products
+   are visible without scrolling past the navigation. Sideways scrolling keeps
+   the strip one row tall at every width. */
+.chip-strip {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  /* Momentum + snap so a thumb-flick lands on a chip rather than mid-word. */
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* Reserved so filling the strip in cannot push the products below it down -
+     the mistake that cost the product page a 0.847 CLS. One row of 40px chips
+     plus the scroll gutter, identical at every width because it never wraps. */
+  min-height: 52px;
+  padding-bottom: var(--space-2);
+  /* Bleed to the screen edge so the last chip is visibly cut off - the cue
+     that there is more to scroll to - while the first still lines up with the
+     text above it. */
+  margin-left: calc(var(--space-3) * -1);
+  margin-right: calc(var(--space-3) * -1);
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+.chip-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.chip-strip-item {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  /* 40px tall: a comfortable thumb target without making the strip tall. */
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  text-decoration: none;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.chip-strip-item:hover {
+  border-color: var(--color-purple);
+}
+
+/* The selected chip, in the Mwakete purple the bottom nav already uses for its
+   active tab - one idea of "you are here" across the whole site. */
+.chip-strip-item.is-active {
+  background: var(--color-purple);
+  border-color: var(--color-purple);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* "View all categories" closes the strip. Marked out as an action rather than
+   another category so it does not read as a thirteenth one. */
+.chip-strip-item--more {
+  border-style: dashed;
+  color: var(--color-purple);
+  font-weight: 600;
+}
+
+.section-title-sm {
+  font-size: 1rem;
+  margin: 0 0 var(--space-2);
+}
+
+/* From tablet up there is room for the chips to breathe. */
+@media (min-width: 700px) {
+  .chip-strip { gap: var(--space-3); }
+  .chip-strip-item { min-height: 44px; padding: 0 18px; font-size: 0.9rem; }
 }
 
 .category-buttons {
@@ -2720,6 +2813,12 @@ footer.site-footer .copyright {
   /* Keep page content clear of the fixed bar. */
   body.has-bottom-nav { padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
 
+  /* Exactly one cart entry per viewport. The bottom bar carries a Cart tab on a
+     phone, so the header button would be a second control for the same thing;
+     above 700px the bar is display:none and the header button is the only way
+     to the cart, so it stays. */
+  .header-cart { display: none; }
+
   /* Parking space for a page's secondary control, directly above the Account
      tab (the 5th of 5 equal columns, hence right:0 / width:20%).
 
@@ -2916,6 +3015,28 @@ legend {
   background: var(--color-blue);
 }
 
+/* Swatch colours for the twelve categories. Shown only when a listing has no
+   photo, so they are a fallback, not a brand palette - each is dark enough for
+   white initials to stay readable on it.
+
+   The legacy ids below them are kept: categoryIdOf() maps stored values to the
+   new ids everywhere, but a cached page or an old service-worker entry can
+   still render one for a navigation or two after a release. */
+.placeholder-swatch.category-food { background: #8a5a2c; }
+.placeholder-swatch.category-fashion { background: var(--color-red); }
+.placeholder-swatch.category-electronics { background: #2a6f97; }
+.placeholder-swatch.category-home { background: #4a5568; }
+.placeholder-swatch.category-building { background: #6b4423; }
+.placeholder-swatch.category-vehicles { background: #1f4e5f; }
+.placeholder-swatch.category-fishing { background: #0f766e; }
+.placeholder-swatch.category-agriculture { background: #3f6212; }
+.placeholder-swatch.category-property { background: #7c3f00; }
+.placeholder-swatch.category-services { background: #166534; }
+.placeholder-swatch.category-education { background: #5b21b6; }
+.placeholder-swatch.category-events { background: #9d174d; }
+.placeholder-swatch.category-other { background: var(--color-blue); }
+
+/* Legacy ids - see note above. */
 .placeholder-swatch.category-pantry { background: #8a5a2c; }
 .placeholder-swatch.category-clothing { background: var(--color-red); }
 .placeholder-swatch.category-household { background: #4a5568; }

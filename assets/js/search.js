@@ -39,14 +39,32 @@ let allProducts = [];
 let shownCount = PAGE_SIZE;
 let currentQuery = '';
 let currentCategory = '';
+let currentType = '';
 
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
-  renderCategoryButtons('category-buttons');
-
   currentQuery = getQueryParam('q') || '';
   currentCategory = getQueryParam('category') || '';
+  currentType = getQueryParam('type') || '';
+
+  // The same two strips as the homepage, so arriving here from a chip does not
+  // strand the shopper - they can keep moving between types and categories
+  // without going back. Both keep the OTHER filter in the link, so switching
+  // type inside a category stays inside that category.
+  renderListingTypeStrip('listing-type-strip', currentType, {
+    extraParams: { q: currentQuery, category: currentCategory }
+  });
+  renderCategoryStrip('category-strip', {
+    activeId: currentCategory,
+    hrefFor: (id) => {
+      const params = new URLSearchParams();
+      if (currentQuery) params.set('q', currentQuery);
+      params.set('category', id);
+      if (currentType) params.set('type', currentType);
+      return 'search.html?' + params.toString();
+    }
+  });
 
   document.getElementById('search-input').value = currentQuery;
   document.getElementById('search-form').addEventListener('submit', onSearchSubmit);
@@ -384,7 +402,7 @@ async function runSearch(q, category) {
   const headingEl = document.getElementById('results-heading');
 
   if (category) {
-    const match = CATEGORIES.find((c) => c.id === category);
+    const match = categoryById(category);
     headingEl.textContent = match ? match.label : 'Results';
   } else if (q) {
     headingEl.textContent = `Results for "${q}"`;
@@ -393,7 +411,7 @@ async function runSearch(q, category) {
   }
 
   const stopLoading = startLoadingMessage(statusEl);
-  const request = Api.get('searchProducts', { q, category });
+  const request = Api.get('searchProducts', { q, category, type: currentType });
   // The request this page paints from; whenIdle() waits for it (helpers.js).
   window.__criticalReady = request;
   const res = await request;
