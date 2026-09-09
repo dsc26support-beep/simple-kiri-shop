@@ -51,9 +51,16 @@ function initBottomNav() {
   document.body.appendChild(nav);
   document.body.classList.add('has-bottom-nav');
 
-  // The messages dot needs the backend, so it waits until the page has
-  // painted. The cart count moved to the header button (header-cart.js) when
-  // this tab became Browse.
+  // Two stages. The count last seen on this device is painted immediately from
+  // localStorage - no request, no wait - so the badge is on screen with the
+  // first paint instead of appearing a round trip later. Then the real count is
+  // fetched once the page is idle and corrects it.
+  //
+  // Worth it because getCustomerInbox is the most-called action in the site
+  // (every page) and the slowest kind to wait on: three full-tab reads on a
+  // mobile connection. A number that is one navigation old is a far better
+  // badge than no badge at all.
+  paintCachedMessagesBadge();
   whenIdle(updateBottomNavMessagesBadge);
 }
 
@@ -88,13 +95,31 @@ async function updateBottomNavMessagesBadge() {
   if (!res.ok) return;
 
   const total = (res.conversations || []).reduce((sum, c) => sum + navUnreadCountOf(c), 0);
-  if (total <= 0) return;
+  // Unconditionally, including zero: the badge painted from localStorage a
+  // moment ago may be stale, and leaving a count on screen after the messages
+  // have been read is worse than never having shown one.
+  setNavBadge(badge, total);
+  try { localStorage.setItem(NAV_BADGE_CACHE_KEY, String(total)); } catch (e) { /* private mode */ }
+}
 
+var NAV_BADGE_CACHE_KEY = 'skiri_unread_total';
+
+function setNavBadge(badge, total) {
+  if (!badge) return;
+  if (!(total > 0)) { badge.hidden = true; return; }
   // 99+ keeps the pill from growing wide enough to shove the tab's label
   // off-centre, the same cap the header cart badge uses.
   badge.textContent = total > 99 ? '99+' : String(total);
   badge.setAttribute('aria-label', `${total} unread message${total === 1 ? '' : 's'}`);
   badge.hidden = false;
+}
+
+function paintCachedMessagesBadge() {
+  const badge = document.querySelector('.bottom-nav-badge[data-badge="messages"]');
+  if (!badge) return;
+  let total = 0;
+  try { total = Number(localStorage.getItem(NAV_BADGE_CACHE_KEY)) || 0; } catch (e) { return; }
+  setNavBadge(badge, total);
 }
 
 function navInboxSeenAt(slug) {

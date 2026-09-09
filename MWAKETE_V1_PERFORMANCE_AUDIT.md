@@ -605,6 +605,65 @@ Reproduce: `node performance-audit/scripts/gzip-server.js` then `AUDIT_BASE=http
 
 ---
 
+## 21b. Fixes Applied After the Audit
+
+The audit was written before any change. The findings were then acted on; this
+section records what moved. Raw runs for both states are in the CSV, labelled
+`BEFORE fixes` / `AFTER fixes`.
+
+| Finding | Before | After |
+|---|---|---|
+| **P0-1** `product.html` CLS | **0.847** | **0.0237** ✅ |
+| **P0-1** `store.html` CLS (mobile / desktop) | 0.050 / 0.031 | **0 / 0** ✅ |
+| **P2-1** `checkout.html` API calls | 6 | **3** ✅ |
+| **P2-2** `customer-messages.html` inbox requests | 2 | **1** ✅ |
+| **P1-1** `getCustomerInbox` backend caching | none | 20 s, per device ✅ |
+| **P2-5** `getTips` (4 full scans) | uncached | 300 s, invalidated on edit ✅ |
+| `listCustomerOrders` / `listCustomerBookings` | uncached | 30 s, invalidated on write ✅ |
+| **P2-4** responsive images | one width for all devices | `srcset` 200/400/520 + `sizes` ✅ |
+| Unread badge | appeared after a round trip | painted from last known count ✅ |
+| Page weight | 49 KB | 52 KB (+2.4 KB of `srcset` markup) |
+| FCP / LCP | 376 ms mobile-4G | 392 ms — **within the ±20 ms run-to-run spread**, i.e. unchanged |
+
+**How the CLS was fixed:** `.store-branding-info` now reserves 68 px at first
+paint — the measured full three-line height (store name + phone + delivery
+icons), identical at 320/390/1366 px. A store with no phone and one delivery
+method settles at 44 px and keeps 24 px of empty space; that is a deliberate
+trade, since under-reserving reinstates the jump on every store that has the
+full set.
+
+**How the duplicate calls were fixed:** rather than patching each caller,
+`Api` now coalesces requests that are **identical and still in flight** — the
+second caller gets the first one's promise. It is not a cache: the entry is
+dropped as soon as the request settles, so nothing is ever served stale, and
+writes are excluded entirely (two identical `sendMessage` calls are two
+messages the user meant to send). Verified: concurrent reads collapse to one,
+sequential reads still go to the network twice, different reads stay distinct,
+and concurrent writes are still sent twice.
+
+**Not done, and why:**
+
+- **JS bundling (P2-3)** — needs a build step, which this project has never
+  had. That is an architectural decision, not a fix, and was left for a
+  deliberate choice rather than made in passing.
+- **Critical-CSS split (P1-2)** — the audit's own recommendation was to measure
+  CSS coverage first. No coverage run has been done, so splitting would be
+  guesswork on the largest render-blocking asset in the system.
+- **`app-icon-ios-1024.png` (P3-1)** — 131 KB referenced by nothing, but it
+  costs **zero** at runtime and is plausibly kept for an app-store submission.
+  Deleting it would be repo hygiene with a small chance of removing something
+  needed.
+- **`script.googleusercontent.com` preconnect (P3-2)** — still unverified; the
+  audit environment cannot reach it.
+
+**The unquantified one:** `srcset` is strictly better markup — a phone now
+fetches ~400 px for a ~186 px slot instead of 520 px — but the audit could not
+measure real photo bytes, so **the saving is not quantified**. It cost +2.4 KB
+of markup, which is a certain cost against a probable but unmeasured gain. It
+should be re-measured against production photos.
+
+---
+
 ## 22. Limitations
 
 **These matter for how much weight to put on each conclusion.**

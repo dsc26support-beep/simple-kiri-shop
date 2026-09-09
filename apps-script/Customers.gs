@@ -363,6 +363,15 @@ function findOwnRow(body, sheetName, idField, idValue) {
  * pricing path and silently moving the order total. Changing the method is a
  * conversation with the store, which the chat already handles.
  */
+function invalidateCustomerListCaches(customer) {
+  invalidateCache([
+    'v1:custorders:' + customer.CustomerId + ':live',
+    'v1:custorders:' + customer.CustomerId + ':all',
+    'v1:custbookings:' + customer.CustomerId + ':live',
+    'v1:custbookings:' + customer.CustomerId + ':all'
+  ]);
+}
+
 function actionUpdateCustomerOrder(body) {
   var found = findOwnRow(body, 'Orders', 'OrderId', body.orderId);
   if (found.error) return fail(found.error);
@@ -403,6 +412,7 @@ function actionUpdateCustomerOrder(body) {
     UpdatedAt: nowIso()
   });
 
+  invalidateCustomerListCaches(found.customer);
   return ok({ updated: true });
 }
 
@@ -469,6 +479,7 @@ function actionUpdateCustomerBooking(body) {
     lock.releaseLock();
   }
 
+  invalidateCustomerListCaches(found.customer);
   return ok({ updated: true });
 }
 
@@ -497,6 +508,7 @@ function actionSetCustomerOrderArchived(body) {
   patch[CUSTOMER_HIDDEN_AT_COLUMN] = archived ? nowIso() : '';
   updateRowFromObject(found.sheet, o.__row, patch);
 
+  invalidateCustomerListCaches(found.customer);
   return ok({ archived: archived });
 }
 
@@ -517,13 +529,29 @@ function actionSetCustomerBookingArchived(body) {
   patch[CUSTOMER_HIDDEN_AT_COLUMN] = archived ? nowIso() : '';
   updateRowFromObject(found.sheet, b.__row, patch);
 
+  invalidateCustomerListCaches(found.customer);
   return ok({ archived: archived });
 }
+
+// Each of these scans a whole tab (Orders / Bookings) to find one customer's
+// rows, and the Account page fires both together. 30s is enough to collapse
+// that pair plus a filter tap or a back-and-forward, and short enough that a
+// seller marking an order Fulfilled shows up almost immediately. The key
+// includes the archived flag so the Archived filter is cached separately
+// rather than overwriting the default view.
+var CUSTOMER_LIST_CACHE_TTL_SECONDS = 30;
 
 function actionListCustomerOrders(body) {
   var customer;
   try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
 
+  var cacheKey = 'v1:custorders:' + customer.CustomerId + ':' + (body.includeArchived === true ? 'all' : 'live');
+  return getCached(cacheKey, CUSTOMER_LIST_CACHE_TTL_SECONDS, function () {
+    return buildCustomerOrders(customer, body);
+  });
+}
+
+function buildCustomerOrders(customer, body) {
   var email = normalizeEmail(customer.Email);
   var storeName = makeStoreNameResolver();
   // includeArchived is how the Archived filter asks for the hidden ones back.
@@ -569,6 +597,13 @@ function actionListCustomerBookings(body) {
   var customer;
   try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
 
+  var cacheKey = 'v1:custbookings:' + customer.CustomerId + ':' + (body.includeArchived === true ? 'all' : 'live');
+  return getCached(cacheKey, CUSTOMER_LIST_CACHE_TTL_SECONDS, function () {
+    return buildCustomerBookings(customer, body);
+  });
+}
+
+function buildCustomerBookings(customer, body) {
   var email = normalizeEmail(customer.Email);
   var phone = digitsOnly(customer.Phone);
   var storeName = makeStoreNameResolver();

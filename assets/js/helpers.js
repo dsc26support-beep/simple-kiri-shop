@@ -331,6 +331,50 @@ const IMG_W = { logo: 160, thumb: 160, card: 520, chat: 440 };
  * shapes come from. Purely client-side - the backend still stores/returns the
  * full original.
  */
+/**
+ * A srcset for a card photo, so the browser picks a width for the device
+ * instead of every device downloading one.
+ *
+ * Before this, every card requested IMG_W.card (520px) whatever it was drawn
+ * into. Measured slot widths: Browse tiles ~173 CSS px (three across at 390px)
+ * and store cards ~186 px, which at DPR 2 need ~350-372 px - so a phone was
+ * fetching roughly 1.4x more pixels than it could show, and a DPR-1 phone
+ * nearly 3x.
+ *
+ * The widths below bracket the real slots rather than being round numbers:
+ * 200 covers a DPR-1 tile, 400 a DPR-2 tile, 520 keeps the previous quality
+ * ceiling for a wide desktop card so nothing gets softer than it is today.
+ *
+ * Returns '' when the URL is not one the optimizer can resize (an unrecognised
+ * host comes back unchanged from optimizedImageUrl, and three identical URLs
+ * in a srcset would just be noise) - callers omit the attribute entirely then.
+ */
+const IMG_SRCSET_WIDTHS = [200, 400, 520];
+
+function imageSrcset(url, widths) {
+  if (!url || typeof url !== 'string') return '';
+  const list = widths || IMG_SRCSET_WIDTHS;
+  const first = optimizedImageUrl(url, list[0]);
+  // Unresizable host: optimizedImageUrl hands the URL straight back.
+  if (first === url) return '';
+  return list.map((w) => `${optimizedImageUrl(url, w)} ${w}w`).join(', ');
+}
+
+/**
+ * The `sizes` hint that tells the browser how wide the slot will be BEFORE
+ * layout, which is what makes srcset useful at all. Mirrors the real grids:
+ * three across on a phone for Browse tiles, two across for product cards, and
+ * a fixed-ish column on a wide screen.
+ */
+const IMG_SIZES_CARD = '(max-width: 700px) 45vw, 300px';
+const IMG_SIZES_TILE = '(max-width: 700px) 31vw, 220px';
+
+function srcsetAttr(url, sizes) {
+  const set = imageSrcset(url);
+  if (!set) return '';
+  return ` srcset="${escapeHtml(set)}" sizes="${escapeHtml(sizes)}"`;
+}
+
 function optimizedImageUrl(url, width) {
   if (!url || typeof url !== 'string') return url;
   if (url.indexOf('res.cloudinary.com') !== -1) {
@@ -401,7 +445,7 @@ function renderBrowseProductCard(product, opts) {
   const showLocation = !!opts.showLocation;
 
   const media = product.imageUrl
-    ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
+    ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
     : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   const priceText = formatPriceLabel(product.variants);

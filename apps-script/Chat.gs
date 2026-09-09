@@ -85,9 +85,45 @@ function findConversation(storeSlug, customerToken) {
 //
 // A device that sends no seenAt at all pays nothing: the Messages read is
 // skipped entirely and the response is shaped exactly as before.
+// Short, because this action costs three full-tab reads (Conversations, Owners
+// and Messages - the fastest-growing table in the system) and the nav unread
+// badge fires it on EVERY page. A shopper opening five pages in a minute paid
+// fifteen full scans; with this they pay three.
+//
+// 20s rather than the 8-10s the chat window uses: this backs a badge and a list
+// the shopper is not staring at, where the chat window backs a live
+// conversation. It is still short enough that a new message shows up in the
+// badge within one navigation.
+var CUSTOMER_INBOX_CACHE_TTL_SECONDS = 20;
+
+/**
+ * Cache key for one device's inbox request.
+ *
+ * Keyed by a digest of the exact (storeSlug, token, seenAt) set, so it is
+ * per-device by construction: another device with different chat tokens, or the
+ * same device after it opens a thread and advances a read-mark, computes a
+ * different key and never sees this one's answer. Hashed rather than
+ * concatenated so a secret chat token is not sitting in a cache key.
+ */
+function customerInboxCacheKey(stores) {
+  var parts = stores.map(function (s) {
+    return String(s.storeSlug || '') + '|' + String(s.customerToken || '') + '|' + String(s.seenAt || '');
+  }).sort().join('\n');
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, parts, Utilities.Charset.UTF_8);
+  var hex = digest.map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+  return 'v1:custinbox:' + hex;
+}
+
 function actionGetCustomerInbox(body) {
   var stores = Array.isArray(body.stores) ? body.stores.slice(0, 50) : [];
   if (stores.length === 0) return ok({ conversations: [] });
+
+  return getCached(customerInboxCacheKey(stores), CUSTOMER_INBOX_CACHE_TTL_SECONDS, function () {
+    return buildCustomerInbox(stores);
+  });
+}
+
+function buildCustomerInbox(stores) {
 
   var want = {};
   var anySeen = false;
@@ -137,6 +173,7 @@ function actionGetCustomerInbox(body) {
   out.sort(function (a, b) { return new Date(b.lastMessageAt) - new Date(a.lastMessageAt); });
   return ok({ conversations: out });
 }
+
 
 /**
  * Fills in unreadCount on each row of `rows`, in place.

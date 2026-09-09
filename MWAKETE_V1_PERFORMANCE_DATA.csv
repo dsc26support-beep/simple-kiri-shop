@@ -1,49 +1,73 @@
 transport,page,profile,apiLatencyMs,cacheState,auth,fcpMs,lcpMs,lcpElement,cls,ttfbLocalMs,domContentLoadedMs,loadEventMs,requests,transferredBytes,decodedBytes,apiCalls,apiResponseBytes,scriptDurationMs,layoutDurationMs,recalcStyleMs,taskDurationMs,longTasks,longTaskMs
-gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,408,408,,0,2,427,465,17,50442,147313,2,14374,27,115,42,430,2,134
-gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,cold,logged-out,420,420,,0.0503,1,445,468,22,64904,196508,6,23442,33,106,59,505,2,156
-gzip (representative of GitHub Pages),/product.html?store=bong&product=p0,mobile-4g,600,cold,logged-out,416,1140,h2.section-title,0.8471,1,448,478,20,63615,192771,4,4558,38,142,87,582,2,142
-gzip (representative of GitHub Pages),/search.html?q=rice,mobile-4g,600,cold,logged-out,384,384,h1,0,2,401,430,14,51703,155856,2,11576,25,79,55,408,2,110
-gzip (representative of GitHub Pages),/stores.html,mobile-4g,600,cold,logged-out,336,336,,0,1,445,470,13,49766,148331,1,2863,27,70,56,378,1,60
-gzip (representative of GitHub Pages),/categories.html,mobile-4g,600,cold,logged-out,364,364,span.category-rail-label,0,1,383,393,14,49843,148413,2,11576,27,97,44,390,2,127
-gzip (representative of GitHub Pages),/cart.html,mobile-4g,600,cold,logged-out,404,404,h1,0,2,420,447,13,59259,178590,0,0,24,77,14,249,1,78
-gzip (representative of GitHub Pages),/customer-dashboard.html,mobile-4g,600,cold,logged-out,344,344,h1,0,1,343,349,10,44318,138105,0,0,35,90,19,385,0,0
-gzip (representative of GitHub Pages),/index.html,desktop-fast,600,cold,logged-out,76,76,h2,0,1,67,72,18,50442,147313,2,14374,5,27,13,109,0,0
-gzip (representative of GitHub Pages),/store.html?store=bong,desktop-fast,600,cold,logged-out,84,84,,0.0313,1,74,76,22,64904,196508,6,23442,9,27,14,122,0,0
-gzip (representative of GitHub Pages),/index.html,desktop-slow,600,cold,logged-out,608,608,h2,0,1,705,712,18,50442,147313,2,14374,7,30,15,122,0,0
-gzip (representative of GitHub Pages),/store.html?store=bong,desktop-slow,600,cold,logged-out,684,684,,0.0313,1,762,765,22,64904,196508,6,23442,8,29,15,128,0,0
-gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,368,368,,0,1,390,429,17,50442,147313,2,14374,30,104,50,444,2,122
-gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,cold,logged-out,424,424,,0.0503,1,474,509,22,64904,196508,6,23442,59,108,69,588,3,226
-gzip (representative of GitHub Pages),/index.html,mobile-slow3g,600,cold,logged-out,2020,2020,,0,1,2066,2123,17,50442,147313,2,14374,40,172,71,703,3,270
-gzip (representative of GitHub Pages),/store.html?store=bong,mobile-slow3g,600,cold,logged-out,2328,2328,,0.0503,1,2404,2444,22,64904,196508,6,23442,65,179,85,789,3,341
-gzip (representative of GitHub Pages),/index.html,mobile-4g,0,cold,logged-out,376,376,,0,1,401,436,17,50442,147313,2,14374,29,131,17,402,3,200
-gzip (representative of GitHub Pages),/index.html,mobile-4g,300,cold,logged-out,388,388,,0,1,401,439,17,50442,147313,2,14374,27,113,37,398,2,134
-gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,376,376,,0,1,395,427,17,50442,147313,2,14374,28,104,47,431,1,74
-gzip (representative of GitHub Pages),/index.html,mobile-4g,1200,cold,logged-out,388,388,,0,1,414,456,16,50442,147313,2,14374,24,110,74,522,2,140
-gzip (representative of GitHub Pages),/index.html,mobile-4g,2500,cold,logged-out,420,420,,0,1,438,481,14,50442,147313,1,6991,33,96,124,569,2,162
-gzip (representative of GitHub Pages),/index.html,mobile-4g,600,warm,logged-out,128,128,,0,3,152,175,16,0,147313,3,21365,40,170,83,738,0,0
-gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,warm,logged-out,144,144,,0.0503,5,177,210,20,0,196508,10,32118,49,192,99,858,2,106
-gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-in,420,420,,0,1,443,488,17,50442,147313,2,14374,28,124,48,482,2,152
-uncompressed (not representative),/index.html,mobile-4g,600,cold,logged-out,684,684,,0,1,702,744,17,151513,147313,2,14374,31,110,47,519,2,139
-uncompressed (not representative),/store.html?store=bong,mobile-4g,600,cold,logged-out,724,724,,0.0503,1,742,770,22,200708,196508,6,23442,33,114,66,542,3,216
-uncompressed (not representative),/product.html?store=bong&product=p0,mobile-4g,600,cold,logged-out,688,1392,h2.section-title,0.8471,1,708,733,20,196971,192771,4,4558,30,114,71,518,1,66
-uncompressed (not representative),/search.html?q=rice,mobile-4g,600,cold,logged-out,604,604,h1,0,1,616,647,14,159156,155856,2,11576,26,83,52,402,2,111
-uncompressed (not representative),/stores.html,mobile-4g,600,cold,logged-out,460,460,,0,1,559,584,13,151631,148331,1,2863,24,68,44,389,1,58
-uncompressed (not representative),/categories.html,mobile-4g,600,cold,logged-out,588,588,span.category-rail-label,0,1,606,622,14,151713,148413,2,11576,42,111,58,444,2,112
-uncompressed (not representative),/cart.html,mobile-4g,600,cold,logged-out,672,672,h1,0,1,692,724,13,182490,178590,0,0,24,76,15,284,2,132
-uncompressed (not representative),/customer-dashboard.html,mobile-4g,600,cold,logged-out,552,552,h1,0,1,547,552,10,141105,138105,0,0,18,77,14,365,0,0
-uncompressed (not representative),/index.html,desktop-fast,600,cold,logged-out,76,76,h2,0,1,68,74,18,151513,147313,2,14374,5,42,16,133,0,0
-uncompressed (not representative),/store.html?store=bong,desktop-fast,600,cold,logged-out,76,76,,0.0313,1,71,74,22,200708,196508,6,23442,8,27,15,120,0,0
-uncompressed (not representative),/index.html,desktop-slow,600,cold,logged-out,1172,1172,h2,0,1,1126,1147,18,151513,147313,2,14374,5,25,12,116,0,0
-uncompressed (not representative),/store.html?store=bong,desktop-slow,600,cold,logged-out,1408,1408,,0.0313,1,1368,1388,22,200708,196508,6,23442,7,21,13,120,0,0
-uncompressed (not representative),/index.html,mobile-4g,600,cold,logged-out,596,596,,0,1,612,646,17,151513,147313,2,14374,27,105,43,424,2,121
-uncompressed (not representative),/store.html?store=bong,mobile-4g,600,cold,logged-out,736,736,,0.0503,1,756,782,22,200708,196508,6,23442,32,114,72,562,3,217
-uncompressed (not representative),/index.html,mobile-slow3g,600,cold,logged-out,4188,4188,,0,1,4212,4269,17,151513,147313,2,14374,39,179,65,725,3,277
-uncompressed (not representative),/store.html?store=bong,mobile-slow3g,600,cold,logged-out,5212,5212,,0.0503,1,5244,5283,22,200708,196508,6,23442,53,182,105,871,3,345
-uncompressed (not representative),/index.html,mobile-4g,0,cold,logged-out,616,616,,0,1,634,675,17,151513,147313,2,14374,22,133,20,404,3,204
-uncompressed (not representative),/index.html,mobile-4g,300,cold,logged-out,612,612,,0,1,630,671,17,151513,147313,2,14374,23,116,36,408,2,144
-uncompressed (not representative),/index.html,mobile-4g,600,cold,logged-out,616,616,,0,1,629,670,17,151513,147313,2,14374,24,109,47,460,2,130
-uncompressed (not representative),/index.html,mobile-4g,1200,cold,logged-out,616,616,,0,1,628,664,16,151513,147313,2,14374,24,110,84,497,2,129
-uncompressed (not representative),/index.html,mobile-4g,2500,cold,logged-out,604,604,,0,1,612,648,14,151513,147313,1,6991,16,76,95,476,2,121
-uncompressed (not representative),/index.html,mobile-4g,600,warm,logged-out,148,148,,0,2,159,181,16,0,147313,3,21365,38,207,84,752,1,68
-uncompressed (not representative),/store.html?store=bong,mobile-4g,600,warm,logged-out,120,120,,0.0503,4,138,169,20,0,196508,10,32118,41,175,105,802,0,0
-uncompressed (not representative),/index.html,mobile-4g,600,cold,logged-in,668,668,,0,1,549,649,17,151513,147313,2,14374,23,96,45,431,2,154
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,408,408,,0,2,427,465,17,50442,147313,2,14374,27,115,42,430,2,134
+BEFORE fixes - gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,cold,logged-out,420,420,,0.0503,1,445,468,22,64904,196508,6,23442,33,106,59,505,2,156
+BEFORE fixes - gzip (representative of GitHub Pages),/product.html?store=bong&product=p0,mobile-4g,600,cold,logged-out,416,1140,h2.section-title,0.8471,1,448,478,20,63615,192771,4,4558,38,142,87,582,2,142
+BEFORE fixes - gzip (representative of GitHub Pages),/search.html?q=rice,mobile-4g,600,cold,logged-out,384,384,h1,0,2,401,430,14,51703,155856,2,11576,25,79,55,408,2,110
+BEFORE fixes - gzip (representative of GitHub Pages),/stores.html,mobile-4g,600,cold,logged-out,336,336,,0,1,445,470,13,49766,148331,1,2863,27,70,56,378,1,60
+BEFORE fixes - gzip (representative of GitHub Pages),/categories.html,mobile-4g,600,cold,logged-out,364,364,span.category-rail-label,0,1,383,393,14,49843,148413,2,11576,27,97,44,390,2,127
+BEFORE fixes - gzip (representative of GitHub Pages),/cart.html,mobile-4g,600,cold,logged-out,404,404,h1,0,2,420,447,13,59259,178590,0,0,24,77,14,249,1,78
+BEFORE fixes - gzip (representative of GitHub Pages),/customer-dashboard.html,mobile-4g,600,cold,logged-out,344,344,h1,0,1,343,349,10,44318,138105,0,0,35,90,19,385,0,0
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,desktop-fast,600,cold,logged-out,76,76,h2,0,1,67,72,18,50442,147313,2,14374,5,27,13,109,0,0
+BEFORE fixes - gzip (representative of GitHub Pages),/store.html?store=bong,desktop-fast,600,cold,logged-out,84,84,,0.0313,1,74,76,22,64904,196508,6,23442,9,27,14,122,0,0
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,desktop-slow,600,cold,logged-out,608,608,h2,0,1,705,712,18,50442,147313,2,14374,7,30,15,122,0,0
+BEFORE fixes - gzip (representative of GitHub Pages),/store.html?store=bong,desktop-slow,600,cold,logged-out,684,684,,0.0313,1,762,765,22,64904,196508,6,23442,8,29,15,128,0,0
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,368,368,,0,1,390,429,17,50442,147313,2,14374,30,104,50,444,2,122
+BEFORE fixes - gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,cold,logged-out,424,424,,0.0503,1,474,509,22,64904,196508,6,23442,59,108,69,588,3,226
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-slow3g,600,cold,logged-out,2020,2020,,0,1,2066,2123,17,50442,147313,2,14374,40,172,71,703,3,270
+BEFORE fixes - gzip (representative of GitHub Pages),/store.html?store=bong,mobile-slow3g,600,cold,logged-out,2328,2328,,0.0503,1,2404,2444,22,64904,196508,6,23442,65,179,85,789,3,341
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,0,cold,logged-out,376,376,,0,1,401,436,17,50442,147313,2,14374,29,131,17,402,3,200
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,300,cold,logged-out,388,388,,0,1,401,439,17,50442,147313,2,14374,27,113,37,398,2,134
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,376,376,,0,1,395,427,17,50442,147313,2,14374,28,104,47,431,1,74
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,1200,cold,logged-out,388,388,,0,1,414,456,16,50442,147313,2,14374,24,110,74,522,2,140
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,2500,cold,logged-out,420,420,,0,1,438,481,14,50442,147313,1,6991,33,96,124,569,2,162
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,warm,logged-out,128,128,,0,3,152,175,16,0,147313,3,21365,40,170,83,738,0,0
+BEFORE fixes - gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,warm,logged-out,144,144,,0.0503,5,177,210,20,0,196508,10,32118,49,192,99,858,2,106
+BEFORE fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-in,420,420,,0,1,443,488,17,50442,147313,2,14374,28,124,48,482,2,152
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,408,408,,0,1,438,488,17,52905,153482,2,14374,29,141,54,522,3,217
+AFTER fixes - gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,cold,logged-out,452,452,,0,1,480,504,22,67405,202819,6,23442,38,129,71,572,3,234
+AFTER fixes - gzip (representative of GitHub Pages),/product.html?store=bong&product=p0,mobile-4g,600,cold,logged-out,416,1156,h2.section-title,0.0237,1,453,478,20,66116,199082,4,4558,41,130,89,564,3,182
+AFTER fixes - gzip (representative of GitHub Pages),/search.html?q=rice,mobile-4g,600,cold,logged-out,392,392,h1,0,1,411,441,14,54166,162025,2,11576,27,88,58,434,3,171
+AFTER fixes - gzip (representative of GitHub Pages),/stores.html,mobile-4g,600,cold,logged-out,328,328,,0,1,438,458,13,52229,154500,1,2863,24,76,49,373,1,60
+AFTER fixes - gzip (representative of GitHub Pages),/categories.html,mobile-4g,600,cold,logged-out,356,356,span.category-rail-label,0,1,383,395,14,52327,154629,2,11576,30,93,45,374,1,80
+AFTER fixes - gzip (representative of GitHub Pages),/cart.html,mobile-4g,600,cold,logged-out,408,408,h1,0,2,426,451,13,61722,184759,0,0,25,73,14,254,1,75
+AFTER fixes - gzip (representative of GitHub Pages),/customer-dashboard.html,mobile-4g,600,cold,logged-out,364,364,h1,0,1,354,358,10,46358,143096,0,0,27,79,17,361,0,0
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,desktop-fast,600,cold,logged-out,88,108,img.header-logo-mark,0.0015,1,79,84,18,52905,153482,2,14374,5,37,15,128,0,0
+AFTER fixes - gzip (representative of GitHub Pages),/store.html?store=bong,desktop-fast,600,cold,logged-out,76,76,,0,1,76,78,22,67405,202819,6,23442,7,26,13,116,0,0
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,desktop-slow,600,cold,logged-out,608,608,h2,0,1,715,720,18,52905,153482,2,14374,7,25,13,116,0,0
+AFTER fixes - gzip (representative of GitHub Pages),/store.html?store=bong,desktop-slow,600,cold,logged-out,676,676,,0,1,768,771,22,67405,202819,6,23442,8,22,14,117,0,0
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,392,392,,0,1,411,446,17,52905,153482,2,14374,30,118,46,450,2,137
+AFTER fixes - gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,cold,logged-out,424,424,,0,2,449,471,22,67405,202819,6,23442,28,117,65,532,2,170
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-slow3g,600,cold,logged-out,2068,2068,,0,1,2117,2177,17,52905,153482,2,14374,52,194,78,815,3,333
+AFTER fixes - gzip (representative of GitHub Pages),/store.html?store=bong,mobile-slow3g,600,cold,logged-out,2364,2364,,0,1,2431,2461,22,67405,202819,6,23442,50,188,83,833,3,335
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,0,cold,logged-out,392,392,,0,1,414,448,17,52905,153482,2,14374,27,126,20,369,3,184
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,300,cold,logged-out,380,380,,0,1,400,436,17,52905,153482,2,14374,29,114,35,410,2,126
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-out,368,368,,0,1,390,426,17,52905,153482,2,14374,27,103,42,413,2,116
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,1200,cold,logged-out,372,372,,0,1,398,436,16,52905,153482,2,14374,29,104,59,460,2,126
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,2500,cold,logged-out,384,384,,0,1,408,449,14,52905,153482,1,6991,23,80,107,511,2,135
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,warm,logged-out,140,140,,0,3,172,193,16,0,153482,3,21365,34,190,99,804,0,0
+AFTER fixes - gzip (representative of GitHub Pages),/store.html?store=bong,mobile-4g,600,warm,logged-out,152,152,,0,4,171,186,20,0,202819,10,32118,42,182,132,911,2,117
+AFTER fixes - gzip (representative of GitHub Pages),/index.html,mobile-4g,600,cold,logged-in,364,364,,0,1,380,415,17,52905,153482,2,14374,25,98,40,394,2,112
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,600,cold,logged-out,684,684,,0,1,702,744,17,151513,147313,2,14374,31,110,47,519,2,139
+BEFORE fixes - uncompressed (not representative),/store.html?store=bong,mobile-4g,600,cold,logged-out,724,724,,0.0503,1,742,770,22,200708,196508,6,23442,33,114,66,542,3,216
+BEFORE fixes - uncompressed (not representative),/product.html?store=bong&product=p0,mobile-4g,600,cold,logged-out,688,1392,h2.section-title,0.8471,1,708,733,20,196971,192771,4,4558,30,114,71,518,1,66
+BEFORE fixes - uncompressed (not representative),/search.html?q=rice,mobile-4g,600,cold,logged-out,604,604,h1,0,1,616,647,14,159156,155856,2,11576,26,83,52,402,2,111
+BEFORE fixes - uncompressed (not representative),/stores.html,mobile-4g,600,cold,logged-out,460,460,,0,1,559,584,13,151631,148331,1,2863,24,68,44,389,1,58
+BEFORE fixes - uncompressed (not representative),/categories.html,mobile-4g,600,cold,logged-out,588,588,span.category-rail-label,0,1,606,622,14,151713,148413,2,11576,42,111,58,444,2,112
+BEFORE fixes - uncompressed (not representative),/cart.html,mobile-4g,600,cold,logged-out,672,672,h1,0,1,692,724,13,182490,178590,0,0,24,76,15,284,2,132
+BEFORE fixes - uncompressed (not representative),/customer-dashboard.html,mobile-4g,600,cold,logged-out,552,552,h1,0,1,547,552,10,141105,138105,0,0,18,77,14,365,0,0
+BEFORE fixes - uncompressed (not representative),/index.html,desktop-fast,600,cold,logged-out,76,76,h2,0,1,68,74,18,151513,147313,2,14374,5,42,16,133,0,0
+BEFORE fixes - uncompressed (not representative),/store.html?store=bong,desktop-fast,600,cold,logged-out,76,76,,0.0313,1,71,74,22,200708,196508,6,23442,8,27,15,120,0,0
+BEFORE fixes - uncompressed (not representative),/index.html,desktop-slow,600,cold,logged-out,1172,1172,h2,0,1,1126,1147,18,151513,147313,2,14374,5,25,12,116,0,0
+BEFORE fixes - uncompressed (not representative),/store.html?store=bong,desktop-slow,600,cold,logged-out,1408,1408,,0.0313,1,1368,1388,22,200708,196508,6,23442,7,21,13,120,0,0
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,600,cold,logged-out,596,596,,0,1,612,646,17,151513,147313,2,14374,27,105,43,424,2,121
+BEFORE fixes - uncompressed (not representative),/store.html?store=bong,mobile-4g,600,cold,logged-out,736,736,,0.0503,1,756,782,22,200708,196508,6,23442,32,114,72,562,3,217
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-slow3g,600,cold,logged-out,4188,4188,,0,1,4212,4269,17,151513,147313,2,14374,39,179,65,725,3,277
+BEFORE fixes - uncompressed (not representative),/store.html?store=bong,mobile-slow3g,600,cold,logged-out,5212,5212,,0.0503,1,5244,5283,22,200708,196508,6,23442,53,182,105,871,3,345
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,0,cold,logged-out,616,616,,0,1,634,675,17,151513,147313,2,14374,22,133,20,404,3,204
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,300,cold,logged-out,612,612,,0,1,630,671,17,151513,147313,2,14374,23,116,36,408,2,144
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,600,cold,logged-out,616,616,,0,1,629,670,17,151513,147313,2,14374,24,109,47,460,2,130
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,1200,cold,logged-out,616,616,,0,1,628,664,16,151513,147313,2,14374,24,110,84,497,2,129
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,2500,cold,logged-out,604,604,,0,1,612,648,14,151513,147313,1,6991,16,76,95,476,2,121
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,600,warm,logged-out,148,148,,0,2,159,181,16,0,147313,3,21365,38,207,84,752,1,68
+BEFORE fixes - uncompressed (not representative),/store.html?store=bong,mobile-4g,600,warm,logged-out,120,120,,0.0503,4,138,169,20,0,196508,10,32118,41,175,105,802,0,0
+BEFORE fixes - uncompressed (not representative),/index.html,mobile-4g,600,cold,logged-in,668,668,,0,1,549,649,17,151513,147313,2,14374,23,96,45,431,2,154

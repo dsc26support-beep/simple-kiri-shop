@@ -13,8 +13,10 @@ const add = (transport, r) => rows.push([transport, r.page, r.profile, r.apiLate
   r.lcpElement || '', r.cls, r.ttfbLocal, r.domContentLoaded, r.loadEvent, r.requests,
   r.transferred, r.decoded, r.apiCalls, r.apiBytes, r.scriptDurationMs, r.layoutDurationMs,
   r.recalcStyleMs, r.taskDurationMs, r.longTasks, r.longTaskMs]);
-gz.forEach((r) => add('gzip (representative of GitHub Pages)', r));
-plain.forEach((r) => add('uncompressed (not representative)', r));
+const after = JSON.parse(fs.readFileSync(D + 'measurements-after.json', 'utf8'));
+gz.forEach((r) => add('BEFORE fixes - gzip (representative of GitHub Pages)', r));
+after.forEach((r) => add('AFTER fixes - gzip (representative of GitHub Pages)', r));
+plain.forEach((r) => add('BEFORE fixes - uncompressed (not representative)', r));
 const csv = [head.join(',')].concat(rows.map((r) => r.map((v) =>
   typeof v === 'string' && /[,"]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v).join(','))).join('\n');
 fs.writeFileSync(REPO + 'MWAKETE_V1_PERFORMANCE_DATA.csv', csv + '\n');
