@@ -327,7 +327,7 @@ function actionLoginOwner(body) {
 
   if (!loginSucceeded) {
     return fail(owner && owner.Status === 'closed'
-      ? 'This store has been deleted. Contact admin@mwakete.com if this is a mistake.'
+      ? 'This store has been deleted. Contact now via the Enquiry link below if this is a mistake.'
       : 'Invalid username or password');
   }
 

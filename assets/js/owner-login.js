@@ -9,7 +9,9 @@ function init() {
   if (getQueryParam('expired')) {
     document.getElementById('session-message').textContent = 'Your session expired — please log in again.';
   } else if (getQueryParam('deleted')) {
-    document.getElementById('session-message').textContent = 'Your store has been deleted. Contact admin@mwakete.com if this was a mistake.';
+    // Same words as the backend's login error (Auth.gs). A seller can reach this
+    // page two ways and should not meet two different messages.
+    document.getElementById('session-message').textContent = 'This store has been deleted. Contact now via the Enquiry link below if this is a mistake.';
   }
 
   const tabLogin = document.getElementById('tab-login');
