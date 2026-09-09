@@ -3011,10 +3011,17 @@ footer.site-footer .copyright {
     display: none;
   }
 
-  /* Lift existing floating buttons above the bar (only where the bar exists). */
+  /* Lift existing floating buttons above the bar (only where the bar exists).
+
+     :not(.cart-fab--corner) matters. The cart FAB moves to the TOP-right at 2+
+     items, and that variant sets `bottom: auto` - but this selector is more
+     specific (0,3,1 vs 0,2,0), so it put `bottom` back. With both `top` and
+     `bottom` resolved, a fixed element stretches between them: the pill grew
+     into a 760px-tall blue column down the middle of the phone. Nothing to
+     lift anyway - the corner button is nowhere near the bottom bar. */
   body.has-bottom-nav .chat-fab-btn,
   body.has-bottom-nav .floating-action-btn--right,
-  body.has-bottom-nav .floating-action-btn--left {
+  body.has-bottom-nav .floating-action-btn--left:not(.cart-fab--corner) {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
   }
 
