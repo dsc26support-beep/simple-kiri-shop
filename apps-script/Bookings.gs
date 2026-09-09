@@ -108,7 +108,7 @@ function actionCreateBookingRequest(body) {
     var product = sheetToObjects(getSheet('Products')).filter(function (p) {
       return p.ProductId === body.productId && p.OwnerId === owner.OwnerId && p.Status === 'active';
     })[0];
-    if (!product || !isBookingCategory(product.Category)) return fail('This listing is not available for booking');
+    if (!product || !isBookingRow(product)) return fail('This listing is not available for booking');
 
     var variant = sheetToObjects(getSheet('Variants')).filter(function (v) {
       return v.VariantId === body.variantId && v.ProductId === product.ProductId && v.Status === 'active';

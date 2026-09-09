@@ -38,7 +38,7 @@ function renderProductCard(product, opts) {
         </div>`
       : product.imageUrl
       ? photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)
-      : photoLink(`<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`);
+      : photoLink(`<div class="placeholder-swatch category-${escapeHtml(categoryIdOf(product.category))}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`);
 
   const thumbs =
     product.imageUrl && product.imageUrl2
@@ -63,7 +63,7 @@ function renderProductCard(product, opts) {
   // the variant <option> labels, which the grid layout buries.
   const priceText = formatPriceLabel(product.variants);
 
-  if (isBookingCategory(product.category)) {
+  if (isBookingListing(product)) {
     const availabilityBadge =
       product.available === false
         ? '<span class="availability-badge availability-badge--unavailable">Booked today</span>'

@@ -45,7 +45,11 @@
           <input id="search-input" type="search" placeholder="Search products (e.g. rice, t-shirt)">
           <button type="submit" class="btn btn-primary">Search</button>
         </form>
-        <div class="category-buttons" id="category-buttons" style="margin-top: 1rem;" aria-label="Shop by category"></div>
+        <!-- Same two strips as the homepage, so a shopper who arrived from a
+             chip can keep moving between types and categories without going
+             back. Heights reserved in CSS (.chip-strip). -->
+        <nav class="chip-strip" id="listing-type-strip" aria-label="Filter by listing type"></nav>
+        <nav class="chip-strip" id="category-strip" aria-label="Categories"></nav>
       </div>
     </section>
 

@@ -53,16 +53,23 @@
             <textarea id="product-description"></textarea>
           </div>
           <div class="field">
-            <label for="product-category">Category</label>
+            <label for="product-listing-type">What are you offering?</label>
+            <select id="product-listing-type" required>
+              <option value="" disabled selected>Choose one…</option>
+              <option value="product">Something to sell — customers add it to their cart</option>
+              <option value="rental">Something to rent out — customers request dates</option>
+              <option value="service">A service to offer — customers request dates</option>
+            </select>
+            <p class="helper-text">This decides how customers get it. You can change it later.</p>
+          </div>
+          <div class="field">
+            <label for="product-category">What type is it?</label>
+            <!-- Filled by owner-products.js from the shared taxonomy, narrowed
+                 to the categories that make sense for the chosen listing type,
+                 so a seller picks from a handful rather than the whole tree.
+                 "Other" is always offered. -->
             <select id="product-category" required>
-              <option value="" disabled selected>Select a category…</option>
-              <option value="general">General</option>
-              <option value="pantry">Pantry / Food</option>
-              <option value="clothing">Clothing</option>
-              <option value="household">Household</option>
-              <option value="electronics">Electronics</option>
-              <option value="rentals">Rentals (customers request dates — cars, equipment, etc.)</option>
-              <option value="services">Services (customers request dates — bookings, appointments, etc.)</option>
+              <option value="" disabled selected>Choose the listing type first…</option>
             </select>
           </div>
           <div class="field">

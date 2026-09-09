@@ -1,8 +1,14 @@
-// Mobile bottom navigation (§7). Injected on customer-facing pages; shown only
-// on mobile via CSS. Five equal tabs: Home | Tips | Messages | Browse | Account.
+// Mobile bottom navigation. Injected on customer-facing pages; shown only on
+// mobile via CSS. Five equal tabs: Home | Tips | Messages | Cart | Account.
 //
-// Browse replaced Cart here; the cart moved to a header button so it is still
-// reachable from every page (see header-cart.js).
+// Cart is back in this slot. It had been swapped for Browse when the category
+// page was the only way to reach categories - but the homepage now carries the
+// category strip and a "View all categories" link, so Browse no longer needs a
+// permanent tab, and Cart is the thing a shopper reaches for mid-purchase.
+//
+// The header cart button (header-cart.js) still exists and is now hidden below
+// 700px in CSS, so there is exactly ONE cart entry per viewport - this tab on a
+// phone, the header button on a desktop, where this bar is display:none.
 document.addEventListener('DOMContentLoaded', initBottomNav);
 
 const BOTTOM_NAV_ICON = {
@@ -10,6 +16,7 @@ const BOTTOM_NAV_ICON = {
   tips: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"></path><path d="M10 21h4"></path><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.2 1 2.5h6c0-1.3.4-1.9 1-2.5A6 6 0 0 0 12 3z"></path></svg>',
   messages: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>',
   categories: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>',
+  cart: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
   account: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>'
 };
 
@@ -22,7 +29,7 @@ function initBottomNav() {
     { label: 'Home', href: 'index.html', match: ['index.html', ''], icon: BOTTOM_NAV_ICON.home },
     { label: 'Tips', href: 'customer-tips.html', match: ['customer-tips.html'], icon: BOTTOM_NAV_ICON.tips },
     { label: 'Messages', href: 'customer-messages.html', match: ['customer-messages.html'], icon: BOTTOM_NAV_ICON.messages, badge: 'messages' },
-    { label: 'Browse', href: 'categories.html', match: ['categories.html'], icon: BOTTOM_NAV_ICON.categories },
+    { label: 'Cart', href: 'my-carts.html', match: ['my-carts.html', 'cart.html', 'checkout.html'], icon: BOTTOM_NAV_ICON.cart, badge: 'cart' },
     { label: 'Account', href: accountHref, match: ['customer-dashboard.html', 'customer-login.html'], icon: BOTTOM_NAV_ICON.account }
   ];
 
@@ -61,6 +68,7 @@ function initBottomNav() {
   // mobile connection. A number that is one navigation old is a far better
   // badge than no badge at all.
   paintCachedMessagesBadge();
+  updateBottomNavCartBadge();
   whenIdle(updateBottomNavMessagesBadge);
 }
 
@@ -100,6 +108,18 @@ async function updateBottomNavMessagesBadge() {
   // have been read is worse than never having shown one.
   setNavBadge(badge, total);
   try { localStorage.setItem(NAV_BADGE_CACHE_KEY, String(total)); } catch (e) { /* private mode */ }
+}
+
+// Purely local (localStorage, see cartStoreSlugs/totalCartItemCount in
+// helpers.js) so it needs no request and is correct at first paint.
+function updateBottomNavCartBadge() {
+  const badge = document.querySelector('.bottom-nav-badge[data-badge="cart"]');
+  if (!badge) return;
+  const total = totalCartItemCount();
+  if (!(total > 0)) { badge.hidden = true; return; }
+  badge.textContent = total > 99 ? '99+' : String(total);
+  badge.setAttribute('aria-label', `${total} item${total === 1 ? '' : 's'} in your carts`);
+  badge.hidden = false;
 }
 
 var NAV_BADGE_CACHE_KEY = 'skiri_unread_total';

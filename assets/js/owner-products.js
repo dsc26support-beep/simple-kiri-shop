@@ -1,19 +1,48 @@
 document.addEventListener('DOMContentLoaded', init);
 
-// The "Varieties & Prices" block is reused for Rentals/Services listings, where
+// The "Varieties & Prices" block is reused for rentals and services, where
 // "Label (e.g. 500g, Large)" reads wrong - a rental sells a duration, a service
-// sells a named job. These relabel the section heading and each variety row's
-// first field to suit the chosen category (ids match BOOKING_CATEGORIES in
-// helpers.js). Kept local to the owner form since it's portal copy, not shared logic.
-function varietyRowLabelText(category) {
-  if (category === 'rentals') return 'Duration (e.g. ½ day, per day, per week)';
-  if (category === 'services') return 'Service Name (e.g. Car Wash start price)';
+// sells a named job. These relabel the heading and each row's first field.
+//
+// Driven by the LISTING TYPE now, not the category. It used to key off
+// 'rentals'/'services' as categories; those became types, and a rental can now
+// sit in any category. Kept local to the owner form - it is portal copy, not
+// shared logic.
+function varietyRowLabelText(listingType) {
+  if (listingType === 'rental') return 'Duration (e.g. ½ day, per day, per week)';
+  if (listingType === 'service') return 'Service Name (e.g. Car Wash start price)';
   return 'Label (e.g. 500g, Large)';
 }
-function varietiesSectionText(category) {
-  if (category === 'rentals') return 'Rental Durations & Prices';
-  if (category === 'services') return 'Services & Prices';
+function varietiesSectionText(listingType) {
+  if (listingType === 'rental') return 'Rental Durations & Prices';
+  if (listingType === 'service') return 'Services & Prices';
   return 'Varieties & Prices';
+}
+
+/**
+ * Fills the category picker with the categories that make sense for the chosen
+ * listing type, so a seller offering a service is not scrolling past "Building
+ * & Hardware". Other is always present, so there is never a listing that
+ * cannot be filed.
+ *
+ * Keeps the current selection if it survives the narrowing - changing type
+ * should not silently clear a category the seller already picked.
+ */
+function onListingTypeChange() {
+  const type = document.getElementById('product-listing-type').value;
+  fillCategoryOptions(type);
+  updateVarietyLabels();
+}
+
+function fillCategoryOptions(listingType) {
+  const select = document.getElementById('product-category');
+  const previous = select.value;
+  const list = activeCategories().filter(
+    (c) => c.id === 'other' || !listingType || c.types.indexOf(listingType) !== -1
+  );
+  select.innerHTML = '<option value="" disabled' + (previous ? '' : ' selected') + '>Choose a category…</option>' +
+    list.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`).join('');
+  if (previous && list.some((c) => c.id === previous)) select.value = previous;
 }
 
 const PRODUCTS_PAGE_SIZE = 20;
@@ -32,7 +61,7 @@ async function init() {
   document.getElementById('add-product-btn').addEventListener('click', () => openForm(null));
   document.getElementById('cancel-product-btn').addEventListener('click', closeForm);
   document.getElementById('add-variant-btn').addEventListener('click', () => addVariantRow());
-  document.getElementById('product-category').addEventListener('change', updateVarietyLabels);
+  document.getElementById('product-listing-type').addEventListener('change', onListingTypeChange);
   document.getElementById('product-form').addEventListener('submit', onSaveProduct);
   document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
   document.getElementById('product-image-input-2').addEventListener('change', onImageFileChange2);
@@ -77,7 +106,7 @@ function renderList() {
     .map((p) => {
       const media = p.imageUrl
         ? `<img src="${escapeHtml(optimizedImageUrl(p.imageUrl, IMG_W.thumb))}" alt="" loading="lazy" decoding="async">`
-        : `<div class="placeholder-swatch category-${escapeHtml(p.category || 'general')}" aria-hidden="true">${escapeHtml(initials(p.name))}</div>`;
+        : `<div class="placeholder-swatch category-${escapeHtml(categoryIdOf(p.category))}" aria-hidden="true">${escapeHtml(initials(p.name))}</div>`;
       const activeVariants = p.variants.filter((v) => v.status === 'active');
       const priceRange = activeVariants.length
         ? activeVariants.map((v) => formatMoney(v.price)).join(' / ')
@@ -142,7 +171,13 @@ function openForm(product) {
     document.getElementById('product-id').value = product.productId;
     document.getElementById('product-name').value = product.name;
     document.getElementById('product-description').value = product.description || '';
-    document.getElementById('product-category').value = product.category || '';
+    // Type first - it decides which categories are offered - then category.
+    // listingTypeOf() recovers the type of a listing saved before the field
+    // existed, so an old rental opens as a rental rather than as a product.
+    const type = listingTypeOf(product);
+    document.getElementById('product-listing-type').value = type;
+    fillCategoryOptions(type);
+    document.getElementById('product-category').value = categoryIdOf(product.category);
     document.getElementById('product-status').value = product.status || 'active';
     if (product.imageUrl) {
       preview.src = optimizedImageUrl(product.imageUrl, IMG_W.card);
@@ -164,6 +199,8 @@ function openForm(product) {
     document.getElementById('product-id').value = '';
     document.getElementById('product-name').value = '';
     document.getElementById('product-description').value = '';
+    document.getElementById('product-listing-type').value = '';
+    fillCategoryOptions('');
     document.getElementById('product-category').value = '';
     document.getElementById('product-status').value = 'active';
     preview.classList.add('hidden');
@@ -185,7 +222,7 @@ function addVariantRow(variant) {
   const wrapper = document.createElement('div');
   wrapper.className = 'variant-row';
   wrapper.dataset.variantId = variant ? variant.variantId : '';
-  const rowLabel = varietyRowLabelText(document.getElementById('product-category').value);
+  const rowLabel = varietyRowLabelText(document.getElementById('product-listing-type').value);
   wrapper.innerHTML = `
     <div class="field">
       <label for="${rowId}-label">${escapeHtml(rowLabel)}</label>
@@ -206,7 +243,7 @@ function addVariantRow(variant) {
 // builds the rows, so switching to Rentals/Services after adding rows keeps
 // every row's label in sync.
 function updateVarietyLabels() {
-  const cat = document.getElementById('product-category').value;
+  const cat = document.getElementById('product-listing-type').value;
   document.getElementById('varieties-label').textContent = varietiesSectionText(cat);
   const rowLabel = varietyRowLabelText(cat);
   document.querySelectorAll('#variant-rows .variant-row .variant-label').forEach((input) => {
@@ -260,6 +297,10 @@ async function onSaveProduct(e) {
   // normally blocks submit, but guard here too since this handler runs after
   // preventDefault - and a legacy product with no stored category opens on the
   // empty placeholder, so an edit could otherwise reach this with a blank value.
+  if (!document.getElementById('product-listing-type').value) {
+    errorEl.textContent = 'Please choose what you are offering.';
+    return;
+  }
   if (!document.getElementById('product-category').value) {
     errorEl.textContent = 'Please choose a category.';
     return;
@@ -287,6 +328,7 @@ async function onSaveProduct(e) {
     name: document.getElementById('product-name').value.trim(),
     description: document.getElementById('product-description').value.trim(),
     category: document.getElementById('product-category').value,
+    listingType: document.getElementById('product-listing-type').value,
     status: document.getElementById('product-status').value,
     variants
   };

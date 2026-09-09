@@ -29,8 +29,8 @@ async function init() {
   const requested = getQueryParam('category');
   // An unknown slug (a stale link, a renamed category) falls back to the first
   // rather than rendering an empty page with nothing selected.
-  const known = CATEGORIES.some((c) => c.id === requested);
-  await selectCategory(known ? requested : CATEGORIES[0].id, { replaceUrl: false });
+  const known = activeCategories().some((c) => c.id === requested);
+  await selectCategory(known ? requested : activeCategories()[0].id, { replaceUrl: false });
 }
 
 /**
@@ -43,7 +43,11 @@ async function init() {
  * removes the collision rather than working around it.
  */
 function renderRail() {
-  document.getElementById('category-rail').innerHTML = CATEGORIES.map((c) => `
+  // activeCategories(), not CATEGORIES: ordered by display_order and excluding
+  // anything switched off, so retiring a category is a data change rather than
+  // an edit here. This page is "view all", so unlike the homepage strip it
+  // deliberately shows every one, Other included.
+  document.getElementById('category-rail').innerHTML = activeCategories().map((c) => `
     <button type="button" class="category-rail-item" data-category="${escapeHtml(c.id)}" aria-pressed="false">
       <span class="category-rail-label">${escapeHtml(c.label)}</span>
     </button>
@@ -69,7 +73,7 @@ async function selectCategory(categoryId, opts) {
   shownCount = CATEGORY_PAGE_SIZE;
   markSelected(categoryId);
 
-  const meta = CATEGORIES.find((c) => c.id === categoryId);
+  const meta = categoryById(categoryId);
   document.getElementById('category-pane-heading').textContent = meta ? meta.label : 'Browse';
   document.title = `${meta ? meta.label : 'Browse'} — Mwakete`;
 
@@ -152,7 +156,7 @@ function render() {
 function renderCategoryTile(product) {
   const media = product.imageUrl
     ? `<img class="category-tile-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_TILE)} alt="" loading="lazy" decoding="async">`
-    : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
+    : `<div class="placeholder-swatch category-${escapeHtml(categoryIdOf(product.category))}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   return `
     <a class="category-tile" data-product-id="${escapeHtml(product.productId)}"

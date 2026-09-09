@@ -446,7 +446,7 @@ function renderBrowseProductCard(product, opts) {
 
   const media = product.imageUrl
     ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
-    : `<div class="placeholder-swatch category-${escapeHtml(product.category || 'general')}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
+    : `<div class="placeholder-swatch category-${escapeHtml(categoryIdOf(product.category))}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   const priceText = formatPriceLabel(product.variants);
   const location = storeLocationLabel(product.storeIsland, product.storeVillage);
@@ -466,7 +466,7 @@ function renderBrowseProductCard(product, opts) {
   // Delivery flags are store-wide, so they are meaningless - and misleading -
   // on a rental or service listing. Suppressed there; the goods listings and
   // the store page keep them.
-  const deliveryIcons = isBookingCategory(product.category)
+  const deliveryIcons = isBookingListing(product)
     ? ''
     : renderDeliveryIcons({
         truck: product.storeDeliveryTruck,
@@ -619,14 +619,119 @@ function initials(name) {
 // of the category <select> options in owner/products.html - "General" is
 // still a valid category a vendor can pick, it just doesn't get its own
 // browse button here.
-const CATEGORIES = [
-  { id: 'pantry', label: 'Pantry / Food' },
-  { id: 'clothing', label: 'Clothing' },
-  { id: 'household', label: 'Household' },
-  { id: 'electronics', label: 'Electronics' },
-  { id: 'rentals', label: 'Rentals' },
-  { id: 'services', label: 'Services' }
+/* ===================== Categories and listing types =====================
+ *
+ * TWO INDEPENDENT AXES. A category says WHAT a thing is; a listing type says
+ * HOW you get it. "Vehicles & Transport" holds cars to buy, cars to rent and
+ * mechanics to hire - one category, three listing types - which is why there
+ * is no "Rentals" category in the list below.
+ *
+ * That split is new. Before it, the category WAS the type: a listing filed
+ * under 'rentals' or 'services' got the date-request flow and everything else
+ * went to the cart (see BOOKING_CATEGORIES). Those stored values still exist
+ * on live products, so nothing here rewrites them - legacyCategoryId() and
+ * listingTypeOf() map an old row to the new pair on read. A product row is
+ * only ever written with new values when a seller saves it.
+ *
+ * `types` lists which listing types make sense in a category, used to keep the
+ * seller's form short. It is guidance, not a constraint the backend enforces.
+ * `popular` is the small set the homepage shows before "View all categories".
+ */
+const LISTING_TYPES = [
+  { id: 'product', label: 'Products', seller: 'Something to sell', order: 1 },
+  { id: 'rental',  label: 'Rentals',  seller: 'Something to rent out', order: 2 },
+  { id: 'service', label: 'Services', seller: 'A service to offer', order: 3 }
 ];
+
+const ALL_TYPES = ['product', 'rental', 'service'];
+
+const CATEGORIES = [
+  { id: 'food',        label: 'Food & Groceries',            order: 1,  popular: true,  active: true, types: ['product', 'service'] },
+  { id: 'fashion',     label: 'Fashion & Beauty',            order: 2,  popular: true,  active: true, types: ['product', 'service'] },
+  { id: 'electronics', label: 'Electronics & Phones',        order: 3,  popular: true,  active: true, types: ALL_TYPES },
+  { id: 'home',        label: 'Home & Living',               order: 4,  popular: true,  active: true, types: ALL_TYPES },
+  { id: 'building',    label: 'Building & Hardware',         order: 5,  popular: false, active: true, types: ALL_TYPES },
+  { id: 'vehicles',    label: 'Vehicles & Transport',        order: 6,  popular: true,  active: true, types: ALL_TYPES },
+  { id: 'fishing',     label: 'Fishing & Marine',            order: 7,  popular: false, active: true, types: ALL_TYPES },
+  { id: 'agriculture', label: 'Agriculture & Local Products', order: 8, popular: false, active: true, types: ['product', 'service'] },
+  { id: 'property',    label: 'Property & Accommodation',    order: 9,  popular: false, active: true, types: ['rental', 'service'] },
+  { id: 'services',    label: 'Services',                    order: 10, popular: true,  active: true, types: ['service'] },
+  { id: 'education',   label: 'Education & Jobs',            order: 11, popular: false, active: true, types: ['service'] },
+  { id: 'events',      label: 'Events & Travel',             order: 12, popular: false, active: true, types: ALL_TYPES },
+  // Always last, always offered to sellers, and where anything that cannot be
+  // mapped confidently lands. Never 'popular'.
+  { id: 'other',       label: 'Other',                       order: 99, popular: false, active: true, types: ALL_TYPES }
+];
+
+/**
+ * Old stored category -> new category id.
+ *
+ * 'rentals' and 'services' were listing types wearing a category's clothes.
+ * 'services' happens to name a real category too, so it keeps its slug and a
+ * legacy service lands somewhere sensible. 'rentals' does not: knowing a thing
+ * was rented says nothing about WHAT it is, so those go to 'other' for an admin
+ * to re-file, exactly like 'general'. Their listing type is still recovered
+ * correctly by listingTypeOf(), so they keep working meanwhile.
+ */
+const LEGACY_CATEGORY_MAP = {
+  pantry: 'food',
+  clothing: 'fashion',
+  household: 'home',
+  electronics: 'electronics',
+  services: 'services',
+  rentals: 'other',
+  general: 'other',
+  '': 'other'
+};
+
+// Which legacy values carry no category information and want an admin's eye.
+const LEGACY_NEEDS_REVIEW = ['rentals', 'general', ''];
+
+function categoryById(id) {
+  return CATEGORIES.filter((c) => c.id === id)[0] || null;
+}
+
+function activeCategories() {
+  return CATEGORIES.filter((c) => c.active).sort((a, b) => a.order - b.order);
+}
+
+function popularCategories() {
+  return activeCategories().filter((c) => c.popular);
+}
+
+/** New id if it already is one, else the mapped legacy id, else 'other'. */
+function categoryIdOf(rawCategory) {
+  const raw = String(rawCategory == null ? '' : rawCategory).trim();
+  if (categoryById(raw)) return raw;
+  return LEGACY_CATEGORY_MAP[raw] || 'other';
+}
+
+function categoryLabelOf(rawCategory) {
+  const c = categoryById(categoryIdOf(rawCategory));
+  return c ? c.label : 'Other';
+}
+
+/**
+ * The listing type of a product row.
+ *
+ * An explicit listingType always wins - that is what a seller chose. Only a row
+ * saved before the field existed falls back to reading it out of the legacy
+ * category, which is the ONLY thing those rows recorded about it.
+ */
+function listingTypeOf(product) {
+  if (!product) return 'product';
+  const explicit = String(product.listingType || '').trim();
+  if (ALL_TYPES.indexOf(explicit) !== -1) return explicit;
+  const legacy = String(product.category == null ? '' : product.category).trim();
+  if (legacy === 'rentals') return 'rental';
+  if (legacy === 'services') return 'service';
+  return 'product';
+}
+
+/** Rentals and services are requested by date; products go in the cart. */
+function isBookingListing(product) {
+  return listingTypeOf(product) !== 'product';
+}
 
 /**
  * The category row is a fixed list that never depends on the backend. Its
@@ -638,14 +743,76 @@ const CATEGORIES = [
 function renderCategoryButtons(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.innerHTML = CATEGORIES.map(
+  container.innerHTML = popularCategories().map(
     (c) => `<a class="btn category-btn category-btn--${c.id}" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
   ).join('');
+}
+
+/**
+ * The [ All | Products | Rentals | Services ] strip.
+ *
+ * A filter on WHAT KIND of listing, which is a different question from what
+ * category it is in - a shopper after "something to rent" does not know or care
+ * which category the thing lives in. Rendered as links, not buttons, so each
+ * one is shareable, opens in a new tab, and works before any script has run.
+ *
+ * `activeType` is '' for All. Returns silently if the container is absent.
+ */
+function renderListingTypeStrip(containerId, activeType, opts) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const active = String(activeType || '');
+  const base = (opts && opts.href) || 'search.html';
+  const extra = (opts && opts.extraParams) || {};
+  const link = (type, label) => {
+    const params = new URLSearchParams();
+    Object.entries(extra).forEach(([k, v]) => { if (v) params.set(k, v); });
+    if (type) params.set('type', type);
+    const qs = params.toString();
+    const on = active === type;
+    return `<a class="chip-strip-item${on ? ' is-active' : ''}" href="${base}${qs ? '?' + qs : ''}"` +
+      `${on ? ' aria-current="page"' : ''}>${escapeHtml(label)}</a>`;
+  };
+  container.innerHTML = link('', 'All') + LISTING_TYPES.map((t) => link(t.id, t.label)).join('');
+}
+
+/**
+ * A horizontally scrolling category strip.
+ *
+ * Only the popular few by default, with a "View all categories" link at the
+ * end - twelve full-width cards would eat the whole first screen, and the point
+ * of the strip is that a shopper can see products without scrolling past it.
+ *
+ * `opts.all` renders every active category instead (the browse page's own bar).
+ * `opts.activeId` marks one as selected.
+ */
+function renderCategoryStrip(containerId, opts) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const o = opts || {};
+  const list = o.all ? activeCategories() : popularCategories();
+  const activeId = String(o.activeId || '');
+  const hrefFor = (id) => (o.hrefFor ? o.hrefFor(id) : `search.html?category=${encodeURIComponent(id)}`);
+
+  const items = list.map((c) => {
+    const on = c.id === activeId;
+    return `<a class="chip-strip-item${on ? ' is-active' : ''}" data-category="${escapeHtml(c.id)}"` +
+      ` href="${hrefFor(c.id)}"${on ? ' aria-current="page"' : ''}>${escapeHtml(c.label)}</a>`;
+  });
+
+  if (!o.all) {
+    items.push('<a class="chip-strip-item chip-strip-item--more" href="categories.html">View all categories →</a>');
+  }
+  container.innerHTML = items.join('');
 }
 
 // Kept in sync with apps-script/Products.gs's BOOKING_CATEGORIES - a
 // Rentals/Services listing gets the date-range request flow instead of
 // cart/checkout.
+// LEGACY. The old way of saying "booked by date". Still the stored value on
+// rows saved before listingType existed, which is why listingTypeOf() reads
+// them - but a legacy rental's MAPPED category is now 'other', so this returns
+// false for exactly the listings it used to catch. Use isBookingListing().
 const BOOKING_CATEGORIES = ['rentals', 'services'];
 function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
 

@@ -17,8 +17,85 @@ function getOwnerBySlug(slug) {
  * either category gets the date-range request flow (Bookings.gs) instead
  * of cart/checkout; every other category is a normal goods listing.
  */
+// LEGACY. These two strings were the old way of saying "this is booked by
+// date" - they are still the values on rows saved before ListingType existed,
+// which is why listingTypeOfRow() reads them. Do NOT use this to decide how a
+// listing behaves: the mapped category of a legacy rental is now 'other', so
+// this returns false for exactly the listings it used to catch. Use
+// isBookingRow (sheet row) or listingTypeOf (client shape) instead.
 var BOOKING_CATEGORIES = ['rentals', 'services'];
 function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
+
+/* ---------- Categories and listing types ----------
+ *
+ * MUST STAY IN SYNC with assets/js/helpers.js - the ids, the legacy map and the
+ * derivation rule all appear on both sides, the same way BOOKING_CATEGORIES
+ * already did. A test asserts the two lists match rather than trusting a
+ * comment to be obeyed.
+ *
+ * A category says WHAT a thing is; a listing type says HOW you get it. Before
+ * this, the category WAS the type - 'rentals'/'services' meant date-request,
+ * anything else meant cart. Live rows still hold those values, so nothing here
+ * rewrites them: they are mapped on READ. A row is only written with new values
+ * when a seller saves it.
+ */
+var LISTING_TYPE_IDS = ['product', 'rental', 'service'];
+
+var CATEGORY_IDS = ['food', 'fashion', 'electronics', 'home', 'building', 'vehicles',
+  'fishing', 'agriculture', 'property', 'services', 'education', 'events', 'other'];
+
+var LEGACY_CATEGORY_MAP = {
+  pantry: 'food',
+  clothing: 'fashion',
+  household: 'home',
+  electronics: 'electronics',
+  services: 'services',
+  // A rental's old category recorded only that it was rented, never what it
+  // was - so it cannot be filed confidently, and goes to 'other' for review.
+  rentals: 'other',
+  general: 'other',
+  '': 'other'
+};
+
+function categoryIdOf(rawCategory) {
+  var raw = String(rawCategory == null ? '' : rawCategory).trim();
+  if (CATEGORY_IDS.indexOf(raw) !== -1) return raw;
+  return Object.prototype.hasOwnProperty.call(LEGACY_CATEGORY_MAP, raw) ? LEGACY_CATEGORY_MAP[raw] : 'other';
+}
+
+/**
+ * The listing type of a Products row (sheet-shaped, capitalised fields).
+ * An explicit ListingType wins; only a row predating the column falls back to
+ * reading the type out of its legacy category.
+ */
+function listingTypeOfRow(p) {
+  var explicit = String(p.ListingType || '').trim();
+  if (LISTING_TYPE_IDS.indexOf(explicit) !== -1) return explicit;
+  var legacy = String(p.Category == null ? '' : p.Category).trim();
+  if (legacy === 'rentals') return 'rental';
+  if (legacy === 'services') return 'service';
+  return 'product';
+}
+
+function isBookingRow(p) {
+  return listingTypeOfRow(p) !== 'product';
+}
+
+/**
+ * Same rule as listingTypeOfRow, for an object that has already been mapped to
+ * the client shape (lowercase `listingType` / `category`). Both exist because
+ * this file passes rows around in both shapes and silently reading the wrong
+ * one would mis-type every listing.
+ */
+function listingTypeOf(p) {
+  if (!p) return 'product';
+  var explicit = String(p.listingType || '').trim();
+  if (LISTING_TYPE_IDS.indexOf(explicit) !== -1) return explicit;
+  var legacy = String(p.category == null ? '' : p.category).trim();
+  if (legacy === 'rentals') return 'rental';
+  if (legacy === 'services') return 'service';
+  return 'product';
+}
 
 function deliveryCostOf(rawCost) {
   return rawCost === '' || rawCost == null ? null : Number(rawCost);
@@ -97,7 +174,8 @@ function getTopProductsCached() {
           productId: p.ProductId,
           name: p.Name,
           description: p.Description,
-          category: p.Category,
+          category: categoryIdOf(p.Category),
+      listingType: listingTypeOfRow(p),
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           storeSlug: owner.StoreSlug,
@@ -127,7 +205,7 @@ function getTopProductsCached() {
       // Booking listings have no add-to-cart affordance, which this
       // "trending products" carousel assumes every card has - excluded here
       // rather than given a broken card.
-      .filter(function (p) { return !isBookingCategory(p.category) && p.variants.length > 0; })
+      .filter(function (p) { return listingTypeOf(p) === 'product' && p.variants.length > 0; })
       .sort(function (a, b) { return b.views - a.views; })
       .slice(0, 20);
   });
@@ -277,7 +355,10 @@ function actionRecordStoreVisit(body) {
 function actionSearchProducts(params) {
   var q = String(params.q || '').trim().toLowerCase();
   var category = String(params.category || '').trim();
-  var cacheKey = 'v1:search:' + category + ':' + q.slice(0, 100);
+  // Listing-type filter: the [All][Products][Rentals][Services] strip.
+  var type = String(params.type || '').trim();
+  if (LISTING_TYPE_IDS.indexOf(type) === -1) type = '';
+  var cacheKey = 'v2:search:' + category + ':' + type + ':' + q.slice(0, 100);
 
   var results = getCached(cacheKey, 60, function () {
     var ownersById = {};
@@ -291,7 +372,11 @@ function actionSearchProducts(params) {
     var matched = sheetToObjects(getSheet('Products'))
       .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
       .filter(function (p) {
-        if (category && p.Category !== category) return false;
+        // Compared against the MAPPED id, so "Food & Groceries" finds the
+        // products still stored as the legacy 'pantry'. Matching the raw
+        // stored value would have shown only listings saved since the change.
+        if (category && categoryIdOf(p.Category) !== category) return false;
+        if (type && listingTypeOfRow(p) !== type) return false;
         if (q) {
           var haystack = (String(p.Name) + ' ' + String(p.Description)).toLowerCase();
           if (haystack.indexOf(q) === -1) return false;
@@ -299,7 +384,7 @@ function actionSearchProducts(params) {
         return true;
       });
 
-    var unavailableIds = unavailableProductIdsToday(matched.filter(function (p) { return isBookingCategory(p.Category); }).map(function (p) { return p.ProductId; }));
+    var unavailableIds = unavailableProductIdsToday(matched.filter(isBookingRow).map(function (p) { return p.ProductId; }));
 
     return matched
       .map(function (p) {
@@ -311,7 +396,8 @@ function actionSearchProducts(params) {
           productId: p.ProductId,
           name: p.Name,
           description: p.Description,
-          category: p.Category,
+          category: categoryIdOf(p.Category),
+      listingType: listingTypeOfRow(p),
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           storeSlug: owner.StoreSlug,
@@ -337,7 +423,7 @@ function actionSearchProducts(params) {
           rating: (ratings[p.ProductId] || {}).average != null ? ratings[p.ProductId].average : null,
           reviewCount: (ratings[p.ProductId] || {}).count || 0
         };
-        if (isBookingCategory(p.Category)) product.available = !unavailableIds[p.ProductId];
+        if (isBookingRow(p)) product.available = !unavailableIds[p.ProductId];
         product.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
         product.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
         product.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
@@ -382,7 +468,7 @@ function actionListProducts(params) {
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) {
       return v.OwnerId === owner.OwnerId && v.Status === 'active';
     });
-    var unavailableIds = unavailableProductIdsToday(products.filter(function (p) { return isBookingCategory(p.Category); }).map(function (p) { return p.ProductId; }));
+    var unavailableIds = unavailableProductIdsToday(products.filter(isBookingRow).map(function (p) { return p.ProductId; }));
     // One Reviews read for the whole store, not one per product.
     var ratings = productRatingIndex();
 
@@ -396,14 +482,15 @@ function actionListProducts(params) {
           productId: p.ProductId,
           name: p.Name,
           description: p.Description,
-          category: p.Category,
+          category: categoryIdOf(p.Category),
+      listingType: listingTypeOfRow(p),
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           variants: productVariants,
           rating: (ratings[p.ProductId] || {}).average != null ? ratings[p.ProductId].average : null,
           reviewCount: (ratings[p.ProductId] || {}).count || 0
         };
-        if (isBookingCategory(p.Category)) product.available = !unavailableIds[p.ProductId];
+        if (isBookingRow(p)) product.available = !unavailableIds[p.ProductId];
         return product;
       })
       .filter(function (p) { return p.variants.length > 0; });
@@ -460,7 +547,8 @@ function actionListOwnerProducts(owner, body) {
       productId: p.ProductId,
       name: p.Name,
       description: p.Description,
-      category: p.Category,
+      category: categoryIdOf(p.Category),
+      listingType: listingTypeOfRow(p),
       imageUrl: p.ImageUrl,
       imageUrl2: p.ImageUrl2,
       status: p.Status,
@@ -482,6 +570,18 @@ function actionCreateOrUpdateProduct(owner, body) {
   var categoryErr = capLength(body.category, 50, 'Category');
   if (categoryErr) return categoryErr;
 
+  // Validated against the real list rather than trusted: this decides whether a
+  // listing goes to the cart or the date-request flow, so a wrong value would
+  // put a car hire in someone's shopping basket.
+  var category = categoryIdOf(body.category);
+  var listingType = String(body.listingType || '').trim();
+  if (LISTING_TYPE_IDS.indexOf(listingType) === -1) {
+    // No type sent - an older client, or an edit of a row that predates the
+    // field. Recover it from what the row already said rather than defaulting
+    // to 'product', which would silently turn a rental into a cart item.
+    listingType = listingTypeOfRow({ ListingType: '', Category: body.category });
+  }
+
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -495,10 +595,12 @@ function actionCreateOrUpdateProduct(owner, body) {
       var existing = findRowById(productsSheet, 'ProductId', body.productId);
       if (!existing || existing.OwnerId !== owner.OwnerId) return fail('Product not found');
       productId = existing.ProductId;
+      ensureColumn(productsSheet, 'ListingType');
       updateRowFromObject(productsSheet, existing.__row, {
         Name: name,
         Description: body.description || '',
-        Category: body.category || '',
+        Category: category,
+        ListingType: listingType,
         ImageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.ImageUrl,
         ImageFileId: body.imageFileId !== undefined ? body.imageFileId : existing.ImageFileId,
         ImageUrl2: body.imageUrl2 !== undefined ? body.imageUrl2 : existing.ImageUrl2,
@@ -509,13 +611,15 @@ function actionCreateOrUpdateProduct(owner, body) {
       });
     } else {
       productId = newId('prod');
+      ensureColumn(productsSheet, 'ListingType');
       appendRowFromObject(productsSheet, {
         ProductId: productId,
         OwnerId: owner.OwnerId,
         StoreSlug: owner.StoreSlug,
         Name: name,
         Description: body.description || '',
-        Category: body.category || '',
+        Category: category,
+        ListingType: listingType,
         ImageUrl: body.imageUrl || '',
         ImageFileId: body.imageFileId || '',
         ImageUrl2: body.imageUrl2 || '',
