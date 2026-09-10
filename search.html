@@ -117,6 +117,10 @@
         </div>
 
         <p id="results-status" class="helper-text is-reserving-space" role="status">Loading…</p>
+        <!-- Smart-search discovery. Empty and hidden unless a search returned
+             nothing AND search-intent.js read a category out of the phrase, so
+             a search that works never sees it. -->
+        <div id="search-discovery" class="search-discovery" hidden></div>
         <div id="results-list" class="product-grid"></div>
         <div class="results-more" id="results-more" hidden>
           <button type="button" class="btn" id="load-more-btn">Load More</button>
@@ -130,6 +134,9 @@
   <script defer src="assets/js/api.js"></script>
   <script defer src="assets/js/helpers.js"></script>
   <script defer src="assets/js/cookie-consent.js"></script>
+  <!-- Before search.js: it calls detectSearchIntent(). Pure dictionary, no
+       network, no dependency - and only this page loads it. -->
+  <script defer src="assets/js/search-intent.js"></script>
   <script defer src="assets/js/search.js"></script>
   <script defer src="assets/js/customer-auth.js"></script>
   <script defer src="assets/js/header-cart.js"></script>
