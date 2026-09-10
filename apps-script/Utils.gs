@@ -255,6 +255,55 @@ function clampPageSize(requested, defaultSize, maxSize) {
  * Chat's MAX_CHAT_MESSAGE_LENGTH truncation (Chat.gs's appendMessage) is a
  * deliberately separate, unchanged precedent - not revisited here.
  */
+/**
+ * Pull the Facebook profile name out of whatever a vendor typed or pasted, and
+ * build the one stored shape: a full https://m.me/... link.
+ *
+ * MUST STAY IN SYNC with messengerHandle() / messengerStoredValue() in
+ * assets/js/helpers.js. The browser copy exists so the vendor sees what will be
+ * saved before they submit; THIS one decides what actually reaches the sheet,
+ * because a value can arrive from anything that can POST. A test runs both over
+ * the same inputs and fails if they disagree.
+ *
+ * Extracts, does not validate - it returns '' when nothing usable is left, and
+ * the caller decides whether blank is acceptable there. Registration refuses
+ * blank; a settings edit does not, because every store that registered before
+ * this has no Messenger and must still be able to save its other fields.
+ */
+/** Hosts that are not profile names, however much they look like one. */
+var BARE_MESSENGER_HOSTS = ['m.me', 'messenger.com', 'facebook.com', 'fb.com', 'fb.me',
+  'www.facebook.com', 'web.facebook.com', 'm.facebook.com'];
+
+function messengerHandle(input) {
+  var s = String(input == null ? '' : input).trim();
+  if (!s) return '';
+
+  s = s.replace(/^@+/, '');
+  s = s.replace(/^(?:https?:\/\/)?(?:www\.|web\.|m\.)?(?:m\.me|messenger\.com|facebook\.com|fb\.com|fb\.me)\//i, '');
+  s = s.replace(/^t\//i, '');
+
+  // profile.php?id=123456 - a profile with no username set. m.me takes the id.
+  var numeric = s.match(/^profile\.php\?(?:.*&)?id=(\d+)/i);
+  if (numeric) return numeric[1];
+
+  s = s.split(/[?#]/)[0];
+  s = s.replace(/\/+$/, '');
+  s = s.split('/')[0];
+
+  // A bare host carries no name - the strip above needs a trailing slash to
+  // fire, so "facebook.com" arrives intact and dots are legal in a username.
+  if (BARE_MESSENGER_HOSTS.indexOf(s.toLowerCase()) !== -1) return '';
+
+  // First character must be alphanumeric: that is what rejects ".." out of a
+  // pasted path, which the character class alone would accept.
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(s) ? s : '';
+}
+
+function messengerStoredValue(input) {
+  var handle = messengerHandle(input);
+  return handle ? 'https://m.me/' + handle : '';
+}
+
 function capLength(value, maxLen, fieldLabel) {
   var str = String(value == null ? '' : value);
   if (str.length > maxLen) return fail(fieldLabel + ' must be ' + maxLen + ' characters or fewer');
