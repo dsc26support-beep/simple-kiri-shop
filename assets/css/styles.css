@@ -2870,6 +2870,78 @@ footer.site-footer .copyright {
   font-size: 1rem;
 }
 
+/* ---------------------------------------------------------------------------
+   The browse page's two panes scroll past each other.
+
+   Set on <body> by categories.html alone - every rule here is scoped to
+   .browse-locked so no other page inherits a non-scrolling document.
+
+   The page itself stops scrolling and becomes a column: header, then a region
+   that fills whatever height is left, holding the rail and the products as two
+   independent scrollers. That is the trade this buys - the header can never
+   scroll away - and it is why the rail's own `position: sticky` is switched
+   off below: sticky solves the same problem the other way round and the two
+   fight, leaving a rail that scrolls the products with it.
+
+   min-height: 0 on every link in the chain is load-bearing, not decoration.
+   A flex or grid child's default min-height is auto, which means "at least as
+   tall as my content" - so an overflow-y: auto child grows to its full content
+   height instead of scrolling, and the overflow silently escapes the viewport.
+
+   100dvh, not 100vh: on a phone 100vh is the height with the URL bar HIDDEN,
+   so the bottom nav sits below the fold until the bar collapses. The 100vh
+   line before it is the fallback for browsers that predate dvh.
+   --------------------------------------------------------------------------- */
+body.browse-locked {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.browse-locked #main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+body.browse-locked .category-browser {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* start would let each pane shrink to its content and leave the shorter one
+     with no scroll box at all. */
+  align-items: stretch;
+  /* Both rows are `auto` by default, which sizes them to their CONTENT - so the
+     pair sat at the height of the taller pane and the leftover screen below
+     them went unused, with the shorter pane never getting a scroll box at all.
+     minmax(0, 1fr) hands row 1 every pixel that is left; the plain 1fr would
+     not, because a 1fr track's implicit floor is min-content and the rail's
+     fourteen entries are taller than the screen. Row 2 is the <noscript>,
+     which is why there are two rows to name at all. */
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+body.browse-locked .category-rail,
+body.browse-locked .category-pane {
+  min-height: 0;
+  overflow-y: auto;
+  /* Reaching the end of one pane must not hand the scroll to the document -
+     on iOS that shows as the whole page rubber-banding away from the header. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.browse-locked .category-rail {
+  /* Both switched off deliberately. sticky is the other answer to this problem
+     and conflicts with it; the 300px floor was a pre-paint height reservation
+     that the fixed-height column now provides for free, and left in place it
+     would force the rail taller than its own scroll box on a short screen. */
+  position: static;
+  min-height: 0;
+}
+
 /* Three across, like the reference. Its own class rather than .product-grid:
    these tiles are a different, lighter thing than a product card. */
 .category-grid {
