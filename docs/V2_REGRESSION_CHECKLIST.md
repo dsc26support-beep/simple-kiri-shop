@@ -18,6 +18,24 @@ covering how to run them and the two absolute paths they still assume.
 
 ---
 
+## `search.html` is gone — what that changed here
+
+The search page was removed after this checklist was written; `categories.html`
+absorbed both browsing and site-wide search. **No row was dropped** — C3 still
+has to hold, it is just tested on a different page:
+
+| Row | Was covered by | Now |
+|---|---|---|
+| C1 | `verify-hero-gaps` — its whole subject was the search page's hero | `verify-order` (homepage section order and spacing) |
+| C3 | `verify-search` — drove `search.html` directly | `verify-browse` (site-wide search on the browse page) |
+
+`verify-search`, `verify-filters-layout` and `verify-hero-gaps` were deleted
+because the page they drove no longer exists, not because they stopped passing.
+`?type=` deep links still resolve — `categories.js` reads the parameter and
+passes it to `searchProducts`, which is what smart-search discovery links build.
+
+---
+
 ## How to use this
 
 For each change:
@@ -36,9 +54,9 @@ For each change:
 
 | # | Must keep working | Covered by |
 |---|---|---|
-| C1 | Homepage renders products, stores, category strip | `verify-homepage`, `verify-hero-gaps` |
+| C1 | Homepage renders products, stores, category strip | `verify-homepage`, `verify-order` |
 | C2 | Site navigation + bottom nav on every page | `verify-nav2`, `verify-tipsnav` |
-| C3 | Search returns results for an exact term | `verify-search`, `verify-searchbtn`, `verify-searchbtn2` |
+| C3 | Search returns results for an exact term | `verify-browse`, `verify-searchbtn`, `verify-searchbtn2` |
 | C4 | Smart search suggests categories when nothing matches, in English and te taetae ni Kiribati | `verify-smartsearch` (117 assertions) |
 | C5 | Category browsing; rail and product pane scroll independently | `verify-categories`, `verify-panescroll`, `verify-browse` |
 | C6 | Store directory and store pages | `verify-publicstore`, `test-publicstore`, `verify-storeheader` |

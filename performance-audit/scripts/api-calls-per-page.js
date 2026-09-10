@@ -2,7 +2,7 @@ const fs = require('fs');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = process.env.AUDIT_BASE || 'http://127.0.0.1:8100';
 const PAGES = ['/index.html', '/store.html?store=bong', '/product.html?store=bong&product=p0',
-  '/search.html?q=rice', '/stores.html', '/categories.html', '/cart.html', '/checkout.html',
+  '/stores.html', '/categories.html', '/categories.html?q=rice', '/cart.html', '/checkout.html',
   '/customer-dashboard.html', '/customer-messages.html', '/customer-tips.html', '/my-carts.html'];
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });

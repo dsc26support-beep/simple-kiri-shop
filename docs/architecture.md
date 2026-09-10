@@ -151,7 +151,7 @@ Not real ES modules — IIFE-wrapped globals exposing a small public method surf
 ### Page controllers
 
 Each page has exactly one controller script owning its `DOMContentLoaded` init and
-all event wiring: `home.js`, `directory.js`, `store.js`, `search.js`, `cart-page.js`,
+all event wiring: `home.js`, `directory.js`, `store.js`, `categories.js`, `cart-page.js`,
 `checkout.js`, `owner-login.js`, `owner-forgot-password.js`, `owner-dashboard.js`,
 `owner-products.js`, `owner-orders.js`, `owner-settings.js`, plus `owner-nav.js`
 (shared logout-link wiring across every owner page) and `product-card.js`
