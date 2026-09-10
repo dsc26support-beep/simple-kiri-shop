@@ -83,6 +83,14 @@ async function selectCategory(categoryId, opts) {
   shownCount = CATEGORY_PAGE_SIZE;
   markSelected(categoryId);
 
+  // A new category is a new list, so start it at item one. Without this, a
+  // shopper scrolled halfway down Food and tapping Fishing lands in the middle
+  // of a list whose start they never saw. The pane is its own scroller now
+  // (body.browse-locked in styles.css), so this is the element that moves -
+  // window.scrollTo would do nothing, the document does not scroll here.
+  const pane = document.querySelector('.category-pane');
+  if (pane) pane.scrollTop = 0;
+
   const meta = categoryById(categoryId);
   document.getElementById('category-pane-heading').textContent = meta ? meta.label : 'Browse';
   document.title = `${meta ? meta.label : 'Browse'} — Mwakete`;
