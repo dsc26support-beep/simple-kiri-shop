@@ -489,7 +489,7 @@ section {
    categories on the homepage, and the category bar on the browse page. One
    rule set, because they are the same UX pattern asking two questions.
 
-   A strip rather than a wrapping block on purpose: twelve categories wrapped
+   A strip rather than a wrapping block on purpose: a dozen-plus categories wrapped
    into rows fill a phone's first screen, and the whole point is that products
    are visible without scrolling past the navigation. Sideways scrolling keeps
    the strip one row tall at every width. */
@@ -572,7 +572,7 @@ section {
 }
 
 /* "View all categories" closes the strip. Marked out as an action rather than
-   another category so it does not read as a thirteenth one. */
+   another category so it does not read as one more category. */
 .chip-strip-item--more {
   border-style: dashed;
   color: var(--color-purple);
@@ -600,8 +600,10 @@ section {
      and measured rather than guessed: 3 rows on a phone, 2 on a small tablet,
      1 from 900px up. Without this the row appeared a moment after first paint
      and pushed 158px of page down under the reader - the homepage's and search
-     page's largest layout shift. Keep in step with CATEGORIES in helpers.js:
-     changing how many categories there are changes these numbers. */
+     page's largest layout shift. Keep in step with popularCategories() - the
+     row renders the POPULAR few, not every category, so adding a non-popular
+     one (Handicrafts & Souvenirs) leaves these numbers alone. Changing which
+     categories are popular is what means re-measuring. */
   min-height: 158px;
 }
 
@@ -3362,7 +3364,7 @@ legend {
   background: var(--color-blue);
 }
 
-/* Swatch colours for the twelve categories. Shown only when a listing has no
+/* Swatch colours for the thirteen categories. Shown only when a listing has no
    photo, so they are a fallback, not a brand palette - each is dark enough for
    white initials to stay readable on it.
 
@@ -3377,6 +3379,7 @@ legend {
 .placeholder-swatch.category-vehicles { background: #1f4e5f; }
 .placeholder-swatch.category-fishing { background: #0f766e; }
 .placeholder-swatch.category-agriculture { background: #3f6212; }
+.placeholder-swatch.category-handicrafts { background: #a16207; }
 .placeholder-swatch.category-property { background: #7c3f00; }
 .placeholder-swatch.category-services { background: #166534; }
 .placeholder-swatch.category-education { background: #5b21b6; }

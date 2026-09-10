@@ -42,7 +42,7 @@ function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(categor
 var LISTING_TYPE_IDS = ['product', 'rental', 'service'];
 
 var CATEGORY_IDS = ['food', 'fashion', 'electronics', 'home', 'building', 'vehicles',
-  'fishing', 'agriculture', 'property', 'services', 'education', 'events', 'other'];
+  'fishing', 'agriculture', 'handicrafts', 'property', 'services', 'education', 'events', 'other'];
 
 var LEGACY_CATEGORY_MAP = {
   pantry: 'food',
