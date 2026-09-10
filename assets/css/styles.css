@@ -4315,3 +4315,17 @@ legend {
 .legal-page li {
   margin-bottom: var(--space-2);
 }
+
+/* The one paragraph on the terms page that must not be skim-read: Mwakete
+   never handles money and cannot refund. Given weight so a shopper who reads
+   nothing else on the page still reads this. */
+.legal-callout-heading {
+  margin-bottom: var(--space-2);
+}
+
+.legal-callout {
+  padding: var(--space-3);
+  border-left: 4px solid var(--color-purple);
+  background: var(--color-bg-alt);
+  border-radius: var(--radius);
+}
