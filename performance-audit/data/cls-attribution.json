@@ -1,27 +1,16 @@
 [
   {
     "path": "/product.html?store=bong&product=p0",
-    "total": 0.0798,
+    "total": 0.0262,
     "shifts": [
       {
-        "value": 0.07939603840077773,
-        "at": 896,
+        "value": 0.026102807145461173,
+        "at": 847,
         "sources": [
-          {
-            "node": "details#reviews-section.reviews-section",
-            "from": [
-              190,
-              49
-            ],
-            "to": [
-              0,
-              0
-            ]
-          },
           {
             "node": "p.view-store-row",
             "from": [
-              255,
+              182,
               24
             ],
             "to": [
@@ -32,28 +21,17 @@
         ]
       },
       {
-        "value": 0.00042567591536319077,
-        "at": 273,
+        "value": 0.00014714723000209062,
+        "at": 209,
         "sources": [
-          {
-            "node": "details#reviews-section.reviews-section",
-            "from": [
-              186,
-              49
-            ],
-            "to": [
-              190,
-              49
-            ]
-          },
           {
             "node": "p.view-store-row",
             "from": [
-              251,
+              178,
               24
             ],
             "to": [
-              255,
+              182,
               24
             ]
           }
@@ -66,8 +44,8 @@
     "total": 0.0001,
     "shifts": [
       {
-        "value": 0.00003712013321176869,
-        "at": 346,
+        "value": 0.000037135002525007644,
+        "at": 298,
         "sources": [
           {
             "node": "button.btn.btn-primary",
@@ -83,8 +61,8 @@
         ]
       },
       {
-        "value": 0.00002513235710376534,
-        "at": 336,
+        "value": 0.000025129976431805273,
+        "at": 289,
         "sources": [
           {
             "node": "button.btn.btn-primary",
@@ -100,8 +78,8 @@
         ]
       },
       {
-        "value": 0.00002463395960614092,
-        "at": 352,
+        "value": 0.000024644035938623066,
+        "at": 316,
         "sources": [
           {
             "node": "button.btn.btn-primary",
@@ -117,8 +95,8 @@
         ]
       },
       {
-        "value": 0.000010208658824357736,
-        "at": 371,
+        "value": 0.000010207284379564253,
+        "at": 332,
         "sources": [
           {
             "node": "button.btn.btn-primary",
@@ -134,8 +112,8 @@
         ]
       },
       {
-        "value": 0.000005401554856371529,
-        "at": 386,
+        "value": 0.000005402978514022067,
+        "at": 345,
         "sources": [
           {
             "node": "button.btn.btn-primary",
@@ -157,8 +135,8 @@
     "total": 0.0001,
     "shifts": [
       {
-        "value": 0.000037123455079619947,
-        "at": 379,
+        "value": 0.00003340022562103948,
+        "at": 323,
         "sources": [
           {
             "node": "button.btn.btn-primary",
@@ -174,25 +152,8 @@
         ]
       },
       {
-        "value": 0.000025128190927835225,
-        "at": 346,
-        "sources": [
-          {
-            "node": "button.btn.btn-primary",
-            "from": [
-              154,
-              42
-            ],
-            "to": [
-              154,
-              42
-            ]
-          }
-        ]
-      },
-      {
-        "value": 0.00002463622163996344,
-        "at": 388,
+        "value": 0.00002843934114156559,
+        "at": 336,
         "sources": [
           {
             "node": "button.btn.btn-primary",
@@ -208,8 +169,25 @@
         ]
       },
       {
-        "value": 0.0000102094356844584,
-        "at": 394,
+        "value": 0.00002513196032510533,
+        "at": 303,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              154,
+              42
+            ],
+            "to": [
+              154,
+              42
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000010208419790480609,
+        "at": 351,
         "sources": [
           {
             "node": "button.btn.btn-primary",
@@ -225,8 +203,8 @@
         ]
       },
       {
-        "value": 0.000005401871224738315,
-        "at": 413,
+        "value": 0.000005401475764279832,
+        "at": 371,
         "sources": [
           {
             "node": "button.btn.btn-primary",

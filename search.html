@@ -116,7 +116,19 @@
           </div>
         </div>
 
-        <p id="results-status" class="helper-text is-reserving-space" role="status">Loading…</p>
+        <!-- Deliberately NO .is-reserving-space, for the reason already recorded
+             on categories.html: a viewport-tall reservation overshoots a grid of
+             short multi-column cards, and RELEASING it is itself the jump.
+
+             Measured here, not assumed. With the reservation this page scored
+             CLS 0.0359; without it, 0.0037 - a tenth. Identical at 4, 8, 24 and
+             40 results, and with "Load More" both hidden and visible, because
+             the shift being measured is this element's own collapse from 100vh
+             to one line, not the grid filling in below it.
+
+             index.html, store.html and stores.html keep theirs: all three
+             measure ~0.0001, so the reservation costs them nothing. -->
+        <p id="results-status" class="helper-text" role="status">Loading…</p>
         <!-- Smart-search discovery. Empty and hidden unless a search returned
              nothing AND search-intent.js read a category out of the phrase, so
              a search that works never sees it. -->

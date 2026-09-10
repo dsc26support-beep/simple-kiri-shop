@@ -41,7 +41,7 @@ const BASE = 'http://127.0.0.1:8099';
     await page.goto(BASE+'/index.html',{waitUntil:'load'});
     await page.waitForSelector('.search-box');
     const w=await widths(page);
-    ok('mobile index: fills width (>300px)., w.w>300, JSON.stringify(w));
+    ok('mobile index: fills width (>300px)', w.w > 300, JSON.stringify(w));
     await page.close();
   }
   await browser.close();
