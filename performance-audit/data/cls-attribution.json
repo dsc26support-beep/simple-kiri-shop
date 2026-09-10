@@ -1,49 +1,27 @@
 [
   {
     "path": "/product.html?store=bong&product=p0",
-    "total": 0.8534,
+    "total": 0.0798,
     "shifts": [
       {
-        "value": 0.8532362914735139,
-        "at": 879,
+        "value": 0.07939603840077773,
+        "at": 896,
         "sources": [
           {
-            "node": "div.store-branding-info",
+            "node": "details#reviews-section.reviews-section",
             "from": [
-              44,
-              20
+              190,
+              49
             ],
             "to": [
-              54,
-              44
+              0,
+              0
             ]
           },
           {
-            "node": "p#store-name-tagline.site-tagline",
+            "node": "p.view-store-row",
             "from": [
-              44,
-              20
-            ],
-            "to": [
-              54,
-              20
-            ]
-          },
-          {
-            "node": "main#main.page-products",
-            "from": [
-              98,
-              108
-            ],
-            "to": [
-              142,
-              702
-            ]
-          },
-          {
-            "node": "p",
-            "from": [
-              150,
+              255,
               24
             ],
             "to": [
@@ -54,17 +32,28 @@
         ]
       },
       {
-        "value": 0.00014714723000209062,
-        "at": 255,
+        "value": 0.00042567591536319077,
+        "at": 273,
         "sources": [
           {
-            "node": "p",
+            "node": "details#reviews-section.reviews-section",
             "from": [
-              146,
+              186,
+              49
+            ],
+            "to": [
+              190,
+              49
+            ]
+          },
+          {
+            "node": "p.view-store-row",
+            "from": [
+              251,
               24
             ],
             "to": [
-              150,
+              255,
               24
             ]
           }
@@ -74,32 +63,89 @@
   },
   {
     "path": "/store.html?store=bong",
-    "total": 0.047,
+    "total": 0.0001,
     "shifts": [
       {
-        "value": 0.04704225397234034,
-        "at": 909,
+        "value": 0.00003712013321176869,
+        "at": 346,
         "sources": [
           {
-            "node": "div.store-branding-info",
+            "node": "button.btn.btn-primary",
             "from": [
-              44,
-              20
+              159,
+              40
             ],
             "to": [
-              54,
-              44
+              159,
+              40
             ]
-          },
+          }
+        ]
+      },
+      {
+        "value": 0.00002513235710376534,
+        "at": 336,
+        "sources": [
           {
-            "node": "main#main.page-products",
+            "node": "button.btn.btn-primary",
             "from": [
-              84,
-              760
+              158,
+              42
             ],
             "to": [
-              128,
-              716
+              158,
+              42
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.00002463395960614092,
+        "at": 352,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              161,
+              36
+            ],
+            "to": [
+              161,
+              36
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000010208658824357736,
+        "at": 371,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              163,
+              32
+            ],
+            "to": [
+              163,
+              32
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000005401554856371529,
+        "at": 386,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              164,
+              30
+            ],
+            "to": [
+              164,
+              30
             ]
           }
         ]
@@ -108,7 +154,93 @@
   },
   {
     "path": "/index.html",
-    "total": 0,
-    "shifts": []
+    "total": 0.0001,
+    "shifts": [
+      {
+        "value": 0.000037123455079619947,
+        "at": 379,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              155,
+              40
+            ],
+            "to": [
+              155,
+              40
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000025128190927835225,
+        "at": 346,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              154,
+              42
+            ],
+            "to": [
+              154,
+              42
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.00002463622163996344,
+        "at": 388,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              157,
+              36
+            ],
+            "to": [
+              157,
+              36
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.0000102094356844584,
+        "at": 394,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              159,
+              32
+            ],
+            "to": [
+              159,
+              32
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000005401871224738315,
+        "at": 413,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              160,
+              30
+            ],
+            "to": [
+              160,
+              30
+            ]
+          }
+        ]
+      }
+    ]
   }
 ]

@@ -777,6 +777,36 @@ footer.site-footer .copyright {
   scroll-snap-align: start;
 }
 
+/* Placeholder cards, rendered before the request goes out so the shelf has its
+   real height from first paint. Filling it in then moves nothing.
+
+   Built from the SAME box as a real card - .related-card for the width, and a
+   1/1 block for the image - because the height is driven by the card width,
+   which is a percentage. A fixed min-height would be right at one viewport and
+   wrong at every other: measured, the carousel is 219px at 390px wide, 260px at
+   768px and 272px at 1280px.
+
+   No shimmer animation on purpose. It would run on the CPU of exactly the
+   low-end phones this is meant to help, to decorate something visible for
+   under a second. */
+.related-card--skeleton .related-skeleton-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius);
+  background: var(--color-bg-alt);
+}
+
+.related-card--skeleton .related-skeleton-line {
+  height: 0.72rem;
+  margin-top: var(--space-1);
+  border-radius: 3px;
+  background: var(--color-bg-alt);
+}
+
+.related-card--skeleton .related-skeleton-line:last-child {
+  width: 60%;
+}
+
 @media (min-width: 600px) {
   .related-carousel .related-card { flex-basis: 26%; }
 }
