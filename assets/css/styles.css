@@ -734,6 +734,64 @@ footer.site-footer .copyright {
   right: max(var(--space-3), env(safe-area-inset-right));
 }
 
+/* A chat button the shopper has moved (fab-drag.js). The inline left/right and
+   bottom it writes are more specific than any rule here, so this only has to
+   cancel what would fight them: the media-query rule further down lifts the
+   button above the bottom nav, and it must not override a chosen position -
+   fab-drag.js already clamps clear of the nav itself. */
+.floating-action-btn.fab-moved {
+  transition: none;
+}
+
+/* Only while the finger is down and past the threshold. touch-action stops the
+   page scrolling under the drag; without it the button follows the finger and
+   the page moves too, which feels broken. cursor and opacity are the only
+   feedback needed - the button is under the thumb and mostly hidden by it. */
+.floating-action-btn.is-dragging {
+  touch-action: none;
+  cursor: grabbing;
+  opacity: 0.9;
+  user-select: none;
+}
+
+/* Similar products. A horizontal shelf rather than a grid: it is an aside on a
+   page about ONE product, and a grid would compete with the thing being read.
+   Two-and-a-bit cards visible on a phone, so the cut-off third card is what
+   tells the shopper it scrolls. */
+.related-section {
+  margin: var(--space-5) 0 var(--space-4);
+}
+
+.related-carousel {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  /* Room for the card shadow, which a plain overflow box would clip. */
+  padding: 2px 2px var(--space-2);
+}
+
+.related-carousel .related-card {
+  flex: 0 0 42%;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 600px) {
+  .related-carousel .related-card { flex-basis: 26%; }
+}
+
+@media (min-width: 900px) {
+  .related-carousel .related-card { flex-basis: 19%; }
+}
+
+/* Directly under the reviews, on the same spacing scale as the rest of the
+   page. It used to carry an inline margin-top:2rem, which is what made it look
+   like it belonged to nothing. */
+.view-store-row {
+  margin: var(--space-3) 0 0;
+}
+
 /* Custom PWA "Install" pill, injected by register-sw.js on mobile & tablet.
    Sits in the lower-right, stacked just above the 56px chat FAB (or the same
    slot on pages with no chat button). Hidden until JS adds .is-visible, and
