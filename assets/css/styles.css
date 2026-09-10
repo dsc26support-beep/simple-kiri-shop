@@ -478,7 +478,6 @@ section {
     row-gap: var(--space-4);
   }
   .home-main > .hero { order: 1; }
-  .home-main > .listing-types { order: 2; }
   .home-main > .categories { order: 3; }
   .home-main > .trending-products { order: 4; }
   .home-main > .trending-stores { order: 5; }
@@ -513,32 +512,33 @@ section {
   margin-right: calc(var(--space-3) * -1);
   padding-left: var(--space-3);
   padding-right: var(--space-3);
+  /* ...and scroll snapping has to respect that padding, or it defeats the line
+     above. Without this, a strip WIDE ENOUGH TO SCROLL snaps its first chip
+     flush to the border box - x=0, hard against the screen edge - while the
+     search field above keeps its 16px gutter. A strip too narrow to scroll
+     never snaps and looks correct, which is why this went unnoticed: on the
+     search page the listing-type strip fitted and sat at 16, and the category
+     strip below it overflowed and sat at 0. Removing the type strip put the
+     misaligned one directly under the search box and made it obvious. */
+  scroll-padding-left: var(--space-3);
 }
 
 .chip-strip::-webkit-scrollbar {
   display: none;
 }
 
-/* The search page stacks the search box and BOTH chip strips inside one .hero
-   container, with nothing between them - the box and the first row of chips
-   were touching at exactly 0px, which is why the field's focus ring landed on
-   top of the chips. 24px between each, so the box, the type chips and the
-   category chips read as three separate things.
+/* The category strip sits directly under the search box on search.html and
+   needs air: 24px, so the box and the chips read as two separate things.
 
-   Reaches search.html alone: index.html keeps its two strips in their own
-   .listing-types / .categories sections OUTSIDE the hero, where they already
-   sit 88px and 99px clear and need nothing.
+   Reaches search.html alone - index.html keeps its category strip in its own
+   .categories section OUTSIDE the hero, where it already sits clear and needs
+   nothing.
 
-   The second strip asks for 16px, not 24px: .chip-strip carries an 8px
-   padding-bottom as its scroll gutter, so 16 + 8 lands the two rows the same
-   24px apart as the first pair. Change that gutter and this number moves with
-   it. */
+   There used to be a second rule here for a listing-type strip stacked above
+   this one. Both that strip and the .home-main order slot it occupied are gone;
+   the rule went with them rather than being left to match nothing. */
 .hero .chip-strip {
   margin-top: var(--space-4);
-}
-
-.hero .chip-strip + .chip-strip {
-  margin-top: var(--space-3);
 }
 
 .chip-strip-item {

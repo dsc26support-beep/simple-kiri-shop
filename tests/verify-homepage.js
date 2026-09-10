@@ -25,7 +25,6 @@ async function open(browser, path, w, h) {
 const layout = (page) => page.evaluate(() => {
   const r = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; };
   const search = r('.search-box');
-  const types = r('#listing-type-strip');
   const cats = r('#category-strip');
   const trending = r('#trending-products-list');
   const nav = document.querySelector('.bottom-nav');
@@ -34,12 +33,13 @@ const layout = (page) => page.evaluate(() => {
   return {
     searchTop: search ? Math.round(search.top) : null,
     searchWidthPct: search ? Math.round((search.width / window.innerWidth) * 100) : null,
-    typesTop: types ? Math.round(types.top) : null,
     catsTop: cats ? Math.round(cats.top) : null,
     trendingTop: trending ? Math.round(trending.top) : null,
     // Order matters: brand/search -> type strip -> categories -> discovery.
-    orderOk: !!(search && types && cats && trending &&
-      search.top < types.top && types.top < cats.top && cats.top < trending.top),
+    // The listing-type strip used to sit between the search box and the
+    // categories. With it gone the order is one step shorter.
+    orderOk: !!(search && cats && trending &&
+      search.top < cats.top && cats.top < trending.top),
     stripScrolls: strip ? strip.scrollWidth > strip.clientWidth + 1 : null,
     stripOneRow: strip ? Math.round(strip.getBoundingClientRect().height) < 70 : null,
     chipCount: document.querySelectorAll('#category-strip .chip-strip-item').length,
@@ -63,7 +63,6 @@ const layout = (page) => page.evaluate(() => {
       JSON.stringify(m));
     ok('mobile: the search box is prominent (>80% of the width)', m.searchWidthPct >= 80,
       String(m.searchWidthPct) + '%');
-    ok('mobile: type strip is above the category strip', m.typesTop < m.catsTop, `${m.typesTop} < ${m.catsTop}`);
     ok('mobile: products are reachable without scrolling past a wall of categories',
       m.trendingTop < 844, String(m.trendingTop));
     ok('mobile: the category strip scrolls sideways', m.stripScrolls === true, String(m.stripScrolls));
@@ -121,11 +120,19 @@ const layout = (page) => page.evaluate(() => {
     await ctx.close();
   }
   {
+    // The [All|Products|Rentals|Services] strip was removed from the homepage
+    // and the search page. ?type= still FILTERS - smart search builds those
+    // links itself - there is simply no visible control for it any more, so
+    // this now guards the removal instead of the tap it used to make.
     const { ctx, page } = await open(browser, '/index.html', 390, 844);
-    await page.click('#listing-type-strip .chip-strip-item:nth-child(3)');
-    await page.waitForTimeout(700);
-    ok('tapping Rentals lands on a type-filtered search',
-      /search\.html\?type=rental$/.test(page.url()), page.url());
+    const gone = await page.evaluate(() => ({
+      strip: !!document.getElementById('listing-type-strip'),
+      section: !!document.querySelector('.listing-types'),
+      anyTypeLink: !!document.querySelector('a[href*="type=rental"], a[href*="type=service"]')
+    }));
+    ok('the listing-type strip is gone from the homepage', !gone.strip);
+    ok('and so is the section that wrapped it', !gone.section);
+    ok('no stray type= links are left behind', !gone.anyTypeLink);
     await ctx.close();
   }
   {

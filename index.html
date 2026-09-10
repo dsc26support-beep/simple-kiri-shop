@@ -65,17 +65,15 @@
       </div>
     </section>
 
-    <!-- Two strips, two different questions. This one asks what KIND of thing
-         you want; the one below asks what it IS. Both are rendered from the
-         shared taxonomy in helpers.js and scroll sideways rather than wrapping,
-         so neither eats the first screen. Their heights are reserved in CSS so
-         filling them in cannot push the products down. -->
-    <section class="listing-types" aria-labelledby="listing-types-heading">
-      <div class="container">
-        <h2 id="listing-types-heading" class="sr-only">Browse by type</h2>
-        <nav class="chip-strip" id="listing-type-strip" aria-label="Filter by listing type"></nav>
-      </div>
-    </section>
+    <!-- Rendered from the shared taxonomy in helpers.js, scrolling sideways
+         rather than wrapping so it never eats the first screen. Its height is
+         reserved in CSS, so filling it in cannot push the products down.
+
+         There used to be a second strip above this one asking what KIND of
+         thing you wanted - All / Products / Rentals / Services. It is gone.
+         ?type= still filters, and smart search still builds those links, so
+         "somewhere to stay" reaches rentals rather than land for sale; there is
+         simply no visible control for it now. -->
 
     <section class="categories" aria-labelledby="categories-heading">
       <div class="container">

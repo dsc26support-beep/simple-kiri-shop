@@ -48,13 +48,12 @@ async function init() {
   currentCategory = getQueryParam('category') || '';
   currentType = getQueryParam('type') || '';
 
-  // The same two strips as the homepage, so arriving here from a chip does not
-  // strand the shopper - they can keep moving between types and categories
-  // without going back. Both keep the OTHER filter in the link, so switching
-  // type inside a category stays inside that category.
-  renderListingTypeStrip('listing-type-strip', currentType, {
-    extraParams: { q: currentQuery, category: currentCategory }
-  });
+  // The category strip, so arriving here from a chip does not strand the
+  // shopper. It keeps ?type= in its links, so a shopper who landed on rentals
+  // from smart search stays on rentals while changing category.
+  //
+  // currentType is still read from the URL and still passed to the backend -
+  // the listing-type CHIPS are gone, the filter is not.
   renderCategoryStrip('category-strip', {
     activeId: currentCategory,
     hrefFor: (id) => {

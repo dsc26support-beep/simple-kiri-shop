@@ -657,6 +657,13 @@ function initials(name) {
 // label  - what a shopper sees (the homepage strip: Products / Rentals / Services).
 // seller  - what the seller sees when filing ONE listing, so it is singular:
 //           "Mushroom is a Product", not "a Products".
+// KEPT DELIBERATELY, though nothing reads it at runtime any more - the
+// shopper-facing [All|Products|Rentals|Services] strip that used it was removed
+// from the homepage and search page. It stays because it is the SPEC two tests
+// enforce: test-taxonomy.js checks these ids match Products.gs's
+// LISTING_TYPE_IDS, and verify-typeopts.js checks the seller form's hardcoded
+// <select> options match them. Delete it and both guards lose their reference
+// point.
 const LISTING_TYPES = [
   { id: 'product', label: 'Products', seller: 'Product', order: 1 },
   { id: 'rental',  label: 'Rentals',  seller: 'Rental',  order: 2 },
@@ -771,34 +778,6 @@ function renderCategoryButtons(containerId) {
   container.innerHTML = popularCategories().map(
     (c) => `<a class="btn category-btn category-btn--${c.id}" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
   ).join('');
-}
-
-/**
- * The [ All | Products | Rentals | Services ] strip.
- *
- * A filter on WHAT KIND of listing, which is a different question from what
- * category it is in - a shopper after "something to rent" does not know or care
- * which category the thing lives in. Rendered as links, not buttons, so each
- * one is shareable, opens in a new tab, and works before any script has run.
- *
- * `activeType` is '' for All. Returns silently if the container is absent.
- */
-function renderListingTypeStrip(containerId, activeType, opts) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  const active = String(activeType || '');
-  const base = (opts && opts.href) || 'search.html';
-  const extra = (opts && opts.extraParams) || {};
-  const link = (type, label) => {
-    const params = new URLSearchParams();
-    Object.entries(extra).forEach(([k, v]) => { if (v) params.set(k, v); });
-    if (type) params.set('type', type);
-    const qs = params.toString();
-    const on = active === type;
-    return `<a class="chip-strip-item${on ? ' is-active' : ''}" href="${base}${qs ? '?' + qs : ''}"` +
-      `${on ? ' aria-current="page"' : ''}>${escapeHtml(label)}</a>`;
-  };
-  container.innerHTML = link('', 'All') + LISTING_TYPES.map((t) => link(t.id, t.label)).join('');
 }
 
 /**

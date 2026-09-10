@@ -51,10 +51,14 @@
             <span class="search-submit-label">Search</span>
           </button>
         </form>
-        <!-- Same two strips as the homepage, so a shopper who arrived from a
-             chip can keep moving between types and categories without going
-             back. Heights reserved in CSS (.chip-strip). -->
-        <nav class="chip-strip" id="listing-type-strip" aria-label="Filter by listing type"></nav>
+        <!-- The category strip, same as the homepage, so a shopper who arrived
+             from a chip can keep moving between categories without going back.
+             Height reserved in CSS (.chip-strip).
+
+             The listing-type strip that sat above this is gone. ?type= still
+             FILTERS - smart search builds those links itself, so "somewhere to
+             stay" still reaches rentals rather than land for sale - there is
+             just no longer a visible control for it. -->
         <nav class="chip-strip" id="category-strip" aria-label="Categories"></nav>
       </div>
     </section>

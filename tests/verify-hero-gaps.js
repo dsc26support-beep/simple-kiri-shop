@@ -27,7 +27,10 @@ const WANT = 24;
   const geometry = () => {
     const r = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; };
     const box = r('.search-box');
-    const typeChip = r('#listing-type-strip .chip-strip-item');
+    // The listing-type strip that used to sit here is gone, so the first chip
+    // below the search box is now the category one. The gap being measured is
+    // the same gap - it just has a different neighbour.
+    const typeChip = r('#category-strip .chip-strip-item');
     const catChip = r('#category-strip .chip-strip-item');
     const input = r('.search-box input[type="search"]');
     return {
@@ -54,15 +57,28 @@ const WANT = 24;
 
     ok('search: the box no longer touches the chips', gapBoxToType > 0, String(gapBoxToType));
     ok(`search: ${WANT}px from the search box to the type chips`, gapBoxToType === WANT, String(gapBoxToType));
-    ok(`search: ${WANT}px from the type chips to the category chips`, gapTypeToCat === WANT, String(gapTypeToCat));
-    ok('search: both gaps are equal, so the three read as a rhythm',
-      gapBoxToType === gapTypeToCat, `${gapBoxToType} vs ${gapTypeToCat}`);
+    // There used to be a second assertion here for the gap between the
+    // listing-type chips and the category chips, and a third that the two gaps
+    // matched so box/types/categories read as one rhythm. The type strip is
+    // gone, so there is one gap left and nothing to rhyme it with.
     ok('search: the strips are still inside the hero (the rule has something to match)',
       g.heroInHero === true);
-    // The strips bleed to the screen edge with negative margins; a flex/gap
-    // rewrite of the container would silently undo that alignment.
+    // The strip bleeds to the screen edge with a negative margin and matching
+    // padding, and scroll-padding-left keeps snapping from undoing that. This
+    // used to fail: a strip wide enough to scroll snapped its first chip flush
+    // to x=0 while the field above kept its 16px gutter. It went unnoticed
+    // because the assertion pointed at the listing-type strip, which was narrow
+    // enough never to scroll or snap.
+    const aligned = await page.evaluate(() => {
+      const strip = document.getElementById('category-strip');
+      const chip = strip.querySelector('.chip-strip-item').getBoundingClientRect();
+      const input = document.querySelector('.search-box input[type="search"]').getBoundingClientRect();
+      return { chip: Math.round(chip.left), input: Math.round(input.left), scrollable: strip.scrollWidth > strip.clientWidth };
+    });
+    ok('search: the strip really is wide enough to scroll, so snapping applies',
+      aligned.scrollable, 'strip does not overflow - assertion below is vacuous');
     ok('search: the first chip still lines up with the search field',
-      g.typeChipLeft === g.inputLeft, `chip ${g.typeChipLeft} vs input ${g.inputLeft}`);
+      aligned.chip === aligned.input, `chip ${aligned.chip} vs input ${aligned.input}`);
 
     // The focus ring was the visible symptom: it drew over the chips.
     await page.fill('#search-input', 'rice');
@@ -71,7 +87,7 @@ const WANT = 24;
       const input = document.querySelector('.search-box input[type="search"]');
       input.focus();
       const ib = input.getBoundingClientRect();
-      const chip = document.querySelector('#listing-type-strip .chip-strip-item').getBoundingClientRect();
+      const chip = document.querySelector('#category-strip .chip-strip-item').getBoundingClientRect();
       const w = parseFloat(getComputedStyle(input).outlineWidth) || 0;
       const off = parseFloat(getComputedStyle(input).outlineOffset) || 0;
       return { ringBottom: ib.bottom + w + off, chipTop: chip.top };
@@ -96,7 +112,7 @@ const WANT = 24;
     // Section-level spacing, unchanged: generous and nothing to fix.
     ok('home: the search box keeps its existing room (well over 24px)',
       gapBoxToType > 60, String(gapBoxToType));
-    ok('home: the chip rows keep theirs', gapTypeToCat > 60, String(gapTypeToCat));
+    // Was: the gap between the two chip rows on the homepage. One row now.
     await page.close();
   }
 

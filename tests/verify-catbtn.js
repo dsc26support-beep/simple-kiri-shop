@@ -1,15 +1,22 @@
-// Was: the amber/green colour-coding on the homepage's Rentals and Services
-// category buttons. Those two stopped being categories - they are listing types
-// now, and a rental can sit in any category - so the buttons they tested no
-// longer exist.
+// This suite has been repointed twice, and the history is the point.
 //
-// The suite is repointed rather than deleted: its purpose was "a shopper can
-// see and reach the rent/hire affordance from the homepage and the search
-// page", and that is still true, via the listing-type strip.
+// 1. Originally: the amber/green colour-coding on the homepage's Rentals and
+//    Services CATEGORY buttons.
+// 2. Then those stopped being categories - they became listing types, and a
+//    rental can sit in any category - so it was repointed onto the
+//    [All|Products|Rentals|Services] strip that replaced them.
+// 3. Now that strip is gone from the homepage and search page too.
+//
+// What survives is the assertion that outlived both rewrites: RENTALS AND
+// SERVICES ARE NOT CATEGORIES. That is a taxonomy decision the category strip
+// could silently undo, and it is worth guarding whatever the UI around it does.
+//
+// The rest of the old file tested chips that no longer exist and is gone with
+// them. ?type= still filters - smart search builds those links - there is just
+// no visible control, which is asserted here and in verify-homepage.
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
-const rgb = (s) => s.replace(/\s+/g, '');
 
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
@@ -20,25 +27,20 @@ const rgb = (s) => s.replace(/\s+/g, '');
   async function check(pageName, url) {
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: 'load' });
-    await page.waitForSelector('#listing-type-strip .chip-strip-item');
-
-    const strip = await page.evaluate(() => {
-      const items = [...document.querySelectorAll('#listing-type-strip .chip-strip-item')];
-      return items.map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href') }));
-    });
-    ok(`${pageName}: strip is All + the three listing types`,
-      strip.map((i) => i.text).join('|') === 'All|Products|Rentals|Services', JSON.stringify(strip.map((i) => i.text)));
-    ok(`${pageName}: Rentals links to a type-filtered search`,
-      /type=rental(&|$)/.test(strip[2].href), strip[2].href);
-    ok(`${pageName}: Services links to a type-filtered search`,
-      /type=service(&|$)/.test(strip[3].href), strip[3].href);
-    ok(`${pageName}: All carries no type filter`, !/type=/.test(strip[0].href), strip[0].href);
+    await page.waitForSelector('#category-strip .chip-strip-item');
 
     const cats = await page.evaluate(() =>
       [...document.querySelectorAll('#category-strip .chip-strip-item')].map((a) => a.textContent.trim()));
-    ok(`${pageName}: a category strip is present too`, cats.length > 0, JSON.stringify(cats));
-    ok(`${pageName}: rentals/services are NOT offered as categories`,
+    ok(`${pageName}: a category strip is present`, cats.length > 0, JSON.stringify(cats));
+    ok(`${pageName}: rentals are NOT offered as a category`,
       !cats.some((t) => t === 'Rentals'), JSON.stringify(cats));
+    // Only Rentals is checked. "Services" IS a real category in the taxonomy -
+    // a plumber is a service AND files under Services - so asserting its
+    // absence would be wrong. Rentals is the one that must never reappear as a
+    // category, because knowing a thing is rented says nothing about what it is.
+
+    const strip = await page.evaluate(() => !!document.getElementById('listing-type-strip'));
+    ok(`${pageName}: the listing-type strip is gone`, !strip);
 
     await page.close();
   }
@@ -46,28 +48,31 @@ const rgb = (s) => s.replace(/\s+/g, '');
   await check('home', BASE + '/index.html');
   await check('search', BASE + '/search.html');
 
-  // The active chip is marked, and in the same purple the nav uses for "here".
+  // The filter itself must still work when a link carries it - this is what
+  // smart search relies on for "somewhere to stay" to reach rentals rather
+  // than land for sale.
   {
-    const page = await ctx.newPage();
-    await page.goto(BASE + '/search.html?type=rental', { waitUntil: 'load' });
-    await page.waitForSelector('#listing-type-strip .chip-strip-item');
-    const active = await page.evaluate(() => {
-      const el = document.querySelector('#listing-type-strip .chip-strip-item.is-active');
-      if (!el) return null;
-      const cs = getComputedStyle(el);
-      return { text: el.textContent.trim(), bg: cs.backgroundColor, color: cs.color,
-               current: el.getAttribute('aria-current') };
+    const asked = [];
+    const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx2.route('**/macros/s/**', (r) => {
+      try {
+        const u = new URL(r.request().url());
+        if (u.searchParams.get('action') === 'searchProducts') asked.push(u.searchParams.get('type') || '');
+      } catch (e) {}
+      return r.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ ok: true, products: [], stores: [] }) });
     });
-    ok('the chosen type is the marked chip', active && active.text === 'Rentals', JSON.stringify(active));
-    ok('marked in Mwakete purple', active && rgb(active.bg) === 'rgb(51,45,99)', active && active.bg);
-    ok('white text on it', active && rgb(active.color) === 'rgb(255,255,255)', active && active.color);
-    ok('and announced as the current page', active && active.current === 'page', active && active.current);
-    await page.close();
+    const page = await ctx2.newPage();
+    await page.goto(BASE + '/search.html?type=rental', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    ok('?type= still reaches the backend with the chips gone',
+      asked.includes('rental'), JSON.stringify(asked));
+    await ctx2.close();
   }
 
   await browser.close();
   let f = 0;
-  console.log('\n--- Listing-type strip (was: category button colours) ---');
+  console.log('\n--- Rentals/services are not categories; type filter survives ---');
   for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e ? '  [' + e + ']' : ''}`); }
   console.log(`\n${R.length - f}/${R.length} passed`);
   process.exit(f ? 1 : 0);
