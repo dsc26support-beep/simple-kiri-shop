@@ -350,10 +350,10 @@ async function open(browser, url) {
   await browser.close();
 
   const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
-  ok('the new file is precached, so it works offline', /assets\/js\/search-intent\.js/.test(sw));
+  ok('the new file is precached, so it works offline', /assets\/js\/search-intent(\.min)?\.js/.test(sw));
   const html = fs.readFileSync(REPO + 'categories.html', 'utf8');
   ok('and is loaded before categories.js, which calls it',
-    html.indexOf('search-intent.js') < html.indexOf('js/categories.js'));
+    html.search(/search-intent(\.min)?\.js/) < html.search(/js\/categories(\.min)?\.js/));
 
   // No .gs file should have been touched at all.
   const { execSync } = require('child_process');

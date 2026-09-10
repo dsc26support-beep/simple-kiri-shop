@@ -242,11 +242,11 @@ async function drag(page, toX, toY) {
 
   /* ---------- wiring ---------- */
   const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
-  ok('fab-drag.js is precached', /assets\/js\/fab-drag\.js/.test(sw));
+  ok('fab-drag.js is precached', /assets\/js\/fab-drag(\.min)?\.js/.test(sw));
   ['cart.html', 'checkout.html', 'product.html', 'store.html'].forEach((f) => {
     const h = fs.readFileSync(REPO + f, 'utf8');
     ok(`${f} has a chat button and loads the drag script`,
-      /id="chat-fab"/.test(h) && /fab-drag\.js/.test(h));
+      /id="chat-fab"/.test(h) && /fab-drag(\.min)?\.js/.test(h));
   });
   const drag_js = fs.readFileSync(REPO + 'assets/js/fab-drag.js', 'utf8');
   // Check each call site individually. A private window, cleared site data, or

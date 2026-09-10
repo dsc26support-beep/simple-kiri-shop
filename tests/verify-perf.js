@@ -111,7 +111,10 @@ async function open(browser, path, opts = {}) {
     // Stub out the host page's own script entirely, so nothing publishes
     // __storeInfoPromise and chat-window.js is genuinely on its own - which is
     // the case its header comment promises still works.
-    await c.route('**/assets/js/store.js', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+    // Matches the built copy too - the page loads store.min.js, and without
+    // the glob covering it the real script runs, publishes __storeInfoPromise,
+    // and the fallback this block exists to test never fires.
+    await c.route(/assets\/js\/store(\.min)?\.js/, (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
     const p = await c.newPage();
     await p.goto(BASE + '/store.html?store=bong');
     await p.waitForTimeout(1500);
@@ -138,7 +141,8 @@ async function open(browser, path, opts = {}) {
       return reqs.map((r) => new URL(r.url).pathname);
     });
     for (const want of ['/store.html', '/assets/js/store.js', '/checkout.html', '/assets/js/chat-window.js']) {
-      ok(`precached ${want}`, cached.some((u) => u.endsWith(want)), '');
+      const alt = want.replace(/\.js$/, '.min.js');
+      ok(`precached ${want}`, cached.some((u) => u.endsWith(want) || u.endsWith(alt)), '');
     }
     await c.setOffline(true);
     const resp = await p.goto(BASE + '/store.html?store=bong', { waitUntil: 'domcontentloaded' }).catch(() => null);

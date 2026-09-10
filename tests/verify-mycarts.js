@@ -153,7 +153,7 @@ const rows = (page) => page.evaluate(() => ({
   /* --- static --- */
   const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
   ok('my-carts.html precached', sw.indexOf("'my-carts.html'") !== -1);
-  ok('my-carts.js precached', sw.indexOf("'assets/js/my-carts.js'") !== -1);
+  ok('my-carts.js precached', /'assets\/js\/my-carts(\.min)?\.js'/.test(sw));
   // Version-agnostic: pinning a literal breaks on every later release.
   const swMain = require('child_process')
     .execSync('git -C /home/user/simple-kiri-shop show origin/main:sw.js', { encoding: 'utf8' });

@@ -223,8 +223,8 @@ ok('bottom-nav counts the cart locally, with no request',
   ok('the cart scan lives in helpers', /function totalCartItemCount/.test(fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8')));
   const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
   ok('categories.html precached', sw.indexOf("'categories.html'") !== -1);
-  ok('categories.js precached', sw.indexOf("'assets/js/categories.js'") !== -1);
-  ok('header-cart.js precached', sw.indexOf("'assets/js/header-cart.js'") !== -1);
+  ok('categories.js precached', /'assets\/js\/categories(\.min)?\.js'/.test(sw));
+  ok('header-cart.js precached', /'assets\/js\/header-cart(\.min)?\.js'/.test(sw));
   // Version-agnostic: pinning a literal means every later release breaks this.
   const swMain = require('child_process')
     .execSync('git -C /home/user/simple-kiri-shop show origin/main:sw.js', { encoding: 'utf8' });
