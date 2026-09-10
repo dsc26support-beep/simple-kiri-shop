@@ -357,8 +357,9 @@ Three layout reservations exist for the same reason and are easy to break:
   used both. Note that `role="status"` already implies `aria-live="polite"`, so
   the attribute is usually redundant anyway.
 - **`.category-buttons`' `min-height`** - measured against the number of entries
-  in `CATEGORIES`. Changing how many categories there are means re-measuring
-  those three breakpoints.
+  `popularCategories()` returns, NOT every entry in `CATEGORIES`. Adding a
+  category that is not `popular` leaves those three breakpoints alone; changing
+  which categories are popular is what means re-measuring.
 - **`.cart-stores`' `min-height`** on `stores.html` - the "pick up where you
   left off" row. Its height has to exist in the *first* paint, which is the one
   place JS cannot reach, so a small inline script in that page's `<head>` counts

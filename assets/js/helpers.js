@@ -674,10 +674,15 @@ const CATEGORIES = [
   { id: 'vehicles',    label: 'Vehicles & Transport',        order: 6,  popular: true,  active: true, types: ALL_TYPES },
   { id: 'fishing',     label: 'Fishing & Marine',            order: 7,  popular: false, active: true, types: ALL_TYPES },
   { id: 'agriculture', label: 'Agriculture & Local Products', order: 8, popular: false, active: true, types: ['product', 'service'] },
-  { id: 'property',    label: 'Property & Accommodation',    order: 9,  popular: false, active: true, types: ['rental', 'service'] },
-  { id: 'services',    label: 'Services',                    order: 10, popular: true,  active: true, types: ['service'] },
-  { id: 'education',   label: 'Education & Jobs',            order: 11, popular: false, active: true, types: ['service'] },
-  { id: 'events',      label: 'Events & Travel',             order: 12, popular: false, active: true, types: ALL_TYPES },
+  // Sits next to Agriculture deliberately: the shopper looking for a pandanus
+  // mat and the one looking for local produce are often the same person, and
+  // one scroll should show them both. 'product' only - a finished mat, necklace
+  // or model canoe. A weaver taking a commission files that under Services.
+  { id: 'handicrafts', label: 'Handicrafts & Souvenirs',      order: 9,  popular: false, active: true, types: ['product'] },
+  { id: 'property',    label: 'Property & Accommodation',    order: 10, popular: false, active: true, types: ['rental', 'service'] },
+  { id: 'services',    label: 'Services',                    order: 11, popular: true,  active: true, types: ['service'] },
+  { id: 'education',   label: 'Education & Jobs',            order: 12, popular: false, active: true, types: ['service'] },
+  { id: 'events',      label: 'Events & Travel',             order: 13, popular: false, active: true, types: ALL_TYPES },
   // Always last, always offered to sellers, and where anything that cannot be
   // mapped confidently lands. Never 'popular'.
   { id: 'other',       label: 'Other',                       order: 99, popular: false, active: true, types: ALL_TYPES }
@@ -800,7 +805,7 @@ function renderListingTypeStrip(containerId, activeType, opts) {
  * A horizontally scrolling category strip.
  *
  * Only the popular few by default, with a "View all categories" link at the
- * end - twelve full-width cards would eat the whole first screen, and the point
+ * end - a full-width card per category would eat the whole first screen, and the point
  * of the strip is that a shopper can see products without scrolling past it.
  *
  * `opts.all` renders every active category instead (the browse page's own bar).
