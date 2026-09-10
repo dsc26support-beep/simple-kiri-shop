@@ -174,3 +174,133 @@ redeploy needed.**
 
 A real phone, a real network, and GitHub Pages itself. Every figure here is a
 throttled headless Chromium against a local server with the backend mocked.
+
+---
+
+# V2 Performance Results — Phase 2
+
+**Before:** Phase 1 · **After:** Phase 2, two commits
+**Data:** `performance-audit/data/v2-phase1-gzip.json` → `v2-phase2-gzip.json`
+**Date:** 2026-09-10
+
+Same gzip server on :8100, same 600 ms mocked API latency, same profiles, same
+machine, idle. Compressed, because GitHub Pages serves compressed.
+
+---
+
+## Headline
+
+| Page | Profile | Phase 1 | **Phase 2** | Change |
+|---|---|---|---|---|
+| index | **mobile-slow3g** | 2560 ms / 67 KB | **1484 ms / 31 KB** | **−42%** |
+| store | **mobile-slow3g** | 2948 ms / 84 KB | **1612 ms / 39 KB** | **−45%** |
+| index | mobile-4g | 460 ms / 67 KB | **312 ms / 31 KB** | −32% |
+| store | mobile-4g | 476 ms / 84 KB | **320 ms / 39 KB** | −33% |
+| product | mobile-4g | 460 ms / 85 KB | **296 ms / 40 KB** | −36% |
+| categories | mobile-4g | 428 ms / 67 KB | **288 ms / 34 KB** | −33% |
+| stores | mobile-4g | 344 ms / 66 KB | **280 ms / 29 KB** | −19% |
+| index **[warm]** | mobile-4g | 212 ms / 0 KB | **96 ms / 0 KB** | −55% |
+
+**The slow-3G figure is the one that matters.** A first-time visitor on the kind
+of connection this site is built for now paints in about 1.5 seconds instead of
+2.6. That is the largest single improvement in the V2 work.
+
+### This is not noise, and here is the proof
+
+Phase 1 correctly refused to claim an LCP win, because its deltas sat inside the
+measurement's own scatter. Phase 2's do not. The same configuration — index,
+mobile-4g, 600 ms — appears **eight times in this one sweep** and returns:
+
+```
+288  292  296  300  304  304  312  312
+```
+
+A ±12 ms band. The baseline range for that same configuration was 448–464 ms.
+The two ranges do not overlap, and the gap is roughly six times the noise floor.
+
+---
+
+## What changed
+
+One thing: the pages stopped shipping their comments.
+
+38% of `styles.css` and 47% of `helpers.js` was comment text. Gzip does not hide
+it — measured across the tree, comments cost **69.7 KB gzipped**, and about
+29 KB of that landed on the homepage alone.
+
+| Asset | Phase 1 gzipped | Phase 2 gzipped |
+|---|---|---|
+| `assets/css/styles.css` | 28,725 | **10,214** |
+| `assets/js/helpers.js` | 21,280 | **8,707** |
+| whole tree, 40 files | 160,580 | **103,643** |
+
+The comments are worth keeping, so the **sources keep every one of them** and
+the pages load generated `.min` copies. `tools/build-assets.js` produces them;
+`npm run build` runs it.
+
+### Deliberately not done
+
+**No code transformation.** terser runs `compress: false, mangle: false`;
+clean-css runs at level 1. Mangling would rename globals other modules reach for
+by name (`Cart`, `Api`, `Helpers`), and clean-css level 2 merges and reorders
+rules — which can change the cascade where two selectors have equal specificity,
+a trap this branch hit twice. The whole win is comments and whitespace; neither
+transformation was worth the risk for a few hundred more bytes.
+
+**`sw.js` is not built.** A broken service worker is the one failure on this site
+that keeps hurting after it is fixed, because it can serve stale content to
+returning visitors indefinitely. Leaving it alone costs 2 KB gzipped.
+
+---
+
+## The new hazard, and what closes it
+
+A committed build can go stale: edit a source, forget `npm run build`, and the
+site quietly serves the old code with **nothing visible in the diff**.
+
+`tests/verify-minified.js` (18/18) closes it on three fronts:
+
+1. **Freshness** — re-minifies every source and byte-compares what is committed.
+2. **Wiring** — no page may load a source asset that has a built twin; every
+   `.min` file a page references must exist.
+3. **Equivalence** — renders 15 pages twice, source CSS against minified CSS
+   swapped in at the network layer, comparing **every element's computed style**
+   across 43 layout, box, type and colour properties. About 1,700 elements per
+   run. Byte-comparing can only prove the build is current; this is what shows
+   the minifier did not change what a rule *means*.
+
+---
+
+## Regressions
+
+**None in the product.** The sweep flagged six suites; every one was a test
+naming a source file, and every invariant they guard was verified to still hold
+before a test was touched.
+
+One of them looked like a real behaviour failure. `verify-perf` stubs
+`**/assets/js/store.js` to an empty body to prove the chat window falls back to
+its own fetch when no page publishes store info. With the page loading
+`store.min.js` the glob stopped matching, so the real script ran, published
+`__storeInfoPromise`, and the fallback never fired. A naming problem wearing a
+behaviour problem's clothes.
+
+All six now match `/foo(\.min)?\.js/` — asserting that the **module** is
+precached or loaded, not which build of it. Pinning the new name would have made
+them fail if the build were ever turned off.
+
+`verify-grey` crashed in the sweep and passes 9/9 alone: the server drop under
+load that `tests/README.md` documents.
+
+---
+
+## A measurement I threw away
+
+The first Phase 2 run passed `AUDIT_OUT` a full path when the script wants a
+bare name. It built the output path twice over, crashed on the write — which
+happens *before* the table is printed — and produced nothing. Re-run correctly
+rather than reconstructed from the partial output.
+
+## Not tested
+
+A real phone, a real network, or GitHub Pages itself. Every figure here is
+throttled headless Chromium against a local server with the backend mocked.

@@ -157,6 +157,26 @@ The list is **six**, not eight.
 
 ---
 
+## Phase 2 added a build step — one new rule
+
+Pages load generated `assets/**/*.min.js` and `*.min.css`; the sources keep
+their comments. **Editing a source without running `npm run build` ships nothing
+— the site keeps serving the old code, and the diff looks correct.**
+
+| # | Must keep working | Covered by |
+|---|---|---|
+| B1 | Committed `.min` files match their source | `verify-minified` |
+| B2 | Every page loads the built asset, and it exists | `verify-minified` |
+| B3 | Minified CSS is behaviourally identical to source | `verify-minified` (computed styles, 15 pages × 43 properties) |
+
+Run `node tests/verify-minified.js` before any push that touches CSS or JS.
+
+`sw.js` is **not** built, deliberately — a broken service worker can serve stale
+content to returning visitors indefinitely. Do not add it to the build without
+a very good reason.
+
+---
+
 ## Files that must NOT be modified during the performance phase
 
 | Path | Why |
