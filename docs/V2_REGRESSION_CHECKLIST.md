@@ -8,24 +8,13 @@ later that breaks a line here.
 
 ---
 
-## ⚠️ Read this before relying on the "covered by" column
+## The suites now live in `tests/`
 
-**The 91 test suites referenced below are not in this repository.** They live in
-an ephemeral session scratchpad
-(`/tmp/claude-0/.../scratchpad/verify-*.js`, `test-*.js`) that is destroyed when
-the container is reclaimed. `git ls-files` finds **zero** test files.
-
-So the regression net that has been protecting this codebase all session
-**cannot be run by anyone else, on any other machine, or at any later date.**
-
-That makes it the single biggest structural risk to a safe V2 programme, and
-the first recommended Phase 1 item is to commit these suites into the repo.
-It is purely additive — it changes no application file — and without it §27's
-rollback requirement cannot actually be met, because "revert and re-verify"
-has nothing to re-verify with.
-
-Until that is done, treat every "covered by" cell as *"was covered, in a
-session that no longer exists"*.
+**Resolved in Phase 1** (`7c43b7b`). When this checklist was first written the
+91 suites existed only in an ephemeral container scratchpad and `git ls-files`
+found zero test files — meaning §27's rollback rule had nothing to re-verify
+against. They are now committed verbatim in `tests/`, with `tests/README.md`
+covering how to run them and the two absolute paths they still assume.
 
 ---
 
@@ -56,6 +45,7 @@ For each change:
 | C7 | Product cards link to their product page | `verify-cardlink`, `verify-cardloc`, `verify-card` |
 | C8 | Product detail renders; variants selectable | `verify-products`, `verify-variety` |
 | C9 | Similar-products carousel; excludes the current product | `verify-fabdrag` |
+| C9b | Product-page layout stays stable while the carousel loads (CLS budget 0.05) | `verify-cls` |
 | C10 | Cart add / update / remove; per-store carts | `verify-cart-overlay`, `verify-mycarts`, `verify-cartstores` |
 | C11 | Checkout: delivery choice, totals, order placement | `verify-checkout`, `verify-order`, `verify-delivery` |
 | C12 | "Back to Cart" under Place Order | `verify-backtocart` |
@@ -133,12 +123,19 @@ change is judged against **this** list, not against zero:
 | `verify-custauth` | 11/14 |
 | `verify-emailpopup` | crash |
 | `verify-install` | crash |
-| `verify-searchwidth` | crash |
 | `verify-more-colors` | 27/28 — stale expected tile count, verified against `origin/main` |
 
-`verify-fab` was in this list until it was rewritten this session: it had been
-timing out at 390px waiting for a cookie banner that is deliberately hidden
-below 1024px, so it guarded nothing. Now 9/9.
+**Two suites have left this list, and neither was actually failing — both were
+not executing** while being counted as known failures:
+
+- `verify-fab` had been timing out at 390px waiting for a cookie banner that is
+  deliberately hidden below 1024px, testing an overlap that can no longer
+  happen. Rewritten to guard the invariant that replaced it — **9/9**.
+- `verify-searchwidth` was a **syntax error**: an unterminated string on line 44
+  meant the file never loaded. One closing quote later — **9/9**. It covers
+  search-box width on exactly the page Phase 1 changed.
+
+The list is **six**, not eight.
 
 ---
 
