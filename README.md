@@ -24,8 +24,8 @@ Static front end (HTML/CSS/JS)  <-- fetch -->  Apps Script Web App  <-->  Google
 
 ```
 index.html            Homepage: search box + shop-by-category buttons
+categories.html        Browse by category + site-wide search (?category= / ?q=)
 stores.html            Full store directory (browse all stores)
-search.html             Cross-store product search/category results (?q= / ?category=)
 store.html               One store's product catalog (?store=slug)
 cart.html                 Shopping cart for the active store
 checkout.html              Customer details, places the order, auto-emails the store owner

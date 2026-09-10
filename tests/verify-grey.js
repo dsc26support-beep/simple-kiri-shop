@@ -6,7 +6,7 @@ const rgb = s => s.replace(/\s+/g,'');
   const ctx = await b.newContext();
   await ctx.route('**/macros/s/**', r => r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,products:[],stores:[]})}));
   const results=[]; const ok=(n,c,e)=>results.push([c?'PASS':'FAIL',n,e||'']);
-  const pages=['index.html','search.html','store.html?store=x','stores.html'];
+  const pages=['index.html','categories.html','store.html?store=x','stores.html'];
   for(const p of pages){
     const page=await ctx.newPage();
     await page.setViewportSize({width:390,height:800});

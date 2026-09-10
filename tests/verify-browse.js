@@ -94,12 +94,22 @@ const TIPS = { ok: true, stores: [], products: [
     ok('the count line follows the filter', /1 product/.test(g.status), g.status);
     ok('and the page never left the browse URL', /categories\.html/.test(pg.url()), pg.url());
 
-    // Submitting must not reload and lose the category.
+    // Submitting used to be a no-op that only had to avoid reloading. Now this
+    // page has absorbed search.html, so Enter runs a SITE-WIDE search: it still
+    // must not reload - the results swap in like a rail tap - but it does now
+    // leave the category, and records the query in the URL so the search can be
+    // shared and restored.
+    const before = await pg.evaluate(() => performance.getEntriesByType('navigation').length);
     await pg.press('#browse-search-input', 'Enter');
-    await pg.waitForTimeout(300);
-    ok('pressing Enter does not reload the page',
-      /categories\.html/.test(pg.url()) && !/\?q=/.test(pg.url()), pg.url());
+    await pg.waitForTimeout(600);
+    const after = await pg.evaluate(() => performance.getEntriesByType('navigation').length);
+    ok('pressing Enter does not reload the page', before === after, `${before} -> ${after}`);
+    ok('and it runs a site-wide search, recorded in the URL',
+      /categories\.html/.test(pg.url()) && /\?q=/.test(pg.url()), pg.url());
 
+    // Back to browse mode for the live-filter assertions below.
+    await pg.click('.category-rail-item[data-category="food"]');
+    await pg.waitForTimeout(600);
     await pg.fill('#browse-search-input', 'zzzznothing');
     await pg.waitForTimeout(300);
     g = await pg.evaluate(state);

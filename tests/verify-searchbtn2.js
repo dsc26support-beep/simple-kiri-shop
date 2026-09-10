@@ -13,7 +13,7 @@ const BASE = 'http://127.0.0.1:8099';
 
 const PAGES = [
   ['/index.html',  '#search-form',          '#search-input'],
-  ['/search.html', '#search-form',          '#search-input'],
+  ['/categories.html', '#browse-search-form', '#browse-search-input'],
   ['/stores.html', '#stores-search-form',   '#stores-search-input'],
   ['/store.html?store=bong', '#products-search-form', '#products-search-input']
 ];
@@ -98,7 +98,7 @@ const PAGES = [
     const ctx = await makeCtx(390);
     const page = await ctx.newPage();
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
-    await page.waitForSelector('#search-form .search-submit', { timeout: 6000 });
+    await page.waitForSelector('#search-form .search-submit', { timeout: 6000, state: 'attached' });
 
     await page.fill('#search-input', 'r');
     await page.waitForTimeout(350);
@@ -150,14 +150,17 @@ const PAGES = [
     const ctx = await makeCtx(390);
     const page = await ctx.newPage();
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
-    await page.waitForSelector('#search-form .search-submit', { timeout: 6000 });
+    // 'attached', not visible: with an empty box the disc is collapsed, which
+    // is the whole point of this block - search has to work without it.
+    await page.waitForSelector('#search-form .search-submit', { timeout: 6000, state: 'attached' });
     // Type and press Enter without ever touching the button.
     await page.click('#search-input');
     await page.keyboard.type('rice');
     await page.keyboard.press('Enter');
-    await page.waitForURL(/search\.html/, { timeout: 6000 }).catch(() => {});
+    // The homepage search now lands on the browse page - search.html is gone.
+    await page.waitForURL(/categories\.html/, { timeout: 6000 }).catch(() => {});
     ok('Enter alone still runs the search - the button is never required',
-      /search\.html/.test(page.url()) && /q=rice/.test(page.url()), page.url());
+      /categories\.html/.test(page.url()) && /q=rice/.test(page.url()), page.url());
     await ctx.close();
   }
 
@@ -165,14 +168,14 @@ const PAGES = [
   {
     const ctx = await makeCtx(390);
     const page = await ctx.newPage();
-    await page.goto(BASE + '/search.html?q=rice', { waitUntil: 'load' });
-    await page.waitForSelector('#search-form .search-submit', { timeout: 6000 });
+    await page.goto(BASE + '/categories.html?q=rice', { waitUntil: 'load' });
+    await page.waitForSelector('#browse-search-form .search-submit', { timeout: 6000 });
     const shifted = [];
     // A prefilled query must NOT flash the collapsed state and then pop in -
     // sample straight after load, before any transition could finish.
-    const early = await page.evaluate(probe, { formSel: '#search-form', inputSel: '#search-input' });
+    const early = await page.evaluate(probe, { formSel: '#browse-search-form', inputSel: '#browse-search-input' });
     await page.waitForTimeout(350);
-    const settled = await page.evaluate(probe, { formSel: '#search-form', inputSel: '#search-input' });
+    const settled = await page.evaluate(probe, { formSel: '#browse-search-form', inputSel: '#browse-search-input' });
     ok('arriving at ?q=rice shows the button with no empty flash',
       !early.isEmpty && !settled.isEmpty, JSON.stringify({ early: early.isEmpty, settled: settled.isEmpty }));
     ok('and it is the 44px purple disc', settled.btnW === 44 && settled.bg === 'rgb(51, 45, 99)',
@@ -184,10 +187,10 @@ const PAGES = [
   {
     const ctx = await makeCtx(1100);
     const page = await ctx.newPage();
-    await page.goto(BASE + '/search.html', { waitUntil: 'load' });
-    await page.waitForSelector('#search-form .search-submit', { timeout: 6000 });
+    await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
+    await page.waitForSelector('#browse-search-form .search-submit', { timeout: 6000 });
     await page.waitForTimeout(250);
-    const wide = await page.evaluate(probe, { formSel: '#search-form', inputSel: '#search-input' });
+    const wide = await page.evaluate(probe, { formSel: '#browse-search-form', inputSel: '#browse-search-input' });
     ok('desktop still shows the written "Search" pill even with an empty field',
       wide.btnW > 60 && wide.visibility === 'visible', JSON.stringify(wide));
     ok('desktop keeps the blue .btn-primary, not the phone purple',

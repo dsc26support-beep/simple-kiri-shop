@@ -11,7 +11,7 @@ function init() {
 function onSearchSubmit(e) {
   e.preventDefault();
   const q = document.getElementById('search-input').value.trim();
-  window.location.href = `search.html?q=${encodeURIComponent(q)}`;
+  window.location.href = `categories.html?q=${encodeURIComponent(q)}`;
 }
 
 // One combined request for both sections below, instead of two separate

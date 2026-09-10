@@ -12,7 +12,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
 const KEEP = ['index.html', 'customer-login.html', 'owner/login.html', 'owner/forgot-password.html'];
 
-const DROP = ['store.html?store=bong', 'search.html?q=x', 'stores.html', 'cart.html',
+const DROP = ['store.html?store=bong', 'categories.html?q=x', 'stores.html', 'cart.html',
   'checkout.html', 'categories.html', 'my-carts.html', 'customer-tips.html',
   'customer-dashboard.html', 'customer-messages.html',
   'product.html?store=bong&product=p1',

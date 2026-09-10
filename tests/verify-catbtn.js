@@ -45,8 +45,10 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.close();
   }
 
+  // Home only. The search page is gone, and the browse page that absorbed it
+  // has a category RAIL (#category-rail), not the homepage's strip - a
+  // different control, covered by verify-categories.
   await check('home', BASE + '/index.html');
-  await check('search', BASE + '/search.html');
 
   // The filter itself must still work when a link carries it - this is what
   // smart search relies on for "somewhere to stay" to reach rentals rather
@@ -63,7 +65,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
         body: JSON.stringify({ ok: true, products: [], stores: [] }) });
     });
     const page = await ctx2.newPage();
-    await page.goto(BASE + '/search.html?type=rental', { waitUntil: 'load' });
+    await page.goto(BASE + '/categories.html?category=property&type=rental', { waitUntil: 'load' });
     await page.waitForTimeout(900);
     ok('?type= still reaches the backend with the chips gone',
       asked.includes('rental'), JSON.stringify(asked));

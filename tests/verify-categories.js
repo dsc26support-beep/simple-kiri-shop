@@ -209,7 +209,7 @@ const railState = (page) => page.evaluate(() => ({
   await ctx.close();
 
   // It has to be on every customer page, or the cart becomes unreachable there.
-  for (const p of ['/categories.html', '/search.html?q=x', '/stores.html', '/store.html?store=bong', '/customer-tips.html']) {
+  for (const p of ['/categories.html', '/categories.html?q=x', '/stores.html', '/store.html?store=bong', '/customer-tips.html']) {
     const { ctx: c, page: pg } = await open(browser, p, { seedCarts: true, settle: 700 });
     ok(`header cart present on ${p.split('?')[0]}`, await pg.evaluate(() => !!document.getElementById('header-cart-link')));
     await c.close();

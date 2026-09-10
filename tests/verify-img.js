@@ -49,12 +49,15 @@ const product = (id, name, imageUrl) => ({
   ok('home preconnect present', pc.some(h => h.includes('res.cloudinary.com')) && pc.some(h => h.includes('lh3.googleusercontent.com')), JSON.stringify(pc));
   await home.close();
 
-  // --- Search page ---
+  // --- Browse page (which absorbed search.html) ---
+  // .category-tile-image, not .product-image: this page uses a lighter tile
+  // than the search grid did - photo and name only - because the rail leaves
+  // the pane narrower. Same optimizedImageUrl call and same width behind it.
   const search = await ctx.newPage();
-  await search.goto(BASE + '/search.html', { waitUntil: 'load' });
-  await search.waitForSelector('.product-image');
-  const sImg = await search.$eval('.product-image', el => el.getAttribute('src'));
-  ok('search product img resized', sImg.includes('c_limit,w_520/'), sImg);
+  await search.goto(BASE + '/categories.html', { waitUntil: 'load' });
+  await search.waitForSelector('.category-tile-image');
+  const sImg = await search.$eval('.category-tile-image', el => el.getAttribute('src'));
+  ok('browse product img resized', sImg.includes('c_limit,w_520/'), sImg);
   await search.close();
 
   // --- Store page ---

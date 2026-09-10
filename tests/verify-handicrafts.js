@@ -130,7 +130,7 @@ async function open(browser, path) {
 
   // Search page: reachable by URL, which is how the browse chip links out.
   {
-    const { ctx, page, errs, asked } = await open(browser, '/search.html?category=handicrafts');
+    const { ctx, page, errs, asked } = await open(browser, '/categories.html?category=handicrafts');
     await page.waitForTimeout(600);
     ok('search page accepts it as a category', asked.includes('handicrafts'), asked.join(','));
     ok('no page errors on search', errs.length === 0, errs.join(' | '));

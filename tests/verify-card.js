@@ -6,7 +6,7 @@ const BASE = 'http://127.0.0.1:8099';
   const ctx = await browser.newContext({ viewport: { width: 390, height: 800 } });
   await ctx.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, products: [] }) }));
   const page = await ctx.newPage();
-  await page.goto(BASE + '/search.html', { waitUntil: 'load' });
+  await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
   await page.waitForFunction(() => typeof renderBrowseProductCard === 'function', null, { timeout: 5000 });
 
   const res = await page.evaluate(() => {

@@ -17,7 +17,7 @@ const BASE = 'http://127.0.0.1:8099';
 
   const pages = [
     ['index.html', 'index.html'],
-    ['search.html', 'search.html'],
+    ['categories.html', 'categories.html'],
     ['store.html?store=x', 'store.html'],
     ['stores.html', 'stores.html'],
   ];

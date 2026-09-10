@@ -7,7 +7,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
 const WITH_LOGO = ['index.html', 'customer-dashboard.html', 'customer-login.html',
   'customer-messages.html', 'customer-tips.html'];
-const WITHOUT = ['store.html?store=bong', 'search.html?q=x', 'stores.html',
+const WITHOUT = ['store.html?store=bong', 'categories.html?q=x', 'stores.html',
   'cart.html', 'checkout.html', 'categories.html', 'my-carts.html', 'product.html?store=bong&product=p1'];
 
 async function open(browser, path, width) {

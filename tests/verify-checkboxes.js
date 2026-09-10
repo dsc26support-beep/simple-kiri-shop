@@ -82,45 +82,14 @@ const OWNER = { ownerId: 'o1', storeName: 'Bong', storeSlug: 'bong', email: 'a@b
       JSON.stringify(list.map((b) => `${b.labelClass}:${b.labelH}`)));
   };
 
-  // ---------------- search filters ----------------
-  {
-    const { ctx, pg } = await page('/search.html?category=fashion');
-    await pg.click('#filters-toggle');
-    await pg.waitForTimeout(300);
-    check('search filters', await pg.evaluate(audit));
-
-    const panel = await pg.evaluate(() => {
-      const strip = document.getElementById('filter-delivery');
-      const slider = document.getElementById('filter-price-max');
-      const p = document.getElementById('filters-panel');
-      const chips = [...document.querySelectorAll('#filter-delivery .filter-chip')];
-      return {
-        label: document.getElementById('delivery-filter-label').textContent.trim(),
-        scrolls: strip.scrollWidth > strip.clientWidth + 1,
-        chipsVisible: chips.every((c) => c.checkVisibility()),
-        chipCount: chips.length,
-        sliderW: Math.round(slider.getBoundingClientRect().width),
-        panelInnerW: Math.round(p.getBoundingClientRect().width) - 32,
-        pillLook: chips.some((c) => getComputedStyle(c).borderTopWidth !== '0px')
-      };
-    });
-    ok('search: the delivery label reads "Delivery"', panel.label === 'Delivery', panel.label);
-    ok('search: the options are checkboxes, not pill buttons', panel.pillLook === false);
-    ok('search: they no longer scroll sideways', panel.scrolls === false, String(panel.scrolls));
-    ok('search: so every delivery option is visible at once',
-      panel.chipCount === 3 && panel.chipsVisible === true, JSON.stringify(panel));
-    ok('search: the price bar takes the full width of the panel',
-      panel.sliderW >= panel.panelInnerW - 4, `${panel.sliderW} of ${panel.panelInnerW}`);
-
-    // Ticking one must still filter.
-    const before = await pg.textContent('#results-status, #results-count').catch(() => '');
-    await pg.click('#filter-delivery .filter-chip');
-    await pg.waitForTimeout(400);
-    const ticked = await pg.evaluate(() =>
-      document.querySelector('#filter-delivery input[type=checkbox]').checked);
-    ok('search: tapping the label still ticks the box', ticked === true, String(ticked));
-    await ctx.close();
-  }
+  // ---------------- search filters: REMOVED ----------------
+  // This block audited the checkbox/radio sizing inside search.html's filters
+  // panel - price, delivery method, "available only". The whole panel went with
+  // that page; the browse page that absorbed search never had one.
+  //
+  // The global input reset this suite exists to guard is still exercised by the
+  // checkout, owner-settings and review-star blocks below, which cover the same
+  // rule on three other surfaces.
 
   // ---------------- checkout delivery radios ----------------
   {

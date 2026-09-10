@@ -267,8 +267,8 @@ async function open(browser, url) {
 
   // A search that WORKS must be untouched, and must not cost an extra request.
   {
-    const { ctx, page, errs, calls } = await open(browser, '/search.html?q=phone');
-    const cards = await page.locator('#results-list a[href*="product.html"]').count();
+    const { ctx, page, errs, calls } = await open(browser, '/categories.html?q=phone');
+    const cards = await page.locator('#category-list a[href*="product.html"]').count();
     ok('live: an exact search still returns its results', cards === 3, String(cards));
     ok('live: discovery stays hidden when there are results',
       await page.locator('#search-discovery').isHidden(), 'visible');
@@ -280,7 +280,7 @@ async function open(browser, url) {
 
   // The whole point.
   {
-    const { ctx, page, errs, calls } = await open(browser, '/search.html?q=I%20want%20food');
+    const { ctx, page, errs, calls } = await open(browser, '/categories.html?q=I%20want%20food');
     const disc = page.locator('#search-discovery');
     ok('live: "I want food" shows discovery instead of a dead end',
       await disc.isVisible(), 'hidden');
@@ -290,7 +290,7 @@ async function open(browser, url) {
     ok('live: it offers at least one category chip', await chip.count() >= 1, String(await chip.count()));
     const href = await chip.first().getAttribute('href');
     ok('live: the chip links to a real category search', /category=food/.test(href), href);
-    const cards = await page.locator('#results-list a[href*="product.html"]').count();
+    const cards = await page.locator('#category-list a[href*="product.html"]').count();
     ok('live: and fills the empty grid with that category', cards === 5, String(cards));
     ok('live: it cost exactly ONE extra request, not one per keystroke',
       calls.length === 2 && calls[1].category === 'food' && calls[1].q === '',
@@ -301,7 +301,7 @@ async function open(browser, url) {
 
   // Nothing readable - must not guess, must still help.
   {
-    const { ctx, page, errs, calls } = await open(browser, '/search.html?q=xyzabc123');
+    const { ctx, page, errs, calls } = await open(browser, '/categories.html?q=xyzabc123');
     const disc = page.locator('#search-discovery');
     ok('live: an unknown search still gets a way forward', await disc.isVisible(), 'hidden');
     const lead = await disc.locator('.search-discovery-lead').innerText();
@@ -317,7 +317,7 @@ async function open(browser, url) {
 
   // "something" - a shopper who has not said what they want.
   {
-    const { ctx, page } = await open(browser, '/search.html?q=something');
+    const { ctx, page } = await open(browser, '/categories.html?q=something');
     const lead = await page.locator('#search-discovery .search-discovery-lead').innerText();
     ok('live: "something" asks what they are looking for',
       /What are you looking for/.test(lead), lead);
@@ -326,7 +326,7 @@ async function open(browser, url) {
 
   // Hedged wording for a vague phrase.
   {
-    const { ctx, page } = await open(browser, '/search.html?q=something%20for%20my%20house');
+    const { ctx, page } = await open(browser, '/categories.html?q=something%20for%20my%20house');
     const lead = await page.locator('#search-discovery .search-discovery-lead').innerText();
     ok('live: a vague phrase is offered, not announced',
       /You may be looking for/.test(lead), lead);
@@ -335,7 +335,7 @@ async function open(browser, url) {
 
   // Mobile: the discovery block must not overflow the screen.
   {
-    const { ctx, page } = await open(browser, '/search.html?q=I%20want%20food');
+    const { ctx, page } = await open(browser, '/categories.html?q=I%20want%20food');
     const overflow = await page.evaluate(() =>
       document.documentElement.scrollWidth > window.innerWidth + 1);
     ok('live: no horizontal overflow at 390px', !overflow, 'page scrolls sideways');
@@ -351,9 +351,9 @@ async function open(browser, url) {
 
   const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
   ok('the new file is precached, so it works offline', /assets\/js\/search-intent\.js/.test(sw));
-  const html = fs.readFileSync(REPO + 'search.html', 'utf8');
-  ok('and is loaded before search.js, which calls it',
-    html.indexOf('search-intent.js') < html.indexOf('js/search.js'));
+  const html = fs.readFileSync(REPO + 'categories.html', 'utf8');
+  ok('and is loaded before categories.js, which calls it',
+    html.indexOf('search-intent.js') < html.indexOf('js/categories.js'));
 
   // No .gs file should have been touched at all.
   const { execSync } = require('child_process');

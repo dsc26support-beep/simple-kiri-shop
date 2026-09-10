@@ -92,9 +92,12 @@ const cards = (page, sel) => page.evaluate((s) => {
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 
+  // Home only. The search row is gone with search.html: the browse page that
+  // absorbed it renders renderCategoryTile - photo and name, no location line -
+  // so there is nothing here to assert. store.html below still covers the full
+  // card, which is where the location logic actually lives.
   for (const [path, sel, label] of [
-    ['/index.html', '#trending-products-list', 'home'],
-    ['/search.html?q=chop', '#results-list', 'search']
+    ['/index.html', '#trending-products-list', 'home']
   ]) {
     const { ctx, page } = await open(browser, path);
     const c = await cards(page, sel);

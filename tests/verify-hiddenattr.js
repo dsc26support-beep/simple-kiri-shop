@@ -76,46 +76,26 @@ const mk = (n) => Array.from({ length: n }, (_, i) => ({
   }
 
   // ---- the two other pages this global rule also fixes ----
-  {
-    const { ctx, page } = await open('/search.html?category=fashion', mk(40));
-    const tb = await page.evaluate(box, '#results-toolbar');
-    ok('search: the results toolbar shows once there are results',
-      tb.hidden === false && tb.display !== 'none', JSON.stringify(tb));
-
-    const cnt = await page.evaluate(box, '#filters-count');
-    ok('search: the filter count badge stays hidden at zero filters',
-      cnt.hidden === true && cnt.display === 'none' && cnt.w === 0, JSON.stringify(cnt));
-
-    const panel = await page.evaluate(box, '#filters-panel');
-    ok('search: the filter panel is hidden until asked for',
-      panel.hidden === true && panel.display === 'none', JSON.stringify(panel));
-
-    // ...and opens properly when asked.
-    await page.click('#filters-toggle');
-    await page.waitForTimeout(250);
-    const open2 = await page.evaluate(box, '#filters-panel');
-    ok('search: and it opens on tap', open2.hidden === false && open2.display !== 'none',
-      JSON.stringify(open2));
-
-    const more = await page.evaluate(box, '#results-more');
-    ok('search: the Load more row is visible with 40 results',
-      more.hidden === false && more.display !== 'none', JSON.stringify(more));
-    await ctx.close();
-  }
+  // The results toolbar and filter-count badge were on search.html, which is
+  // gone - the browse page never had either. The global [hidden] rule this
+  // suite exists for is still exercised by #category-more above and by the
+  // install pill below.
 
   // ---- nothing that was visible went missing ----
+  // Was: #results-toolbar and #results-more on search.html. Both went with that
+  // page. The equivalent on the browse page is #category-more, which the two
+  // blocks above already cover in both states - marked hidden with a short
+  // list, not hidden with a long one.
   {
-    const { ctx, page } = await open('/search.html?category=fashion', mk(2));
+    const { ctx, page } = await open('/categories.html?category=fashion', mk(2));
     const g = await page.evaluate(() => {
-      const b = (s) => { const e = document.querySelector(s); if (!e) return null;
-        const r = e.getBoundingClientRect();
-        return { hidden: e.hidden, display: getComputedStyle(e).display, h: Math.round(r.height) }; };
-      return { toolbar: b('#results-toolbar'), more: b('#results-more'),
-               tiles: document.querySelectorAll('.product-card, .browse-card').length };
+      const e = document.getElementById('category-more');
+      return { hidden: e.hidden, display: getComputedStyle(e).display,
+               tiles: document.querySelectorAll('.category-tile').length };
     });
-    ok('search with 2 results: toolbar still shown', g.toolbar.display !== 'none', JSON.stringify(g.toolbar));
-    ok('search with 2 results: Load more correctly hidden',
-      g.more.hidden === true && g.more.display === 'none', JSON.stringify(g.more));
+    ok('browse with 2 results: the tiles are there', g.tiles === 2, JSON.stringify(g));
+    ok('browse with 2 results: More... correctly hidden',
+      g.hidden === true && g.display === 'none', JSON.stringify(g));
     await ctx.close();
   }
 

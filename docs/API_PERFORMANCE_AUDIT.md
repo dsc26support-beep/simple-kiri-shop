@@ -10,6 +10,12 @@ public action in `apps-script/`.
 the *shape* of each response, not production volume. Backend read counts are
 from source and are exact.
 
+
+> **Superseded on one point.** `search.html` was removed after this was
+> written; `categories.html` absorbed browsing and site-wide search. The
+> measurements below are still an accurate record of commit `39cd862` and are
+> deliberately left as they were taken.
+
 ---
 
 ## Read this first — two rows that look like bugs and are not

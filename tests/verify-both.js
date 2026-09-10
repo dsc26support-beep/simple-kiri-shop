@@ -98,7 +98,7 @@ const prod = (id, name) => ({ productId: id, name, storeSlug: 'x', storeName: 'S
   // both.
   function gapFn() {
     return (() => {
-      const cards = document.querySelectorAll('.product-grid .product-card, #results-list .product-card, #product-list .product-card');
+      const cards = document.querySelectorAll('.product-grid .product-card, #category-list .category-tile, #product-list .product-card');
       const last = cards[cards.length - 1];
       const footer = document.querySelector('footer.site-footer');
       const main = document.querySelector('main');
@@ -114,14 +114,20 @@ const prod = (id, name) => ({ productId: id, name, storeSlug: 'x', storeName: 'S
       };
     })();
   }
-  // 6. search.html short list on a TALL viewport so 60vh (900px) exceeds the
-  // content - this is exactly the case where the old floor created the gap.
-  // With the fix, main hugs content and the footer sits just after the products.
+  // 6. A short list on a TALL viewport so 60vh (900px) exceeds the content -
+  // exactly the case where the old floor created the gap. With the fix, main
+  // hugs content and the footer sits just after the products.
+  //
+  // index.html, not the browse page: browse is body.browse-locked (a fixed
+  // 100dvh column with its own scrollers), so main fills the viewport BY
+  // DESIGN there and "hugs content" is not a meaningful question. It also has
+  // to be a page with a FOOTER - gapFn measures to it - and footers live only
+  // on home and login.
   {
     const ctx = await ctxWith(2, { viewport: { width: 390, height: 1500 } });
     const page = await ctx.newPage();
-    await page.goto(BASE + '/search.html', { waitUntil: 'load' });
-    await page.waitForSelector('#results-list .product-card');
+    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await page.waitForSelector('.product-grid .product-card');
     const g = await page.evaluate(gapFn);
     const floor = Math.round(g.vh * 0.6); // 900px
     ok('hug: small gap below a short list', g.gap < 80, JSON.stringify(g));
@@ -144,8 +150,8 @@ const prod = (id, name) => ({ productId: id, name, storeSlug: 'x', storeName: 'S
   {
     const ctx = await ctxWith(2, { viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
-    await page.goto(BASE + '/search.html', { waitUntil: 'load' });
-    await page.waitForSelector('#results-list .product-card');
+    await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
+    await page.waitForSelector('#category-list .category-tile');
     const mh = await page.evaluate(() => Math.round(document.querySelector('main').getBoundingClientRect().height));
     ok('hug: desktop main still >= ~60vh', mh >= 900 * 0.6 - 5, 'mainH=' + mh);
     await ctx.close();

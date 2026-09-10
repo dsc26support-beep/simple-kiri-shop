@@ -15,7 +15,7 @@ const rgb = s => s.replace(/\s+/g, '');
 
   const results = [];
   const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
-  const pages = ['index.html', 'search.html', 'store.html?store=x', 'stores.html'];
+  const pages = ['index.html', 'categories.html', 'store.html?store=x', 'stores.html'];
 
   // Written for a BLUE ::after chevron, which later became grey and has now
   // been replaced by a purple disc that only appears once the shopper types.

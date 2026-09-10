@@ -142,7 +142,7 @@ const PRODUCT = (over) => Object.assign({
     const c = await browser.newContext();
     await c.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, products: [] }) }));
     const pg = await c.newPage();
-    await pg.goto(BASE + '/search.html', { waitUntil: 'load' });
+    await pg.goto(BASE + '/categories.html', { waitUntil: 'load' });
     await pg.waitForFunction(() => typeof renderBrowseProductCard === 'function');
     const out = await pg.evaluate(() => ({
       rated: renderBrowseProductCard({ productId: 'p1', name: 'R', storeSlug: 'b', storeName: 'B', category: 'pantry', variants: [{ variantId: 'v', label: '1', price: 1 }], rating: 4.3, reviewCount: 7 }),

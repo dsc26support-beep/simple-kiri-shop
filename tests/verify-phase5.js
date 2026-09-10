@@ -134,7 +134,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     const ctx = await browser.newContext();
     await ctx.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, products: [] }) }));
     const page = await ctx.newPage();
-    await page.goto(BASE + '/search.html', { waitUntil: 'load' });
+    await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
     await page.waitForFunction(() => typeof renderBrowseProductCard === 'function');
     const href = await page.evaluate(() => {
       const html = renderBrowseProductCard({ productId: 'p1', name: 'Rice', storeSlug: 'bong', storeName: 'Bong', category: 'pantry', variants: [{ variantId: 'v1', label: '1kg', price: 6 }] });

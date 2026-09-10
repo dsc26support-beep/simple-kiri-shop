@@ -19,7 +19,7 @@ function initHeaderCart() {
   const header = document.querySelector('header.site-header');
   if (!header || document.getElementById('header-cart-link')) return;
 
-  // Prefer the top row where there is one; search.html's header is a plain
+  // Prefer the top row where there is one; some headers are a plain
   // .container, so fall back to the first one rather than skipping the page.
   const host = header.querySelector('.header-top-row') || header.querySelector('.container');
   if (!host) return;

@@ -10,7 +10,7 @@ const BASE = 'http://127.0.0.1:8099';
     route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
   });
   const results=[]; const ok=(n,c,e)=>results.push([c?'PASS':'FAIL',n,e||'']);
-  const pages=['index.html','search.html','store.html?store=x','stores.html'];
+  const pages=['index.html','categories.html','store.html?store=x','stores.html'];
 
   async function widths(page){
     return page.evaluate(()=>{

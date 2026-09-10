@@ -72,6 +72,10 @@
           <div id="featured-list" class="category-grid"></div>
         </section>
         <p id="category-status" class="helper-text" role="status">Loading…</p>
+        <!-- Smart-search discovery, moved here with the rest of search.html.
+             Empty and hidden unless a site-wide query returned nothing AND
+             search-intent.js read a category out of the phrase. -->
+        <div id="search-discovery" class="search-discovery" hidden></div>
         <div id="category-list" class="category-grid"></div>
         <p class="load-more-row"><button type="button" id="category-more" class="btn btn-small" hidden>More…</button></p>
       </div>
@@ -84,6 +88,9 @@
   <script defer src="assets/js/api.js"></script>
   <script defer src="assets/js/helpers.js"></script>
   <script defer src="assets/js/cookie-consent.js"></script>
+  <!-- Before categories.js: it calls detectSearchIntent(). Pure dictionary, no
+       network, no dependency. -->
+  <script defer src="assets/js/search-intent.js"></script>
   <script defer src="assets/js/categories.js"></script>
   <script defer src="assets/js/customer-auth.js"></script>
   <script defer src="assets/js/header-cart.js"></script>

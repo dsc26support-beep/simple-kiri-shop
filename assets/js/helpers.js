@@ -632,7 +632,7 @@ function initials(name) {
     .toUpperCase();
 }
 
-// Customer-facing quick-filter buttons (home page + search.html). A subset
+// Customer-facing quick-filter buttons. A subset
 // of the category <select> options in owner/products.html - "General" is
 // still a valid category a vendor can pick, it just doesn't get its own
 // browse button here.
@@ -776,7 +776,7 @@ function renderCategoryButtons(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = popularCategories().map(
-    (c) => `<a class="btn category-btn category-btn--${c.id}" href="search.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
+    (c) => `<a class="btn category-btn category-btn--${c.id}" href="categories.html?category=${encodeURIComponent(c.id)}">${escapeHtml(c.label)}</a>`
   ).join('');
 }
 
@@ -796,7 +796,7 @@ function renderCategoryStrip(containerId, opts) {
   const o = opts || {};
   const list = o.all ? activeCategories() : popularCategories();
   const activeId = String(o.activeId || '');
-  const hrefFor = (id) => (o.hrefFor ? o.hrefFor(id) : `search.html?category=${encodeURIComponent(id)}`);
+  const hrefFor = (id) => (o.hrefFor ? o.hrefFor(id) : `categories.html?category=${encodeURIComponent(id)}`);
 
   const items = list.map((c) => {
     const on = c.id === activeId;
@@ -1035,7 +1035,7 @@ function wireSearchSubmitReveal() {
     if (!input) return;
     syncSearchSubmit(form);
     input.addEventListener('input', () => syncSearchSubmit(form));
-    // 'input' does not fire for a value set from script, and search.html
+    // 'input' does not fire for a value set from script, and the browse page
     // prefills from ?q= in its own DOMContentLoaded handler - which runs AFTER
     // this one, since this listener is registered first. Without the re-check,
     // arriving with a query would show the field as empty.
