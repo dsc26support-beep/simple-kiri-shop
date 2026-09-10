@@ -29,12 +29,23 @@
    categories - "fish" is dinner or it is tackle). Both lists are matched as
    whole words after normalization.
 
-   NOT YET, AND DELIBERATELY: te taetae ni Kiribati. Every intent carries an
-   empty `local` list for Gilbertese terms - te amwarake, te kai ni ika and so
-   on. It is empty because guessing at a language I cannot check would put
-   wrong words in front of shoppers, and a wrong keyword is worse than a
-   missing one. Someone who speaks it should fill these in; nothing else needs
-   to change when they do.
+   TE TAETAE NI KIRIBATI. The `local` and `phrases` lists were supplied by a
+   Kiribati speaker as "what shoppers actually type" - they are not translated
+   or guessed, which is why they were left empty until someone could give them.
+
+   Three things fell out of adding them, all recorded because they are the kind
+   of thing that looks like a bug later:
+
+   - `te` is the article, and te amwarake ("the food") differs from amwarake
+     ("to eat"). Both mean the shopper wants food, so `te` is a stopword and
+     either form matches. Same for the linking particles ni, n, aika.
+   - `bwai` means "thing". Alone it is exactly as vague as "something", and it
+     is treated that way - but it opens three real phrases (bwai n tiati,
+     bwai ni mwakuri, bwai n tangira), which is why phrases are matched before
+     vague words are stripped, and why a phrase hit cancels the vagueness
+     hedge.
+   - `been` is paint (Building) and pen (Education), and it collided with the
+     English stopword "been". The stopword lost; see the note there.
    =========================================================================== */
 
 /**
@@ -46,7 +57,13 @@
  */
 const SEARCH_STOPWORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'if', 'is', 'are', 'am', 'was', 'were',
-  'be', 'been', 'do', 'does', 'did', 'can', 'could', 'would', 'should', 'will',
+  // 'been' is deliberately NOT here. It is te taetae ni Kiribati for paint
+  // (Building) and for pen (Education), and as a stopword it was swallowed
+  // before it could match either - a shopper typing it got "what are you
+  // looking for?". The English past participle it collides with only appears
+  // in phrasings whose other words are stopwords anyway ("I have been looking
+  // for a phone"), and the runner-up floor below drops the weak noise it adds.
+  'be', 'do', 'does', 'did', 'can', 'could', 'would', 'should', 'will',
   'shall', 'may', 'might', 'to', 'for', 'of', 'in', 'on', 'at', 'by', 'from',
   'with', 'about', 'into', 'up', 'out', 'over', 'under', 'i', 'me', 'my', 'mine',
   'we', 'us', 'our', 'you', 'your', 'yours', 'he', 'she', 'it', 'its', 'they',
@@ -57,7 +74,14 @@ const SEARCH_STOPWORDS = new Set([
   'find', 'finds', 'finding', 'sell', 'sells', 'selling', 'have', 'has', 'had',
   'please', 'pls', 'any', 'some', 'all', 'more', 'most', 'very', 'really',
   'just', 'now', 'today', 'tonight', 'tomorrow', 'near', 'nearby', 'around',
-  'good', 'best', 'nice', 'new', 'old', 'go', 'going'
+  'good', 'best', 'nice', 'new', 'old', 'go', 'going',
+  // te taetae ni Kiribati particles. `te` is the article - te amwarake is
+  // "the food" where amwarake alone is the verb "to eat" - and both point at
+  // the same shelf, so dropping it costs nothing and means a shopper who types
+  // either is understood. `ni`/`n`/`aika` are the linking particles inside the
+  // multi-word phrases below; the phrase list is matched BEFORE any of this
+  // stripping happens, so removing them here never breaks a phrase.
+  'te', 'ni', 'n', 'aika', 'ana', 'ao'
 ]);
 
 /**
@@ -71,7 +95,13 @@ const SEARCH_STOPWORDS = new Set([
  */
 const SEARCH_VAGUE_WORDS = new Set([
   'something', 'anything', 'somewhere', 'anywhere', 'someone', 'anyone',
-  'thing', 'things', 'stuff', 'help', 'idea', 'ideas', 'options', 'option'
+  'thing', 'things', 'stuff', 'help', 'idea', 'ideas', 'options', 'option',
+  // bwai is "thing". A shopper who types it alone has said no more than
+  // someone who types "something", and should get the same question back.
+  // It appears inside three phrases below - bwai n tiati, bwai ni mwakuri,
+  // bwai n tangira - and those still match, because phrases are matched
+  // before vague words are stripped.
+  'bwai'
 ]);
 
 /** A price mood, not a category. Turns into sort=cheapest on the chips. */
@@ -90,7 +120,16 @@ const SEARCH_CHEAP_WORDS = new Set([
  *   weak        1 point. A hint - usually a word that honestly belongs to two
  *               categories, and is listed under both so the shopper is offered
  *               both rather than being guessed at.
- *   local       Gilbertese terms. Empty by design - see the header.
+ *   local       te taetae ni Kiribati single words. Scored like `strong`: a
+ *               shopper typing their own language is not being vaguer than one
+ *               typing English.
+ *   phrases     Multi-word terms, matched against the normalized query BEFORE
+ *               stopwords are stripped - which is the only order that works,
+ *               since the particles holding them together (ni, n, aika) are
+ *               stopwords themselves. Worth 3, more than a strong single word:
+ *               three words landing in a row is not an accident, and it is
+ *               what lets "bwai ni mwakuri" (tools) beat the bare "mwakuri"
+ *               (work) that would otherwise pull the search to Jobs.
  */
 const SEARCH_INTENTS = {
   food: {
@@ -103,7 +142,8 @@ const SEARCH_INTENTS = {
       'sweets', 'lolly', 'lollies', 'biscuit', 'biscuits'],
     // Both of these are dinner or they are livestock/tackle. Offered, not assumed.
     weak: ['fish', 'chicken', 'pork', 'egg', 'eggs', 'coconut'],
-    local: []
+    local: ['amwarake'],
+    phrases: []
   },
   fashion: {
     category: 'fashion',
@@ -113,7 +153,8 @@ const SEARCH_INTENTS = {
       'cosmetics', 'perfume', 'jewellery', 'jewelry', 'earring', 'earrings',
       'necklace', 'bracelet', 'watch', 'handbag', 'wear', 'haircut'],
     weak: ['bag', 'hair', 'ring'],
-    local: []
+    local: ['kunikai'],
+    phrases: []
   },
   electronics: {
     category: 'electronics',
@@ -123,7 +164,8 @@ const SEARCH_INTENTS = {
       'camera', 'printer', 'usb', 'sim', 'internet', 'wifi', 'fridge',
       'freezer', 'microwave', 'electronics', 'electronic'],
     weak: ['screen', 'cable', 'power'],
-    local: []
+    local: ['tareboon', 'rerio', 'aitibwaoki'],
+    phrases: ['bwai n tiati']
   },
   home: {
     category: 'home',
@@ -132,8 +174,9 @@ const SEARCH_INTENTS = {
       'curtains', 'pillow', 'blanket', 'bedsheet', 'towel', 'fan', 'lamp',
       'bucket', 'broom', 'detergent', 'soap', 'household', 'furnishing'],
     // "house" is a room to rent as often as it is something to put in one.
-    weak: ['house', 'home', 'mat', 'cleaning', 'laundry'],
-    local: []
+    weak: ['house', 'home', 'mat', 'cleaning', 'laundry', 'auti'],
+    local: ['auti'],
+    phrases: []
   },
   building: {
     category: 'building',
@@ -141,8 +184,9 @@ const SEARCH_INTENTS = {
       'paint', 'hardware', 'hammer', 'saw', 'drill', 'pipe', 'plumbing',
       'construction', 'build', 'building', 'builder', 'brick', 'sand',
       'gravel', 'tile', 'tiles', 'welding'],
-    weak: ['tools', 'wood', 'iron', 'wire'],
-    local: []
+    weak: ['tools', 'wood', 'iron', 'wire', 'kai', 'been'],
+    local: ['timanti', 'neera'],
+    phrases: ['bwai ni mwakuri']
   },
   vehicles: {
     category: 'vehicles',
@@ -151,7 +195,8 @@ const SEARCH_INTENTS = {
       'taxi', 'bus', 'tyre', 'tyres', 'tire', 'petrol', 'diesel', 'fuel',
       'driving', 'mechanic', 'spare', 'ute', 'van'],
     weak: ['engine', 'oil', 'ride'],
-    local: []
+    local: [],
+    phrases: ['bao ni mwamwananga']
   },
   fishing: {
     category: 'fishing',
@@ -159,7 +204,8 @@ const SEARCH_INTENTS = {
       'outboard', 'dive', 'diving', 'snorkel', 'spear', 'marine', 'boat',
       'boats', 'anchor', 'reef', 'tackle'],
     weak: ['fish', 'sea', 'line', 'engine'],
-    local: []
+    local: ['akawa'],
+    phrases: []
   },
   agriculture: {
     category: 'agriculture',
@@ -167,7 +213,8 @@ const SEARCH_INTENTS = {
       'gardening', 'crop', 'crops', 'copra', 'toddy', 'babai', 'pig', 'pigs',
       'livestock', 'fertilizer', 'fertiliser', 'compost', 'harvest'],
     weak: ['coconut', 'chicken', 'local', 'tree'],
-    local: []
+    local: ['onaroka', 'aroka', 'takataka', 'karewe', 'beeki'],
+    phrases: []
   },
   handicrafts: {
     category: 'handicrafts',
@@ -175,18 +222,23 @@ const SEARCH_INTENTS = {
       'crafts', 'weaving', 'woven', 'carving', 'carved', 'pandanus', 'shell',
       'shells', 'gift', 'gifts', 'present', 'presents', 'handmade'],
     weak: ['mat', 'necklace', 'model'],
-    local: []
+    local: ['kie', 'raranga', 'koikoi'],
+    phrases: ['koro banna', 'bwai n tangira']
   },
   property: {
     category: 'property',
     // Not just Property: without the rental type a shopper asking for a room
     // for the night is shown land for sale.
     listingType: 'rental',
+    // 'auti' is Home's word (you gave it as "house is auti") and is strong
+    // there. It stays WEAK here so it is inert on its own - Home wins outright
+    // - but still counts alongside a real property word, for "auti n rent".
     strong: ['rent', 'rental', 'renting', 'accommodation', 'apartment', 'flat',
       'room', 'rooms', 'lodge', 'lodging', 'motel', 'hotel', 'guesthouse',
       'stay', 'staying', 'lease', 'tenant', 'land', 'property'],
-    weak: ['house', 'place', 'night'],
-    local: []
+    weak: ['house', 'place', 'night', 'auti', 'ruu'],
+    local: ['aba'],
+    phrases: ['tabo ni maeka', 'ruu aika rent']
   },
   services: {
     category: 'services',
@@ -199,7 +251,8 @@ const SEARCH_INTENTS = {
     // matching, because a shopper typing "help" wants guidance and not a
     // plumber. Listing it would be a dictionary entry that never fires.
     weak: ['cleaning', 'mechanic', 'work'],
-    local: []
+    local: ['buramwa'],
+    phrases: ['tia itutu', 'tia koroira']
   },
   education: {
     category: 'education',
@@ -207,8 +260,9 @@ const SEARCH_INTENTS = {
       'lessons', 'course', 'courses', 'training', 'study', 'studying', 'exam',
       'job', 'jobs', 'employment', 'hiring', 'vacancy', 'cv', 'resume',
       'stationery', 'notebook', 'pen', 'pens', 'pencil'],
-    weak: ['book', 'books', 'learn', 'work'],
-    local: []
+    weak: ['book', 'books', 'learn', 'work', 'mwakuri', 'been'],
+    local: ['reirei', 'boki', 'nakoa'],
+    phrases: ['kai ni koboki']
   },
   events: {
     category: 'events',
@@ -217,7 +271,8 @@ const SEARCH_INTENTS = {
       'ticket', 'tickets', 'tour', 'holiday', 'decoration', 'decorations',
       'balloon', 'balloons', 'photography', 'photographer', 'band', 'dj'],
     weak: ['gift', 'cake', 'catering', 'music'],
-    local: []
+    local: ['botaki', 'mare', 'kiba', 'tiketi'],
+    phrases: []
   }
 };
 
@@ -301,14 +356,33 @@ function detectSearchIntent(raw) {
 
   const scores = {};
   const placed = new Set();
+  // Phrases are matched against the whole normalized query, not the token
+  // list, because the particles that hold them together - ni, n, aika - are
+  // stopwords and would be gone by then.
+  const phraseHaystack = ' ' + normalizeSearchQuery(raw) + ' ';
+  // Set by any phrase match. It cancels the vagueness hedge below: three
+  // words landing in a row is a precise request, even though one of them -
+  // bwai, "thing" - is a vague word on its own. Without this, "bwai n tiati"
+  // was offered hesitantly when it had in fact matched exactly.
+  let phraseHit = false;
 
   Object.keys(SEARCH_INTENTS).forEach((id) => {
     const intent = SEARCH_INTENTS[id];
     let score = 0;
+
+    (intent.phrases || []).forEach((phrase) => {
+      if (phraseHaystack.indexOf(' ' + phrase + ' ') === -1) return;
+      score += 3;
+      phraseHit = true;
+      // Every word of a matched phrase counts as understood, or the leftover
+      // words would hedge a match that was in fact exact.
+      phrase.split(' ').forEach((w) => placed.add(w));
+    });
+
     terms.forEach((t) => {
       if (intent.strong.indexOf(t) !== -1) { score += 2; placed.add(t); }
-      else if (intent.weak.indexOf(t) !== -1) { score += 1; placed.add(t); }
       else if (intent.local.indexOf(t) !== -1) { score += 2; placed.add(t); }
+      else if (intent.weak.indexOf(t) !== -1) { score += 1; placed.add(t); }
     });
     if (score > 0) scores[id] = score;
   });
@@ -342,6 +416,6 @@ function detectSearchIntent(raw) {
   const meaningful = terms.filter((t, i) => terms.indexOf(t) === i);
   const allPlaced = meaningful.every((t) => placed.has(t) || placed.has(singularizeSearchWord(t)));
 
-  const confidence = (top >= 2 && !vague && allPlaced) ? 'high' : 'medium';
+  const confidence = (top >= 2 && (!vague || phraseHit) && allPlaced) ? 'high' : 'medium';
   return { confidence: confidence, matches: matches, terms: terms, cheap: cheap };
 }

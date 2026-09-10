@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', init);
+// How many similar products the carousel holds. Twelve is roughly four swipes
+// on a phone - past that a shopper is browsing a category, and the chip at the
+// top of the page is the better way to do that.
+const RELATED_LIMIT = 12;
 
 let storeContact = { phone: '', whatsapp: '', messenger: '' };
 let product = null;
@@ -94,6 +98,61 @@ async function init() {
   // Deliberately not awaited: reviews are supporting information, and a slow
   // (or absent) Reviews tab must never hold up the product itself.
   loadReviews(product.productId);
+
+  // Deferred on purpose: whenIdle waits for the request this page paints from
+  // and then for an idle moment, so a second-hand phone on a slow connection
+  // finishes rendering the thing the shopper asked for before spending
+  // anything on the thing they did not.
+  whenIdle(loadRelated);
+}
+
+/**
+ * Similar products, from any store in the same category.
+ *
+ * ONE extra request per product-page view. That is the cost of the choice to
+ * search the whole marketplace rather than only this store - the store's own
+ * listings are already in memory (listProducts returns them all) and would
+ * have been free. The trade is deliberate: a shopper comparing a $8 dish
+ * against the same dish elsewhere is the point of a marketplace.
+ *
+ * It uses the same cached searchProducts endpoint the search page uses (60s
+ * server-side), so a shopper moving between products in one category is served
+ * from cache after the first.
+ *
+ * Fails silently. This is an extra below the fold; a failed request here must
+ * not put an error in front of someone reading a product.
+ */
+async function loadRelated() {
+  if (!product) return;
+  const section = document.getElementById('related-section');
+  const list = document.getElementById('related-list');
+  if (!section || !list) return;
+
+  let res;
+  try {
+    res = await Api.get('searchProducts', {
+      q: '',
+      category: categoryIdOf(product.category),
+      // A rental and a thing to buy are not alternatives to each other, so a
+      // rental page offers rentals.
+      type: listingTypeOf(product) || ''
+    });
+  } catch (e) {
+    return;
+  }
+  if (!res || !res.ok) return;
+
+  const items = (res.products || [])
+    .filter((p) => p.productId !== product.productId)
+    .slice(0, RELATED_LIMIT);
+  // Nothing to compare against - leave the heading off the page entirely
+  // rather than showing an empty shelf.
+  if (!items.length) return;
+
+  list.innerHTML = items
+    .map((p) => renderBrowseProductCard(p, { cardClass: 'related-card', showLocation: true }))
+    .join('');
+  section.hidden = false;
 }
 
 function wireActions() {
