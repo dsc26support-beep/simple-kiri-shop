@@ -313,6 +313,91 @@ leftover `@` A record or Domain Forwarding is still set (step 2). If GitHub's DN
 check won't go green, the only `@` A records must be the four GitHub IPs above,
 with no typos.
 
+## Google Sign-In (customers only) — one-time setup
+
+Until you do this, the Google button simply does not appear. Email codes and
+guest checkout work exactly as before, so the site is never broken by skipping
+it.
+
+**Vendors are deliberately excluded.** A vendor signs in with username +
+password + 2FA. Signing in with Google would mean a Google account takeover is
+a full store takeover with no second factor, so no owner page loads any of this.
+
+### 1. Create the client id (Google Cloud Console)
+
+1. Go to <https://console.cloud.google.com/apis/credentials> and pick or create
+   a project.
+2. **Configure the OAuth consent screen** first (External, published). Fill in
+   the app name, your support email, and a privacy-policy link.
+3. **Create credentials → OAuth client ID → Web application.**
+4. Under **Authorised JavaScript origins**, add every origin the site is served
+   from — with no path and no trailing slash:
+   - `https://mwakete.com`
+   - `https://www.mwakete.com` (if you use it)
+   - your `https://<user>.github.io` origin, if you also open the Pages URL
+5. You do **not** need an authorised redirect URI. This uses Google Identity
+   Services, which returns the token to the page rather than redirecting.
+6. Copy the **Client ID**. It ends in `.apps.googleusercontent.com`.
+
+There is also a **Client Secret** on that screen. **This site never uses it.**
+Do not paste it anywhere in this repo.
+
+### 2. Put the client id in both places
+
+It has to match on both sides: the browser sends a token minted for that client
+id, and the server refuses any token whose `aud` is not exactly it.
+
+**Frontend** — `assets/js/config.js`:
+
+```js
+GOOGLE_CLIENT_ID: '111-abc.apps.googleusercontent.com'
+```
+
+Then `npm run build` and commit, or the change ships nothing (see below).
+
+**Backend** — Apps Script → ⚙️ **Project Settings** → **Script Properties** →
+**Add script property**:
+
+| Property | Value |
+|---|---|
+| `GOOGLE_CLIENT_ID` | the same `...apps.googleusercontent.com` string |
+
+If this property is missing, the endpoint refuses every sign-in. That is
+deliberate: with nothing to check `aud` against, an unchecked `aud` would accept
+a token minted for any other Google app.
+
+### 3. Two new columns on the Customers sheet
+
+They are added automatically on the first Google sign-in — the code appends
+them and moves nothing — so there is no migration to run. For reference:
+
+| Column | Meaning |
+|---|---|
+| `AuthProvider` | `email` or `google` — how the account was last verified |
+| `GoogleSub` | Google's stable user id for that person |
+
+### 4. Redeploy
+
+Google sign-in is backend code, so it needs a redeployment. See
+**Redeploying after a code change** below — and remember the version dropdown
+must say **New version**.
+
+### What happens to someone who already has an account
+
+If the verified Google address matches an existing customer, they sign into
+that account and keep their order history — no duplicate is created. That is
+safe only because `email_verified` is checked: Google has proven the person
+controls that mailbox, which is exactly what the email-code flow proves.
+
+### Facebook
+
+Not built. Facebook Login needs a Facebook app whose `email` permission has
+passed Business Verification — an external review taking days to weeks, with a
+published privacy-policy URL. When that clears, the work is the mirror of
+`CustomerOAuth.gs`: verify the access token server-side against the Graph API
+using an App Secret held **only** in Script Properties, then reuse
+`issueCustomerSession`. Do not put a Facebook App Secret in `config.js`.
+
 ### Editing CSS or JS: run the build
 
 **Edit the source file. Then run `npm run build` and commit what it changes.**

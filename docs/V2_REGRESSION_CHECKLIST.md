@@ -68,6 +68,10 @@ For each change:
 | C11 | Checkout: delivery choice, totals, order placement | `verify-checkout`, `verify-order`, `verify-delivery` |
 | C12 | "Back to Cart" under Place Order | `verify-backtocart` |
 | C13 | Customer signup / login / logout | `verify-custauth`, `verify-chat-signin` |
+| C13b | Google sign-in: only tokens minted for OUR client id are accepted | `test-google-signin` (mutation-checked) |
+| C13c | Google block hides cleanly when unconfigured OR when Google is blocked | `verify-signin-options` |
+| C13d | Guest can shop without an account, and the device remembers them | `verify-signin-options` |
+| C13e | "Shared device" shortens the session on BOTH sign-in paths | `verify-signin-options`, `test-google-signin` |
 | C14 | Customer dashboard, order history, bookings | `verify-dash`, `verify-dash3`, `verify-myorders`, `test-myorders` |
 | C15 | Reviews render; collapsed section opens | `verify-reviews`, `verify-reviewsfold`, `verify-chevron`, `test-reviews` |
 | C16 | Customer↔store chat; unread badges | `verify-messages`, `verify-inbox`, `verify-inbox2`, `test-inboxcount` |
@@ -109,6 +113,9 @@ For each change:
 | # | Must keep working | Covered by |
 |---|---|---|
 | S1 | Vendor auth; session tokens expire | `test-authchannel`, `verify-authchannel-ui` |
+| S1b | **Vendors can NEVER sign in with a social provider** — password + 2FA only | `test-google-signin` (asserts CustomerOAuth.gs touches no Owners row, issues no owner session, mentions no 2FA; and that Auth.gs has no Google path) |
+| S1c | Google sign-in fails CLOSED when `GOOGLE_CLIENT_ID` is unset | `test-google-signin` |
+| S1d | An unverified Google email can never match an existing account | `test-google-signin` |
 | S2 | **Ownership checks** — a vendor cannot touch another's data | **MANUAL** — see `docs/security-audit.md` |
 | S3 | **Server-side pricing** — cart totals never trusted from the browser | `test-costwrite`, `verify-order` |
 | S4 | Server-side validation on public endpoints | `test-orders-email` |
@@ -181,7 +188,7 @@ a very good reason.
 
 | Path | Why |
 |---|---|
-| `apps-script/Auth.gs` | vendor auth, 2FA, password hashing. Any edit is a security change, not a performance one |
+| `apps-script/Auth.gs` | vendor auth, 2FA, password hashing. Any edit is a security change, not a performance one. Social sign-in was deliberately kept OUT of this file — `test-google-signin` fails if a Google path appears in it |
 | `apps-script/Orders.gs` | server-side pricing and order validation (§S3, §S4) |
 | `apps-script/Customers.gs` | customer accounts and sessions |
 | `apps-script/Bookings.gs` | booking conflict logic, and the least test-covered area |
