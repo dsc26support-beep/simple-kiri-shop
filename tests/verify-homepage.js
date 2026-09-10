@@ -116,7 +116,7 @@ const layout = (page) => page.evaluate(() => {
     await page.click('#category-strip .chip-strip-item[data-category="food"]');
     await page.waitForTimeout(700);
     ok('tapping a category lands on a filtered search',
-      /search\.html\?category=food$/.test(page.url()), page.url());
+      /categories\.html\?category=food$/.test(page.url()), page.url());
     await ctx.close();
   }
   {

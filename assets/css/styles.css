@@ -527,19 +527,12 @@ section {
   display: none;
 }
 
-/* The category strip sits directly under the search box on search.html and
-   needs air: 24px, so the box and the chips read as two separate things.
-
-   Reaches search.html alone - index.html keeps its category strip in its own
-   .categories section OUTSIDE the hero, where it already sits clear and needs
-   nothing.
-
-   There used to be a second rule here for a listing-type strip stacked above
-   this one. Both that strip and the .home-main order slot it occupied are gone;
-   the rule went with them rather than being left to match nothing. */
-.hero .chip-strip {
-  margin-top: var(--space-4);
-}
+/* A rule for `.hero .chip-strip` lived here: 24px of air between the search box
+   and the chips below it inside search.html's hero. That page is gone, and it
+   was the only one with chips inside a .hero - index.html keeps its category
+   strip in its own .categories section outside one, and the browse page's box
+   is in the header. The selector matched nothing, so it went rather than being
+   left as dead weight on every page's stylesheet. */
 
 .chip-strip-item {
   flex: 0 0 auto;

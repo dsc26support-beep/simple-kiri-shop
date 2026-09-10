@@ -50,14 +50,15 @@ const BASE = 'http://127.0.0.1:8099';
   const gaps = await page.evaluate(() => {
     const r = (s) => document.querySelector(s).getBoundingClientRect();
     const cat = r('.categories'), hero = r('.hero'), prod = r('.trending-products');
-    const types = r('.listing-types');
-    return { heroToTypes: Math.round(types.top - hero.bottom),
+    // .listing-types held the [All|Products|Rentals|Services] strip and was
+    // removed with it, so the hero's neighbour below is now the categories.
+    return { heroToCat: Math.round(cat.top - hero.bottom),
              catToProd: Math.round(prod.top - cat.bottom) };
   });
   await page.close();
   // row-gap var(--space-4)=1.5rem=24px is added between flex items; both gaps should be >= ~24.
 ok('mobile: extra spacer categories->products (>=24px)', gaps.catToProd >= 24, 'catToProd=' + gaps.catToProd);
-  ok('mobile: extra spacer search->types (>=24px)', gaps.heroToTypes >= 24, 'heroToTypes=' + gaps.heroToTypes);
+  ok('mobile: extra spacer search->categories (>=24px)', gaps.heroToCat >= 24, 'heroToCat=' + gaps.heroToCat);
 
   await browser.close();
   console.log('\n--- home section order/spacing ---');
