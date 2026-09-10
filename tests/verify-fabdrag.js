@@ -258,10 +258,14 @@ async function drag(page, toX, toY) {
   ok('every localStorage access is inside a try', unguarded.length === 0,
     `${unguarded.length} unguarded`);
 
-  const { execSync } = require('child_process');
-  let gs = '';
-  try { gs = execSync('git -C ' + REPO + ' diff --name-only origin/main -- apps-script/', { encoding: 'utf8' }).trim(); } catch (e) {}
-  ok('no backend change', gs === '', gs);
+  // The draggable FAB is purely a frontend concern: it moves a button and
+  // remembers where. Rather than diff the whole backend against main - which
+  // would fail on any unrelated backend work forever after - assert the thing
+  // actually meant: no .gs file knows anything about it.
+  const gsFiles = fs.readdirSync(REPO + 'apps-script').filter((f) => f.endsWith('.gs'));
+  const leaked = gsFiles.filter((f) =>
+    /fab-drag|chat-fab|mwakete_fab_pos|dragThreshold/i.test(fs.readFileSync(REPO + 'apps-script/' + f, 'utf8')));
+  ok('the FAB is frontend-only - no .gs file references it', leaked.length === 0, leaked.join(','));
 
   let pass = 0;
   for (const [s, n, e] of R) { if (s === 'PASS') pass++; console.log(`${s}  ${n}${e ? '  [' + e + ']' : ''}`); }

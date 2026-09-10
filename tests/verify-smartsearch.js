@@ -355,11 +355,14 @@ async function open(browser, url) {
   ok('and is loaded before categories.js, which calls it',
     html.search(/search-intent(\.min)?\.js/) < html.search(/js\/categories(\.min)?\.js/));
 
-  // No .gs file should have been touched at all.
-  const { execSync } = require('child_process');
-  let gs = '';
-  try { gs = execSync('git -C ' + REPO + ' diff --name-only origin/main -- apps-script/', { encoding: 'utf8' }).trim(); } catch (e) {}
-  ok('the backend was not changed', gs === '', gs);
+  // Smart search reads an intent client-side and then issues an ORDINARY
+  // searchProducts query - the backend never learns the feature exists. Asserted
+  // as that, rather than as a diff of the whole apps-script/ directory against
+  // main, which would fail on any unrelated backend work forever after.
+  const gsFiles = fs.readdirSync(REPO + 'apps-script').filter((f) => f.endsWith('.gs'));
+  const leaked = gsFiles.filter((f) =>
+    /search-intent|searchIntent|SEARCH_STOPWORDS|SEARCH_VAGUE/i.test(fs.readFileSync(REPO + 'apps-script/' + f, 'utf8')));
+  ok('smart search is frontend-only - no .gs file references it', leaked.length === 0, leaked.join(','));
 
   let pass = 0;
   for (const [s, n, e] of R) { if (s === 'PASS') pass++; console.log(`${s}  ${n}${e ? '  [' + e + ']' : ''}`); }
