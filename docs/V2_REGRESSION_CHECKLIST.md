@@ -112,8 +112,8 @@ For each change:
 
 ## Known-failing at baseline — do not "fix" by accident, do not count as new
 
-Seven suites fail at `39cd862` for reasons that predate this work. A Phase 1
-change is judged against **this** list, not against zero:
+Six suites fail for reasons that predate this work. A change is judged against
+**this** list, not against zero:
 
 | Suite | State |
 |---|---|
