@@ -364,6 +364,11 @@ function render() {
     return;
   }
 
+  // A real result set is showing, so nothing about discovery applies. Clearing
+  // it here rather than only on the no-results path covers the case where a
+  // shopper clears a filter and results come back.
+  hideDiscovery();
+
   const page = filtered.slice(0, Math.max(PAGE_SIZE, shownCount));
   const noun = `product${filtered.length === 1 ? '' : 's'}`;
   if (page.length < filtered.length) {
@@ -397,6 +402,168 @@ function renderNoResults(statusEl, state) {
     `<strong>No exact match for ${what}.</strong><br>` +
     'Try a shorter or more general word, browse a category above, or ' +
     '<a href="search.html">see all products</a>.';
+
+  // Everything above stays exactly as it was - the sentence a shopper who
+  // mistyped a product name needs. What follows is the addition: when the
+  // phrase carries a readable shopping intent, offer the categories it points
+  // at instead of ending the conversation here.
+  runDiscovery();
+}
+
+/* ---------- smart search discovery ----------
+ *
+ * Runs ONLY from the no-results path above, so a search that already works is
+ * untouched - the intent dictionary is never consulted while there are results
+ * to show.
+ *
+ * ONE extra backend request, and only sometimes: when a category is identified
+ * confidently enough to fill the page with it. Every other outcome is answered
+ * from data already in the browser. The request is the same cached
+ * searchProducts endpoint the page already uses (60s server-side), asked for a
+ * category instead of a phrase.
+ */
+
+// The phrase the current discovery pass was built for. Guards against render()
+// being called again (a filter cleared, Back pressed) and re-issuing the fetch.
+let discoveryFor = null;
+
+/**
+ * Once discovery renders, IT is the advice. The status line drops back to the
+ * bare fact, because "try a shorter or more general word" sitting directly
+ * above "Looking for Food & Groceries?" tells the shopper to do two different
+ * things - and the second one is the one that works.
+ *
+ * The long sentence stays in renderNoResults as the fallback for the case
+ * where discovery renders nothing at all (search-intent.js blocked, an old
+ * cached page), so nobody is ever left with just "no match".
+ */
+function trimStatusToFact(statusEl) {
+  const what = currentQuery ? `"${escapeHtml(currentQuery)}"` : 'that';
+  // The "see all products" link stays. Only the instruction that now conflicts
+  // goes - "try a shorter or more general word" is the wrong advice directly
+  // above a category we are confident about. The escape hatch is not advice,
+  // it is the way out for a shopper none of this helped, and dropping it was
+  // a real loss that verify-search caught.
+  statusEl.innerHTML =
+    `<strong>No exact match for ${what}.</strong> ` +
+    '<a href="search.html">See all products</a>.';
+}
+
+function hideDiscovery() {
+  const el = document.getElementById('search-discovery');
+  if (!el) return;
+  el.hidden = true;
+  el.innerHTML = '';
+  discoveryFor = null;
+}
+
+/**
+ * What this search actually did, in one object.
+ *
+ * It drives the UI below, and it is deliberately the shape a future analytics
+ * call would want - the phrase, whether anything was found, what we read it as
+ * and how sure we were. Spec section 18 asks for the seam, not the system:
+ * when Mwakete wants to know which searches come back empty, this is the one
+ * place that already knows.
+ */
+function searchOutcome() {
+  const intent = typeof detectSearchIntent === 'function'
+    ? detectSearchIntent(currentQuery)
+    : { confidence: 'empty', matches: [], cheap: false };
+  return {
+    query: currentQuery,
+    resultCount: allProducts.length,
+    confidence: intent.confidence,
+    cheap: intent.cheap,
+    // Only categories that really exist reach the screen. The dictionary is
+    // written against CATEGORIES, but a stale service-worker copy of one file
+    // and not the other would otherwise render a chip that leads nowhere.
+    matches: intent.matches.filter((m) => categoryById(m.category))
+  };
+}
+
+function discoveryHref(match, cheap) {
+  const params = new URLSearchParams();
+  params.set('category', match.category);
+  if (match.listingType) params.set('type', match.listingType);
+  // "cheap phone" is a price mood, not a category. Carry it through as the
+  // sort the results page already supports rather than inventing a filter.
+  if (cheap) params.set('sort', 'cheapest');
+  return 'search.html?' + params.toString();
+}
+
+async function runDiscovery() {
+  const el = document.getElementById('search-discovery');
+  if (!el || typeof detectSearchIntent !== 'function') return;
+  if (discoveryFor === currentQuery) return;
+  discoveryFor = currentQuery;
+
+  const outcome = searchOutcome();
+  const matches = outcome.matches;
+  const statusEl = document.getElementById('results-status');
+
+  if (!matches.length) {
+    // Nothing readable in the phrase. Two different messages, because "help"
+    // and "xyzabc123" are different problems: one shopper has not said what
+    // they want, the other said something we do not stock.
+    el.innerHTML =
+      `<p class="search-discovery-lead">${outcome.confidence === 'empty'
+        ? 'What are you looking for?'
+        : 'Try a product name, a category, a store, or a service.'}</p>` +
+      renderDiscoveryChips(popularCategories().map((c) => ({ category: c.id, listingType: '' })), false);
+    el.hidden = false;
+    trimStatusToFact(statusEl);
+    return;
+  }
+
+  const first = categoryById(matches[0].category);
+  const lead = outcome.confidence === 'high'
+    ? `Looking for ${escapeHtml(first.label)}?`
+    : 'You may be looking for';
+
+  el.innerHTML =
+    `<p class="search-discovery-lead">${lead}</p>` +
+    renderDiscoveryChips(matches, outcome.cheap);
+  el.hidden = false;
+  trimStatusToFact(statusEl);
+
+  // Fill the empty grid with the leading category, so the shopper gets things
+  // to look at and not just more buttons to press.
+  await showDiscoveryProducts(matches[0], first.label);
+}
+
+function renderDiscoveryChips(matches, cheap) {
+  // With one suggestion the lead line has already named the category, so a
+  // chip repeating that name is a word said twice. Make it the action instead.
+  const lone = matches.length === 1;
+  const items = matches
+    .map((m) => {
+      const meta = categoryById(m.category);
+      if (!meta) return '';
+      const text = lone ? `See all ${meta.label}` : meta.label;
+      return `<a class="chip-strip-item" href="${escapeAttr(discoveryHref(m, cheap))}">${escapeHtml(text)}</a>`;
+    })
+    .filter(Boolean)
+    .join('');
+  return `<nav class="chip-strip search-discovery-chips" aria-label="Suggested categories">${items}</nav>`;
+}
+
+async function showDiscoveryProducts(match, label) {
+  const listEl = document.getElementById('results-list');
+  const el = document.getElementById('search-discovery');
+  // No q: the phrase is what failed. Ask for the category instead.
+  const res = await Api.get('searchProducts', { q: '', category: match.category, type: match.listingType || '' });
+  // A second search may have started while this was in flight.
+  if (discoveryFor !== currentQuery) return;
+  if (!res || !res.ok || !(res.products || []).length) return;
+
+  const page = (res.products || []).slice(0, PAGE_SIZE);
+  el.insertAdjacentHTML('beforeend',
+    `<h2 class="section-title-sm">Popular in ${escapeHtml(label)}</h2>`);
+  listEl.innerHTML = page
+    .map((p) => renderBrowseProductCard(p, { cardClass: 'search-result-card', showLocation: true }))
+    .join('');
+  recordProductViewsOnce(page.map((p) => p.productId));
 }
 
 /* ---------- load ---------- */

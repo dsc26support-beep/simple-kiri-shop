@@ -579,6 +579,27 @@ section {
   font-weight: 600;
 }
 
+/* Smart-search discovery, shown only where "No products found." used to be.
+   Nothing new visually: the chips are .chip-strip-item, the heading is
+   .section-title-sm, the spacing is the same scale as everywhere else. It has
+   to read as part of the results page, not as an advert that appeared. */
+.search-discovery {
+  margin: var(--space-3) 0;
+}
+
+.search-discovery-lead {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+/* The strip scrolls sideways like every other chip strip; at most three
+   suggestions reach it, so on a phone they usually fit without scrolling. */
+.search-discovery-chips {
+  margin-bottom: var(--space-3);
+}
+
 .section-title-sm {
   font-size: 1rem;
   margin: 0 0 var(--space-2);
