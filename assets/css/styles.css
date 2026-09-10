@@ -3265,6 +3265,23 @@ legend {
   font-size: 0.85rem;
 }
 
+/* Status lines that share ONE element for warnings, successes and neutral
+   chatter - the booking form's is the only one - colour by what the message
+   IS, not by where it sits. Painting the element red would turn "Booking
+   request sent" red too, and a shopper reading red concludes it failed.
+
+   Declared after .helper-text deliberately: both are single-class selectors, so
+   source order is what lets these win over its muted grey. */
+.status-error {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.status-success {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
 /* Product grid */
 
 /* Marketplace-style browse grid - two columns on a phone (the density a

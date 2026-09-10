@@ -159,21 +159,21 @@ async function onRequestBooking(btn) {
   const customerName = nameInput.value.trim();
   const customerPhone = phoneInput.value.trim();
   if (!customerName || !customerPhone) {
-    statusEl.textContent = 'Please enter your name and phone number.';
+    setFormStatus(statusEl, 'Please enter your name and phone number.', 'error');
     return;
   }
   if (!startInput.value || !endInput.value) {
-    statusEl.textContent = 'Please choose a pick-up and return date.';
+    setFormStatus(statusEl, 'Please choose a pick-up and return date.', 'error');
     return;
   }
   if (startInput.value >= endInput.value) {
-    statusEl.textContent = 'Return date must be after pick-up date.';
+    setFormStatus(statusEl, 'Return date must be after pick-up date.', 'error');
     return;
   }
 
   btn.disabled = true;
   btn.innerHTML = 'Sending<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
-  statusEl.textContent = '';
+  setFormStatus(statusEl, '');
 
   const res = await Api.post('createBookingRequest', {
     storeSlug: slug,
@@ -187,13 +187,13 @@ async function onRequestBooking(btn) {
   });
 
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not send this booking request.';
+    setFormStatus(statusEl, res.error || 'Could not send this booking request.', 'error');
     btn.disabled = false;
     btn.textContent = 'Request Booking';
     return;
   }
   btn.textContent = 'Requested';
-  statusEl.textContent = 'Booking request sent — the vendor will confirm or decline.';
+  setFormStatus(statusEl, 'Booking request sent — the vendor will confirm or decline.', 'success');
 
   // This page rendered no way to reach the seller at all after a request - the
   // store page had the contact block and this one, which is where most rental

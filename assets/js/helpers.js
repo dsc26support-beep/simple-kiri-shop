@@ -1061,6 +1061,32 @@ function wireSearchSubmitReveal() {
 
 document.addEventListener('DOMContentLoaded', wireSearchSubmitReveal);
 
+/* ===================== Form status lines =====================
+ *
+ * The booking form reuses one <p> for three different kinds of message: a
+ * warning the shopper must act on ("Please enter your name and phone number"),
+ * a failure ("Could not send this booking request"), and a success ("Booking
+ * request sent"). Every one of them rendered in the same muted grey, so the
+ * warning did not read as a warning.
+ *
+ * Colour follows the KIND, never the element. Every other form on the site
+ * already does this with separate .form-error / .form-success elements; this
+ * gives the booking form the same behaviour without splitting its one status
+ * line in two.
+ *
+ * Load failures deliberately do NOT use this - "Product not found" is nothing
+ * the shopper can fix by typing, so red would alarm without offering an action.
+ */
+function setFormStatus(el, text, kind) {
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.remove('status-error', 'status-success');
+  // Empty text carries no colour: clearing a warning must clear its red too.
+  if (!text) return;
+  if (kind === 'error') el.classList.add('status-error');
+  else if (kind === 'success') el.classList.add('status-success');
+}
+
 /**
  * A vendor's Messenger field can be a bare username ("my.store.page"), an
  * @handle, or a full URL they pasted themselves - normalize all three into
