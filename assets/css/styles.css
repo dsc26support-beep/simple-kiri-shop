@@ -3797,6 +3797,36 @@ legend {
   border: 2px dashed var(--color-border);
 }
 
+/* Featured strip on the browse page. Admin-curated, and labelled as such -
+   a shopper can tell a placed item from an organic one at a glance. */
+.featured-strip {
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.featured-strip-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  margin: 0 0 var(--space-2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* A small gold mark, the flag colour, so the row reads as chosen rather than
+   as the start of the ordinary grid. */
+.featured-strip-heading::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--color-gold);
+}
+
 /* Store directory */
 
 .store-grid {
