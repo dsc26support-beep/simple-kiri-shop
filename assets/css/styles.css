@@ -4284,3 +4284,34 @@ legend {
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
+
+/* ---- Legal pages (privacy) -------------------------------------------------
+   Long-form prose, which nothing else on this site is. Capped at 65ch because
+   a full-width line of text on a desktop browser is genuinely hard to read,
+   and this is a page people are sent to in order to actually read it. */
+.legal-page {
+  max-width: 65ch;
+}
+
+.legal-page h2 {
+  margin-top: var(--space-5);
+}
+
+.legal-page h3 {
+  margin-top: var(--space-4);
+  font-size: 1rem;
+}
+
+.legal-page p,
+.legal-page li {
+  line-height: 1.6;
+}
+
+.legal-page ul {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+}
+
+.legal-page li {
+  margin-bottom: var(--space-2);
+}
