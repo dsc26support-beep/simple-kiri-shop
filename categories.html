@@ -34,7 +34,17 @@
       </nav>
     </div>
     <div class="container site-branding">
-      <p class="site-tagline">Browse</p>
+      <!-- The search box stands where the word "Browse" was. The page still has
+           a name for screen readers and the tab title; a one-word banner was
+           costing a row of header on a phone to say what the URL already says. -->
+      <form id="browse-search-form" class="search-box" role="search">
+        <label class="sr-only" for="browse-search-input">Search within this category</label>
+        <input id="browse-search-input" type="search" placeholder="Search this category…">
+        <button type="submit" class="btn btn-primary search-submit">
+          <svg class="search-submit-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          <span class="search-submit-label">Search</span>
+        </button>
+      </form>
     </div>
   </header>
 
@@ -54,6 +64,13 @@
              fits a full-width product grid, but these tiles are three across
              and short, so it overshoots and the release is itself a jump:
              measured, it took this page from CLS 0.014 to 0.133. -->
+        <!-- Admin-curated (the Featured sheet, addFeatured is isOwnerAdmin-only),
+             filtered to the open category, and labelled. A shopper can always
+             tell a placed item from an organic one. -->
+        <section id="featured-strip" class="featured-strip" aria-labelledby="featured-strip-heading" hidden>
+          <h3 id="featured-strip-heading" class="featured-strip-heading">Featured</h3>
+          <div id="featured-list" class="category-grid"></div>
+        </section>
         <p id="category-status" class="helper-text" role="status">Loading…</p>
         <div id="category-list" class="category-grid"></div>
         <p class="load-more-row"><button type="button" id="category-more" class="btn btn-small" hidden>More…</button></p>

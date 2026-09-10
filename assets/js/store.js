@@ -70,8 +70,6 @@ async function init() {
     airCargoCost: res.storeDeliveryAirCargoCost
   });
 
-  renderShippingNote('store-shipping-note', res);
-
   currentProducts = res.products;
 
   if (currentProducts.length === 0) {
@@ -223,21 +221,24 @@ async function onRequestBooking(btn) {
   const customerName = nameInput.value.trim();
   const customerPhone = phoneInput.value.trim();
   if (!customerName || !customerPhone) {
-    statusEl.textContent = 'Please enter your name and phone number.';
+    setFormStatus(statusEl, 'Please enter your name and phone number.', 'error');
     return;
   }
   if (!startInput.value || !endInput.value) {
-    statusEl.textContent = 'Please choose a start and end date.';
+    setFormStatus(statusEl, 'Please choose a start and end date.', 'error');
     return;
   }
   if (startInput.value >= endInput.value) {
-    statusEl.textContent = 'End date must be after start date.';
+    setFormStatus(statusEl, 'End date must be after start date.', 'error');
     return;
   }
 
   btn.disabled = true;
   btn.innerHTML = 'Sending<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
-  statusEl.textContent = '';
+  // Through the helper, not .textContent: clearing the text alone would leave
+  // the status-error class behind, and the success message that follows would
+  // render red.
+  setFormStatus(statusEl, '');
 
   const res = await Api.post('createBookingRequest', {
     storeSlug: currentSlug,
@@ -251,14 +252,14 @@ async function onRequestBooking(btn) {
   });
 
   if (!res.ok) {
-    statusEl.textContent = res.error || 'Could not send this booking request.';
+    setFormStatus(statusEl, res.error || 'Could not send this booking request.', 'error');
     btn.disabled = false;
     btn.textContent = 'Request Booking';
     return;
   }
 
   btn.textContent = 'Requested';
-  statusEl.textContent = 'Booking request sent — the vendor will confirm or decline.';
+  setFormStatus(statusEl, 'Booking request sent — the vendor will confirm or decline.', 'success');
   renderBookingVendorContact(productId);
 }
 
