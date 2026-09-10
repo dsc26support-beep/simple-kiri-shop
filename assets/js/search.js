@@ -439,7 +439,14 @@ let discoveryFor = null;
  */
 function trimStatusToFact(statusEl) {
   const what = currentQuery ? `"${escapeHtml(currentQuery)}"` : 'that';
-  statusEl.innerHTML = `<strong>No exact match for ${what}.</strong>`;
+  // The "see all products" link stays. Only the instruction that now conflicts
+  // goes - "try a shorter or more general word" is the wrong advice directly
+  // above a category we are confident about. The escape hatch is not advice,
+  // it is the way out for a shopper none of this helped, and dropping it was
+  // a real loss that verify-search caught.
+  statusEl.innerHTML =
+    `<strong>No exact match for ${what}.</strong> ` +
+    '<a href="search.html">See all products</a>.';
 }
 
 function hideDiscovery() {
