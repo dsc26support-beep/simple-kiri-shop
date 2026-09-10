@@ -300,7 +300,10 @@ async function onSaveSettings(e) {
     storeName: document.getElementById('store-name').value.trim(),
     email: document.getElementById('contact-email').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
-    messenger: document.getElementById('contact-messenger').value.trim(),
+    // Normalized the same way registration does, so a later edit lands in the
+    // same shape. Blank stays blank - this page must keep saving for the stores
+    // that predate the field being required.
+    messenger: messengerStoredValue(document.getElementById('contact-messenger').value),
     whatsapp: document.getElementById('contact-whatsapp').value.trim(),
     island: document.getElementById('settings-island').value,
     village: village

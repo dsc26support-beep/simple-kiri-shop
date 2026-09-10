@@ -1093,10 +1093,90 @@ function setFormStatus(el, text, kind) {
 }
 
 /**
+ * Pull the Facebook profile name out of whatever a vendor typed or pasted.
+ *
+ * Asking for "your Facebook profile name" and getting a bare name back is the
+ * happy case and the rarest. People paste the thing they can find: the address
+ * bar of their own profile, the Share link, an @handle from a business card.
+ * All of those carry the same name, so read it out rather than refusing them.
+ *
+ * Handles:
+ *   mystore                            -> mystore
+ *   @mystore                           -> mystore
+ *   m.me/mystore                       -> mystore
+ *   https://m.me/mystore               -> mystore
+ *   https://www.facebook.com/mystore   -> mystore
+ *   https://facebook.com/mystore/      -> mystore
+ *   https://m.facebook.com/mystore?x=1 -> mystore
+ *   https://messenger.com/t/mystore    -> mystore
+ *   facebook.com/profile.php?id=123456 -> 123456   (people with no username;
+ *                                                   m.me accepts the numeric id)
+ *
+ * Returns '' when nothing usable is left, which is how the caller tells a blank
+ * field from a bad one. Deliberately NOT a validator: it extracts, and the
+ * caller decides whether the result is acceptable.
+ *
+ * MUST STAY IN SYNC with messengerHandle() in apps-script/Utils.gs. The browser
+ * copy is for the vendor's benefit - instant, and it shows them what will be
+ * saved. The Apps Script copy is the one that decides what reaches the sheet,
+ * because a value can arrive from anything that can POST. A test asserts the
+ * two agree on the same inputs.
+ */
+/** Hosts that are not profile names, however much they look like one. */
+const BARE_MESSENGER_HOSTS = ['m.me', 'messenger.com', 'facebook.com', 'fb.com', 'fb.me',
+  'www.facebook.com', 'web.facebook.com', 'm.facebook.com'];
+
+function messengerHandle(input) {
+  let s = String(input == null ? '' : input).trim();
+  if (!s) return '';
+
+  s = s.replace(/^@+/, '');
+  // Bare host-less forms people type: "m.me/name", "fb.com/name".
+  s = s.replace(/^(?:https?:\/\/)?(?:www\.|web\.|m\.)?(?:m\.me|messenger\.com|facebook\.com|fb\.com|fb\.me)\//i, '');
+  // messenger.com's thread path, once the host is gone.
+  s = s.replace(/^t\//i, '');
+
+  // profile.php?id=123456 - the address of a profile with no username set.
+  const numeric = s.match(/^profile\.php\?(?:.*&)?id=(\d+)/i);
+  if (numeric) return numeric[1];
+
+  s = s.split(/[?#]/)[0];      // drop query and fragment
+  s = s.replace(/\/+$/, '');   // drop trailing slashes
+  s = s.split('/')[0];         // anything deeper is not the name
+
+  // A bare host with no path carries no name. The strip above needs a trailing
+  // slash to fire, so "facebook.com" arrives here intact and would otherwise
+  // read as a username - dots are legal in one.
+  if (BARE_MESSENGER_HOSTS.indexOf(s.toLowerCase()) !== -1) return '';
+
+  // Facebook usernames are letters, digits and periods; page vanity URLs also
+  // allow - and _. The first character must be alphanumeric, which is what
+  // rejects ".." out of a pasted path like ../../etc/passwd - dots alone pass
+  // the character class quite happily.
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(s) ? s : '';
+}
+
+/**
+ * The value stored in the Owners sheet: a full, clickable m.me link, or '' if
+ * nothing usable was given.
+ *
+ * One stored shape, always - so what a vendor sees in the spreadsheet is the
+ * link that actually works, and every page that renders it can stop guessing.
+ */
+function messengerStoredValue(input) {
+  const handle = messengerHandle(input);
+  return handle ? 'https://m.me/' + handle : '';
+}
+
+/**
  * A vendor's Messenger field can be a bare username ("my.store.page"), an
  * @handle, or a full URL they pasted themselves - normalize all three into
  * a clickable https://m.me/... link (or pass an already-full URL through
  * unchanged) rather than assuming one particular input format.
+ *
+ * Kept as-is on the READ path even though new saves are normalized: rows
+ * written before this store a bare handle, and rewriting them would be
+ * touching vendor data to no purpose.
  */
 function messengerUrl(handle) {
   const trimmed = String(handle || '').trim();

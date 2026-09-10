@@ -113,7 +113,12 @@ async function onRegister(e) {
   const password = document.getElementById('register-password').value;
   const email = document.getElementById('register-email').value.trim();
   const phone = document.getElementById('register-phone').value.trim();
-  const messenger = document.getElementById('register-messenger').value.trim();
+  const messengerEl = document.getElementById('register-messenger');
+  // What the vendor typed becomes the link that will be stored, and the field
+  // is rewritten so they SEE it before the request goes out - a value that
+  // changed silently on the way to the sheet is one they cannot check.
+  const messenger = messengerStoredValue(messengerEl.value);
+  if (messenger) messengerEl.value = messenger;
 
   if (!email) {
     errorEl.textContent = 'Contact email is required — that\'s where customer orders will be sent.';
@@ -121,6 +126,17 @@ async function onRegister(e) {
   }
   if (!phone) {
     errorEl.textContent = 'Contact phone is required — it\'s shown to customers as a backup way to reach you.';
+    return;
+  }
+  // Two different failures, two different messages: nothing typed at all, or
+  // something typed that carries no profile name (a bare "facebook.com", a
+  // link to someone else's site). Telling both "this is required" would leave
+  // the second vendor staring at a filled-in box.
+  if (!messenger) {
+    errorEl.textContent = messengerEl.value.trim()
+      ? 'That doesn\'t look like a Facebook profile name. Type just the name, e.g. your.name, or paste the link to your profile.'
+      : 'Facebook Messenger is required — it\'s how customers message you from your store page.';
+    messengerEl.focus();
     return;
   }
 

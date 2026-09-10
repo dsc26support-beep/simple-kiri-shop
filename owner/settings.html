@@ -55,9 +55,13 @@
           <p class="helper-text">Only fill this in if your WhatsApp is on a different number. Leave it blank and customers reach you on the contact phone above.</p>
         </div>
         <div class="field">
-          <label for="contact-messenger">Facebook Messenger (Optional)</label>
-          <input id="contact-messenger" type="text">
-          <p class="helper-text">Your Messenger username or page link, e.g. m.me/yourpage. Lets customers message you straight from your store page.</p>
+          <!-- No `required` here, deliberately. Registration demands one; this
+               page must not, or every store that signed up before the field
+               existed is locked out of saving its phone, logo or payment
+               details until it supplies a Facebook profile it may not have. -->
+          <label for="contact-messenger">Facebook Messenger</label>
+          <input id="contact-messenger" type="text" placeholder="Type/Paste Profile Name here">
+          <p class="helper-text">Your Facebook profile name — the part after facebook.com/ when you open your own profile. Pasting the whole link works too. We save it as a Messenger link so customers can message you straight from your store page.</p>
         </div>
 
         <h2>Store Logo</h2>

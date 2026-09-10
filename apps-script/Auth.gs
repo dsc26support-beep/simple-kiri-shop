@@ -241,8 +241,17 @@ function actionRegisterOwner(body) {
   if (storeNameErr) return storeNameErr;
   var phoneErr = capLength(phone, 30, 'Phone number');
   if (phoneErr) return phoneErr;
-  var messengerErr = capLength(messenger, 100, 'Facebook Messenger');
+  var messengerErr = capLength(messenger, 200, 'Facebook Messenger');
   if (messengerErr) return messengerErr;
+  // Required at registration, and normalized to one stored shape. Enforced HERE
+  // rather than trusting the form's `required`, which anything that can POST
+  // ignores. Existing stores are untouched by this - a settings edit still
+  // accepts blank (actionUpdateOwnerProfile), because every store that
+  // registered before this has none and must still be able to save.
+  var messengerLink = messengerStoredValue(messenger);
+  if (!messengerLink) {
+    return fail('Enter your Facebook profile name, e.g. your.name or a link to your profile');
+  }
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -280,7 +289,7 @@ function actionRegisterOwner(body) {
       PasswordSalt: salt,
       Email: email,
       Phone: phone,
-      Messenger: messenger,
+      Messenger: messengerLink,
       ANZ_AccountName: '',
       ANZ_AccountNumber: '',
       ANZ_Branch: '',

@@ -728,9 +728,14 @@ function actionUpdateOwnerProfile(owner, body) {
     update.Phone = body.phone;
   }
   if (body.messenger !== undefined) {
-    var messengerErr = capLength(body.messenger, 100, 'Facebook Messenger');
+    var messengerErr = capLength(body.messenger, 200, 'Facebook Messenger');
     if (messengerErr) return messengerErr;
-    update.Messenger = body.messenger;
+    // Same normalizer as registration, so a later edit lands in the same shape.
+    // Blank is allowed HERE and refused there: every store that registered
+    // before this field was required has none, and must still be able to save
+    // its phone, its logo and its payment details. A vendor clearing the box
+    // on purpose is also a thing they are entitled to do.
+    update.Messenger = messengerStoredValue(body.messenger);
   }
   if (body.authChannel !== undefined) {
     // Allowlisted, not length-capped: this value is read back as a switch, so
