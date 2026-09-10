@@ -39,6 +39,16 @@
       <div class="auth-card">
         <h1 id="auth-title">Sign in to Mwakete</h1>
 
+        <!-- Hidden until google-signin.js confirms both a configured client id
+             and that Google's script actually loaded. On a blocked or slow
+             connection this block simply never appears and the email form
+             below is unaffected. -->
+        <div id="google-signin-wrap" class="auth-social" hidden>
+          <div id="google-signin-btn"></div>
+          <p id="google-signin-error" class="form-error" role="alert"></p>
+          <p class="auth-divider"><span>or</span></p>
+        </div>
+
         <div class="auth-tabs" role="tablist" aria-label="Sign in or create an account">
           <button type="button" class="auth-tab is-active" id="tab-signin" role="tab" aria-selected="true">Sign In</button>
           <button type="button" class="auth-tab" id="tab-signup" role="tab" aria-selected="false">Create Account</button>
@@ -100,6 +110,17 @@
           </form>
         </div>
 
+        <label class="auth-shared-device" for="shared-device">
+          <input type="checkbox" id="shared-device">
+          <span>This is a shared device &mdash; sign me out sooner</span>
+        </label>
+        <p class="helper-text auth-shared-hint">Leave this unticked and we'll keep you signed in on this device for 60 days.</p>
+
+        <div class="auth-guest">
+          <p class="helper-text">You don't need an account to shop. Signing in only saves your order history and lets you leave reviews.</p>
+          <a class="btn btn-block" id="guest-continue" href="index.html">Continue as guest</a>
+        </div>
+
         <p class="helper-text auth-alt"><a href="index.html">← Back to Home</a></p>
       </div>
     </section>
@@ -118,6 +139,7 @@
   <script defer src="assets/js/cookie-consent.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
   <script defer src="assets/js/customer-login.min.js"></script>
+  <script defer src="assets/js/google-signin.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>
 </body>
 </html>

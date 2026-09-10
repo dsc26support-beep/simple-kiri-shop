@@ -27,6 +27,17 @@ function init() {
 // Where to go after a successful sign in. Supports ?next= for returning to a
 // page (e.g. checkout), but only same-site relative paths - never an absolute
 // or off-site URL (open-redirect guard).
+/**
+ * "This is a shared device" - phones get shared here, and order history carries
+ * names, phone numbers and delivery addresses. Ticked, the backend issues a
+ * 12-hour session instead of the 60-day one. Read at submit time rather than
+ * cached, so changing the box before submitting does what it looks like it does.
+ */
+function sharedDeviceChecked() {
+  const box = document.getElementById('shared-device');
+  return !!(box && box.checked);
+}
+
 function nextDest() {
   const next = getQueryParam('next');
   if (next && !/^https?:/i.test(next) && !next.startsWith('//') && /^[a-zA-Z0-9_\-./?=&%]+$/.test(next)) {
@@ -79,7 +90,8 @@ async function onLoginVerify(e) {
   const code = document.getElementById('login-code').value.trim();
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true;
-  const res = await Api.post('verifyCustomerLogin', { token: loginPendingToken, code });
+  const res = await Api.post('verifyCustomerLogin',
+    { token: loginPendingToken, code, sharedDevice: sharedDeviceChecked() });
   btn.disabled = false;
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not verify the code.';
@@ -136,7 +148,8 @@ async function onSignupVerify(e) {
   const code = document.getElementById('signup-code').value.trim();
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true;
-  const res = await Api.post('verifyCustomerEmail', { token: signupPendingToken, code });
+  const res = await Api.post('verifyCustomerEmail',
+    { token: signupPendingToken, code, sharedDevice: sharedDeviceChecked() });
   btn.disabled = false;
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not verify the code.';

@@ -4211,3 +4211,76 @@ legend {
     align-items: start;
   }
 }
+
+/* ---- Customer sign-in: Google, shared device, guest ------------------------
+   The Google block carries its own "or" divider so both disappear together
+   when the button never renders - an unconfigured deployment, or a connection
+   that blocked accounts.google.com. A stray "or" above the email form would
+   be the giveaway that something failed. */
+.auth-social {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* Google renders its button into this box at a fixed 280px. Centred rather
+   than stretched: the button's own width is set by Google's iframe and cannot
+   be overridden from here, so matching btn-block would just look broken. */
+#google-signin-btn {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
+.auth-social.is-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin: var(--space-2) 0 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.auth-shared-device {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+/* 20px, not the 16px a checkbox defaults to: this is tapped on a phone, and it
+   is the control that decides how long a session survives on a shared handset. */
+.auth-shared-device input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.auth-shared-hint {
+  margin-top: var(--space-1);
+}
+
+.auth-guest {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
