@@ -313,6 +313,41 @@ leftover `@` A record or Domain Forwarding is still set (step 2). If GitHub's DN
 check won't go green, the only `@` A records must be the four GitHub IPs above,
 with no typos.
 
+### Editing CSS or JS: run the build
+
+**Edit the source file. Then run `npm run build` and commit what it changes.**
+
+```bash
+npm install      # once, dev-only; node_modules is gitignored and never deployed
+npm run build    # regenerates every assets/**/*.min.js and *.min.css
+```
+
+Pages load the generated `.min` files, never the sources. The sources keep every
+comment; the built copies carry none. That split exists because comments were
+**69.7 KB gzipped across the tree** and about 29 KB of it landed on the homepage
+alone - roughly 44% of its weight, downloaded by every first-time visitor, doing
+nothing at runtime. On the 400 kbps connections this site is built for, that is
+about 0.6 s of the first paint. The comments are worth keeping; shipping them is
+not.
+
+The build does **no** code transformation - no mangling, no compression, no rule
+merging. It strips comments and whitespace and nothing else. See the header of
+`tools/build-assets.js` for why, and what to do if you ever want the extra bytes.
+
+**`sw.js` is deliberately not built.** A broken service worker is the one failure
+here that keeps hurting after it is fixed, because it can serve stale content to
+returning visitors indefinitely. Leaving it alone costs 2 KB gzipped.
+
+The hazard of a committed build is forgetting the rebuild: the site then quietly
+serves the old code. `tests/verify-minified.js` catches exactly that - it
+re-minifies every source and byte-compares against what is committed, so a
+stale build fails the test rather than shipping. Run it before you push:
+
+```bash
+npm run build:check      # fast: freshness only
+node tests/verify-minified.js   # freshness + wiring + computed-style equivalence
+```
+
 ### Releasing a front-end change
 
 **Bump `CACHE` in `sw.js` whenever you change a cached HTML, CSS or JS file.**

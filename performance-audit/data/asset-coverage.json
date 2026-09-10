@@ -1,0 +1,309 @@
+{
+  "rows": [
+    {
+      "path": "/index.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 11804,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 35363,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/store.html?store=bong",
+      "redirected": null,
+      "styles.css": {
+        "used": 15367,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 35300,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/product.html?store=bong&product=p0",
+      "redirected": null,
+      "styles.css": {
+        "used": 12738,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 33828,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/categories.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 10804,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 34703,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/categories.html?q=rice",
+      "redirected": null,
+      "styles.css": {
+        "used": 12941,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 34753,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/stores.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 7549,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 34523,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/cart.html?store=bong",
+      "redirected": null,
+      "styles.css": {
+        "used": 13216,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 34268,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/checkout.html?store=bong",
+      "redirected": null,
+      "styles.css": {
+        "used": 14943,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 34572,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/customer-dashboard.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 5562,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 32870,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/customer-login.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 4460,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 32430,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/customer-messages.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 5317,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 32870,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/customer-tips.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 5310,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 33516,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/my-carts.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 5192,
+        "total": 107103
+      },
+      "helpers.js": {
+        "used": 33122,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/login.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 3786,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 1022,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 33005,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/dashboard.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 1737,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 2591,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 32334,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/products.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 1939,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 739,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 32334,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/orders.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 1835,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 650,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 32334,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/settings.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 2561,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 1547,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 32334,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/messages.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 2035,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 1944,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 32334,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/bookings.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 1835,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 650,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 32334,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/admin.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 1238,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 650,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 32334,
+        "total": 59247
+      }
+    },
+    {
+      "path": "/owner/forgot-password.html",
+      "redirected": null,
+      "styles.css": {
+        "used": 3504,
+        "total": 107103
+      },
+      "owner.css": {
+        "used": 165,
+        "total": 14643
+      },
+      "helpers.js": {
+        "used": 32909,
+        "total": 59247
+      }
+    }
+  ],
+  "union": {
+    "styles.css": 27406,
+    "owner.css": 5893,
+    "helpers.js": 38192
+  }
+}

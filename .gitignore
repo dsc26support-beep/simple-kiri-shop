@@ -1,0 +1,4 @@
+# Dev-only. The build tools that produce the .min files are never deployed -
+# GitHub Pages serves this repo as-is, so node_modules must not be committed.
+node_modules/
+npm-debug.log*

@@ -19,7 +19,7 @@
 // PREVIOUS stylesheet and only refreshes it in the background - the change
 // appears one load late, which reads as "my fix didn't ship". Renaming the
 // cache makes activate() drop the old one, so the next load fetches fresh.
-var CACHE = 'mwakete-v50';
+var CACHE = 'mwakete-v51';
 
 // Separate cache for cross-origin product/logo photos. Cache-first is safe here
 // because every uploaded image has a unique URL (Drive file id / Cloudinary
@@ -37,7 +37,7 @@ var IMAGE_HOSTS = ['res.cloudinary.com', 'lh3.googleusercontent.com'];
 var PRECACHE = [
   './',
   'offline.html',
-  'assets/css/styles.css',
+  'assets/css/styles.min.css',
   'assets/img/favicon.svg',
 
   // Every customer-facing page and the scripts it needs. The whole set is
@@ -63,34 +63,34 @@ var PRECACHE = [
   'customer-dashboard.html',
   'customer-messages.html',
 
-  'assets/js/config.js',
-  'assets/js/api.js',
-  'assets/js/helpers.js',
-  'assets/js/auth.js',
-  'assets/js/customer-auth.js',
-  'assets/js/cookie-consent.js',
-  'assets/js/bottom-nav.js',
-  'assets/js/header-cart.js',
-  'assets/js/register-sw.js',
-  'assets/js/cart.js',
-  'assets/js/product-card.js',
-  'assets/js/chat-window.js',
-  'assets/js/kiribati-locations.js',
-  'assets/js/home.js',
-  'assets/js/home-nav.js',
-  'assets/js/store.js',
-  'assets/js/product-page.js',
-  'assets/js/directory.js',
-  'assets/js/categories.js',
-  'assets/js/my-carts.js',
-  'assets/js/fab-drag.js',
-  'assets/js/search-intent.js',
-  'assets/js/cart-page.js',
-  'assets/js/checkout.js',
-  'assets/js/customer-login.js',
-  'assets/js/customer-dashboard.js',
-  'assets/js/customer-messages.js',
-  'assets/js/customer-tips.js'
+  'assets/js/config.min.js',
+  'assets/js/api.min.js',
+  'assets/js/helpers.min.js',
+  'assets/js/auth.min.js',
+  'assets/js/customer-auth.min.js',
+  'assets/js/cookie-consent.min.js',
+  'assets/js/bottom-nav.min.js',
+  'assets/js/header-cart.min.js',
+  'assets/js/register-sw.min.js',
+  'assets/js/cart.min.js',
+  'assets/js/product-card.min.js',
+  'assets/js/chat-window.min.js',
+  'assets/js/kiribati-locations.min.js',
+  'assets/js/home.min.js',
+  'assets/js/home-nav.min.js',
+  'assets/js/store.min.js',
+  'assets/js/product-page.min.js',
+  'assets/js/directory.min.js',
+  'assets/js/categories.min.js',
+  'assets/js/my-carts.min.js',
+  'assets/js/fab-drag.min.js',
+  'assets/js/search-intent.min.js',
+  'assets/js/cart-page.min.js',
+  'assets/js/checkout.min.js',
+  'assets/js/customer-login.min.js',
+  'assets/js/customer-dashboard.min.js',
+  'assets/js/customer-messages.min.js',
+  'assets/js/customer-tips.min.js'
 ];
 
 self.addEventListener('install', function (event) {

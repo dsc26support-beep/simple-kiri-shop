@@ -1,7 +1,8 @@
 # Tests
 
-91 suites: ~50 headless-browser suites (`verify-*.js`) and ~13 pure-Node
-backend suites (`test-*.js`).
+~90 suites: mostly headless-browser suites (`verify-*.js`) plus ~13 pure-Node
+backend suites (`test-*.js`). Three that drove `search.html` were deleted when
+that page was removed; `verify-cls.js` and `verify-minified.js` were added.
 
 They are committed **verbatim**, exactly as they were passing at
 `v1-pre-v2-baseline` (`39cd862`). Not reformatted, not made portable — see
@@ -45,6 +46,29 @@ second pattern above.)
 
 **The servers drop under load.** A full sweep produces `CRASH` rows that pass
 when re-run alone. Always re-run a failure individually before believing it.
+
+## `verify-minified.js` — run this one before every push
+
+Added in Phase 2, when the asset build landed. Pages load generated `.min` files
+while the sources keep their comments, which introduces one hazard that did not
+exist before: **edit a source, forget `npm run build`, and the site keeps serving
+the old code.** Nothing about that failure is visible by reading the diff.
+
+This suite closes it, on three fronts:
+
+1. **Freshness** — re-minifies every source and byte-compares against what is
+   committed. A stale build fails here instead of shipping.
+2. **Wiring** — no page may load a source asset that has a built twin, and every
+   `.min` file a page references must exist. A typo 404s a stylesheet.
+3. **Equivalence** — renders 15 pages twice, once with the source CSS and once
+   with the minified CSS swapped in at the network layer, and compares **every
+   element's computed style** across 43 layout, box, type and colour properties.
+   That is ~1,700 elements per run. Byte-comparing can prove the build is
+   current; only this can show the minifier did not change what a rule means.
+
+```sh
+node tests/verify-minified.js
+```
 
 ## Environment assumptions
 

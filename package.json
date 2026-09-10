@@ -1,0 +1,14 @@
+{
+  "name": "simple-kiri-shop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mwakete - a multi-vendor marketplace for Kiribati. Static site; this package.json exists only for the asset build.",
+  "scripts": {
+    "build": "node tools/build-assets.js",
+    "build:check": "node tools/build-assets.js --check"
+  },
+  "devDependencies": {
+    "clean-css": "^5.3.3",
+    "terser": "^5.51.2"
+  }
+}
