@@ -20,8 +20,6 @@ async function init() {
     return;
   }
 
-  document.getElementById('back-to-cart-link').href = 'cart.html';
-
   populateCheckoutIslandSelect();
   wireCheckoutLocationFields();
   document.getElementById('delivery-method-options').addEventListener('change', updateReviewTotal);
