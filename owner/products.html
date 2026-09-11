@@ -97,15 +97,24 @@
           </div>
 
           <div class="field">
-            <label for="product-image-input">Product Photo 1</label>
+            <label for="product-image-input">Product Photo</label>
             <img id="image-preview" class="image-upload-preview hidden" alt="Selected product photo preview">
             <input type="file" id="product-image-input" accept="image/*">
+            <p class="helper-text">Max 5MB. On a phone, this will offer to take a new photo or choose one from your gallery.</p>
           </div>
-          <div class="field">
-            <label for="product-image-input-2">Product Photo 2 (optional)</label>
-            <img id="image-preview-2" class="image-upload-preview hidden" alt="Selected second product photo preview">
-            <input type="file" id="product-image-input-2" accept="image/*">
-            <p class="helper-text">Up to 2 photos per product, max 5MB each. On a phone, this will offer to take a new photo or choose one from your gallery.</p>
+
+          <!-- No second-photo UPLOAD any more, but products that already have
+               one keep showing it to shoppers, so this block appears only for
+               those. Without it a vendor would be permanently stuck with
+               whatever second photo they uploaded: the form has never sent
+               imageUrl2, so overwriting was the only way to change it and
+               there was no way at all to remove it. Once cleared it cannot
+               come back, so the feature drains away rather than being frozen. -->
+          <div class="field hidden" id="existing-photo2-field">
+            <label>Second photo</label>
+            <img id="image-preview-2" class="image-upload-preview" alt="The second photo already on this product">
+            <p class="helper-text">Second photos can no longer be added. You can remove this one, but not replace it.</p>
+            <button type="button" id="remove-photo2-btn" class="btn btn-small">Remove second photo</button>
           </div>
 
           <p id="product-form-error" class="form-error" role="alert"></p>

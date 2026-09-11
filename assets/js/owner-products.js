@@ -60,7 +60,9 @@ let ownerProducts = [];
 let productsHasMore = false;
 let productsTotal = 0;
 let selectedImageFile = null;
-let selectedImageFile2 = null;
+// Second photos can no longer be UPLOADED. This only tracks whether the
+// vendor asked to clear an existing one, so the payload can send imageUrl2: ''.
+let clearPhoto2 = false;
 let variantRowSeq = 0;
 
 async function init() {
@@ -74,7 +76,7 @@ async function init() {
   document.getElementById('product-listing-type').addEventListener('change', onListingTypeChange);
   document.getElementById('product-form').addEventListener('submit', onSaveProduct);
   document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
-  document.getElementById('product-image-input-2').addEventListener('change', onImageFileChange2);
+  document.getElementById('remove-photo2-btn').addEventListener('click', onRemovePhoto2);
   document.getElementById('owner-product-list').addEventListener('click', onListClick);
   document.getElementById('products-load-more').addEventListener('click', onLoadMore);
 
@@ -167,13 +169,11 @@ function openForm(product) {
   const heading = document.getElementById('product-form-heading');
   section.classList.remove('hidden');
   selectedImageFile = null;
-  selectedImageFile2 = null;
+  clearPhoto2 = false;
   document.getElementById('product-image-input').value = '';
-  document.getElementById('product-image-input-2').value = '';
   document.getElementById('product-form-error').textContent = '';
 
   const preview = document.getElementById('image-preview');
-  const preview2 = document.getElementById('image-preview-2');
   document.getElementById('variant-rows').innerHTML = '';
 
   if (product) {
@@ -195,12 +195,9 @@ function openForm(product) {
     } else {
       preview.classList.add('hidden');
     }
-    if (product.imageUrl2) {
-      preview2.src = optimizedImageUrl(product.imageUrl2, IMG_W.card);
-      preview2.classList.remove('hidden');
-    } else {
-      preview2.classList.add('hidden');
-    }
+    // Shown only for products that already have a second photo - there is no
+    // way to add one any more.
+    showPhoto2(product.imageUrl2);
     const activeVariants = product.variants.filter((v) => v.status === 'active');
     if (activeVariants.length === 0) addVariantRow();
     else activeVariants.forEach((v) => addVariantRow(v));
@@ -214,7 +211,7 @@ function openForm(product) {
     document.getElementById('product-category').value = '';
     document.getElementById('product-status').value = 'active';
     preview.classList.add('hidden');
-    preview2.classList.add('hidden');
+    showPhoto2('');
     addVariantRow();
   }
 
@@ -288,18 +285,31 @@ function onImageFileChange(e) {
   reader.readAsDataURL(file);
 }
 
-function onImageFileChange2(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  selectedImageFile2 = file;
+/**
+ * Shows the existing-second-photo block, or hides it. There is no way to ADD a
+ * second photo any more, so this appears only for products that already have
+ * one - which is also why it offers removal rather than replacement.
+ */
+function showPhoto2(url) {
+  const field = document.getElementById('existing-photo2-field');
+  const img = document.getElementById('image-preview-2');
+  if (!field || !img) return;
+  if (url) {
+    img.src = optimizedImageUrl(url, IMG_W.card);
+    field.classList.remove('hidden');
+  } else {
+    field.classList.add('hidden');
+  }
+}
+
+/**
+ * Marks the second photo for removal. Nothing is deleted until Save Product -
+ * so Cancel still cancels, which is what a vendor will expect from a form.
+ */
+function onRemovePhoto2() {
+  clearPhoto2 = true;
+  showPhoto2('');
   UnsavedGuard.markDirty(document.getElementById('product-form'));
-  const preview = document.getElementById('image-preview-2');
-  const reader = new FileReader();
-  reader.onload = () => {
-    preview.src = reader.result;
-    preview.classList.remove('hidden');
-  };
-  reader.readAsDataURL(file);
 }
 
 function setSaveProductBusy(saveBtn, label) {
@@ -360,6 +370,12 @@ async function onSaveProduct(e) {
     variants
   };
 
+  // Only sent when the vendor actually asked to clear it. updateProduct keeps
+  // the existing value when imageUrl2 is undefined and clears it when the key
+  // is present and empty, so sending it unconditionally would wipe every
+  // second photo on the first edit of any product.
+  if (clearPhoto2) payload.imageUrl2 = '';
+
   const saveBtn = document.getElementById('save-product-btn');
   setSaveProductBusy(saveBtn, productId ? 'Saving' : 'Adding');
 
@@ -388,25 +404,6 @@ async function onSaveProduct(e) {
       }
     } catch (err) {
       errorEl.textContent = 'Product saved, but photo 1 could not be processed.';
-    }
-  }
-
-  if (selectedImageFile2) {
-    setSaveProductBusy(saveBtn, 'Uploading photo 2');
-    try {
-      const { base64, mimeType } = await compressImage(selectedImageFile2);
-      const uploadRes = await Api.post('uploadProductImage', {
-        token: Auth.getToken(),
-        productId: res.productId,
-        imageBase64: base64,
-        mimeType,
-        slot: 2
-      });
-      if (!uploadRes.ok) {
-        errorEl.textContent = `Product saved, but photo 2 upload failed: ${uploadRes.error || 'unknown error'}`;
-      }
-    } catch (err) {
-      errorEl.textContent = 'Product saved, but photo 2 could not be processed.';
     }
   }
 
