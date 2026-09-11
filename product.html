@@ -111,17 +111,50 @@
       <p id="product-shipping-note" class="store-shipping-note helper-text" hidden></p>
       <div id="product-detail" class="product-detail-single"></div>
 
-      <!-- <details> rather than a hand-rolled accordion: the open/closed state,
+      <!-- Ratings and the store link share one row, in what used to be empty
+           space between the buy box and Similar products.
+
+           BOTH SIT ON FIXED FLEX BASES rather than on their own content width.
+           The score ("No reviews yet", or "* 4.5 - 12 reviews") only arrives
+           once listProductReviews answers, and a content-driven width would let
+           it change where the row wraps - moving the store link sideways and
+           down after first paint. Horizontal shifts count towards CLS exactly
+           as vertical ones do, so the wrap point is decided by the viewport
+           alone and nothing the fetch returns can move it.
+
+           HIDDEN UNTIL THE PRODUCT CARD RENDERS, for the same reason. Left
+           visible it sat above an empty box and was then pushed down the whole
+           height of the card - 0.11 CLS on a phone, against 0.026 for the
+           loose link this replaced. showMetaRow() in product-page.js reveals it
+           in the same task that fills the card.
+
+           <details> rather than a hand-rolled accordion: the open/closed state,
            keyboard operation and screen-reader announcement all come free, and
            it still opens if JS fails.
 
            The summary carries the SCORE. Collapsing the section hides the most
            persuasive thing on a product page, so a product with 4.5 from twelve
            people must not look like one with none. -->
-      <!-- Similar products, from any store. Placed ABOVE the reviews and
-           directly under the buy box: a shopper here is still shopping, and
-           this is the last point where showing them an alternative is useful
-           rather than an interruption.
+      <div class="product-meta-row" id="product-meta-row" hidden>
+        <details class="reviews-section" id="reviews-section" hidden>
+          <summary class="reviews-toggle">
+            <span class="reviews-toggle-title">Ratings &amp; reviews</span>
+            <span class="reviews-toggle-score" id="reviews-toggle-score"></span>
+          </summary>
+          <div class="reviews-body">
+            <div id="reviews-summary" class="reviews-summary"></div>
+            <div id="review-form-slot"></div>
+            <div id="reviews-list" class="reviews-list"></div>
+            <p id="reviews-status" class="helper-text" aria-live="polite"></p>
+          </div>
+        </details>
+        <p class="view-store-row"><a id="view-store-link" href="stores.html">&#8592; See more from this store</a></p>
+      </div>
+
+      <!-- Similar products, from any store. Directly under the buy box and the
+           row above: a shopper here is still shopping, and this is the last
+           point where showing them an alternative is useful rather than an
+           interruption.
 
            Hidden until it has something to show, so a category with only this
            one listing leaves no empty heading behind. Loaded at idle after the
@@ -130,23 +163,6 @@
         <h2 id="related-heading" class="section-title-sm">Similar products</h2>
         <div id="related-list" class="related-carousel"></div>
       </section>
-
-      <details class="reviews-section" id="reviews-section" hidden>
-        <summary class="reviews-toggle">
-          <span class="reviews-toggle-title">Ratings &amp; reviews</span>
-          <span class="reviews-toggle-score" id="reviews-toggle-score"></span>
-        </summary>
-        <div class="reviews-body">
-          <div id="reviews-summary" class="reviews-summary"></div>
-          <div id="review-form-slot"></div>
-          <div id="reviews-list" class="reviews-list"></div>
-          <p id="reviews-status" class="helper-text" aria-live="polite"></p>
-        </div>
-      </details>
-      <!-- Stays directly under the reviews, which is where it was. The inline
-           margin-top:2rem it used to carry is what made it look detached from
-           them; the class gives it the same spacing scale as everything else. -->
-      <p class="view-store-row"><a id="view-store-link" href="stores.html">← See more from this store</a></p>
     </div>
   </main>
 

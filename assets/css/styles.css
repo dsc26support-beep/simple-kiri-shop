@@ -808,11 +808,59 @@ footer.site-footer .copyright {
   .related-carousel .related-card { flex-basis: 19%; }
 }
 
-/* Directly under the reviews, on the same spacing scale as the rest of the
-   page. It used to carry an inline margin-top:2rem, which is what made it look
-   like it belonged to nothing. */
+/* Ratings on the left, the store link on the right, in one row above Similar
+   products.
+
+   THE FLEX BASES ARE FIXED ON PURPOSE. The review score arrives after a fetch,
+   and if the row wrapped on content width, that text landing would push the
+   store link sideways and down - a layout shift after first paint, and a
+   horizontal one counts against CLS just as a vertical one does. A basis in
+   rem means only the viewport decides where this wraps.
+
+   Row gap is 0: both halves already carry a 48px tap height, so a gap on top
+   of that would open a hole between them on a phone. */
+.product-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+/* The row fills the gap that used to sit here, so the old 2.5rem above
+   Similar products would leave a hole under it. */
+.product-meta-row + .related-section {
+  margin-top: var(--space-3);
+}
+
+.product-meta-row .reviews-section {
+  flex: 1 1 14rem;
+  min-width: 0;
+  /* Capped, or on a wide screen the chevron marking the end of the toggle grows
+     until it is sitting right against the store link and reads as part of it.
+     With the cap, space-between puts the link out at the right edge instead. */
+  max-width: 22rem;
+}
+
+/* Opened, it takes the whole row and the link drops below it - the star bars,
+   the list and the review form are not an aside squeezed into half a line.
+   Opening is a tap, so the reflow is the answer to an action, not a surprise. */
+.product-meta-row .reviews-section[open] {
+  flex-basis: 100%;
+  max-width: none;
+}
+
+/* Matched to the toggle's height so the two halves line up, and so the link is
+   a real tap target rather than a 14px line of text. */
 .view-store-row {
-  margin: var(--space-3) 0 0;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  margin: 0;
+  font-size: 0.875rem;
 }
 
 /* Custom PWA "Install" pill, injected by register-sw.js on mobile & tablet.
@@ -2012,8 +2060,9 @@ footer.site-footer .copyright {
    open form alone (five star radios, a textarea and a button) ran taller than
    the product it belongs to. */
 .reviews-section {
-  margin-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
+  /* The rule above the row is drawn by .product-meta-row, so it spans the full
+     width instead of stopping halfway across. */
+  margin-top: 0;
 }
 
 .reviews-toggle {
@@ -2034,14 +2083,17 @@ footer.site-footer .copyright {
 }
 
 .reviews-toggle-title {
-  font-size: 1.05rem;
+  font-size: 0.875rem;
 }
 
 /* The score, so a shut section still tells a shopper what people think. */
 .reviews-toggle-score {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
   color: var(--color-muted);
+  /* It shares a line with the title on a narrow phone; letting it shrink keeps
+     the toggle one line tall instead of two. */
+  min-width: 0;
 }
 
 /* Chevron, pushed to the far edge and turned when open. */
