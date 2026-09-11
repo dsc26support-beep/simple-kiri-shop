@@ -52,13 +52,33 @@
       <div class="auth-card">
         <h1 id="auth-title">Sign in to Mwakete</h1>
 
-        <!-- Hidden until google-signin.js confirms both a configured client id
-             and that Google's script actually loaded. On a blocked or slow
-             connection this block simply never appears and the email form
-             below is unaffected. -->
-        <div id="google-signin-wrap" class="auth-social" hidden>
-          <div id="google-signin-btn"></div>
-          <p id="google-signin-error" class="form-error" role="alert"></p>
+        <!-- The two ways in that need no typing, then the divider, then the
+             email form. The Google half is hidden until google-signin.js
+             confirms both a configured client id and that Google's script
+             actually loaded; on a blocked or slow connection it never appears.
+             The guest row and the divider sit OUTSIDE that wrapper on purpose -
+             guest is the fallback for exactly the person who cannot use Google,
+             so it must never disappear along with it. -->
+        <div class="auth-quick">
+          <div id="google-signin-wrap" class="auth-social" hidden>
+            <div id="google-signin-btn"></div>
+            <p id="google-signin-error" class="form-error" role="alert"></p>
+          </div>
+
+          <div class="auth-guest-row">
+            <a class="btn btn-block btn-outline" id="guest-continue" href="index.html">Continue as guest</a>
+            <button type="button" class="info-dot" id="guest-info-btn"
+                    aria-expanded="false" aria-controls="guest-info"
+                    aria-label="Why sign in?">i</button>
+            <!-- Absolutely positioned, so opening it cannot move anything on
+                 the page. Carries its own text rather than a title attribute,
+                 which phones never show. -->
+            <p class="info-pop" id="guest-info" role="status" hidden>
+              You don't need an account to shop. Signing in only saves your
+              order history and lets you leave reviews.
+            </p>
+          </div>
+
           <p class="auth-divider"><span>or</span></p>
         </div>
 
@@ -136,10 +156,6 @@
         </label>
         <p class="helper-text auth-shared-hint">Leave this unticked and we'll keep you signed in on this device for 60 days.</p>
 
-        <div class="auth-guest">
-          <p class="helper-text">You don't need an account to shop. Signing in only saves your order history and lets you leave reviews.</p>
-          <a class="btn btn-block" id="guest-continue" href="index.html">Continue as guest</a>
-        </div>
 
       </div>
     </section>
