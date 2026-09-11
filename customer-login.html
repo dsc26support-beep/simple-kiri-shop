@@ -150,11 +150,20 @@
           </form>
         </div>
 
-        <label class="auth-shared-device" for="shared-device">
-          <input type="checkbox" id="shared-device">
-          <span>This is a shared device &mdash; sign me out sooner</span>
-        </label>
-        <p class="helper-text auth-shared-hint">Leave this unticked and we'll keep you signed in on this device for 60 days.</p>
+        <div class="auth-shared-row">
+          <label class="auth-shared-device" for="shared-device">
+            <input type="checkbox" id="shared-device">
+            <span>This is a shared device &mdash; sign me out sooner</span>
+          </label>
+          <button type="button" class="info-dot" id="shared-info-btn"
+                  aria-expanded="false" aria-controls="shared-info"
+                  aria-label="What does this do?">i</button>
+          <!-- Same absolutely-positioned popup as the guest one, so opening it
+               cannot move the form. -->
+          <p class="info-pop" id="shared-info" role="status" hidden>
+            Leave this unticked and we'll keep you signed in on this device for 60 days.
+          </p>
+        </div>
 
 
       </div>

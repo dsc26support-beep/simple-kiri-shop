@@ -4257,11 +4257,21 @@ legend {
   background: var(--color-border);
 }
 
-.auth-shared-device {
+/* The checkbox and its info dot share a row; position:relative anchors the
+   panel to this row rather than the page. */
+.auth-shared-row {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
   margin-top: var(--space-4);
+}
+
+.auth-shared-device {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  flex: 1 1 auto;
   cursor: pointer;
   line-height: 1.4;
 }
@@ -4273,10 +4283,6 @@ legend {
   height: 20px;
   flex: 0 0 auto;
   margin: 0;
-}
-
-.auth-shared-hint {
-  margin-top: var(--space-1);
 }
 
 /* The two no-typing ways in, above the "or" divider. */
@@ -4353,6 +4359,13 @@ legend {
    `display:block` on .info-pop would silently defeat it. */
 .info-pop:not([hidden]) {
   display: block;
+}
+
+/* Added at open time when the panel would fall below the fold - see
+   setOpen() in customer-login.js. */
+.info-pop--above {
+  top: auto;
+  bottom: calc(100% + var(--space-1));
 }
 
 /* ---- Legal pages (privacy) -------------------------------------------------

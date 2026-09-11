@@ -294,6 +294,66 @@ async function makeContext(browser, opts) {
     await ctx.close();
   }
 
+  // ---- the shared-device explanation, same treatment as guest -------------
+  {
+    const { ctx } = await makeContext(browser, { clientId: 'test-client' });
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.waitForTimeout(1300);
+
+    ok('the 60-day sentence is no longer sitting on the page as plain text',
+      await page.evaluate(() => !document.querySelector('.auth-shared-hint')));
+    ok('the checkbox label itself is untouched',
+      /shared device/i.test(await page.textContent('.auth-shared-device') || ''));
+    ok('its explanation starts closed', await page.locator('#shared-info').isHidden());
+
+    const footerTop = () => page.evaluate(() =>
+      Math.round(document.querySelector('footer.site-footer').getBoundingClientRect().top));
+    const before = await footerTop();
+    await page.click('#shared-info-btn');
+    await page.waitForTimeout(300);
+    ok('the dot opens it', await page.locator('#shared-info').isVisible());
+    ok('and it still says 60 days',
+      /60 days/.test(await page.textContent('#shared-info') || ''));
+    ok('opening it moves nothing', (await footerTop()) === before);
+
+    // Two panels overlapping on a 390px screen is unreadable.
+    await page.click('#guest-info-btn');
+    await page.waitForTimeout(300);
+    ok('opening the other one closes this one',
+      await page.locator('#shared-info').isHidden() && await page.locator('#guest-info').isVisible());
+    await ctx.close();
+  }
+
+  // ---- a panel that opens off-screen is a tap that did nothing ------------
+  for (const h of [560, 640, 844]) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: h } });
+    await ctx.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
+    await ctx.route(GSI, (r) => r.fulfill({ status: 200,
+      contentType: 'application/javascript', body: FAKE_GSI }));
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.evaluate(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForTimeout(1300);
+    for (const which of ['shared-info', 'guest-info']) {
+      await page.locator('#' + which + '-btn').scrollIntoViewIfNeeded();
+      await page.waitForTimeout(150);
+      await page.click('#' + which + '-btn');
+      await page.waitForTimeout(300);
+      const box = await page.evaluate((id) => {
+        const r = document.getElementById(id).getBoundingClientRect();
+        return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight };
+      }, which);
+      // It flips above the dot when there is no room below. At 640px tall the
+      // shared-device panel used to open 95px past the bottom of the screen.
+      ok(`${which} stays on screen at ${h}px tall`,
+        box.top >= 0 && box.bottom <= box.vh, JSON.stringify(box));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('\n' + pass + '/' + (pass + fail) + ' passed');
   process.exit(fail ? 1 : 0);
