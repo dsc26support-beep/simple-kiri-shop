@@ -96,8 +96,16 @@ async function makeContext(browser, opts) {
     const wrapHidden = await page.locator('#google-signin-wrap').isHidden();
     ok('with no client id, the Google block is hidden', wrapHidden);
     ok('and Google is never contacted at all', gsiHits.length === 0, gsiHits.join(','));
-    const dividerVisible = await page.locator('.auth-divider').isVisible();
-    ok('and no stray "or" divider is left behind', dividerVisible === false);
+    // The divider used to live INSIDE the Google wrapper and vanish with it,
+    // because with no Google button there was nothing above it to divide from.
+    // Guest now sits above it and is always present, so "or" is still doing its
+    // job - separating the guest route from the email form - and belongs here.
+    ok('the "or" divider stays, because guest is above it',
+      await page.locator('.auth-divider').isVisible());
+    ok('and it sits between guest and the tabs', await page.evaluate(() => {
+      const y = (sel) => document.querySelector(sel).getBoundingClientRect().top;
+      return y('#guest-continue') < y('.auth-divider') && y('.auth-divider') < y('.auth-tabs');
+    }));
     ok('the email form still works', await page.locator('#login-form').isVisible());
     ok('and the guest route is still offered', await page.locator('#guest-continue').isVisible());
     await ctx.close();
@@ -218,6 +226,71 @@ async function makeContext(browser, opts) {
     const phone = await page.inputValue('#customer-phone').catch(() => '');
     ok('a returning guest gets their name back without signing in', name === 'Aroita', name);
     ok('and their phone number', phone === '73012345', phone);
+    await ctx.close();
+  }
+
+  // ---- order, and the guest route surviving Google's absence -------------
+  for (const [label, opts] of [['Google available', { clientId: 'test-client' }],
+                               ['Google blocked', { clientId: 'test-client', gsiBlocked: true }],
+                               ['Google unconfigured', { clientId: '' }]]) {
+    const { ctx } = await makeContext(browser, opts);
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.waitForTimeout(1300);
+
+    const order = await page.$$eval('.auth-quick > *, .auth-tabs',
+      (els) => els.map((e) => e.id || e.className.split(' ')[0]));
+    ok(label + ': Google, then guest, then the divider, then the tabs',
+      JSON.stringify(order) === JSON.stringify(
+        ['google-signin-wrap', 'auth-guest-row', 'auth-divider', 'auth-tabs']), JSON.stringify(order));
+
+    // The one that matters. The guest button is the fallback for exactly the
+    // person who cannot use Google, so it must never be hidden along with it.
+    ok(label + ': "Continue as guest" is visible', await page.locator('#guest-continue').isVisible());
+    ok(label + ': and it is styled as a button, not bare text',
+      await page.$eval('#guest-continue', (el) => {
+        const cs = getComputedStyle(el);
+        // .btn's default background equals the card's, so a plain .btn here is
+        // invisible as a button. Outline gives it a visible edge.
+        return cs.borderTopWidth !== '0px' && cs.borderTopColor !== cs.backgroundColor;
+      }));
+    await ctx.close();
+  }
+
+  // ---- the info popup ----------------------------------------------------
+  {
+    const { ctx } = await makeContext(browser, { clientId: 'test-client' });
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.waitForTimeout(1300);
+
+    ok('the explanation starts closed', await page.locator('#guest-info').isHidden());
+    ok('and the dot says so', await page.getAttribute('#guest-info-btn', 'aria-expanded') === 'false');
+
+    const tabsTop = () => page.evaluate(() =>
+      Math.round(document.querySelector('.auth-tabs').getBoundingClientRect().top));
+    const before = await tabsTop();
+    await page.click('#guest-info-btn');
+    await page.waitForTimeout(300);
+    ok('tapping the dot opens it', await page.locator('#guest-info').isVisible());
+    ok('and it still says what the account is for',
+      /don't need an account to shop/i.test(await page.textContent('#guest-info') || ''));
+    ok('aria-expanded follows', await page.getAttribute('#guest-info-btn', 'aria-expanded') === 'true');
+    // Opening a panel that shoved the form down would be a layout shift on
+    // interaction - the same defect as one on load, just later.
+    ok('opening it moves nothing', (await tabsTop()) === before, before + ' -> ' + (await tabsTop()));
+
+    // Every dismissal route someone will actually try.
+    await page.click('#guest-info-btn'); await page.waitForTimeout(250);
+    ok('tapping the dot again closes it', await page.locator('#guest-info').isHidden());
+    await page.click('#guest-info-btn'); await page.waitForTimeout(250);
+    await page.click('h1#auth-title'); await page.waitForTimeout(250);
+    ok('tapping elsewhere closes it', await page.locator('#guest-info').isHidden());
+    await page.click('#guest-info-btn'); await page.waitForTimeout(250);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(250);
+    ok('Escape closes it', await page.locator('#guest-info').isHidden());
+    ok('and focus returns to the dot',
+      await page.evaluate(() => document.activeElement && document.activeElement.id) === 'guest-info-btn');
     await ctx.close();
   }
 

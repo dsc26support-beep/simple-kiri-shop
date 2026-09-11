@@ -4279,10 +4279,80 @@ legend {
   margin-top: var(--space-1);
 }
 
-.auth-guest {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
+/* The two no-typing ways in, above the "or" divider. */
+.auth-quick {
+  margin-bottom: var(--space-3);
+}
+
+/* The guest button and its info dot share a row. position:relative anchors the
+   popup to THIS row rather than the page, so it opens next to the dot at any
+   width. */
+.auth-guest-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* .btn's default background is --color-bg-alt, which is also .auth-card's
+   background, and its border is transparent - so a plain .btn on this card is
+   invisible as a button and reads as bold text. The outline style is what makes
+   it look tappable, and matches the outline buttons on My Account. */
+.auth-guest-row #guest-continue {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+/* 32px, not the 16px an "i" would naturally occupy: this is tapped with a
+   thumb. Below the 44px ideal because it sits beside a full-width button and
+   must not crowd it - the button itself is the primary target. */
+.info-dot {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font: italic 600 15px/1 var(--font-stack);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-dot:hover,
+.info-dot[aria-expanded="true"] {
+  border-color: var(--color-purple);
+  color: var(--color-purple);
+}
+
+/* ABSOLUTE, so opening it moves nothing. A popup that pushed the form down
+   every time someone tapped it would be a layout shift on interaction, which is
+   the same defect as one on load - just later. */
+.info-pop {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  top: calc(100% + var(--space-1));
+  width: min(22rem, 100%);
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-bg);
+  border: 1px solid var(--color-purple);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Paired with the [hidden] attribute rather than a class, and written so the
+   two cannot disagree: [hidden] is the weakest selector there is, so a bare
+   `display:block` on .info-pop would silently defeat it. */
+.info-pop:not([hidden]) {
+  display: block;
 }
 
 /* ---- Legal pages (privacy) -------------------------------------------------

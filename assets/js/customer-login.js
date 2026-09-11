@@ -24,6 +24,46 @@ function init() {
   if (getQueryParam('tab') === 'signup') showTab('signup');
 
   prefillRememberedEmail();
+  wireGuestInfo();
+}
+
+/**
+ * The "i" beside Continue as guest.
+ *
+ * A tooltip on a phone has to be dismissible by every route someone will
+ * actually try: tapping the dot again, tapping anywhere else, or Escape. A
+ * popup that can only be closed by hitting the same 32px target is a trap.
+ *
+ * The popup is absolutely positioned (see .info-pop), so opening it moves
+ * nothing - a panel that shoved the form down on every tap would be a layout
+ * shift on interaction, which is the same defect as one on load, just later.
+ */
+function wireGuestInfo() {
+  const btn = document.getElementById('guest-info-btn');
+  const pop = document.getElementById('guest-info');
+  if (!btn || !pop) return;
+
+  const setOpen = (open) => {
+    pop.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();          // or the document handler below closes it again
+    setOpen(pop.hidden);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (pop.hidden) return;
+    if (!pop.contains(e.target)) setOpen(false);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !pop.hidden) {
+      setOpen(false);
+      btn.focus();                // don't strand the keyboard user mid-page
+    }
+  });
 }
 
 /**
