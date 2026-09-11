@@ -11,5 +11,5 @@ const APP_CONFIG = {
   // Properties, because that is what the server checks the token's `aud`
   // against. Leave this empty and the Google button simply does not appear;
   // email codes and guest checkout are unaffected. See README.
-  GOOGLE_CLIENT_ID: ''
+  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: ''
 };
