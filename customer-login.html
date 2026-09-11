@@ -17,6 +17,19 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
+  <!-- Deliberately inline and render-blocking, like the one in stores.html.
+       It decides ONE thing before first paint: whether this device has signed
+       in before, so the "Signing in as ..." line is either present from the
+       first frame or never appears. Doing it in the deferred script instead
+       measured 0.0124 CLS at 390px - the un-hide WAS the jump. Kept to a class
+       toggle; everything else stays in customer-login.js. -->
+  <script>
+    try {
+      if (localStorage.getItem('skiri_last_email')) {
+        document.documentElement.classList.add('has-remembered-email');
+      }
+    } catch (e) { /* private mode - the line just does not show */ }
+  </script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -60,6 +73,13 @@
             <div class="field">
               <label for="login-email">Email</label>
               <input id="login-email" type="email" autocomplete="email" required>
+              <!-- Shown only when this device has signed in before. Rendered
+                   hidden in the markup rather than created by JS so it cannot
+                   push the form down when it appears. -->
+              <p class="helper-text login-remembered" id="login-remembered">
+                <span>Signing in as <strong id="login-remembered-email"></strong></span>
+                <button type="button" class="linklike" id="login-not-you">Not you?</button>
+              </p>
             </div>
             <p id="login-error" class="form-error" role="alert"></p>
             <button type="submit" class="btn btn-primary btn-block">Send me a code</button>

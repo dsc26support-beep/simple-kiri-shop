@@ -113,6 +113,69 @@ const tokenOf = (page) => page.evaluate(() => {
     await ctx.close();
   }
 
+  // --- the address is remembered for next time -----------------------------
+  {
+    const { ctx, page } = await openDashboard(browser, 'fast');
+    await page.click('#customer-logout');
+    await page.waitForTimeout(1200);
+    const remembered = await page.evaluate(() => {
+      try { return localStorage.getItem('skiri_last_email'); } catch (e) { return 'ERR'; }
+    });
+    ok('signing out remembers the email address', remembered === 'a@example.com', String(remembered));
+    ok('but NOT the session token', (await tokenOf(page)) === null);
+
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.waitForTimeout(1000);
+    ok('the sign-in page pre-fills it',
+      (await page.inputValue('#login-email')) === 'a@example.com');
+    ok('and says whose address it is',
+      /a@example\.com/.test(await page.textContent('#login-remembered') || ''));
+
+    // The escape hatch that makes this safe on a borrowed phone.
+    await page.click('#login-not-you');
+    await page.waitForTimeout(300);
+    ok('"Not you?" clears the box', (await page.inputValue('#login-email')) === '');
+    ok('and forgets it on the device', await page.evaluate(() => {
+      try { return localStorage.getItem('skiri_last_email') === null; } catch (e) { return false; }
+    }));
+    ok('and the line goes away', await page.locator('#login-remembered').isHidden());
+    await ctx.close();
+  }
+
+  // --- and remembering it must not move the page ---------------------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { try {
+      localStorage.setItem('skiri_cookie_consent', 'true');
+      localStorage.setItem('skiri_last_email', 'aroita@example.com');
+    } catch (e) {} });
+    await page.addInitScript(() => {
+      window.__cls = 0;
+      new PerformanceObserver((l) => {
+        for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value;
+      }).observe({ type: 'layout-shift', buffered: true });
+    });
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.waitForTimeout(2000);
+    const cls = await page.evaluate(() => window.__cls || 0);
+    // Decided before first paint by the inline script in the head, and the note's
+    // two children are block-level so filling the address in cannot shove the
+    // button sideways. Both of those were real measured shifts on the way here:
+    // 0.0124 from a deferred un-hide, then 0.0027 horizontal from the text fill.
+    ok('pre-filling shifts nothing at all', cls === 0, 'CLS ' + cls.toFixed(4));
+
+    const inlineGuard = require('fs')
+      .readFileSync('/home/user/simple-kiri-shop/customer-login.html', 'utf8');
+    ok('the pre-paint decision is still made inline in the head',
+      /has-remembered-email/.test(inlineGuard) && inlineGuard.indexOf('has-remembered-email')
+        < inlineGuard.indexOf('</head>'));
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('\n' + pass + '/' + (pass + fail) + ' passed');
   process.exit(fail ? 1 : 0);

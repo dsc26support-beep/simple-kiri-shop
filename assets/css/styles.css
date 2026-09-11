@@ -4329,3 +4329,46 @@ legend {
   background: var(--color-bg-alt);
   border-radius: var(--radius);
 }
+
+/* A button that reads as a link. Used for "Not you?" on the sign-in page: it
+   performs an action rather than navigating, so it must be a <button> for
+   keyboard and screen-reader users, but it should not look like one. */
+.linklike {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--color-blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linklike:hover,
+.linklike:focus-visible {
+  color: var(--color-purple);
+}
+
+/* Shown or not shown from the FIRST frame, decided by the inline script in
+   customer-login.html's head. Not the [hidden] attribute and not a deferred
+   un-hide: a deferred script runs after paint, and that un-hide measured
+   0.0124 CLS at 390px. The class is on <html>, so the decision is made before
+   this element is even parsed. */
+.login-remembered {
+  display: none;
+  margin-top: var(--space-1);
+}
+
+html.has-remembered-email .login-remembered {
+  display: block;
+}
+
+/* Both children are block-level so filling the address in changes the WIDTH of
+   the first line and nothing else. Sharing one line with the button meant the
+   text arriving shoved the button sideways - a HORIZONTAL shift, which counts
+   towards CLS just as a vertical one does, and measured 0.0027 at 390px. Two
+   lines of text are present from the first frame either way, so the height is
+   stable whether or not the address has been filled in yet. */
+.login-remembered > span,
+.login-remembered > .linklike {
+  display: block;
+}

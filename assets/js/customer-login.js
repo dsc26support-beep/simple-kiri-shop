@@ -22,6 +22,39 @@ function init() {
   document.getElementById('signup-back').addEventListener('click', resetSignup);
 
   if (getQueryParam('tab') === 'signup') showTab('signup');
+
+  prefillRememberedEmail();
+}
+
+/**
+ * The address this device signed in with last time. Filling it in saves typing
+ * it again on a phone keyboard, which is the whole point; showing it with a way
+ * out matters because these phones get shared.
+ *
+ * An email address alone signs nobody in - the six-digit code still has to
+ * reach that mailbox - so remembering it is a convenience, not a credential.
+ */
+function prefillRememberedEmail() {
+  const email = CustomerAuth.getRememberedEmail && CustomerAuth.getRememberedEmail();
+  if (!email) return;
+
+  const input = document.getElementById('login-email');
+  const note = document.getElementById('login-remembered');
+  const shown = document.getElementById('login-remembered-email');
+  if (!input || !note || !shown) return;
+
+  // Visibility was already decided before first paint by the inline script in
+  // the head (see customer-login.html). This only fills in the text, which
+  // changes the line's width and not its height, so nothing moves.
+  input.value = email;
+  shown.textContent = email;
+
+  document.getElementById('login-not-you').addEventListener('click', () => {
+    CustomerAuth.forgetEmail();
+    input.value = '';
+    document.documentElement.classList.remove('has-remembered-email');
+    input.focus();
+  });
 }
 
 // Where to go after a successful sign in. Supports ?next= for returning to a

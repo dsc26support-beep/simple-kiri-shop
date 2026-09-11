@@ -7,11 +7,17 @@
 const CustomerAuth = (function () {
   const TOKEN_KEY = 'skiri_customer_token';
   const PROFILE_KEY = 'skiri_customer_profile';
+  // Survives sign-out ON PURPOSE, so the next sign-in on this device only needs
+  // a tap. An email address on its own signs nobody in - the code still has to
+  // reach that mailbox - so this is a convenience, not a credential. The sign-in
+  // page shows it with a "Not you?" escape for a borrowed phone.
+  const LAST_EMAIL_KEY = 'skiri_last_email';
 
   function saveSession(token, customer) {
     try {
       localStorage.setItem(TOKEN_KEY, token);
       localStorage.setItem(PROFILE_KEY, JSON.stringify(customer));
+      if (customer && customer.email) localStorage.setItem(LAST_EMAIL_KEY, String(customer.email));
     } catch (e) {
       // storage unavailable (private mode) - session just won't persist
     }
@@ -41,9 +47,19 @@ const CustomerAuth = (function () {
     try {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(PROFILE_KEY);
+      // LAST_EMAIL_KEY is deliberately NOT removed - that is the whole point of
+      // it. forgetEmail() is the explicit way out, behind "Not you?".
     } catch (e) {
       // ignore
     }
+  }
+
+  function getRememberedEmail() {
+    try { return localStorage.getItem(LAST_EMAIL_KEY) || ''; } catch (e) { return ''; }
+  }
+
+  function forgetEmail() {
+    try { localStorage.removeItem(LAST_EMAIL_KEY); } catch (e) {}
   }
 
   // How long the redirect will wait for the backend before going anyway.
@@ -95,5 +111,6 @@ const CustomerAuth = (function () {
     return res.customer;
   }
 
-  return { saveSession, getToken, getCustomer, isLoggedIn, clearSession, logout, guardCustomerAuth };
+  return { saveSession, getToken, getCustomer, isLoggedIn, clearSession, logout, guardCustomerAuth,
+           getRememberedEmail, forgetEmail };
 })();
