@@ -20,7 +20,7 @@ var PUBLIC_POST_ACTIONS = [
   // Customer accounts (passwordless email code) - all public; getProfile/logout
   // validate their own customer token internally via requireCustomerAuth.
   'registerCustomer', 'verifyCustomerEmail', 'loginCustomer', 'verifyCustomerLogin',
-  'getCustomerProfile', 'logoutCustomer',
+  'getCustomerProfile', 'logoutCustomer', 'getCustomerStore',
   // Google Sign-In, customers only. Public because it IS the sign-in: it
   // validates the Google ID token itself (CustomerOAuth.gs) before issuing a
   // session, and refuses everything when GOOGLE_CLIENT_ID is unset.
@@ -65,7 +65,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'gsi1-2026-09-10';
+var APP_VERSION = 'store1-2026-09-11';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -371,6 +371,7 @@ function doPost(e) {
         case 'googleSignIn': return jsonOut(actionGoogleSignIn(body));
         case 'verifyCustomerLogin': return jsonOut(actionVerifyCustomerLogin(body));
         case 'getCustomerProfile': return jsonOut(actionGetCustomerProfile(body));
+        case 'getCustomerStore': return jsonOut(actionGetCustomerStore(body));
         case 'logoutCustomer': return jsonOut(actionLogoutCustomer(body));
         case 'updateCustomerOrder': return jsonOut(actionUpdateCustomerOrder(body));
         case 'updateCustomerBooking': return jsonOut(actionUpdateCustomerBooking(body));

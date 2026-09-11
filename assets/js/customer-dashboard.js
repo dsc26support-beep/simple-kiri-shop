@@ -20,6 +20,36 @@ async function init() {
   wireDashActions();
   loadOrders();
   loadBookings();
+
+  // After first paint, and after the two lists that people actually came for.
+  // Nothing on screen depends on the answer, so it must not compete with them.
+  whenIdle(resolveStoreLink);
+}
+
+/**
+ * Swap "Create Store" to "My Store" when this customer's email already owns
+ * one. The backend decides - it checks the signed-in customer's OWN address
+ * and never an address supplied by the page, so this cannot be used to find
+ * out which addresses belong to vendors.
+ *
+ * Only the label and the destination change. The button's box is sized to
+ * "Create Store", the wider of the two, so the swap cannot move anything -
+ * including sideways, which counts towards CLS exactly as a vertical shift
+ * does.
+ */
+async function resolveStoreLink() {
+  const link = document.getElementById('store-link');
+  if (!link) return;
+  let res;
+  try {
+    res = await Api.post('getCustomerStore', { token: CustomerAuth.getToken() });
+  } catch (e) {
+    return; // leave "Create Store" - the honest default when we cannot tell
+  }
+  if (!res || !res.ok || !res.hasStore) return;
+  link.textContent = 'My Store';
+  link.href = 'owner/dashboard.html';
+  if (res.storeName) link.setAttribute('title', res.storeName);
 }
 
 /* ---------- Profile ---------- */

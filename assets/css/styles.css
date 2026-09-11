@@ -4372,3 +4372,35 @@ html.has-remembered-email .login-remembered {
 .login-remembered > .linklike {
   display: block;
 }
+
+/* ---- My Account quick links -----------------------------------------------
+   Outline only, never filled: these sit right under the page heading, and two
+   solid blocks of purple there would pull the eye away from the orders and
+   bookings below, which are what the page is for. */
+.dash-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-purple);
+  border: 1px solid var(--color-purple);
+}
+
+.btn-outline:hover,
+.btn-outline:focus-visible {
+  background: var(--color-purple);
+  color: #fff;
+}
+
+/* Sized to "Create Store", the wider of the two labels this button can carry.
+   The lookup that swaps it to "My Store" happens after first paint, so without
+   a floor the box would shrink and the row would shift sideways - which counts
+   towards CLS just as a vertical shift does. */
+#store-link {
+  min-width: 8.5rem;
+  text-align: center;
+}

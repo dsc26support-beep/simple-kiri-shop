@@ -42,7 +42,15 @@
         <button type="button" id="customer-logout" class="btn btn-small">Log out</button>
       </div>
 
-      <p><a href="customer-messages.html">My Messages →</a></p>
+      <!-- "Create Store" is the label in the markup on purpose: it is the wider
+           of the two, and the box is sized to it, so swapping to "My Store"
+           after the lookup changes no width and moves nothing. Rendering the
+           common case first also means someone with no store never sees a
+           flicker. -->
+      <div class="dash-links">
+        <a class="btn btn-outline" href="customer-messages.html">My Messages</a>
+        <a class="btn btn-outline" id="store-link" href="owner/login.html?tab=register">Create Store</a>
+      </div>
       <p id="seller-link-wrap" class="hidden"><a id="seller-link" href="owner/dashboard.html">Go to seller dashboard →</a></p>
 
       <section class="dash-section">

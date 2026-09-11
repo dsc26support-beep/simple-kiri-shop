@@ -229,6 +229,37 @@ function actionVerifyCustomerLogin(body) {
   return ok({ token: token, customer: publicCustomerFields(customer) });
 }
 
+/**
+ * Does the signed-in customer also own a store?
+ *
+ * Answers ONLY for the authenticated customer's own address. It would be very
+ * easy to write this as "does this email have a store" taking an email in the
+ * body - and that would be an enumeration endpoint anyone could walk to learn
+ * which addresses belong to vendors. The token decides whose email is checked;
+ * the caller never supplies one.
+ *
+ * Returns the slug too, so the link can go straight to the store rather than
+ * bouncing through a dashboard lookup. Closed/deleted stores report false, so
+ * a vendor whose store was removed is offered "Create Store" rather than a
+ * link into nothing.
+ */
+function actionGetCustomerStore(body) {
+  var customer;
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+
+  var email = normalizeEmail(customer.Email);
+  if (!email) return ok({ hasStore: false });
+
+  var cacheKey = 'v1:custstore:' + email;
+  return getCached(cacheKey, 60, function () {
+    var owner = sheetToObjects(getSheet('Owners')).filter(function (o) {
+      return normalizeEmail(o.Email) === email && isStoreBrowsable(o);
+    })[0];
+    if (!owner) return ok({ hasStore: false });
+    return ok({ hasStore: true, storeSlug: owner.StoreSlug, storeName: owner.StoreName });
+  });
+}
+
 function actionGetCustomerProfile(body) {
   try {
     var customer = requireCustomerAuth(body.token);
