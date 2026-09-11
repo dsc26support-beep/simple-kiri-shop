@@ -24,33 +24,52 @@ function init() {
   if (getQueryParam('tab') === 'signup') showTab('signup');
 
   prefillRememberedEmail();
-  wireGuestInfo();
+  wireInfoDot('guest-info-btn', 'guest-info');
+  wireInfoDot('shared-info-btn', 'shared-info');
 }
 
 /**
- * The "i" beside Continue as guest.
+ * An "i" dot and the panel it reveals. Used twice on this page - beside
+ * Continue as guest, and beside the shared-device checkbox.
  *
  * A tooltip on a phone has to be dismissible by every route someone will
  * actually try: tapping the dot again, tapping anywhere else, or Escape. A
  * popup that can only be closed by hitting the same 32px target is a trap.
  *
- * The popup is absolutely positioned (see .info-pop), so opening it moves
+ * Opening one closes any other that is open - two panels overlapping on a
+ * 390px screen is unreadable.
+ *
+ * The panel is absolutely positioned (see .info-pop), so opening it moves
  * nothing - a panel that shoved the form down on every tap would be a layout
  * shift on interaction, which is the same defect as one on load, just later.
  */
-function wireGuestInfo() {
-  const btn = document.getElementById('guest-info-btn');
-  const pop = document.getElementById('guest-info');
+function wireInfoDot(btnId, popId) {
+  const btn = document.getElementById(btnId);
+  const pop = document.getElementById(popId);
   if (!btn || !pop) return;
 
   const setOpen = (open) => {
+    pop.classList.remove('info-pop--above');
     pop.hidden = !open;
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (!open) return;
+
+    // Flip above the dot when there is no room below. The shared-device dot
+    // sits near the bottom of the card, and on a 640px-tall screen the panel
+    // opened 95px below the fold - a tap that appeared to do nothing.
+    // Measured and flipped in the same frame as the reveal, so the browser
+    // only ever paints the final position; nothing flashes.
+    const box = pop.getBoundingClientRect();
+    if (box.bottom > window.innerHeight && box.height < btn.getBoundingClientRect().top) {
+      pop.classList.add('info-pop--above');
+    }
   };
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();          // or the document handler below closes it again
-    setOpen(pop.hidden);
+    const opening = pop.hidden;
+    closeAllInfoPops();
+    setOpen(opening);
   });
 
   document.addEventListener('click', (e) => {
@@ -109,6 +128,12 @@ function prefillRememberedEmail() {
 function sharedDeviceChecked() {
   const box = document.getElementById('shared-device');
   return !!(box && box.checked);
+}
+
+/** Shuts every info panel on the page. Two open at once is unreadable at 390px. */
+function closeAllInfoPops() {
+  document.querySelectorAll('.info-pop').forEach((p) => { p.hidden = true; });
+  document.querySelectorAll('.info-dot').forEach((b) => b.setAttribute('aria-expanded', 'false'));
 }
 
 function nextDest() {

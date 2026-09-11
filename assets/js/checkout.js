@@ -75,6 +75,10 @@ async function init() {
 
   document.getElementById('checkout-form').addEventListener('submit', onSubmit);
   document.getElementById('customer-email').addEventListener('blur', onEmailBlur);
+
+  // After prefillSavedCheckoutProfile() has run, so a returning shopper whose
+  // details were restored from the device is not treated as having edited them.
+  UnsavedGuard.watch(document.getElementById('checkout-form'));
 }
 
 /* ---------- Saved checkout profile (same device, next time) ---------- */
@@ -479,6 +483,9 @@ async function onSubmit(e) {
     return;
   }
 
+  // The order is placed - what is on screen is no longer unsaved work, and the
+  // page is about to show the confirmation.
+  UnsavedGuard.markSaved(document.getElementById('checkout-form'));
   Cart.clearCart(currentSlug);
 
   // The server emails the seller as part of createOrder and reports back

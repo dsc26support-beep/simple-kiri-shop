@@ -46,6 +46,11 @@ async function init() {
 
   document.getElementById('settings-form').addEventListener('submit', onSaveSettings);
   document.getElementById('password-form').addEventListener('submit', onChangePassword);
+
+  // After fillForm(owner) above, so the snapshot is what the vendor's store
+  // actually has stored rather than an empty form.
+  UnsavedGuard.watch(document.getElementById('settings-form'));
+  UnsavedGuard.watch(document.getElementById('password-form'));
 }
 
 function fillForm(owner) {
@@ -339,6 +344,7 @@ async function onSaveSettings(e) {
     return;
   }
 
+  UnsavedGuard.markSaved(document.getElementById('settings-form'));
   Auth.saveSession(Auth.getToken(), res.owner);
   document.getElementById('store-name-label').textContent = res.owner.storeName;
   successEl.textContent = 'Settings saved — heading to your dashboard…';
@@ -372,6 +378,7 @@ async function onChangePassword(e) {
   }
 
   document.getElementById('new-password').value = '';
+  UnsavedGuard.markSaved(document.getElementById('password-form'));
   successEl.textContent = 'Password updated.';
   setTimeout(() => { successEl.textContent = ''; }, 3000);
 }

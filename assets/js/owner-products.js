@@ -219,10 +219,14 @@ function openForm(product) {
   }
 
   updateVarietyLabels();
+  UnsavedGuard.watch(document.getElementById('product-form'), { skipWhenHidden: true });
   section.scrollIntoView({ behavior: 'smooth' });
 }
 
 function closeForm() {
+  // Closing the panel is a decision, so stop watching rather than warn about
+  // a form the vendor has deliberately put away.
+  UnsavedGuard.release(document.getElementById('product-form'));
   document.getElementById('product-form-section').classList.add('hidden');
 }
 
@@ -274,6 +278,7 @@ function onImageFileChange(e) {
   const file = e.target.files[0];
   if (!file) return;
   selectedImageFile = file;
+  UnsavedGuard.markDirty(document.getElementById('product-form'));
   const preview = document.getElementById('image-preview');
   const reader = new FileReader();
   reader.onload = () => {
@@ -287,6 +292,7 @@ function onImageFileChange2(e) {
   const file = e.target.files[0];
   if (!file) return;
   selectedImageFile2 = file;
+  UnsavedGuard.markDirty(document.getElementById('product-form'));
   const preview = document.getElementById('image-preview-2');
   const reader = new FileReader();
   reader.onload = () => {
@@ -405,6 +411,7 @@ async function onSaveProduct(e) {
   }
 
   setSaveProductIdle(saveBtn);
+  UnsavedGuard.markSaved(document.getElementById('product-form'));
   closeForm();
   // A brand-new product lands past the END of append order (a new Sheet row
   // is always appended, never inserted at the front), at position

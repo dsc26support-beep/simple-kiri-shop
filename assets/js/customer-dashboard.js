@@ -67,6 +67,12 @@ function toggleProfileEdit(editing) {
     document.getElementById('profile-name-input').value = currentCustomer.name || '';
     document.getElementById('profile-phone-input').value = currentCustomer.phone || '';
     document.getElementById('profile-error').textContent = '';
+    // Watched AFTER the fields are filled - snapshotting an empty form and then
+    // populating it would read as unsaved work the moment Edit was tapped.
+    UnsavedGuard.watch(document.getElementById('profile-form'));
+  } else {
+    // Cancel is a decision, not an abandonment.
+    UnsavedGuard.release(document.getElementById('profile-form'));
   }
 }
 
@@ -93,6 +99,7 @@ async function onSaveProfile(e) {
     return;
   }
   currentCustomer = res.customer;
+  UnsavedGuard.markSaved(document.getElementById('profile-form'));
   CustomerAuth.saveSession(CustomerAuth.getToken(), currentCustomer);
   renderProfile();
   toggleProfileEdit(false);
