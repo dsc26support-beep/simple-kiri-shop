@@ -122,15 +122,63 @@ function deliveryFlagsOf(owner) {
  * unpaginated list in the app - see docs/production-readiness-report.md
  * Finding 10.
  */
+/* ---------- cache keys ------------------------------------------------------
+ *
+ * NAMED ONCE, because spelling them out at each call site is how they drift.
+ *
+ * Adding sellerBadges to these payloads meant bumping every key, and the bump
+ * left six invalidateCache() calls across three files still naming the old
+ * ones. Nothing would have failed loudly: a vendor edits a product, the code
+ * clears 'v1:listProducts:bong', the builder is writing 'v2:listProducts:bong',
+ * and the edit simply does not appear for a minute. The store-status path was
+ * worse - a store switched to closed would have stayed browsable for five.
+ *
+ * With the key in one place, the next bump is one line and cannot half-happen.
+ */
+function storeListCacheKey() { return 'v2:listStores'; }
+function topStoresCacheKey() { return 'v2:topStores'; }
+function topProductsCacheKey() { return 'v2:topProducts'; }
+function storeProductsCacheKey(slug) { return 'v2:listProducts:' + slug; }
+function storeInfoCacheKey(slug) { return 'v3:storeInfo:' + slug; }
+
+/** Every key a change to one store's own record can go stale in. */
+function storeCacheKeys(slug) {
+  return [storeListCacheKey(), topStoresCacheKey(), topProductsCacheKey(),
+          storeProductsCacheKey(slug), storeInfoCacheKey(slug)];
+}
+
+/**
+ * Attaches a seller's badges to an outgoing object, and ONLY when there are
+ * some.
+ *
+ * Omitted rather than sent as [] on purpose. Search can return every product in
+ * a category, and an empty array per product is bytes spent to say nothing on a
+ * connection where the last round of work was measured in hundreds of
+ * milliseconds. The client reads `obj.sellerBadges || []`.
+ *
+ * `index` is passed in rather than fetched here: every caller is inside a
+ * cached builder that already has it, and looking it up per product would undo
+ * the entire point of precomputing it.
+ */
+function attachSellerBadges(obj, index, ownerId) {
+  var ids = index[String(ownerId)];
+  if (ids && ids.length) obj.sellerBadges = ids;
+  return obj;
+}
+
 function actionListStores(params) {
   params = params || {};
-  var all = getCached('v1:listStores', 60, function () {
+  // v1 -> v2 with the sellerBadges field below. A warm entry holding the old
+  // shape would serve badge-less stores until it expired.
+  var all = getCached(storeListCacheKey(), 60, function () {
+    // One read for the whole list, not one per store.
+    var badges = sellerBadgeIndex();
     return sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return isStoreBrowsable(o); })
       .map(function (o) {
         var store = { storeSlug: o.StoreSlug, storeName: o.StoreName, phone: o.Phone, island: o.Island, village: o.Village, logoUrl: o.LogoUrl };
         Object.assign(store, deliveryFlagsOf(o));
-        return store;
+        return attachSellerBadges(store, badges, o.OwnerId);
       });
   });
 
@@ -154,7 +202,8 @@ function actionListStores(params) {
 
 /** Top 20 active products by view count, for the home page "trending" carousel. */
 function getTopProductsCached() {
-  return getCached('v1:topProducts', 300, function () {
+  return getCached(topProductsCacheKey(), 300, function () {
+    var badges = sellerBadgeIndex();
     var ownersById = {};
     sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return isStoreBrowsable(o); })
@@ -200,7 +249,7 @@ function getTopProductsCached() {
         product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
         product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
         product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
-        return product;
+        return attachSellerBadges(product, badges, owner.OwnerId);
       })
       // Booking listings have no add-to-cart affordance, which this
       // "trending products" carousel assumes every card has - excluded here
@@ -217,7 +266,8 @@ function actionListTopProducts() {
 
 /** Top 20 active stores by visit count, for the home page "popular stores" logo carousel. */
 function getTopStoresCached() {
-  return getCached('v1:topStores', 300, function () {
+  return getCached(topStoresCacheKey(), 300, function () {
+    var badges = sellerBadgeIndex();
     return sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return isStoreBrowsable(o); })
       .map(function (o) {
@@ -231,7 +281,7 @@ function getTopStoresCached() {
           visits: Number(o.Visits) || 0
         };
         Object.assign(store, deliveryFlagsOf(o));
-        return store;
+        return attachSellerBadges(store, badges, o.OwnerId);
       })
       .sort(function (a, b) { return b.visits - a.visits; })
       .slice(0, 20);
@@ -347,7 +397,7 @@ function actionRecordStoreVisit(body) {
  * deliberate choice. Keyed per query+category since the query space is
  * unbounded (unlike the fixed keys those siblings use) - CacheService
  * entries just expire on their own TTL, so this doesn't need explicit
- * invalidation any more than v1:topProducts/v1:topStores already don't (same
+ * invalidation any more than the topProducts/topStores keys already don't (same
  * TTL-only staleness tradeoff, 60s to match listProducts). The query portion
  * of the key is capped so a very long q can never produce an invalid
  * CacheService key (250-char limit).
@@ -358,9 +408,13 @@ function actionSearchProducts(params) {
   // Listing-type filter: the [All][Products][Rentals][Services] strip.
   var type = String(params.type || '').trim();
   if (LISTING_TYPE_IDS.indexOf(type) === -1) type = '';
-  var cacheKey = 'v2:search:' + category + ':' + type + ':' + q.slice(0, 100);
+  var cacheKey = 'v3:search:' + category + ':' + type + ':' + q.slice(0, 100);
 
   var results = getCached(cacheKey, 60, function () {
+    // THE ONE THAT MATTERS. This builder already reads Owners, Variants,
+    // Products and Reviews in full; this adds a single read of the precomputed
+    // snapshot for the whole page, not one lookup per product card.
+    var badges = sellerBadgeIndex();
     var ownersById = {};
     sheetToObjects(getSheet('Owners'))
       .filter(function (o) { return isStoreBrowsable(o); })
@@ -431,7 +485,7 @@ function actionSearchProducts(params) {
         product.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
         product.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
         product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
-        return product;
+        return attachSellerBadges(product, badges, owner.OwnerId);
       })
       .filter(function (p) { return p.variants.length > 0; });
   });
@@ -445,10 +499,13 @@ function actionGetStorePublicInfo(params) {
 
   // Cache key bumped v1 -> v2 with the payload narrowing below, so a warm
   // entry holding the old wide object can't be served after the deploy.
-  var store = getCached('v2:storeInfo:' + slug, 60, function () {
+  var store = getCached(storeInfoCacheKey(slug), 60, function () {
     var owner = getOwnerBySlug(slug);
     if (!isStoreBrowsable(owner)) return null;
-    return publicStoreFields(owner);
+    // Added here rather than inside publicStoreFields, which lives in Auth.gs
+    // and is shared with the chat window's store lookup - this is a display
+    // concern, and Auth.gs stays out of it.
+    return attachSellerBadges(publicStoreFields(owner), sellerBadgeIndex(), owner.OwnerId);
   });
   if (!store) return fail('Store not found');
   return ok({ store: store });
@@ -458,7 +515,7 @@ function actionListProducts(params) {
   var slug = params.storeSlug;
   if (!slug) return fail('storeSlug is required');
 
-  var response = getCached('v1:listProducts:' + slug, 60, function () {
+  var response = getCached(storeProductsCacheKey(slug), 60, function () {
     var owner = getOwnerBySlug(slug);
     if (!isStoreBrowsable(owner)) return null;
 
@@ -495,6 +552,9 @@ function actionListProducts(params) {
       })
       .filter(function (p) { return p.variants.length > 0; });
 
+    // ONCE for the response, not once per product. Every product on this page
+    // belongs to the same seller, so repeating their badges down the list would
+    // be the same few bytes sent twenty times to say one thing.
     var out = {
       storeName: owner.StoreName,
       storePhone: owner.Phone,
@@ -508,6 +568,7 @@ function actionListProducts(params) {
       storeOpen: isStoreOpenForBusiness(owner),
       products: result
     };
+    attachSellerBadges(out, sellerBadgeIndex(), owner.OwnerId);
     out.storeDeliveryTruck = String(owner.DeliveryTruck) === 'true';
     out.storeDeliveryShip = String(owner.DeliveryShip) === 'true';
     out.storeDeliveryAirCargo = String(owner.DeliveryAirCargo) === 'true';
@@ -675,7 +736,7 @@ function actionCreateOrUpdateProduct(owner, body) {
       }
     });
 
-    invalidateCache(['v1:listProducts:' + owner.StoreSlug]);
+    invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
     return ok({ productId: productId });
   } finally {
     lock.releaseLock();
@@ -687,7 +748,7 @@ function actionDeleteProduct(owner, body) {
   var existing = findRowById(sheet, 'ProductId', body.productId);
   if (!existing || existing.OwnerId !== owner.OwnerId) return fail('Product not found');
   updateRowFromObject(sheet, existing.__row, { Status: 'archived', UpdatedAt: nowIso() });
-  invalidateCache(['v1:listProducts:' + owner.StoreSlug]);
+  invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
   return ok({});
 }
 
@@ -806,7 +867,7 @@ function actionUpdateOwnerProfile(owner, body) {
     }
 
     updateRowFromObject(sheet, row.__row, update);
-    invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v2:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
+    invalidateCache(storeCacheKeys(owner.StoreSlug));
     return ok({ owner: publicOwnerFields(findRowById(sheet, 'OwnerId', owner.OwnerId)) });
   } finally {
     lock.releaseLock();

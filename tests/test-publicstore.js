@@ -138,8 +138,12 @@ const missing = [...reads].filter((r) => !Object.prototype.hasOwnProperty.call(s
 ok(`all ${reads.size} consumer field reads resolve against publicStoreFields`, missing.length === 0, missing.join(' '));
 
 /* 7. No PUBLIC action may still hand out publicOwnerFields. */
-ok('actionGetStorePublicInfo uses publicStoreFields',
-  /function actionGetStorePublicInfo[\s\S]*?return publicStoreFields\(owner\);/.test(prod));
+// Matched on the CALL, not on the whole return statement. The old regex pinned
+// `return publicStoreFields(owner);` verbatim and broke the moment the response
+// was wrapped to attach seller badges - while the rule it guards (this action
+// must build from publicStoreFields, never publicOwnerFields) was never broken.
+ok('actionGetStorePublicInfo builds from publicStoreFields',
+  /function actionGetStorePublicInfo[\s\S]*?publicStoreFields\(owner\)/.test(prod));
 ok('createOrder response uses publicStoreFields', /store: publicStoreFields\(owner\),/.test(orders));
 ok('createOrder no longer references publicOwnerFields', orders.indexOf('publicOwnerFields') === -1);
 const publicInfoBody = prod.match(/function actionGetStorePublicInfo[\s\S]*?\n}/)[0];
@@ -150,9 +154,33 @@ ok('actionGetStorePublicInfo no longer references publicOwnerFields', publicInfo
 const all = ['Auth.gs', 'Products.gs', 'Images.gs', 'Orders.gs', 'Chat.gs', 'Code.gs', 'Admin.gs', 'Bookings.gs']
   .map((f) => read(AS + f)).join('\n');
 const keys = [...new Set(all.match(/'v\d+:storeInfo:'/g) || [])];
-ok('every storeInfo cache key is on the same version', keys.length === 1 && keys[0] === "'v2:storeInfo:'", keys.join(' '));
-ok('read and invalidate sites all bumped', (all.match(/'v2:storeInfo:'/g) || []).length === 4,
-  String((all.match(/'v2:storeInfo:'/g) || []).length));
+ok('there is exactly ONE storeInfo cache key version in the whole backend',
+  keys.length === 1, keys.join(' '));
+
+/*
+ * The version is no longer asserted as a literal, and the count of call sites
+ * is no longer four.
+ *
+ * Both of those were counting symptoms. The actual failure this section exists
+ * to catch is a reader and an invalidator disagreeing about the key - which
+ * happened again when the badge payload forced a bump and left six
+ * invalidateCache() calls across three files naming the old keys. A vendor's
+ * edit would not have appeared for a minute; a store switched to closed would
+ * have stayed browsable for five.
+ *
+ * The key now has one definition, so the only way to reintroduce that bug is to
+ * spell one inline again. That is what is asserted.
+ */
+const STORE_KEY_NAMES = 'listStores|topStores|topProducts|listProducts|storeInfo';
+['Auth.gs', 'Products.gs', 'Images.gs', 'Orders.gs', 'Chat.gs', 'Admin.gs', 'Bookings.gs'].forEach((f) => {
+  const src = read(AS + f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const inline = (src.match(new RegExp("'v\\d+:(" + STORE_KEY_NAMES + ")[^']*'", 'g')) || [])
+    .filter((m) => !new RegExp('return ' + m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(src));
+  ok(f + ' names no store cache key inline - one definition, every caller through it',
+    inline.length === 0, inline.join(' '));
+});
+ok('and the store-status path clears them through that one helper',
+  /invalidateCache\(storeCacheKeys\(owner\.StoreSlug\)\)/.test(read(AS + 'Auth.gs')));
 // Not a literal - pinning one means every later release breaks this test, which
 // has now happened four times. The rule that actually matters: if any .gs file
 // differs from main, APP_VERSION must differ too, or the deploy probe will

@@ -391,13 +391,11 @@ function actionSetStoreStatus(owner, body) {
   updateRowFromObject(sheet, row.__row, { Status: status });
   if (status === 'closed') revokeAllSessions(owner.OwnerId);
 
-  invalidateCache([
-    'v1:listStores',
-    'v1:topStores',
-    'v1:topProducts',
-    'v1:listProducts:' + owner.StoreSlug,
-    'v2:storeInfo:' + owner.StoreSlug
-  ]);
+  // The same five keys as every other store-record change - see
+  // storeCacheKeys() in Products.gs. Spelled out here, they had gone stale
+  // against the builders, which would have left a store switched to closed
+  // still browsable for five minutes.
+  invalidateCache(storeCacheKeys(owner.StoreSlug));
 
   return ok({ status: status });
 }
