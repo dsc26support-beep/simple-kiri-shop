@@ -3,6 +3,10 @@
 :root {
   --color-red: #ce1126;
   --color-gold: #fcd116;
+  /* Recommended badge fill. --color-gold at full strength is the flag yellow
+     and is loud enough to fight the product title beside it; this is the same
+     hue at a weight that still reads as gold with --color-ink on top (16:1). */
+  --color-gold-soft: #fff7d6;
   --color-blue: #003f87;
   --color-blue-light: #5b9bd5;
   --color-purple: #332d63;
@@ -4418,6 +4422,274 @@ legend {
 .info-pop--above {
   top: auto;
   bottom: calc(100% + var(--space-1));
+}
+
+/* ---- Seller badges ---------------------------------------------------------
+ *
+ * COLOUR IS NEVER THE DIFFERENCE. Four treatments, told apart by shape, fill
+ * and border weight before any hue is involved - so they still read as four
+ * different things in a greyscale screenshot, in forced-colours mode, and to
+ * anyone who cannot tell the blue from the purple:
+ *
+ *   --ribbon  Mwakete Recommended. The only FILLED badge, square, 2px border,
+ *             bold. Highest weight in the set, and earned rather than bought.
+ *   --shield  Verified Seller. Square, thin border, with a 3px stripe down the
+ *             left edge - the stamp treatment.
+ *   --star    Top Seller. Pill, 2px border.
+ *   --chip    Everything else. Pill, 1px border.
+ *
+ * Category only tints the border and the icon. The LABEL is always --color-ink,
+ * so no badge's text contrast depends on which category it belongs to.
+ *
+ * Every badge keeps its text at every size. Nothing here communicates by
+ * animation: the only transition is on colour, for hover and focus feedback.
+ */
+.seller-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  /* min-width:0 so a long badge row inside a flex or grid card shrinks and
+     wraps instead of forcing the card wider than its column. */
+  min-width: 0;
+}
+
+.seller-badge-wrap {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.seller-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-stack);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  transition: border-color .12s ease, background-color .12s ease;
+}
+
+/* A <button> only on surfaces where the badge is not inside a link - see
+   renderSellerBadges in badges.js for why cards get plain spans. */
+button.seller-badge {
+  cursor: pointer;
+}
+
+.seller-badge svg {
+  flex: 0 0 auto;
+  width: 1.05em;
+  height: 1.05em;
+  /* The icon carries the category colour; the label does not, so the label's
+     contrast is the same for every badge. */
+  color: var(--color-muted);
+}
+
+.seller-badge-emoji {
+  flex: 0 0 auto;
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+/* Never truncated to an ellipsis: a badge that reads "Mwakete Recomm…" has
+   lost the thing it exists to say. It wraps within the badge instead, and the
+   row wraps around it. */
+.seller-badge-label {
+  min-width: 0;
+}
+
+/* ---- sizes ---- */
+
+.seller-badge--chip {
+  padding: 0.2em 0.6em;
+  font-size: 0.75rem;
+}
+
+/* 32px, not 44px. WCAG 2.2 target size (AA) is 24x24 CSS px, which this clears
+   comfortably; 44px chips beside a product title would out-shout the title,
+   and these are supporting information, never the primary action. The same
+   reasoning as .info-dot. */
+.seller-badge--detail {
+  padding: 0.35em 0.7em;
+  min-height: 32px;
+  font-size: 0.875rem;
+}
+
+/* ---- tiers (shape) ---- */
+
+.seller-badge--ribbon {
+  background: var(--color-gold-soft);
+  border: 2px solid var(--color-gold);
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.seller-badge--ribbon svg,
+.seller-badge--shield svg {
+  color: inherit;
+}
+
+.seller-badge--shield {
+  border-radius: 4px;
+  border-color: var(--color-blue);
+  border-left: 3px solid var(--color-blue);
+  color: var(--color-ink);
+}
+
+.seller-badge--shield svg {
+  color: var(--color-blue);
+}
+
+.seller-badge--star {
+  border-width: 2px;
+  border-color: var(--color-purple);
+}
+
+/* ---- categories (tint only) ---- */
+
+.seller-badge--cat-performance {
+  border-color: var(--color-purple);
+}
+
+.seller-badge--cat-performance svg {
+  color: var(--color-purple);
+}
+
+.seller-badge--cat-popularity {
+  border-color: var(--color-red);
+}
+
+.seller-badge--cat-popularity svg {
+  color: var(--color-red);
+}
+
+.seller-badge--cat-newcomer {
+  border-color: var(--color-success);
+}
+
+.seller-badge--cat-newcomer svg {
+  color: var(--color-success);
+}
+
+/* The overflow counter. Deliberately the quietest thing in the row - it is a
+   pointer to the rest, not a badge in its own right. */
+.seller-badge--more {
+  border-style: dashed;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+/* ---- states ---- */
+
+button.seller-badge:hover {
+  background: var(--color-bg-alt);
+}
+
+button.seller-badge:focus-visible {
+  outline: 2px solid var(--color-purple);
+  outline-offset: 2px;
+}
+
+/* Open. aria-expanded is the same attribute the screen reader reads, so the
+   visual "pressed" state and the announced state cannot disagree. */
+button.seller-badge[aria-expanded="true"] {
+  background: var(--color-bg-alt);
+  border-color: var(--color-purple);
+}
+
+button.seller-badge--ribbon[aria-expanded="true"] {
+  background: var(--color-gold-soft);
+  border-color: var(--color-gold);
+}
+
+/* Anchored to the badge's LEFT edge rather than .info-pop's right, because a
+   badge is narrow and a right-anchored panel on the first badge in a row runs
+   off the left of the screen. Capped at 72vw so it can never overflow both
+   edges at once, which is what makes the single sideways nudge in setOpen()
+   enough. */
+.seller-badge-pop {
+  left: 0;
+  right: auto;
+  width: min(18rem, 72vw);
+  font-weight: 400;
+}
+
+/* ---- "Learn what seller badges mean" ---- */
+
+.badge-legend {
+  margin: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.badge-legend-row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.badge-legend dt {
+  min-width: 0;
+}
+
+.badge-legend dd {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Side by side once there is room for the widest badge and a sentence. */
+@media (min-width: 600px) {
+  .badge-legend-row {
+    grid-template-columns: 12.5rem 1fr;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+}
+
+/* Windows high-contrast and any other forced-colours mode replaces every
+   colour above, which would flatten all four treatments into one. The SHAPE
+   differences are what survive, so they are restated here in system colours
+   rather than left to chance. */
+@media (forced-colors: active) {
+  .seller-badge {
+    border: 1px solid CanvasText;
+    forced-color-adjust: none;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .seller-badge svg {
+    color: CanvasText;
+  }
+
+  .seller-badge--ribbon {
+    border-width: 3px;
+  }
+
+  .seller-badge--shield {
+    border-left-width: 4px;
+  }
+
+  .seller-badge--star {
+    border-width: 2px;
+  }
+
+  button.seller-badge:focus-visible {
+    outline: 2px solid Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seller-badge {
+    transition: none;
+  }
 }
 
 /* ---- Legal pages (privacy) -------------------------------------------------

@@ -94,7 +94,7 @@ function actionRemoveFeatured(owner, body) {
 // addFeatured/removeFeatured drop the key, so an admin's change is visible
 // immediately rather than up to five minutes later.
 var TIPS_CACHE_TTL_SECONDS = 300;
-var TIPS_CACHE_KEY = 'v1:tips';
+var TIPS_CACHE_KEY = 'v2:tips';   // v1 -> v2: the payload now carries sellerBadges
 
 function actionGetTips(params) {
   return getCached(TIPS_CACHE_KEY, TIPS_CACHE_TTL_SECONDS, function () {
@@ -103,6 +103,8 @@ function actionGetTips(params) {
 }
 
 function buildTips() {
+  // One read for the whole page, same as every other badge-bearing builder.
+  var badges = sellerBadgeIndex();
   var featured = sheetToObjects(getSheet('Featured'));
   featured.sort(function (a, b) { return Number(a.SortOrder) - Number(b.SortOrder); });
 
@@ -122,7 +124,9 @@ function buildTips() {
   storeSlugs.forEach(function (slug) {
     var o = ownersBySlug[slug];
     if (isStoreBrowsable(o)) {
-      stores.push({ storeSlug: o.StoreSlug, storeName: o.StoreName, logoUrl: o.LogoUrl, island: o.Island, village: o.Village });
+      stores.push(attachSellerBadges(
+        { storeSlug: o.StoreSlug, storeName: o.StoreName, logoUrl: o.LogoUrl, island: o.Island, village: o.Village },
+        badges, o.OwnerId));
     }
   });
 
@@ -140,7 +144,7 @@ function buildTips() {
         .filter(function (v) { return v.ProductId === p.ProductId && v.Status === 'active'; })
         .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
       if (pv.length === 0) return;
-      byId[p.ProductId] = {
+      byId[p.ProductId] = attachSellerBadges({
         productId: p.ProductId,
         name: p.Name,
         description: p.Description,
@@ -159,7 +163,7 @@ function buildTips() {
         storeDeliveryTruckCost: deliveryCostOf(owner.DeliveryTruckCost),
         storeDeliveryShipCost: deliveryCostOf(owner.DeliveryShipCost),
         storeDeliveryAirCargoCost: deliveryCostOf(owner.DeliveryAirCargoCost)
-      };
+      }, badges, owner.OwnerId);
     });
     productIds.forEach(function (id) { if (byId[id]) products.push(byId[id]); });
   }
