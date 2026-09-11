@@ -12,8 +12,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
-  <!-- No preconnect hints: this page is plain text and makes no backend
-       request, so warming those origins would cost connections it never uses. -->
+  <!-- The page's own content is static, but the site-wide bottom nav asks the
+       backend for the unread-messages count whenever the shopper has ever
+       chatted with a store - so these are warmed like everywhere else. /exec
+       answers with a 302 to script.googleusercontent.com, hence both origins. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 </head>
 <body class="has-bottom-nav">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -170,9 +174,11 @@
   </main>
 
   <script defer src="assets/js/config.min.js"></script>
+  <script defer src="assets/js/api.min.js"></script>
   <script defer src="assets/js/helpers.min.js"></script>
   <script defer src="assets/js/cookie-consent.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/header-cart.min.js"></script>
   <script defer src="assets/js/bottom-nav.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>
 </body>

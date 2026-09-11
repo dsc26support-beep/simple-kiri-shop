@@ -83,6 +83,41 @@ const ok = (name, cond, detail) => {
     /privacy\.html/.test(fs.readFileSync(REPO + 'customer-login.html', 'utf8')));
 
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+
+  // This page shipped throwing two errors on load - Api and the cart helper
+  // were missing from its script list, and the site-wide bottom nav needs both
+  // for its unread and cart badges. Nothing visible broke, so nothing caught it.
+  // A quiet page error is still a broken page.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json', body: JSON.stringify({ ok: true, conversations: [] }) }));
+    const page = await ctx.newPage();
+    const errs = [];
+    let watching = false;
+    // Only judge errors from the page under test. Listening from the first
+    // navigation caught an error thrown by index.html and blamed it on this
+    // page - and that error was itself an artefact of the mock above answering
+    // every action with the same body, so getHomePageData arrived without the
+    // products array home.js reads.
+    page.on('pageerror', (e) => { if (watching) errs.push(e.message); });
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    // A shopper who has ever messaged a store - which is what makes the bottom
+    // nav reach for the backend in the first place.
+    await page.evaluate(() => { try {
+      localStorage.setItem('skiri_chat_token_bong', 'tok');
+      localStorage.setItem('skiri_cookie_consent', 'true');
+    } catch (e) {} });
+    watching = true;
+    await page.goto(BASE + '/privacy.html', { waitUntil: 'load' });
+    await page.waitForTimeout(3200);
+    ok('privacy.html throws nothing, even with the bottom nav active',
+      errs.length === 0, errs.join(' | '));
+    ok('and it preconnects to the backend the bottom nav will call',
+      /rel="preconnect" href="https:\/\/script\.google\.com"/.test(html));
+    await ctx.close();
+  }
+
   for (const width of [390, 1280]) {
     const ctx = await browser.newContext({ viewport: { width, height: 844 } });
     const page = await ctx.newPage();
