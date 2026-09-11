@@ -90,7 +90,12 @@ const probe = (page) => page.evaluate(() => {
 
   // --- Terms | Privacy sit on the copyright line, and actually go somewhere ---
   {
-    const pages = [['index.html', ''], ['owner/login.html', '../'], ['owner/forgot-password.html', '../']];
+    // Derived from KEEP, not hand-listed. A hand-listed set of three missed
+    // customer-login.html entirely - it has a footer, but its links row has no
+    // Enquiry link, so the edit that added Terms|Privacy skipped it and this
+    // suite never looked. Every page that is supposed to HAVE a footer is now
+    // checked for the line, so the two lists cannot drift apart again.
+    const pages = KEEP.map((f) => [f, f.indexOf('/') === -1 ? '' : '../']);
     const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
     await ctx2.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
       contentType: 'application/json', body: JSON.stringify({ ok: true, products: [], stores: [] }) }));
