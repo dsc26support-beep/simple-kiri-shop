@@ -228,8 +228,15 @@ async function drag(page, toX, toY) {
     });
     ok('similar products sit under the buy box', order.related > order.detail,
       JSON.stringify(order));
-    ok('and above the reviews', order.related < order.reviews, JSON.stringify(order));
+    // The ratings toggle and the store link were moved out from under Similar
+    // products and into the gap above it, as one row. This assertion used to
+    // read the other way round; it is the ordering that changed, not the test
+    // going wrong.
+    ok('the ratings row now sits between the buy box and Similar products',
+      order.reviews > order.detail && order.reviews < order.related, JSON.stringify(order));
     ok('the store link stays directly beneath the reviews', order.store > order.reviews,
+      JSON.stringify(order));
+    ok('and it too is above Similar products', order.store < order.related,
       JSON.stringify(order));
     const inline = fs.readFileSync(REPO + 'product.html', 'utf8');
     ok('the store link no longer carries an inline margin',

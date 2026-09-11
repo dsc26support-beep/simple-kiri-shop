@@ -43,6 +43,9 @@ async function init() {
   product = (res.products || []).find((p) => p.productId === productId);
   if (!product) {
     statusEl.textContent = 'Sorry, this product is no longer available.';
+    // The store link is the one useful thing left on the page, so show the row
+    // even though there is nothing to review.
+    showMetaRow();
     return;
   }
   statusEl.textContent = '';
@@ -81,6 +84,11 @@ async function init() {
   // Product detail (reuses the store-page product card markup)
   renderShippingNote('product-shipping-note', res);
   document.getElementById('product-detail').innerHTML = renderProductCard(product);
+  // In the same task as the card itself. Revealed any later and it would be a
+  // second shift of its own; revealed any earlier it would sit above an empty
+  // box and then be pushed down the height of the whole product card, which
+  // measured 0.11 CLS on a phone against 0.026 for the loose link it replaced.
+  showMetaRow();
   document.title = `${product.name} — Mwakete`;
   wireActions();
   wireGallery();
@@ -110,6 +118,16 @@ async function init() {
   // filling it moves nothing.
   showRelatedSkeleton();
   whenIdle(loadRelated);
+}
+
+/* The ratings toggle and the store link. Hidden in the markup, because
+   anything visible before the product card renders gets pushed down by the
+   full height of that card - a large shift, and a larger one the taller the
+   thing being pushed. Shown from the same task that fills the card, so the
+   two land together and nothing moves afterwards. */
+function showMetaRow() {
+  const row = document.getElementById('product-meta-row');
+  if (row) row.hidden = false;
 }
 
 /**
