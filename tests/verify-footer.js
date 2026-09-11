@@ -88,6 +88,39 @@ const probe = (page) => page.evaluate(() => {
     await ctx.close();
   }
 
+  // --- Terms | Privacy sit on the copyright line, and actually go somewhere ---
+  {
+    const pages = [['index.html', ''], ['owner/login.html', '../'], ['owner/forgot-password.html', '../']];
+    const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx2.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json', body: JSON.stringify({ ok: true, products: [], stores: [] }) }));
+    const page2 = await ctx2.newPage();
+    for (const [file, prefix] of pages) {
+      await page2.goto(BASE + '/' + file, { waitUntil: 'load' });
+      await page2.waitForTimeout(700);
+      const line = (await page2.textContent('.copyright') || '').replace(/\s+/g, ' ').trim();
+      ok(`${file}: copyright line reads as asked`,
+        line === '©MainKT Enterprises Terms | Privacy', line);
+      const hrefs = await page2.$$eval('.copyright a', (as) => as.map((a) => a.getAttribute('href')));
+      ok(`${file}: Terms then Privacy, both linked`,
+        hrefs.length === 2 && hrefs[0] === prefix + 'terms.html' && hrefs[1] === prefix + 'privacy.html',
+        JSON.stringify(hrefs));
+      // The separator is decoration; a screen reader should not read "bar".
+      const sepHidden = await page2.$eval('.copyright span',
+        (el) => el.getAttribute('aria-hidden') === 'true').catch(() => false);
+      ok(`${file}: the | is hidden from screen readers`, sepHidden);
+    }
+    // And they resolve - a footer link to a 404 is worse than no link.
+    for (const dest of ['terms.html', 'privacy.html']) {
+      await page2.goto(BASE + '/index.html', { waitUntil: 'load' });
+      await page2.waitForTimeout(500);
+      await page2.click(`.copyright a[href="${dest}"]`);
+      await page2.waitForTimeout(800);
+      ok(`clicking it opens /${dest}`, page2.url().endsWith('/' + dest), page2.url());
+    }
+    await ctx2.close();
+  }
+
   await browser.close();
 
   // Source-level checks the DOM cannot make.
