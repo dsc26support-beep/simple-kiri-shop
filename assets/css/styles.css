@@ -4404,3 +4404,20 @@ html.has-remembered-email .login-remembered {
   min-width: 8.5rem;
   text-align: center;
 }
+
+/* ---- My Account: purple separators -----------------------------------------
+   Scoped to this page on purpose. .dash-section and .dash-item are shared with
+   owner/admin.html and customer-messages.html, and recolouring the base class
+   would repaint those two pages as a side effect of a change asked for on My
+   Account.
+
+   Only the colour is overridden, not the border itself - widths, radii and
+   layout stay exactly as they were, so nothing reflows and this cannot shift
+   anything. */
+.page-account .dash-section {
+  border-color: var(--color-purple);
+}
+
+.page-account .dash-item {
+  border-top-color: var(--color-purple);
+}

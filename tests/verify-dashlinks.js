@@ -146,6 +146,50 @@ const linkInfo = (page) => page.evaluate(() => {
     await ctx.close();
   }
 
+  // ---------- purple separators, and ONLY on this page ---------------------
+  {
+    const { ctx, page } = await openDash(browser, { ok: true, hasStore: false });
+    const cols = await page.evaluate(() => {
+      const sec = document.querySelector('.dash-section');
+      return { section: sec ? getComputedStyle(sec).borderTopColor : null,
+               sectionWidth: sec ? getComputedStyle(sec).borderTopWidth : null };
+    });
+    ok('the section cards are outlined in purple', cols.section === PURPLE, String(cols.section));
+    ok('and only the COLOUR changed - the border is still 1px, so nothing reflows',
+      cols.sectionWidth === '1px', String(cols.sectionWidth));
+    await ctx.close();
+  }
+
+  // .dash-section and .dash-item are shared with owner/admin.html and
+  // customer-messages.html. Recolouring the base class would have repainted
+  // both as a side effect of a change asked for on My Account, so the rule is
+  // scoped to .page-account - and that scoping is the thing worth guarding.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, orders: [], bookings: [], conversations: [],
+        customer: { name: 'A', email: 'a@b.c', phone: '1' } }) }));
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => { try {
+      localStorage.setItem('skiri_customer_token', 't');
+      localStorage.setItem('skiri_owner_token', 't');
+      localStorage.setItem('skiri_cookie_consent', 'true');
+    } catch (e) {} });
+    for (const other of ['customer-messages.html', 'owner/admin.html']) {
+      await page.goto(BASE + '/' + other, { waitUntil: 'load' });
+      await page.waitForTimeout(1400);
+      const c = await page.evaluate(() => {
+        const sec = document.querySelector('.dash-section');
+        return sec ? getComputedStyle(sec).borderTopColor : 'none';
+      });
+      ok(other + ' keeps its grey borders - the purple did not leak',
+        c !== PURPLE, String(c));
+    }
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('\n' + pass + '/' + (pass + fail) + ' passed');
   process.exit(fail ? 1 : 0);
