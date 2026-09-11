@@ -175,7 +175,7 @@ async function run(browser, { page: pagePath, profile, apiLatency, warm, loggedI
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const results = [];
   const PAGES = ['/index.html', '/store.html?store=bong', '/product.html?store=bong&product=p0',
-    '/search.html?q=rice', '/stores.html', '/categories.html', '/cart.html', '/customer-dashboard.html'];
+    '/stores.html', '/categories.html', '/categories.html?q=rice', '/cart.html', '/customer-dashboard.html'];
 
   // 1. Every page, mobile 4G, realistic backend latency, cold.
   for (const pg of PAGES) results.push(await run(browser, { page: pg, profile: 'mobile-4g', apiLatency: 600 }));

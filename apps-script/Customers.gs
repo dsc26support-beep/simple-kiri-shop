@@ -102,9 +102,22 @@ function consumeCustomerEmailCode(token, code, expectedPurpose) {
   }
 }
 
-function issueCustomerSession(customerId) {
+// "Remember me on this device" - a shopper should not have to sign in every
+// week. Phones get shared here, though, and order history carries names, phone
+// numbers and delivery addresses, so the long session is opt-OUT rather than
+// unavoidable: the sign-in screen offers "This is a shared device", which keeps
+// the session to a single day.
+//
+// TOKEN_EXPIRY_HOURS in Script Properties still wins over both when set, so a
+// deployment that wants something different does not have to edit code.
+var CUSTOMER_REMEMBER_HOURS = 24 * 60;   // 60 days
+var CUSTOMER_SHARED_DEVICE_HOURS = 12;
+
+function issueCustomerSession(customerId, opts) {
+  opts = opts || {};
   var token = Utilities.getUuid() + Utilities.getUuid();
-  var hours = Number(PropertiesService.getScriptProperties().getProperty('TOKEN_EXPIRY_HOURS')) || TOKEN_EXPIRY_HOURS_DEFAULT;
+  var configured = Number(PropertiesService.getScriptProperties().getProperty('TOKEN_EXPIRY_HOURS'));
+  var hours = configured || (opts.sharedDevice ? CUSTOMER_SHARED_DEVICE_HOURS : CUSTOMER_REMEMBER_HOURS);
   var expiresAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
   appendRowFromObject(getSheet('CustomerSessions'), {
     Token: token,
@@ -184,7 +197,7 @@ function actionVerifyCustomerEmail(body) {
       updateRowFromObject(getSheet('Customers'), customer.__row, { EmailVerified: 'true', UpdatedAt: nowIso() });
       customer.EmailVerified = 'true';
     }
-    var token = issueCustomerSession(customer.CustomerId);
+    var token = issueCustomerSession(customer.CustomerId, { sharedDevice: body.sharedDevice === true });
     return ok({ token: token, customer: publicCustomerFields(customer) });
   } finally {
     lock.releaseLock();
@@ -212,8 +225,39 @@ function actionVerifyCustomerLogin(body) {
 
   var customer = findCustomerByEmail(result.data.email);
   if (!customer) return fail('Account not found');
-  var token = issueCustomerSession(customer.CustomerId);
+  var token = issueCustomerSession(customer.CustomerId, { sharedDevice: body.sharedDevice === true });
   return ok({ token: token, customer: publicCustomerFields(customer) });
+}
+
+/**
+ * Does the signed-in customer also own a store?
+ *
+ * Answers ONLY for the authenticated customer's own address. It would be very
+ * easy to write this as "does this email have a store" taking an email in the
+ * body - and that would be an enumeration endpoint anyone could walk to learn
+ * which addresses belong to vendors. The token decides whose email is checked;
+ * the caller never supplies one.
+ *
+ * Returns the slug too, so the link can go straight to the store rather than
+ * bouncing through a dashboard lookup. Closed/deleted stores report false, so
+ * a vendor whose store was removed is offered "Create Store" rather than a
+ * link into nothing.
+ */
+function actionGetCustomerStore(body) {
+  var customer;
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+
+  var email = normalizeEmail(customer.Email);
+  if (!email) return ok({ hasStore: false });
+
+  var cacheKey = 'v1:custstore:' + email;
+  return getCached(cacheKey, 60, function () {
+    var owner = sheetToObjects(getSheet('Owners')).filter(function (o) {
+      return normalizeEmail(o.Email) === email && isStoreBrowsable(o);
+    })[0];
+    if (!owner) return ok({ hasStore: false });
+    return ok({ hasStore: true, storeSlug: owner.StoreSlug, storeName: owner.StoreName });
+  });
 }
 
 function actionGetCustomerProfile(body) {

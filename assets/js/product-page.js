@@ -103,7 +103,35 @@ async function init() {
   // and then for an idle moment, so a second-hand phone on a slow connection
   // finishes rendering the thing the shopper asked for before spending
   // anything on the thing they did not.
+  // Put the shelf up EMPTY first, at its real height. The request behind it
+  // takes a second or more on a Kiribati connection, and filling a
+  // zero-height section afterwards shoved everything below it down 628px -
+  // measured as 0.0388 of the product page's CLS. Reserving first means
+  // filling it moves nothing.
+  showRelatedSkeleton();
   whenIdle(loadRelated);
+}
+
+/**
+ * Three placeholder cards - enough to set the row height, which is all that is
+ * being reserved. They are built from the same .related-card box as the real
+ * thing, so the reservation tracks the card width at every breakpoint instead
+ * of being right at one and wrong everywhere else.
+ *
+ * aria-hidden: it is furniture, not content. A screen reader announcing three
+ * empty cards that are about to be replaced is worse than silence.
+ */
+function showRelatedSkeleton() {
+  const section = document.getElementById('related-section');
+  const list = document.getElementById('related-list');
+  if (!section || !list) return;
+  list.innerHTML = Array.from({ length: 3 }, () =>
+    '<div class="related-card related-card--skeleton" aria-hidden="true">' +
+    '<div class="related-skeleton-image"></div>' +
+    '<div class="related-skeleton-line"></div>' +
+    '<div class="related-skeleton-line"></div>' +
+    '</div>').join('');
+  section.hidden = false;
 }
 
 /**
@@ -138,16 +166,27 @@ async function loadRelated() {
       type: listingTypeOf(product) || ''
     });
   } catch (e) {
+    section.hidden = true;
+    list.innerHTML = '';
     return;
   }
-  if (!res || !res.ok) return;
+  if (!res || !res.ok) {
+    section.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
 
   const items = (res.products || [])
     .filter((p) => p.productId !== product.productId)
     .slice(0, RELATED_LIMIT);
-  // Nothing to compare against - leave the heading off the page entirely
-  // rather than showing an empty shelf.
-  if (!items.length) return;
+  // Nothing to compare against. The skeleton has to come back down, and that
+  // IS a shift - but only for a listing whose category holds nothing else,
+  // where the alternative is a permanent shelf of grey boxes.
+  if (!items.length) {
+    section.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
 
   list.innerHTML = items
     .map((p) => renderBrowseProductCard(p, { cardClass: 'related-card', showLocation: true }))

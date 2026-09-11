@@ -72,7 +72,6 @@ Static front end (HTML/CSS/JS)  <-- fetch -->  Apps Script Web App  <-->  Google
   index.html              Home page: search box, category buttons, trending carousels
   stores.html             Full store directory (browse all active stores)
   store.html              One store's product catalog (?store=slug)
-  search.html             Cross-store product search / category results (?q= / ?category=)
   cart.html               Shopping cart for the customer's active store
   checkout.html           Customer details, places the order, auto-emails the store owner
 
@@ -152,7 +151,7 @@ Not real ES modules — IIFE-wrapped globals exposing a small public method surf
 ### Page controllers
 
 Each page has exactly one controller script owning its `DOMContentLoaded` init and
-all event wiring: `home.js`, `directory.js`, `store.js`, `search.js`, `cart-page.js`,
+all event wiring: `home.js`, `directory.js`, `store.js`, `categories.js`, `cart-page.js`,
 `checkout.js`, `owner-login.js`, `owner-forgot-password.js`, `owner-dashboard.js`,
 `owner-products.js`, `owner-orders.js`, `owner-settings.js`, plus `owner-nav.js`
 (shared logout-link wiring across every owner page) and `product-card.js`
@@ -432,7 +431,7 @@ that `OwnerId` before allowing a read or write.
 No accounts. A customer's entire "identity" is `localStorage` on their own device.
 
 1. **Browse** — `index.html` (search box + trending carousels) → `stores.html`
-   (full directory) or `search.html` (query/category results) → `store.html?store=slug`.
+   (full directory) or `categories.html` (browse + search, ?q= / ?category=) → `store.html?store=slug`.
 2. **Cart** — per-store-slug in `localStorage` (`skiri_cart_<slug>`), so a customer
    can hold separate in-progress carts for different vendors simultaneously.
    Checkout is always exactly one vendor at a time, since each is paid separately.

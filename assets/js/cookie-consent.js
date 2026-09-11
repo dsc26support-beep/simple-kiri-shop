@@ -12,7 +12,7 @@ function initCookieConsent() {
   banner.setAttribute('role', 'region');
   banner.setAttribute('aria-label', 'Cookie notice');
   banner.innerHTML = `
-    <p>This site stores a small amount of data on your device (cookies/local storage) — e.g. to remember your cart and keep store owners logged in. No data is sold or shared with third parties.</p>
+    <p>This site stores a small amount of data on your device (cookies/local storage) — e.g. to remember your cart and keep store owners logged in. No data is sold or shared with third parties. <a href="/privacy.html">Privacy Policy</a></p>
     <button type="button" class="btn btn-primary btn-small" id="cookie-consent-accept">Accept</button>
   `;
   document.body.appendChild(banner);

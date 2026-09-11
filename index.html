@@ -6,7 +6,7 @@
   <title>Mwakete</title>
   <meta name="description" content="Shop from local Kiribati stores online — order online, the store will contact you to arrange payment.">
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/styles.min.css">
   <!-- The Apps Script backend gates whether the page has any content at all.
        /exec answers with a 302 to script.googleusercontent.com, so both origins
        need warming or the first data request pays two cold handshakes. -->
@@ -65,17 +65,15 @@
       </div>
     </section>
 
-    <!-- Two strips, two different questions. This one asks what KIND of thing
-         you want; the one below asks what it IS. Both are rendered from the
-         shared taxonomy in helpers.js and scroll sideways rather than wrapping,
-         so neither eats the first screen. Their heights are reserved in CSS so
-         filling them in cannot push the products down. -->
-    <section class="listing-types" aria-labelledby="listing-types-heading">
-      <div class="container">
-        <h2 id="listing-types-heading" class="sr-only">Browse by type</h2>
-        <nav class="chip-strip" id="listing-type-strip" aria-label="Filter by listing type"></nav>
-      </div>
-    </section>
+    <!-- Rendered from the shared taxonomy in helpers.js, scrolling sideways
+         rather than wrapping so it never eats the first screen. Its height is
+         reserved in CSS, so filling it in cannot push the products down.
+
+         There used to be a second strip above this one asking what KIND of
+         thing you wanted - All / Products / Rentals / Services. It is gone.
+         ?type= still filters, and smart search still builds those links, so
+         "somewhere to stay" reaches rentals rather than land for sale; there is
+         simply no visible control for it now. -->
 
     <section class="categories" aria-labelledby="categories-heading">
       <div class="container">
@@ -107,20 +105,20 @@
     <div class="container">
       <p>All payments is arranged between Customer and Seller</p>
       <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Enquiry">Enquiry</a></p>
-      <p class="copyright">©MainKT Enterprises</p>
+      <p class="copyright">©MainKT Enterprises <a href="terms.html">Terms</a> <span aria-hidden="true">|</span> <a href="privacy.html">Privacy</a></p>
     </div>
   </footer>
 
-  <script defer src="assets/js/config.js"></script>
-  <script defer src="assets/js/api.js"></script>
-  <script defer src="assets/js/helpers.js"></script>
-  <script defer src="assets/js/cookie-consent.js"></script>
-  <script defer src="assets/js/auth.js"></script>
-  <script defer src="assets/js/customer-auth.js"></script>
-  <script defer src="assets/js/home-nav.js"></script>
-  <script defer src="assets/js/home.js"></script>
-  <script defer src="assets/js/header-cart.js"></script>
-  <script defer src="assets/js/bottom-nav.js"></script>
-  <script defer src="assets/js/register-sw.js"></script>
+  <script defer src="assets/js/config.min.js"></script>
+  <script defer src="assets/js/api.min.js"></script>
+  <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/cookie-consent.min.js"></script>
+  <script defer src="assets/js/auth.min.js"></script>
+  <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/home-nav.min.js"></script>
+  <script defer src="assets/js/home.min.js"></script>
+  <script defer src="assets/js/header-cart.min.js"></script>
+  <script defer src="assets/js/bottom-nav.min.js"></script>
+  <script defer src="assets/js/register-sw.min.js"></script>
 </body>
 </html>

@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', init);
 function init() {
   // Both strips come from the shared taxonomy and need no backend at all, so
   // they are on screen with the first paint rather than after a round trip.
-  renderListingTypeStrip('listing-type-strip', '');
   renderCategoryStrip('category-strip');
   document.getElementById('search-form').addEventListener('submit', onSearchSubmit);
   loadHomePageData();
@@ -12,7 +11,7 @@ function init() {
 function onSearchSubmit(e) {
   e.preventDefault();
   const q = document.getElementById('search-input').value.trim();
-  window.location.href = `search.html?q=${encodeURIComponent(q)}`;
+  window.location.href = `categories.html?q=${encodeURIComponent(q)}`;
 }
 
 // One combined request for both sections below, instead of two separate

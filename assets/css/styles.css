@@ -478,7 +478,6 @@ section {
     row-gap: var(--space-4);
   }
   .home-main > .hero { order: 1; }
-  .home-main > .listing-types { order: 2; }
   .home-main > .categories { order: 3; }
   .home-main > .trending-products { order: 4; }
   .home-main > .trending-stores { order: 5; }
@@ -513,33 +512,27 @@ section {
   margin-right: calc(var(--space-3) * -1);
   padding-left: var(--space-3);
   padding-right: var(--space-3);
+  /* ...and scroll snapping has to respect that padding, or it defeats the line
+     above. Without this, a strip WIDE ENOUGH TO SCROLL snaps its first chip
+     flush to the border box - x=0, hard against the screen edge - while the
+     search field above keeps its 16px gutter. A strip too narrow to scroll
+     never snaps and looks correct, which is why this went unnoticed: on the
+     search page the listing-type strip fitted and sat at 16, and the category
+     strip below it overflowed and sat at 0. Removing the type strip put the
+     misaligned one directly under the search box and made it obvious. */
+  scroll-padding-left: var(--space-3);
 }
 
 .chip-strip::-webkit-scrollbar {
   display: none;
 }
 
-/* The search page stacks the search box and BOTH chip strips inside one .hero
-   container, with nothing between them - the box and the first row of chips
-   were touching at exactly 0px, which is why the field's focus ring landed on
-   top of the chips. 24px between each, so the box, the type chips and the
-   category chips read as three separate things.
-
-   Reaches search.html alone: index.html keeps its two strips in their own
-   .listing-types / .categories sections OUTSIDE the hero, where they already
-   sit 88px and 99px clear and need nothing.
-
-   The second strip asks for 16px, not 24px: .chip-strip carries an 8px
-   padding-bottom as its scroll gutter, so 16 + 8 lands the two rows the same
-   24px apart as the first pair. Change that gutter and this number moves with
-   it. */
-.hero .chip-strip {
-  margin-top: var(--space-4);
-}
-
-.hero .chip-strip + .chip-strip {
-  margin-top: var(--space-3);
-}
+/* A rule for `.hero .chip-strip` lived here: 24px of air between the search box
+   and the chips below it inside search.html's hero. That page is gone, and it
+   was the only one with chips inside a .hero - index.html keeps its category
+   strip in its own .categories section outside one, and the browse page's box
+   is in the header. The selector matched nothing, so it went rather than being
+   left as dead weight on every page's stylesheet. */
 
 .chip-strip-item {
   flex: 0 0 auto;
@@ -775,6 +768,36 @@ footer.site-footer .copyright {
 .related-carousel .related-card {
   flex: 0 0 42%;
   scroll-snap-align: start;
+}
+
+/* Placeholder cards, rendered before the request goes out so the shelf has its
+   real height from first paint. Filling it in then moves nothing.
+
+   Built from the SAME box as a real card - .related-card for the width, and a
+   1/1 block for the image - because the height is driven by the card width,
+   which is a percentage. A fixed min-height would be right at one viewport and
+   wrong at every other: measured, the carousel is 219px at 390px wide, 260px at
+   768px and 272px at 1280px.
+
+   No shimmer animation on purpose. It would run on the CPU of exactly the
+   low-end phones this is meant to help, to decorate something visible for
+   under a second. */
+.related-card--skeleton .related-skeleton-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius);
+  background: var(--color-bg-alt);
+}
+
+.related-card--skeleton .related-skeleton-line {
+  height: 0.72rem;
+  margin-top: var(--space-1);
+  border-radius: 3px;
+  background: var(--color-bg-alt);
+}
+
+.related-card--skeleton .related-skeleton-line:last-child {
+  width: 60%;
 }
 
 @media (min-width: 600px) {
@@ -4187,4 +4210,214 @@ legend {
     gap: var(--space-4);
     align-items: start;
   }
+}
+
+/* ---- Customer sign-in: Google, shared device, guest ------------------------
+   The Google block carries its own "or" divider so both disappear together
+   when the button never renders - an unconfigured deployment, or a connection
+   that blocked accounts.google.com. A stray "or" above the email form would
+   be the giveaway that something failed. */
+.auth-social {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* Google renders its button into this box at a fixed 280px. Centred rather
+   than stretched: the button's own width is set by Google's iframe and cannot
+   be overridden from here, so matching btn-block would just look broken. */
+#google-signin-btn {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
+.auth-social.is-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin: var(--space-2) 0 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.auth-shared-device {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+/* 20px, not the 16px a checkbox defaults to: this is tapped on a phone, and it
+   is the control that decides how long a session survives on a shared handset. */
+.auth-shared-device input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.auth-shared-hint {
+  margin-top: var(--space-1);
+}
+
+.auth-guest {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ---- Legal pages (privacy) -------------------------------------------------
+   Long-form prose, which nothing else on this site is. Capped at 65ch because
+   a full-width line of text on a desktop browser is genuinely hard to read,
+   and this is a page people are sent to in order to actually read it. */
+.legal-page {
+  max-width: 65ch;
+}
+
+.legal-page h2 {
+  margin-top: var(--space-5);
+}
+
+.legal-page h3 {
+  margin-top: var(--space-4);
+  font-size: 1rem;
+}
+
+.legal-page p,
+.legal-page li {
+  line-height: 1.6;
+}
+
+.legal-page ul {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+}
+
+.legal-page li {
+  margin-bottom: var(--space-2);
+}
+
+/* The one paragraph on the terms page that must not be skim-read: Mwakete
+   never handles money and cannot refund. Given weight so a shopper who reads
+   nothing else on the page still reads this. */
+.legal-callout-heading {
+  margin-bottom: var(--space-2);
+}
+
+.legal-callout {
+  padding: var(--space-3);
+  border-left: 4px solid var(--color-purple);
+  background: var(--color-bg-alt);
+  border-radius: var(--radius);
+}
+
+/* A button that reads as a link. Used for "Not you?" on the sign-in page: it
+   performs an action rather than navigating, so it must be a <button> for
+   keyboard and screen-reader users, but it should not look like one. */
+.linklike {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--color-blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linklike:hover,
+.linklike:focus-visible {
+  color: var(--color-purple);
+}
+
+/* Shown or not shown from the FIRST frame, decided by the inline script in
+   customer-login.html's head. Not the [hidden] attribute and not a deferred
+   un-hide: a deferred script runs after paint, and that un-hide measured
+   0.0124 CLS at 390px. The class is on <html>, so the decision is made before
+   this element is even parsed. */
+.login-remembered {
+  display: none;
+  margin-top: var(--space-1);
+}
+
+html.has-remembered-email .login-remembered {
+  display: block;
+}
+
+/* Both children are block-level so filling the address in changes the WIDTH of
+   the first line and nothing else. Sharing one line with the button meant the
+   text arriving shoved the button sideways - a HORIZONTAL shift, which counts
+   towards CLS just as a vertical one does, and measured 0.0027 at 390px. Two
+   lines of text are present from the first frame either way, so the height is
+   stable whether or not the address has been filled in yet. */
+.login-remembered > span,
+.login-remembered > .linklike {
+  display: block;
+}
+
+/* ---- My Account quick links -----------------------------------------------
+   Outline only, never filled: these sit right under the page heading, and two
+   solid blocks of purple there would pull the eye away from the orders and
+   bookings below, which are what the page is for. */
+.dash-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-purple);
+  border: 1px solid var(--color-purple);
+}
+
+.btn-outline:hover,
+.btn-outline:focus-visible {
+  background: var(--color-purple);
+  color: #fff;
+}
+
+/* Sized to "Create Store", the wider of the two labels this button can carry.
+   The lookup that swaps it to "My Store" happens after first paint, so without
+   a floor the box would shrink and the row would shift sideways - which counts
+   towards CLS just as a vertical shift does. */
+#store-link {
+  min-width: 8.5rem;
+  text-align: center;
+}
+
+/* ---- My Account: purple separators -----------------------------------------
+   Scoped to this page on purpose. .dash-section and .dash-item are shared with
+   owner/admin.html and customer-messages.html, and recolouring the base class
+   would repaint those two pages as a side effect of a change asked for on My
+   Account.
+
+   Only the colour is overridden, not the border itself - widths, radii and
+   layout stay exactly as they were, so nothing reflows and this cannot shift
+   anything. */
+.page-account .dash-section {
+  border-color: var(--color-purple);
+}
+
+.page-account .dash-item {
+  border-top-color: var(--color-purple);
 }

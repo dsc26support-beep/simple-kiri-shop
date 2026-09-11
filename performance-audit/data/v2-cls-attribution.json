@@ -1,0 +1,235 @@
+[
+  {
+    "path": "/product.html?store=bong&product=p0",
+    "total": 0.0727,
+    "shifts": [
+      {
+        "value": 0.03884010333066677,
+        "at": 1013,
+        "sources": [
+          {
+            "node": "p.view-store-row",
+            "from": [
+              182,
+              24
+            ],
+            "to": [
+              810,
+              24
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.03371421306277101,
+        "at": 1810,
+        "sources": [
+          {
+            "node": "details#reviews-section.reviews-section",
+            "from": [
+              745,
+              49
+            ],
+            "to": [
+              0,
+              0
+            ]
+          },
+          {
+            "node": "p.view-store-row",
+            "from": [
+              810,
+              24
+            ],
+            "to": [
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.00014714723000209062,
+        "at": 349,
+        "sources": [
+          {
+            "node": "p.view-store-row",
+            "from": [
+              178,
+              24
+            ],
+            "to": [
+              182,
+              24
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/store.html?store=bong",
+    "total": 0.0001,
+    "shifts": [
+      {
+        "value": 0.00003712646057910442,
+        "at": 467,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              159,
+              40
+            ],
+            "to": [
+              159,
+              40
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000025134936165055412,
+        "at": 447,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              158,
+              42
+            ],
+            "to": [
+              158,
+              42
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000024638278034347556,
+        "at": 488,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              161,
+              36
+            ],
+            "to": [
+              161,
+              36
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000010210152786089782,
+        "at": 504,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              163,
+              32
+            ],
+            "to": [
+              163,
+              32
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000005402148047059252,
+        "at": 520,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              164,
+              30
+            ],
+            "to": [
+              164,
+              30
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/index.html",
+    "total": 0.0001,
+    "shifts": [
+      {
+        "value": 0.000033400063042850995,
+        "at": 416,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              155,
+              40
+            ],
+            "to": [
+              155,
+              40
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.000028439234367241804,
+        "at": 425,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              157,
+              36
+            ],
+            "to": [
+              157,
+              36
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.00002513196032510533,
+        "at": 379,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              154,
+              42
+            ],
+            "to": [
+              154,
+              42
+            ]
+          }
+        ]
+      },
+      {
+        "value": 0.00001815039923043049,
+        "at": 462,
+        "sources": [
+          {
+            "node": "button.btn.btn-primary",
+            "from": [
+              160,
+              30
+            ],
+            "to": [
+              160,
+              30
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

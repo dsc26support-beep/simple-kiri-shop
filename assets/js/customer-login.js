@@ -22,11 +22,55 @@ function init() {
   document.getElementById('signup-back').addEventListener('click', resetSignup);
 
   if (getQueryParam('tab') === 'signup') showTab('signup');
+
+  prefillRememberedEmail();
+}
+
+/**
+ * The address this device signed in with last time. Filling it in saves typing
+ * it again on a phone keyboard, which is the whole point; showing it with a way
+ * out matters because these phones get shared.
+ *
+ * An email address alone signs nobody in - the six-digit code still has to
+ * reach that mailbox - so remembering it is a convenience, not a credential.
+ */
+function prefillRememberedEmail() {
+  const email = CustomerAuth.getRememberedEmail && CustomerAuth.getRememberedEmail();
+  if (!email) return;
+
+  const input = document.getElementById('login-email');
+  const note = document.getElementById('login-remembered');
+  const shown = document.getElementById('login-remembered-email');
+  if (!input || !note || !shown) return;
+
+  // Visibility was already decided before first paint by the inline script in
+  // the head (see customer-login.html). This only fills in the text, which
+  // changes the line's width and not its height, so nothing moves.
+  input.value = email;
+  shown.textContent = email;
+
+  document.getElementById('login-not-you').addEventListener('click', () => {
+    CustomerAuth.forgetEmail();
+    input.value = '';
+    document.documentElement.classList.remove('has-remembered-email');
+    input.focus();
+  });
 }
 
 // Where to go after a successful sign in. Supports ?next= for returning to a
 // page (e.g. checkout), but only same-site relative paths - never an absolute
 // or off-site URL (open-redirect guard).
+/**
+ * "This is a shared device" - phones get shared here, and order history carries
+ * names, phone numbers and delivery addresses. Ticked, the backend issues a
+ * 12-hour session instead of the 60-day one. Read at submit time rather than
+ * cached, so changing the box before submitting does what it looks like it does.
+ */
+function sharedDeviceChecked() {
+  const box = document.getElementById('shared-device');
+  return !!(box && box.checked);
+}
+
 function nextDest() {
   const next = getQueryParam('next');
   if (next && !/^https?:/i.test(next) && !next.startsWith('//') && /^[a-zA-Z0-9_\-./?=&%]+$/.test(next)) {
@@ -79,7 +123,8 @@ async function onLoginVerify(e) {
   const code = document.getElementById('login-code').value.trim();
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true;
-  const res = await Api.post('verifyCustomerLogin', { token: loginPendingToken, code });
+  const res = await Api.post('verifyCustomerLogin',
+    { token: loginPendingToken, code, sharedDevice: sharedDeviceChecked() });
   btn.disabled = false;
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not verify the code.';
@@ -136,7 +181,8 @@ async function onSignupVerify(e) {
   const code = document.getElementById('signup-code').value.trim();
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true;
-  const res = await Api.post('verifyCustomerEmail', { token: signupPendingToken, code });
+  const res = await Api.post('verifyCustomerEmail',
+    { token: signupPendingToken, code, sharedDevice: sharedDeviceChecked() });
   btn.disabled = false;
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not verify the code.';
