@@ -68,7 +68,7 @@ async function makeContext(browser, opts) {
   // binding and NOT a window property - so it cannot be patched from an init
   // script. Serving a modified config.min.js is both simpler and closer to what
   // a real deployment does: edit the file, ship it.
-  if (opts.clientId) {
+  if (opts.clientId !== undefined) {
     await ctx.route('**/assets/js/config*.js', (r) => r.fulfill({
       status: 200,
       contentType: 'application/javascript',
@@ -86,7 +86,10 @@ async function makeContext(browser, opts) {
 
   // ---- unconfigured: the whole block stays away, cleanly ----
   {
-    const { ctx, gsiHits } = await makeContext(browser, {});
+    // Explicitly EMPTY, not "whatever the shipped config happens to say". The
+    // site now ships a real client id, and leaving this implicit meant the
+    // degraded path this block exists to test quietly stopped being tested.
+    const { ctx, gsiHits } = await makeContext(browser, { clientId: '' });
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(900);
@@ -161,7 +164,7 @@ async function makeContext(browser, opts) {
     await ctx.close();
   }
   {
-    const { ctx, posted } = await makeContext(browser, {});
+    const { ctx, posted } = await makeContext(browser, { clientId: '' });
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(600);
@@ -180,7 +183,7 @@ async function makeContext(browser, opts) {
 
   // ---- guest ----
   {
-    const { ctx } = await makeContext(browser, {});
+    const { ctx } = await makeContext(browser, { clientId: '' });
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(600);
@@ -196,7 +199,7 @@ async function makeContext(browser, opts) {
 
   // ---- guest checkout still remembers the device, which is the point ----
   {
-    const { ctx } = await makeContext(browser, {});
+    const { ctx } = await makeContext(browser, { clientId: '' });
     await ctx.addInitScript(() => {
       try {
         localStorage.setItem('skiri_checkout_profile', JSON.stringify({
