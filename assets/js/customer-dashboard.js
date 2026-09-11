@@ -69,6 +69,14 @@ async function onSaveProfile(e) {
 }
 
 async function onLogout() {
+  // Feedback on the very first frame. Even with the grace period in
+  // CustomerAuth.logout, a second of silence after a tap reads as a dead
+  // button - which is exactly how this was reported.
+  const btn = document.getElementById('customer-logout');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = 'Logging out<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+  }
   await CustomerAuth.logout();
   window.location.href = 'index.html';
 }

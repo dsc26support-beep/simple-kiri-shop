@@ -46,12 +46,30 @@ const CustomerAuth = (function () {
     }
   }
 
+  // How long the redirect will wait for the backend before going anyway.
+  // The comment below explains why this exists at all.
+  const LOGOUT_NETWORK_GRACE_MS = 1500;
+
   async function logout() {
     const token = getToken();
     clearSession();
     if (token) {
       try {
-        await Api.post('logoutCustomer', { token });
+        // The local session is ALREADY cleared above, so the person is signed
+        // out on this device whatever the backend does next. Telling the server
+        // is worth doing, but it must never hold the page hostage: on a cold
+        // Apps Script start over a weak link this round trip can take many
+        // seconds, and awaiting it plainly is what made "Log out" look dead -
+        // nothing moved and nothing spoke for as long as the network took.
+        // Measured at an 8s backend: the page had not moved after 3s.
+        // So the redirect races a short grace period and wins if the network
+        // is slow. The request is still in flight when we navigate; the
+        // browser may cancel it, which is acceptable - sessions expire on
+        // their own, and the token is gone from the device either way.
+        await Promise.race([
+          Api.post('logoutCustomer', { token }).catch(function () {}),
+          new Promise(function (resolve) { setTimeout(resolve, LOGOUT_NETWORK_GRACE_MS); })
+        ]);
       } catch (e) {
         // best effort - the local session is already cleared
       }
