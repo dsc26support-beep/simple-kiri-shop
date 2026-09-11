@@ -4504,3 +4504,43 @@ html.has-remembered-email .login-remembered {
 .page-account .dash-item {
   border-top-color: var(--color-purple);
 }
+
+/* ---- Unsaved-changes dialog -----------------------------------------------
+   Created only when it is needed, never present in the page at load, so it
+   costs nothing until someone actually tries to leave mid-edit. Fixed
+   position, so showing it cannot move the page behind it. */
+.unsaved-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1004; /* above the cookie notice (1003), which is the highest thing */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.unsaved-card {
+  width: 100%;
+  max-width: 22rem;
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.unsaved-card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.125rem;
+}
+
+.unsaved-card p {
+  margin: 0 0 var(--space-4);
+  color: var(--color-muted);
+}
+
+/* Stay is first and primary; leaving discards work, so it should take a
+   deliberate second tap rather than being the obvious one. */
+.unsaved-card .btn + .btn {
+  margin-top: var(--space-2);
+}
