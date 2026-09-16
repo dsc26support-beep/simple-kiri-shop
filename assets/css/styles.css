@@ -3,6 +3,10 @@
 :root {
   --color-red: #ce1126;
   --color-gold: #fcd116;
+  /* Recommended badge fill. --color-gold at full strength is the flag yellow
+     and is loud enough to fight the product title beside it; this is the same
+     hue at a weight that still reads as gold with --color-ink on top (16:1). */
+  --color-gold-soft: #fff7d6;
   --color-blue: #003f87;
   --color-blue-light: #5b9bd5;
   --color-purple: #332d63;
@@ -3004,6 +3008,22 @@ footer.site-footer .copyright {
   box-shadow: inset 3px 0 0 var(--color-blue);
 }
 
+/* Featured is the first entry and is NOT a category - it is a view over the
+   items an admin hand-picked. Set apart by weight and a rule beneath it, so it
+   reads as a heading above the list rather than as one more thing in it. Not
+   by colour: the label stays --color-ink like every other, which is what keeps
+   it legible in greyscale and forced-colours mode. */
+.category-rail-item--featured {
+  font-weight: 700;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* The selected state already carries a 3px inset rule; without this the
+   bottom border doubles up with it and the entry looks boxed in. */
+.category-rail-item--featured.is-selected {
+  border-bottom-color: transparent;
+}
+
 .category-rail-item:hover,
 .category-rail-item:focus-visible {
   background: rgba(0, 0, 0, 0.04);
@@ -3260,6 +3280,117 @@ body.browse-locked .category-rail {
   text-align: center;
 }
 
+
+/* ---------- Three-dot overflow menu in the header ---------------------- */
+
+/* Out of flow for the same reason .header-cart is: header-menu.js injects this
+   at DOMContentLoaded, and anything that enters the flow at that moment moves
+   the page under the reader's thumb. The wrapper is the positioning context
+   for the panel, so the panel hangs off the button rather than off the header
+   and stays in the corner whatever the header's shape is. */
+.header-menu {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+}
+
+.header-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.header-menu-btn:hover,
+.header-menu-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Above the chat FAB (1001) and the chat window (1002). Below the cookie
+   notice (1003) and the login chooser (1006), both of which are blockers that
+   are meant to be answered before anything else. */
+.header-menu-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1002;
+  min-width: 13.5rem;
+  max-width: calc(100vw - var(--space-3) * 2);
+  padding: var(--space-1) 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* header.site-header a is #fff, which inside a white panel is an invisible
+   menu. Beaten on specificity rather than with !important, so a future rule
+   can still override it. */
+header.site-header .header-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;           /* the tap target, not the text */
+  padding: 0 var(--space-3);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+header.site-header .header-menu-item:hover,
+header.site-header .header-menu-item:focus-visible {
+  background: var(--color-bg-alt);
+}
+
+.header-menu-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--color-muted);
+}
+
+/* The page you are already on keeps its entry - the menu reads identically
+   everywhere, which is most of why a shopper learns it - and is told apart by
+   weight and a left rule, not by colour alone. */
+header.site-header .header-menu-item.is-current {
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--color-red);
+}
+
+header.site-header .header-menu-item.is-current .header-menu-icon {
+  color: var(--color-red);
+}
+
+/* stores.html's header row is a plain .container with no position of its own,
+   so without this the button would pin to the window edge there and to the
+   1100px content column on the other five - and the cart button, injected into
+   the same host, has always had that same split. Scoped to the pages that
+   carry the menu, so the other eight headers are untouched. */
+body.has-header-menu header.site-header > .container:first-of-type {
+  position: relative;
+}
+
+/* Pages that carry the menu give the corner to it and step the cart button
+   left. The class is in each page's markup rather than added by JS, so the
+   offset is right in the first paint instead of a frame after it. Below 700px
+   .header-cart is display:none and only the menu is in the corner, so the
+   reservation goes back to one button's width. */
+body.has-header-menu .header-cart {
+  right: calc(var(--space-2) + 44px);
+}
+
+body.has-header-menu header.site-header > .container:first-of-type {
+  padding-right: 96px;
+}
+
 .bottom-nav { display: none; }
 
 .bottom-nav-item {
@@ -3323,6 +3454,12 @@ body.browse-locked .category-rail {
      to the cart, so it stays. */
   .header-cart { display: none; }
 
+  /* With the cart button gone the corner holds one control again, so the row
+     only needs room for one. */
+  body.has-header-menu header.site-header > .container:first-of-type {
+    padding-right: 52px;
+  }
+
   /* Parking space for a page's secondary control, directly above the Account
      tab (the 5th of 5 equal columns, hence right:0 / width:20%).
 
@@ -3344,13 +3481,6 @@ body.browse-locked .category-rail {
   .bottom-nav-more-slot > * {
     pointer-events: auto;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  }
-
-  /* Tips lives in the bottom nav at this width - one of its five tabs - so the
-     header link would be the same destination twice on one screen. Above 700px
-     the bottom nav is display:none and the header link is the only way in. */
-  .site-nav .nav-tips {
-    display: none;
   }
 
   /* The empty <p> the button leaves behind on mobile would otherwise still
@@ -4418,6 +4548,551 @@ legend {
 .info-pop--above {
   top: auto;
   bottom: calc(100% + var(--space-1));
+}
+
+/* ---- Seller badges ---------------------------------------------------------
+ *
+ * COLOUR IS NEVER THE DIFFERENCE. Four treatments, told apart by shape, fill
+ * and border weight before any hue is involved - so they still read as four
+ * different things in a greyscale screenshot, in forced-colours mode, and to
+ * anyone who cannot tell the blue from the purple:
+ *
+ *   --ribbon  Mwakete Recommended. The only FILLED badge, square, 2px border,
+ *             bold. Highest weight in the set, and earned rather than bought.
+ *   --shield  Verified Seller. Square, thin border, with a 3px stripe down the
+ *             left edge - the stamp treatment.
+ *   --star    Top Seller. Pill, 2px border.
+ *   --chip    Everything else. Pill, 1px border.
+ *
+ * Category only tints the border and the icon. The LABEL is always --color-ink,
+ * so no badge's text contrast depends on which category it belongs to.
+ *
+ * Every badge keeps its text at every size. Nothing here communicates by
+ * animation: the only transition is on colour, for hover and focus feedback.
+ */
+.seller-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  /* min-width:0 so a long badge row inside a flex or grid card shrinks and
+     wraps instead of forcing the card wider than its column. */
+  min-width: 0;
+}
+
+.seller-badge-wrap {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.seller-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-stack);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  transition: border-color .12s ease, background-color .12s ease;
+}
+
+/* A <button> only on surfaces where the badge is not inside a link - see
+   renderSellerBadges in badges.js for why cards get plain spans. */
+button.seller-badge {
+  cursor: pointer;
+}
+
+.seller-badge svg {
+  flex: 0 0 auto;
+  width: 1.05em;
+  height: 1.05em;
+  /* The icon carries the category colour; the label does not, so the label's
+     contrast is the same for every badge. */
+  color: var(--color-muted);
+}
+
+.seller-badge-emoji {
+  flex: 0 0 auto;
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+/* Never truncated to an ellipsis: a badge that reads "Mwakete Recomm…" has
+   lost the thing it exists to say. It wraps within the badge instead, and the
+   row wraps around it. */
+.seller-badge-label {
+  min-width: 0;
+}
+
+/* ---- sizes ---- */
+
+.seller-badge--chip {
+  padding: 0.2em 0.6em;
+  font-size: 0.75rem;
+}
+
+/* 32px, not 44px. WCAG 2.2 target size (AA) is 24x24 CSS px, which this clears
+   comfortably; 44px chips beside a product title would out-shout the title,
+   and these are supporting information, never the primary action. The same
+   reasoning as .info-dot. */
+.seller-badge--detail {
+  padding: 0.35em 0.7em;
+  min-height: 32px;
+  font-size: 0.875rem;
+}
+
+/* ---- tiers (shape) ---- */
+
+.seller-badge--ribbon {
+  background: var(--color-gold-soft);
+  border: 2px solid var(--color-gold);
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.seller-badge--ribbon svg,
+.seller-badge--shield svg {
+  color: inherit;
+}
+
+.seller-badge--shield {
+  border-radius: 4px;
+  border-color: var(--color-blue);
+  border-left: 3px solid var(--color-blue);
+  color: var(--color-ink);
+}
+
+.seller-badge--shield svg {
+  color: var(--color-blue);
+}
+
+.seller-badge--star {
+  border-width: 2px;
+  border-color: var(--color-purple);
+}
+
+/* ---- categories (tint only) ---- */
+
+.seller-badge--cat-performance {
+  border-color: var(--color-purple);
+}
+
+.seller-badge--cat-performance svg {
+  color: var(--color-purple);
+}
+
+.seller-badge--cat-popularity {
+  border-color: var(--color-red);
+}
+
+.seller-badge--cat-popularity svg {
+  color: var(--color-red);
+}
+
+.seller-badge--cat-newcomer {
+  border-color: var(--color-success);
+}
+
+.seller-badge--cat-newcomer svg {
+  color: var(--color-success);
+}
+
+/* The overflow counter. Deliberately the quietest thing in the row - it is a
+   pointer to the rest, not a badge in its own right. */
+.seller-badge--more {
+  border-style: dashed;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+/* ---- states ---- */
+
+button.seller-badge:hover {
+  background: var(--color-bg-alt);
+}
+
+button.seller-badge:focus-visible {
+  outline: 2px solid var(--color-purple);
+  outline-offset: 2px;
+}
+
+/* Open. aria-expanded is the same attribute the screen reader reads, so the
+   visual "pressed" state and the announced state cannot disagree. */
+button.seller-badge[aria-expanded="true"] {
+  background: var(--color-bg-alt);
+  border-color: var(--color-purple);
+}
+
+button.seller-badge--ribbon[aria-expanded="true"] {
+  background: var(--color-gold-soft);
+  border-color: var(--color-gold);
+}
+
+/* Anchored to the badge's LEFT edge rather than .info-pop's right, because a
+   badge is narrow and a right-anchored panel on the first badge in a row runs
+   off the left of the screen. Capped at 72vw so it can never overflow both
+   edges at once, which is what makes the single sideways nudge in setOpen()
+   enough. */
+.seller-badge-pop {
+  left: 0;
+  right: auto;
+  width: min(18rem, 72vw);
+  font-weight: 400;
+}
+
+/* ---- placements -------------------------------------------------------- */
+
+/* On a product card. Tight to the rating above it and the location line below,
+   because on a half-width phone card this row is sharing space with the
+   product's own name and price - which it must never out-shout. */
+.product-card .seller-badges,
+.store-card .seller-badges {
+  margin: var(--space-1) 0;
+}
+
+/* Card chips were shrunk to 11px because "Mwakete Recommended" would not fit
+   on one line in the ~124px a product card gives a label. The labels are now
+   one word each, the longest fits comfortably, and the override is gone - so
+   there is one chip size rather than two. */
+
+/* The storefront's own badges, above the product grid.
+   Deliberately NOT in the header branding block: that sits above <main>, so
+   anything added to it after the fetch pushes the entire page down - which is
+   where this page's sibling once measured 0.853 CLS. Empty until the products
+   arrive, and empty elements have no height, so an unbadged store's page is
+   byte-for-byte the layout it had before. */
+.store-seller-badges:not(:empty) {
+  margin-bottom: var(--space-3);
+}
+
+/* Same row as the ratings toggle and the store link on a product page. Pushed
+   to its own line at every width - three detail badges plus "Ratings &
+   reviews" plus "See more from this store" will not share a line on anything
+   narrower than a desktop, and half-wrapping reads worse than not trying. */
+.product-seller-badges:not(:empty) {
+  flex: 1 1 100%;
+  margin-bottom: var(--space-2);
+}
+
+/* ---- "Learn what seller badges mean" ---- */
+
+.badge-legend {
+  margin: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.badge-legend-row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.badge-legend dt {
+  min-width: 0;
+}
+
+.badge-legend dd {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Side by side once there is room for the widest badge and a sentence. */
+@media (min-width: 600px) {
+  .badge-legend-row {
+    grid-template-columns: 12.5rem 1fr;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+}
+
+/* The collapsed explanation panel, for pages whose badges are inside product
+   cards and so cannot carry their own popover. One line until someone wants
+   it. */
+.badge-legend-panel {
+  margin: var(--space-4) 0 var(--space-3);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
+
+.badge-legend-panel > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-purple);
+}
+
+.badge-legend-panel[open] > summary {
+  margin-bottom: var(--space-3);
+}
+
+/* ---- "A new version is ready" ---------------------------------------------
+ *
+ * Shown only when refreshing would cost someone their work - a checkout, an
+ * open chat, an unsaved form, or a cursor in a text field. Everywhere else the
+ * app just refreshes itself and this is never seen.
+ *
+ * A bar, not a modal. The update is never urgent enough to block what someone
+ * is doing, and a modal over a half-filled delivery address would be worse
+ * than the stale build it is replacing.
+ */
+.app-update-bar {
+  position: fixed;
+  left: var(--space-3);
+  right: var(--space-3);
+  /* ABOVE THE CHAT BUTTON, not merely above the page.
+     The first version sat at z-index 60 and the full width of the screen, which
+     put the Refresh button directly underneath the floating chat button - fixed
+     at z-index 1001 in the lower right. The bar was visible and its main
+     control was not tappable. Same slot the install pill uses, and the same
+     expression, so the three stay in one stack. */
+  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
+  /* Above the FABs (1001), below the cookie banner (1003), which is a legal
+     notice and outranks a version update. */
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-purple);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  font-size: 0.875rem;
+}
+
+.app-update-bar-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-update-bar .btn {
+  flex: 0 0 auto;
+}
+
+.app-update-dismiss {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-update-dismiss:hover {
+  color: var(--color-ink);
+}
+
+/* The install pill occupies exactly this slot. Both are transient and the
+   update matters more - someone running an old build has a problem now, where
+   "add to home screen" can wait for the next visit. */
+body.has-app-update .install-fab {
+  display: none !important;
+}
+
+/* The build this phone is actually running, for support. Quiet on purpose -
+   it is a thing to read out when something is wrong, not a thing to notice. */
+.app-version-line {
+  margin-top: var(--space-4);
+  color: var(--color-muted-light);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+/* ---- Seller badges in the admin back-office -------------------------------
+ *
+ * The SAME .seller-badge component the storefront uses, with admin-only
+ * indicators beside it. Deliberately not a second visual language: an admin
+ * checking what a shopper actually sees should not have to translate.
+ */
+.badge-admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.badge-admin-row {
+  display: block;
+  padding: var(--space-3);
+}
+
+.badge-admin-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* The numbers behind the badges. Admin-only - none of this is in a customer
+   response. Wraps rather than scrolls, so a narrow phone in a shop office
+   still shows every figure. */
+.badge-admin-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0;
+}
+
+.badge-admin-badges {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.badge-admin-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* AUTO AWARDED vs ADMIN OVERRIDE. Uppercase and lettered rather than coloured,
+   because the difference between "earned this" and "someone granted it" is the
+   most important thing on this page and must survive a greyscale screen. */
+.badge-admin-source {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15em 0.5em;
+  border-radius: 3px;
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.badge-admin-source--auto {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.badge-admin-source--admin {
+  color: var(--color-purple);
+  border-color: var(--color-purple);
+}
+
+.badge-admin-source--withheld {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+/* Earned but not shown. Dimmed so the distinction from a live badge is visible
+   at a glance, but never dimmed so far that the label stops being readable. */
+.badge-admin-item--withheld .seller-badge {
+  opacity: 0.6;
+}
+
+.badge-admin-why {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.badge-admin-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.badge-admin-override {
+  display: grid;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.badge-admin-override select {
+  min-height: 44px;
+}
+
+.badge-admin-suppress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font-size: 0.875rem;
+}
+
+.badge-config-panel > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: var(--color-purple);
+}
+
+/* Two columns from tablet up - there are about thirty of these and one per row
+   is a very long page. */
+.badge-config-field {
+  margin-bottom: var(--space-2);
+}
+
+.badge-config-field label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 700px) {
+  #badge-config-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--space-4);
+  }
+}
+
+/* Windows high-contrast and any other forced-colours mode replaces every
+   colour above, which would flatten all four treatments into one. The SHAPE
+   differences are what survive, so they are restated here in system colours
+   rather than left to chance. */
+@media (forced-colors: active) {
+  .seller-badge {
+    border: 1px solid CanvasText;
+    forced-color-adjust: none;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .seller-badge svg {
+    color: CanvasText;
+  }
+
+  .seller-badge--ribbon {
+    border-width: 3px;
+  }
+
+  .seller-badge--shield {
+    border-left-width: 4px;
+  }
+
+  .seller-badge--star {
+    border-width: 2px;
+  }
+
+  button.seller-badge:focus-visible {
+    outline: 2px solid Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seller-badge {
+    transition: none;
+  }
 }
 
 /* ---- Legal pages (privacy) -------------------------------------------------

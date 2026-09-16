@@ -456,6 +456,27 @@ function renderStars(rating, count) {
  * nobody. Delivery icons stay either way. The Tips page and a store's
  * similar-products row keep the original card, where the seller is the point.
  */
+/**
+ * The seller's badges on a product card: at most two, read-only.
+ *
+ * TWO, because this card is half the width of a phone and the badges are
+ * supporting information - a seller with five of them must not out-shout the
+ * product's own name and price. sortSellerBadges puts them in priority order
+ * first, so the two shown are the two that matter, and the rest collapse into a
+ * counter that says what they are to a screen reader.
+ *
+ * READ-ONLY, because the whole card is one <a>: a <button> inside an anchor is
+ * invalid HTML and navigates instead of explaining. These are read here, and
+ * the page's "What do seller badges mean?" panel covers all of them.
+ *
+ * Returns '' for a seller with none, so a card without badges is exactly the
+ * card that existed before - no empty row, no stray spacing.
+ */
+function sellerBadgeRow(product) {
+  if (typeof renderSellerBadges !== 'function') return '';   // page without badges.js
+  return renderSellerBadges(product.sellerBadges, { size: 'chip', max: 2, interactive: false });
+}
+
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
@@ -514,6 +535,7 @@ function renderBrowseProductCard(product, opts) {
       <div class="product-card-body">
         ${heading}
         ${renderStars(product.rating, product.reviewCount)}
+        ${sellerBadgeRow(product)}
         ${metaBlock}
       </div>
     </a>
@@ -690,10 +712,35 @@ const CATEGORIES = [
   { id: 'services',    label: 'Services',                    order: 11, popular: true,  active: true, types: ['service'] },
   { id: 'education',   label: 'Education & Jobs',            order: 12, popular: false, active: true, types: ['service'] },
   { id: 'events',      label: 'Events & Travel',             order: 13, popular: false, active: true, types: ALL_TYPES },
-  // Always last, always offered to sellers, and where anything that cannot be
-  // mapped confidently lands. Never 'popular'.
+  { id: 'solar',       label: 'Everything Solar',            order: 14, popular: true,  active: true, types: ALL_TYPES },
+  // Hire and Rental are near-synonyms to a shopper and were asked for as two
+  // entries anyway. They are told apart by TYPE rather than by wording: Hire
+  // also takes services - hiring a person to do a job - and Rental does not.
+  { id: 'hire',        label: 'Hire',                        order: 15, popular: true,  active: true, types: ['rental', 'service'] },
+  { id: 'rental',      label: 'Rental',                      order: 16, popular: true,  active: true, types: ['rental'] },
+  // Still last, still where anything that cannot be mapped confidently lands -
+  // but no longer offered to sellers, see fillCategoryOptions in
+  // owner-products.js. Shoppers can still browse it, so nothing already filed
+  // there became unreachable. Never 'popular'.
   { id: 'other',       label: 'Other',                       order: 99, popular: false, active: true, types: ALL_TYPES }
 ];
+
+/**
+ * The browse rail's first entry, and NOT a category.
+ *
+ * Nothing is ever stored with this id. The Featured sheet is curated by an
+ * admin and read through getTips, so this is a VIEW over other categories'
+ * items rather than a place to file one.
+ *
+ * Keeping it out of CATEGORIES is the whole point. activeCategories() feeds the
+ * seller's category dropdown, and Products.gs's CATEGORY_IDS is the set of ids
+ * a stored row may hold; being in neither means a seller cannot choose it and
+ * the backend will not keep it. Both sides fall back to 'other' for an id they
+ * do not know, so a hand-crafted category='featured' lands in Other rather than
+ * at the top of the rail - which is the one thing the Featured sheet exists to
+ * prevent.
+ */
+const FEATURED_VIEW = { id: 'featured', label: 'Featured' };
 
 /**
  * Old stored category -> new category id.
@@ -1277,4 +1324,135 @@ function wirePasswordToggle(inputId) {
     btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
     btn.setAttribute('aria-pressed', String(!showing));
   });
+}
+
+/* ---- The "i" dot and the panel it reveals ----------------------------------
+ *
+ * Lifted here from customer-login.js when the seller badges needed the same
+ * disclosure. Copying it would have meant two implementations of the same
+ * accessibility contract drifting apart - and the contract is the point, not
+ * the markup.
+ *
+ * A tooltip on a phone has to be dismissible by every route someone will
+ * actually try: tapping the control again, tapping anywhere else, or Escape. A
+ * popup that can only be closed by hitting the same small target again is a
+ * trap. Opening one closes any other that is open - two panels overlapping on
+ * a 390px screen is unreadable.
+ *
+ * The panel is absolutely positioned (see .info-pop), so opening it moves
+ * nothing. A panel that shoved the page down on every tap would be a layout
+ * shift on interaction, which is the same defect as one on load, just later.
+ */
+
+/** Shuts every info panel on the page. Two open at once is unreadable at 390px. */
+function closeAllInfoPops() {
+  document.querySelectorAll('.info-pop').forEach((p) => {
+    p.hidden = true;
+    p.style.transform = '';
+  });
+  document.querySelectorAll('[aria-controls][aria-expanded]').forEach((b) => {
+    const target = document.getElementById(b.getAttribute('aria-controls'));
+    if (target && target.classList.contains('info-pop')) b.setAttribute('aria-expanded', 'false');
+  });
+  document.querySelectorAll('.info-dot').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+}
+
+/**
+ * The two dismissal routes are registered ONCE for the whole page, not once
+ * per panel.
+ *
+ * They were per-panel to begin with, which is fine for the two dots on the
+ * sign-in page and quietly terrible everywhere else: the admin badge list puts
+ * three badges on every seller row, so fifty sellers meant three hundred
+ * document-level listeners all doing the same test on every tap and keypress.
+ * One pair handles any number of panels.
+ */
+let infoPopDismissWired = false;
+
+function wireInfoPopDismissal() {
+  if (infoPopDismissWired) return;
+  infoPopDismissWired = true;
+
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.info-pop:not([hidden])').forEach((pop) => {
+      if (pop.contains(e.target)) return;
+      pop.hidden = true;
+      pop.style.transform = '';
+      const owner = document.querySelector('[aria-controls="' + pop.id + '"]');
+      if (owner) owner.setAttribute('aria-expanded', 'false');
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const pop = document.querySelector('.info-pop:not([hidden])');
+    if (!pop) return;
+    pop.hidden = true;
+    pop.style.transform = '';
+    const owner = document.querySelector('[aria-controls="' + pop.id + '"]');
+    if (owner) {
+      owner.setAttribute('aria-expanded', 'false');
+      owner.focus();              // don't strand the keyboard user mid-page
+    }
+  });
+}
+
+/**
+ * Element-based, so callers holding a node (every badge on a page of search
+ * results) do not have to invent an id just to look it back up.
+ */
+function wireInfoPop(btn, pop) {
+  if (!btn || !pop) return;
+  if (!pop.id) pop.id = 'info-pop-' + (++infoPopSeq);
+  btn.setAttribute('aria-controls', pop.id);
+  wireInfoPopDismissal();
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();           // badges can sit inside a form or beside links
+    e.stopPropagation();          // or the document handler above closes it again
+    const opening = pop.hidden;
+    closeAllInfoPops();
+    if (!opening) return;
+
+    pop.classList.remove('info-pop--above');
+    pop.style.transform = '';     // measure from the authored position, not the last nudge
+    pop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+
+    // Flip above the control when there is no room below. On a 640px-tall
+    // screen a panel near the bottom of the page opened below the fold - a tap
+    // that appeared to do nothing. Measured and flipped in the same frame as
+    // the reveal, so the browser only ever paints the final position.
+    const box = pop.getBoundingClientRect();
+    if (box.bottom > window.innerHeight && box.height < btn.getBoundingClientRect().top) {
+      pop.classList.add('info-pop--above');
+    }
+
+    // And sideways, by measurement rather than by flipping which edge it is
+    // anchored to.
+    //
+    // Flipping was tried first and is not enough: a panel anchored to a narrow
+    // badge in the middle of a 390px row runs off the RIGHT at left:0 and off
+    // the LEFT at right:0, so one nudge just swaps which edge it is cut off
+    // at. Clamping handles both in one step - push it back inside the right
+    // edge, and if that has now pushed it past the left edge, sit it against
+    // the left edge instead. Any panel narrower than the screen ends up fully
+    // visible; a wider one is a CSS bug for the panel to fix, not this.
+    //
+    // Zero shift clears the transform, so a panel that already fits - every
+    // one on the sign-in page - is positioned exactly as its CSS says.
+    const GUTTER = 8;
+    const r = pop.getBoundingClientRect();
+    let shift = 0;
+    if (r.right > window.innerWidth - GUTTER) shift = (window.innerWidth - GUTTER) - r.right;
+    if (r.left + shift < GUTTER) shift = GUTTER - r.left;
+    pop.style.transform = shift ? 'translateX(' + Math.round(shift) + 'px)' : '';
+  });
+}
+
+let infoPopSeq = 0;
+
+/** Id-based wrapper, for pages whose markup is hand-written rather than generated. */
+function wireInfoDot(btnId, popId) {
+  wireInfoPop(document.getElementById(btnId), document.getElementById(popId));
 }

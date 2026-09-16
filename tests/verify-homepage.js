@@ -68,7 +68,18 @@ const layout = (page) => page.evaluate(() => {
     ok('mobile: the category strip scrolls sideways', m.stripScrolls === true, String(m.stripScrolls));
     ok('mobile: and stays one row tall', m.stripOneRow === true, String(m.stripOneRow));
     ok('mobile: chips are a comfortable touch target (>=40px)', m.chipMinHeight >= 40, String(m.chipMinHeight));
-    ok('mobile: 6 popular categories + View all, not all twelve', m.chipCount === 7, String(m.chipCount));
+    // Counted from the taxonomy rather than written down, so adding a popular
+    // category is not a failing homepage test. What matters here is the two
+    // assertions above - the strip scrolls sideways and stays ONE ROW tall -
+    // which is why the count is free to grow: .chip-strip never wraps, so more
+    // chips cost scroll distance, not page height.
+    {
+      const popular = (require('fs').readFileSync('/home/user/simple-kiri-shop/assets/js/helpers.js', 'utf8')
+        .match(/const CATEGORIES = \[([\s\S]*?)\n\];/)[1].split('\n')
+        .filter((l) => /popular:\s*true/.test(l))).length;
+      ok('mobile: the popular categories plus View all, not every category',
+        m.chipCount === popular + 1, `${m.chipCount} chips for ${popular} popular`);
+    }
     ok('mobile: bottom nav is shown', m.navDisplay === 'grid', String(m.navDisplay));
     ok('mobile: nothing overflows sideways', m.noHorizontalOverflow === true);
 
@@ -146,7 +157,9 @@ const layout = (page) => page.evaluate(() => {
     // turns "we added a category" into a failing homepage test.
     const expected = (require('fs').readFileSync('/home/user/simple-kiri-shop/assets/js/helpers.js', 'utf8')
       .match(/const CATEGORIES = \[([\s\S]*?)\n\];/)[1].match(/id: '[a-z]+'/g) || []).length;
-    ok('and shows every category there', n === expected, `${n} of ${expected}`);
+    // +1 for Featured, which heads the rail and is deliberately not a member of
+    // CATEGORIES - see FEATURED_VIEW in helpers.js.
+    ok('and shows Featured plus every category there', n === expected + 1, `${n} of ${expected + 1}`);
     await ctx.close();
   }
 

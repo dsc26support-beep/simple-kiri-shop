@@ -96,7 +96,7 @@ function route(ctx, opts, posted) {
     await ctx.close();
   }
 
-  // home-nav: signed-in customer -> "Account" link to dashboard
+  // header menu: signed-in customer -> "My Account" link to dashboard
   {
     const ctx = await browser.newContext(); const posted = [];
     await ctx.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, products: [] }) }));
@@ -104,11 +104,16 @@ function route(ctx, opts, posted) {
     await page.addInitScript(() => { try { localStorage.setItem('skiri_customer_token', 'ct'); } catch (e) {} });
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
     await page.waitForFunction(() => typeof CustomerAuth !== 'undefined');
+    await page.waitForSelector('#header-menu-btn');
     const nav = await page.evaluate(() => {
-      const link = document.getElementById('nav-signin-link');
-      return { text: link.textContent, href: link.getAttribute('href') };
+      const link = Array.prototype.filter.call(
+        document.querySelectorAll('#header-menu-panel .header-menu-item'),
+        (a) => a.querySelector('.header-menu-label').textContent.trim() === 'My Account'
+      )[0];
+      return link ? { text: link.textContent.trim(), href: link.getAttribute('href') } : null;
     });
-    ok('home nav: customer sees "Account" -> dashboard', nav.text === 'Account' && nav.href === 'customer-dashboard.html', JSON.stringify(nav));
+    ok('header menu: customer sees "My Account" -> dashboard',
+      !!nav && nav.text === 'My Account' && nav.href === 'customer-dashboard.html', JSON.stringify(nav));
     await ctx.close();
   }
 

@@ -94,6 +94,12 @@
         <p id="bookings-status" class="helper-text" aria-live="polite"></p>
         <div id="bookings-list"></div>
       </section>
+
+      <!-- Filled by customer-dashboard.js from the SERVICE WORKER's own cache
+           name, not from anything this page knows - so it reports the build the
+           phone is actually running rather than the build this HTML came from.
+           Stays empty when there is no service worker. -->
+      <p id="app-version" class="app-version-line"></p>
     </div>
   </main>
 

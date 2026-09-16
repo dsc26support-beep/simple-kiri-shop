@@ -57,18 +57,59 @@ vm.runInContext([
 const SPEC = ['Food & Groceries', 'Fashion & Beauty', 'Electronics & Phones', 'Home & Living',
   'Building & Hardware', 'Vehicles & Transport', 'Fishing & Marine', 'Agriculture & Local Products',
   'Handicrafts & Souvenirs',
-  'Property & Accommodation', 'Services', 'Education & Jobs', 'Events & Travel'];
+  'Property & Accommodation', 'Services', 'Education & Jobs', 'Events & Travel',
+  'Everything Solar', 'Hire', 'Rental'];
 const labels = fe.activeCategories().map((c) => c.label);
 ok('every primary category exists, in order',
   JSON.stringify(labels.slice(0, SPEC.length)) === JSON.stringify(SPEC), JSON.stringify(labels));
 ok('Other is last, and the only one past the spec list',
   labels[SPEC.length] === 'Other' && labels.length === SPEC.length + 1, JSON.stringify(labels));
-ok('there is no "Rentals" category - it is a listing type',
-  !labels.includes('Rentals'), JSON.stringify(labels));
-ok('the homepage shows 5-6, not all twelve',
-  fe.popularCategories().length >= 5 && fe.popularCategories().length <= 6,
-  String(fe.popularCategories().length));
+
+/* ---------- Rental is a category now, and still a listing type ---------- */
+// These were one thing and are now two, which is exactly the confusion the
+// original 'rentals' category caused. What makes it safe is that they live in
+// different namespaces and neither reads the other's ids: a row carries BOTH a
+// Category and a ListingType, and listingTypeOf() never consults the category
+// except for the legacy values below.
+ok('there is a Rental category and a rental listing type, and they are separate',
+  fe.CATEGORIES.some((c) => c.id === 'rental') &&
+  fe.LISTING_TYPES.some((t) => t.id === 'rental'));
+ok('the Rental category only accepts rentals',
+  JSON.stringify(fe.categoryById('rental').types) === '["rental"]');
+ok('Hire accepts rentals and services, which is what tells it from Rental',
+  JSON.stringify(fe.categoryById('hire').types) === '["rental","service"]');
+ok('a product filed under Rental is still typed by its listing type, not its category',
+  fe.listingTypeOf({ category: 'rental', listingType: 'product' }) === 'product');
+ok("legacy 'rentals' still goes to Other, NOT to the new Rental category",
+  fe.categoryIdOf('rentals') === 'other' && fe.categoryIdOf('rentals') === be.categoryIdOf('rentals'));
+
+ok('the homepage strip stays a scrolling row, so its length is not capped',
+  fe.popularCategories().length >= 5, String(fe.popularCategories().length));
 ok('Other is never "popular"', !fe.popularCategories().some((c) => c.id === 'other'));
+
+/* ---------- Featured is a view, not a category ---------- */
+// The safety argument for the browse rail's first entry. If 'featured' ever
+// becomes a storable id, a seller can file themselves at the top of the rail,
+// which is the one thing the admin-curated Featured sheet exists to prevent.
+const featuredView = (helpers.match(/const FEATURED_VIEW = \{[^}]*\};/) || [''])[0];
+ok('FEATURED_VIEW exists and names the rail entry',
+  /id:\s*'featured'/.test(featuredView) && /label:\s*'Featured'/.test(featuredView), featuredView);
+ok('featured is NOT a category on the frontend',
+  !fe.CATEGORIES.some((c) => c.id === 'featured'), JSON.stringify(fe.CATEGORIES.map((c) => c.id)));
+ok('featured is NOT a storable id on the backend',
+  be.CATEGORY_IDS.indexOf('featured') === -1, JSON.stringify(be.CATEGORY_IDS));
+ok('a row claiming category=featured lands in Other on BOTH sides',
+  fe.categoryIdOf('featured') === 'other' && be.categoryIdOf('featured') === 'other',
+  fe.categoryIdOf('featured') + ' / ' + be.categoryIdOf('featured'));
+
+/* ---------- Other is off the seller's form, on the shopper's rail ---------- */
+const ownerProducts = fs.readFileSync(REPO + 'assets/js/owner-products.js', 'utf8');
+ok('Other is still active, so a shopper can still browse what is in it',
+  fe.categoryById('other').active === true);
+ok('the seller form no longer force-includes Other',
+  !/c\.id === 'other' \|\|/.test(ownerProducts), 'the old force-include is still there');
+ok('the seller form offers Other back only to a listing already filed in it',
+  /c\.id === 'other' \? keepId === 'other'/.test(ownerProducts));
 ok('every category carries the fields the spec asks for',
   fe.CATEGORIES.every((c) => c.id && c.label && typeof c.order === 'number' &&
     typeof c.active === 'boolean' && Array.isArray(c.types)),

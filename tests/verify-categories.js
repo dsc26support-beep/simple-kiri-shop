@@ -5,10 +5,20 @@ const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
-// The new taxonomy's ids. 'rentals' is gone entirely - it became a listing
-// type, not a category. 'handicrafts' sits next to 'agriculture' on purpose.
+// The taxonomy's ids. 'handicrafts' sits next to 'agriculture' on purpose.
+//
+// There is a 'rental' CATEGORY now as well as a 'rental' listing type. They are
+// separate namespaces and neither reads the other's ids; test-taxonomy.js holds
+// the assertions that keep them apart. The legacy 'rentals' value is still not
+// a category and still maps to Other.
 const CATS = ['food', 'fashion', 'electronics', 'home', 'building', 'vehicles',
-  'fishing', 'agriculture', 'handicrafts', 'property', 'services', 'education', 'events', 'other'];
+  'fishing', 'agriculture', 'handicrafts', 'property', 'services', 'education', 'events',
+  'solar', 'hire', 'rental', 'other'];
+// Featured heads the rail and is NOT one of the above: it is a view over the
+// admin-curated sheet, so nothing can be filed under it. Keeping it out of
+// CATS is what makes the "no retired category is offered" check below mean
+// something.
+const RAIL = ['featured'].concat(CATS);
 const mk = (cat, i) => ({
   productId: `${cat}-${i}`, name: `${cat} item ${i}`, category: cat, description: 'x',
   imageUrl: '', storeSlug: 'bong', storeName: 'Bong Store', island: 'South Tarawa', village: 'Bairiki',
@@ -83,10 +93,20 @@ const railState = (page) => page.evaluate(() => ({
   /* --- rail --- */
   let { ctx, page, asked } = await open(browser, '/categories.html');
   let s = await railState(page);
-  ok('rail lists every active category in display order', s.items.join(',') === CATS.join(','), s.items.join(','));
+  ok('rail is Featured followed by every active category in display order',
+    s.items.join(',') === RAIL.join(','), s.items.join(','));
   ok('rail labels come from the shared taxonomy',
-    s.labels[0] === 'Food & Groceries' && s.labels[s.labels.length - 1] === 'Other', s.labels.join('|'));
-  ok('the rail is every category plus Other', s.labels.length === CATS.length, String(s.labels.length));
+    s.labels[0] === 'Featured' && s.labels[1] === 'Food & Groceries' &&
+    s.labels[s.labels.length - 1] === 'Other', s.labels.join('|'));
+  ok('the rail is Featured plus every category plus Other',
+    s.labels.length === RAIL.length, String(s.labels.length));
+  ok('Featured is set apart without relying on colour',
+    await page.evaluate(() => {
+      const el = document.querySelector('.category-rail-item--featured');
+      if (!el) return false;
+      const cs = getComputedStyle(el);
+      return Number(cs.fontWeight) >= 700 && cs.borderBottomStyle !== 'none';
+    }));
   ok('no retired category is offered',
     !s.items.some((id) => ['pantry', 'clothing', 'household', 'rentals', 'general'].includes(id)), s.items.join(','));
   ok('no rail content escapes the rail', s.overflowing.length === 0, s.overflowing.join(' | '));

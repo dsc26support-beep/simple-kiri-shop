@@ -20,6 +20,7 @@ async function init() {
   wireDashActions();
   loadOrders();
   loadBookings();
+  showAppVersion();
 
   // After first paint, and after the two lists that people actually came for.
   // Nothing on screen depends on the answer, so it must not compete with them.
@@ -476,4 +477,25 @@ async function onArchive(kind, id, archived) {
   await showOrderSentPopup(archived ? 'Removed from your list' : 'Put back', 900);
   if (isOrder) await loadOrders({ includeArchived: archivedOrdersLoaded });
   else await loadBookings({ includeArchived: archivedBookingsLoaded });
+}
+
+
+/**
+ * The build this phone is actually running, for when someone reports a problem.
+ *
+ * Read from the SERVICE WORKER rather than from anything this page knows. An
+ * installed app can be running a worker several releases behind the HTML a
+ * fresh browser would fetch, and that gap is precisely the situation a person
+ * on the phone is in when they call. A number this page hard-coded would report
+ * the build we wish they had.
+ *
+ * Silent when there is no worker - a line reading "unknown" invites a question
+ * nobody can answer.
+ */
+function showAppVersion() {
+  const el = document.getElementById('app-version');
+  if (!el || typeof MwaketeVersion === 'undefined') return;
+  MwaketeVersion.get().then((v) => {
+    if (v) el.textContent = 'Mwakete ' + v;
+  }).catch(() => {});
 }

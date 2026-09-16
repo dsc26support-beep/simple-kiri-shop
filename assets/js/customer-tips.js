@@ -27,4 +27,8 @@ async function init() {
     document.getElementById('tips-products').innerHTML = products.map((p) => renderBrowseProductCard(p)).join('');
     document.getElementById('tips-products-wrap').classList.remove('hidden');
   }
+  // Card badges cannot carry their own popover (they sit inside the card's
+  // link), so the page explains them once. Renders nothing when nothing on the
+  // page has a badge.
+  mountBadgeLegend('tips-badge-legend', products.concat(stores));
 }

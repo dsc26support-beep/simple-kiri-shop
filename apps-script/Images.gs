@@ -57,7 +57,7 @@ function actionUploadProductImage(owner, body) {
 
   if (oldFileId) deleteStoredImage(oldFileId);
 
-  invalidateCache(['v1:listProducts:' + owner.StoreSlug]);
+  invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
   return ok({ imageUrl: uploaded.imageUrl, slot: slot });
 }
 
@@ -90,7 +90,7 @@ function actionUploadStoreLogo(owner, body) {
 
   if (oldFileId) deleteStoredImage(oldFileId);
 
-  invalidateCache(['v1:listStores', 'v1:listProducts:' + owner.StoreSlug, 'v2:storeInfo:' + owner.StoreSlug, 'v1:topStores']);
+  invalidateCache(storeCacheKeys(owner.StoreSlug));
   return ok({ logoUrl: uploaded.imageUrl });
 }
 
@@ -158,7 +158,7 @@ function actionUploadOwnerIdLicense(owner, body) {
 
   // No cache invalidation here, unlike the logo upload above - IdLicenseUrl
   // is never part of any cached public response
-  // (v1:listStores/listProducts/storeInfo/topStores), so there's nothing
+  // (see storeCacheKeys in Products.gs), so there's nothing
   // stale to clear.
   return ok({ idLicenseUrl: uploaded.imageUrl });
 }

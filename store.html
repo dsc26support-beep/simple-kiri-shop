@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
 </head>
-<body class="has-bottom-nav">
+<body class="has-bottom-nav has-header-menu">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
@@ -123,7 +123,21 @@
           </button>
         </form>
         <p id="products-status" class="helper-text is-reserving-space" role="status">Loading products…</p>
+        <!-- Directly above the grid, and NOT above the search box where it
+             started: filled after the fetch, it pushed the search box, the
+             status line and the whole grid down - 0.01 CLS on a phone against
+             a baseline of 0.0001. Here the only thing below it is the grid,
+             which is filled in the same task and was empty until then.
+
+             Not in the header branding block either. That sits above <main>,
+             so anything added to it after the fetch moves the entire page -
+             which is where this page's sibling once measured 0.853. -->
+        <div id="store-seller-badges" class="store-seller-badges"></div>
         <div id="product-list" class="product-grid"></div>
+        <!-- Filled by mountBadgeLegend (badges.js) only when a card on this
+             page actually carries a badge - a panel explaining eight badges
+             none of which appear would be clutter. -->
+        <div id="store-badge-legend"></div>
         <p id="cart-feedback" class="form-success" aria-live="polite"></p>
         <noscript><p>Please enable JavaScript to shop with us.</p></noscript>
       </div>
@@ -140,6 +154,7 @@
   <script defer src="assets/js/config.min.js"></script>
   <script defer src="assets/js/api.min.js"></script>
   <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/badges.min.js"></script>
   <script defer src="assets/js/cookie-consent.min.js"></script>
   <script defer src="assets/js/chat-window.min.js"></script>
   <script defer src="assets/js/fab-drag.min.js"></script>
@@ -148,6 +163,7 @@
   <script defer src="assets/js/store.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>
+  <script defer src="assets/js/header-menu.min.js"></script>
   <script defer src="assets/js/bottom-nav.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>
 </body>

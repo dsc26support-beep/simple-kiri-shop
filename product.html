@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
 </head>
-<body class="has-bottom-nav">
+<body class="has-bottom-nav has-header-menu">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
@@ -135,7 +135,14 @@
            The summary carries the SCORE. Collapsing the section hides the most
            persuasive thing on a product page, so a product with 4.5 from twelve
            people must not look like one with none. -->
+      <!-- The seller's badges sit with the store link rather than up in the
+           header branding. That block is ABOVE <main>, so anything added to it
+           after the fetch pushes the whole page down - it is where this page
+           once measured 0.853 CLS. This row is already hidden until the
+           product card renders and revealed in the same task, so badges here
+           cost nothing at all. -->
       <div class="product-meta-row" id="product-meta-row" hidden>
+        <span id="product-seller-badges" class="product-seller-badges"></span>
         <details class="reviews-section" id="reviews-section" hidden>
           <summary class="reviews-toggle">
             <span class="reviews-toggle-title">Ratings &amp; reviews</span>
@@ -169,6 +176,7 @@
   <script defer src="assets/js/config.min.js"></script>
   <script defer src="assets/js/api.min.js"></script>
   <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/badges.min.js"></script>
   <script defer src="assets/js/cookie-consent.min.js"></script>
   <script defer src="assets/js/chat-window.min.js"></script>
   <script defer src="assets/js/fab-drag.min.js"></script>
@@ -176,6 +184,7 @@
   <script defer src="assets/js/product-card.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>
+  <script defer src="assets/js/header-menu.min.js"></script>
   <script defer src="assets/js/bottom-nav.min.js"></script>
   <script defer src="assets/js/product-page.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>

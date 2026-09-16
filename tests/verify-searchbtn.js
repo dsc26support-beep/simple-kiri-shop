@@ -42,11 +42,17 @@ const BASE = 'http://127.0.0.1:8099';
     const page = await ctx.newPage();
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(BASE + '/' + path, { waitUntil: 'load' });
-    await page.waitForSelector('.search-box button[type="submit"]');
+    // Attached, not visible. An EMPTY search box collapses its button to
+    // width 0 / visibility:hidden on purpose (.search-box.is-empty), and
+    // helpers.js adds that class a moment after load - so waiting for the
+    // button to be visible before typing is a race against the page's own
+    // script, and the number of deferred scripts on the page decides who wins.
+    await page.waitForSelector('.search-box button[type="submit"]', { state: 'attached' });
     // The font-size:0 + ">" pair is gone: the word is clipped with .sr-only
     // geometry and a magnifying glass is drawn instead. The a11y assertion -
     // the reason this suite exists - is unchanged and still the important one.
     await page.fill('.search-box input[type="search"]', 'r');
+    await page.waitForSelector('.search-box button[type="submit"]', { state: 'visible' });
     await page.waitForTimeout(300);
     const s = await searchBtnState(page);
     ok(`mobile ${label}: label clipped, not shrunk to nothing`, s && s.labelClipped === true, s && s.fontSize);
@@ -60,7 +66,9 @@ const BASE = 'http://127.0.0.1:8099';
     const page = await ctx.newPage();
     await page.setViewportSize({ width: 900, height: 800 });
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
-    await page.waitForSelector('.search-box button[type="submit"]');
+    await page.waitForSelector('.search-box button[type="submit"]', { state: 'attached' });
+    await page.fill('.search-box input[type="search"]', 'r');   // same collapse rule applies
+    await page.waitForSelector('.search-box button[type="submit"]', { state: 'visible' });
     const s = await searchBtnState(page);
     ok('desktop: shows "Search" text', s && s.fontSize !== '0px', s && s.fontSize);
     ok('desktop: no ">" glyph', s && (s.afterContent === 'none' || s.afterContent === 'normal' || !/>/.test(s.afterContent)), s && s.afterContent);

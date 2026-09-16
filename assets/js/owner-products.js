@@ -32,26 +32,40 @@ function varietiesSectionText(listingType) {
 /**
  * Fills the category picker with the categories that make sense for the chosen
  * listing type, so a seller offering a service is not scrolling past "Building
- * & Hardware". Other is always present, so there is never a listing that
- * cannot be filed.
+ * & Hardware".
+ *
+ * Other is NO LONGER offered. It was the catch-all that meant nothing could be
+ * unfileable, and it became the place things went instead of being filed;
+ * there are seventeen categories now and every listing type has several. It
+ * stays on the browse rail, so anything already sitting in it is still
+ * reachable by a shopper.
+ *
+ * The one exception is a product that is ALREADY in Other. Dropping the option
+ * out from under it would leave the picker empty on open and the save blocked
+ * by the "choose a category" guard - so someone editing that listing's price
+ * would be forced to re-file it first. It is offered back to them, marked, and
+ * disappears the moment they pick anything else.
  *
  * Keeps the current selection if it survives the narrowing - changing type
  * should not silently clear a category the seller already picked.
  */
 function onListingTypeChange() {
   const type = document.getElementById('product-listing-type').value;
-  fillCategoryOptions(type);
+  fillCategoryOptions(type, document.getElementById('product-category').value);
   updateVarietyLabels();
 }
 
-function fillCategoryOptions(listingType) {
+function fillCategoryOptions(listingType, keepId) {
   const select = document.getElementById('product-category');
   const previous = select.value;
   const list = activeCategories().filter(
-    (c) => c.id === 'other' || !listingType || c.types.indexOf(listingType) !== -1
+    (c) => (c.id === 'other' ? keepId === 'other' : (!listingType || c.types.indexOf(listingType) !== -1))
   );
   select.innerHTML = '<option value="" disabled' + (previous ? '' : ' selected') + '>Choose a category…</option>' +
-    list.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`).join('');
+    list.map((c) => {
+      const label = c.id === 'other' ? c.label + ' (please re-file)' : c.label;
+      return `<option value="${escapeHtml(c.id)}">${escapeHtml(label)}</option>`;
+    }).join('');
   if (previous && list.some((c) => c.id === previous)) select.value = previous;
 }
 
@@ -185,9 +199,10 @@ function openForm(product) {
     // listingTypeOf() recovers the type of a listing saved before the field
     // existed, so an old rental opens as a rental rather than as a product.
     const type = listingTypeOf(product);
+    const existing = categoryIdOf(product.category);
     document.getElementById('product-listing-type').value = type;
-    fillCategoryOptions(type);
-    document.getElementById('product-category').value = categoryIdOf(product.category);
+    fillCategoryOptions(type, existing);
+    document.getElementById('product-category').value = existing;
     document.getElementById('product-status').value = product.status || 'active';
     if (product.imageUrl) {
       preview.src = optimizedImageUrl(product.imageUrl, IMG_W.card);
@@ -207,7 +222,7 @@ function openForm(product) {
     document.getElementById('product-name').value = '';
     document.getElementById('product-description').value = '';
     document.getElementById('product-listing-type').value = '';
-    fillCategoryOptions('');
+    fillCategoryOptions('', '');   // a new listing never gets Other
     document.getElementById('product-category').value = '';
     document.getElementById('product-status').value = 'active';
     preview.classList.add('hidden');

@@ -88,16 +88,30 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     }, seed);
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
     await page.waitForFunction(() => typeof CustomerAuth !== 'undefined');
+    // These two rules used to live in the homepage nav row; they now live in
+    // the header overflow menu, which is the only place on the homepage that
+    // offers either destination. Same four session states, same two rules.
+    await page.waitForSelector('#header-menu-btn');
     const st = await page.evaluate(() => {
-      const cs = document.getElementById('nav-create-store');
-      const si = document.getElementById('nav-signin');
-      const link = document.getElementById('nav-signin-link');
-      return { createHidden: cs.hidden, signinHidden: si.hidden, signinHref: link.getAttribute('href') };
+      const items = Array.prototype.map.call(
+        document.querySelectorAll('#header-menu-panel .header-menu-item'),
+        (a) => ({ label: a.querySelector('.header-menu-label').textContent.trim(),
+                  href: a.getAttribute('href'),
+                  chooser: a.hasAttribute('data-login-chooser') })
+      );
+      const account = items.filter((i) => i.label === 'My Account')[0] || null;
+      return {
+        createShown: items.some((i) => i.label === 'Create Store'),
+        accountHref: account && account.href,
+        accountChooser: !!(account && account.chooser)
+      };
     });
-    // routing: click sign in when owner-only should show chooser
+    // The chooser is a claim about behaviour, so click it rather than trust the
+    // attribute that says it will happen.
     let chooser = false;
-    if (!st.signinHidden) {
-      await page.click('#nav-signin-link').catch(() => {});
+    if (st.accountChooser) {
+      await page.click('#header-menu-btn');
+      await page.click('#header-menu-panel [data-login-chooser]').catch(() => {});
       chooser = await page.evaluate(() => !!document.getElementById('login-chooser'));
     }
     await ctx.close();
@@ -105,23 +119,27 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
   }
 
   const none = await homeState({});
-  ok('none: both links visible', !none.createHidden && !none.signinHidden, JSON.stringify(none));
-  ok('none: Sign In routes to customer-login', none.signinHref === 'customer-login.html', none.signinHref);
+  ok('none: Create Store offered', none.createShown, JSON.stringify(none));
+  ok('none: My Account routes to customer-login', none.accountHref === 'customer-login.html', none.accountHref);
   ok('none: no chooser (navigates directly)', none.chooser === false);
 
   const cust = await homeState({ customer: true });
-  ok('customer: Sign In hidden, Create Store shown', cust.signinHidden && !cust.createHidden, JSON.stringify(cust));
+  ok('customer: My Account is the dashboard, Create Store still offered',
+    cust.accountHref === 'customer-dashboard.html' && cust.createShown, JSON.stringify(cust));
+  ok('customer: no chooser', cust.chooser === false);
 
   const owner = await homeState({ owner: true });
-  ok('owner: Create Store hidden, Sign In shown', owner.createHidden && !owner.signinHidden, JSON.stringify(owner));
-  ok('owner: Sign In shows Customer/Seller chooser', owner.chooser === true, JSON.stringify(owner));
+  ok('owner: Create Store gone', !owner.createShown, JSON.stringify(owner));
+  ok('owner: My Account shows Customer/Seller chooser', owner.chooser === true, JSON.stringify(owner));
 
   const both = await homeState({ owner: true, customer: true });
-  ok('both: both links hidden', both.createHidden && both.signinHidden, JSON.stringify(both));
+  ok('both: Create Store gone, My Account is the dashboard',
+    !both.createShown && both.accountHref === 'customer-dashboard.html', JSON.stringify(both));
+  ok('both: no chooser - the customer account settles it', both.chooser === false);
 
   await browser.close();
   let failed = 0;
-  console.log('\n--- Phase 2: customer auth + homepage links ---');
+  console.log('\n--- Phase 2: customer auth + header menu links ---');
   for (const [st, n, e] of results) { if (st === 'FAIL') failed++; console.log(`${st}  ${n}${e ? '  [' + e + ']' : ''}`); }
   console.log(`\n${results.length - failed}/${results.length} passed`);
   process.exit(failed ? 1 : 0);

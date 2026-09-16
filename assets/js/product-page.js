@@ -89,6 +89,7 @@ async function init() {
   // box and then be pushed down the height of the whole product card, which
   // measured 0.11 CLS on a phone against 0.026 for the loose link it replaced.
   showMetaRow();
+  renderStoreBadges(res.sellerBadges);
   document.title = `${product.name} — Mwakete`;
   wireActions();
   wireGallery();
@@ -118,6 +119,21 @@ async function init() {
   // filling it moves nothing.
   showRelatedSkeleton();
   whenIdle(loadRelated);
+}
+
+/**
+ * The seller's badges, at detail size with their own explanations.
+ *
+ * Interactive here because these are NOT inside a link - unlike the badges on a
+ * product card, which are read-only for exactly that reason. Rendered in the
+ * same task as the card and the meta row, so all three land together and
+ * nothing moves afterwards.
+ */
+function renderStoreBadges(ids) {
+  const el = document.getElementById('product-seller-badges');
+  if (!el || typeof renderSellerBadges !== 'function') return;
+  el.innerHTML = renderSellerBadges(ids, { size: 'detail' });
+  wireSellerBadges(el);
 }
 
 /* The ratings toggle and the store link. Hidden in the markup, because

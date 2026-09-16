@@ -14,7 +14,9 @@ async function init() {
   document.getElementById('feature-store-btn').addEventListener('click', onFeatureStore);
   document.getElementById('prod-store-select').addEventListener('change', onPickStoreForProduct);
   document.getElementById('feature-product-btn').addEventListener('click', onFeatureProduct);
+  document.getElementById('badge-recompute-btn').addEventListener('click', onRecomputeBadges);
   loadFeatured();
+  loadSellerBadges();
 }
 
 async function loadStores() {
@@ -103,4 +105,231 @@ function featuredRow(f) {
 async function onRemove(featuredId) {
   const res = await Api.post('removeFeatured', { token: Auth.getToken(), featuredId });
   if (res.ok) loadFeatured();
+}
+
+/* ---- Seller badges ---------------------------------------------------------
+ *
+ * Renders with the SAME .seller-badge component the storefront uses, plus
+ * admin-only indicators beside it. A separate visual language for
+ * administration would mean an admin checking what a shopper sees has to
+ * translate between two of them.
+ *
+ * What is admin-only here is the information, not the styling: the score, the
+ * order and reply figures, and the sentence explaining why each badge was
+ * awarded. None of that appears in a customer response.
+ */
+
+let badgeSellers = [];
+let badgeConfigValues = {};
+
+async function loadSellerBadges() {
+  const statusEl = document.getElementById('badge-status');
+  const listEl = document.getElementById('badge-seller-list');
+  const stop = startLoadingMessage(statusEl);
+  const res = await Api.post('listSellerBadges', { token: Auth.getToken() });
+  stop();
+
+  if (!res.ok) {
+    listEl.innerHTML = '';
+    showLoadFailedMessage(statusEl);
+    return;
+  }
+
+  badgeSellers = res.sellers || [];
+  badgeConfigValues = res.config || {};
+  statusEl.textContent = badgeSellers.length ? '' : 'No stores yet.';
+
+  // The newest snapshot timestamp across all sellers - they are all written in
+  // one pass, so any of them dates the whole table.
+  const stamped = badgeSellers.map((s) => s.updatedAt).filter(Boolean).sort();
+  document.getElementById('badge-updated').textContent = stamped.length
+    ? 'Last worked out ' + new Date(stamped[stamped.length - 1]).toLocaleString()
+    : 'Not worked out yet — press Recompute now.';
+
+  listEl.innerHTML = badgeSellers.map(sellerBadgeRowHtml).join('');
+  wireSellerBadgeControls();
+  renderBadgeConfig();
+}
+
+/**
+ * Every badge shown with its SOURCE, and every badge the data says they have
+ * earned even when an override hides it.
+ *
+ * Showing only the result would hide the thing an admin most needs to know:
+ * whether a store is decorated because it earned it or because someone pressed
+ * a button.
+ */
+function sellerBadgeRowHtml(s) {
+  const chip = (ids) => (typeof renderSellerBadges === 'function'
+    ? renderSellerBadges(ids, { size: 'chip', interactive: false }) : '');
+
+  const shown = s.badges.length
+    ? s.badges.map((id) => `
+        <div class="badge-admin-item">
+          ${chip([id])}
+          <span class="badge-admin-source badge-admin-source--${s.source[id] === 'admin' ? 'admin' : 'auto'}">
+            ${s.source[id] === 'admin' ? 'ADMIN OVERRIDE' : 'AUTO AWARDED'}
+          </span>
+          ${s.why[id] ? `<span class="helper-text badge-admin-why">${escapeHtml(s.why[id])}</span>` : ''}
+        </div>`).join('')
+    : '<p class="helper-text">No badges.</p>';
+
+  // Earned but not shown - the case an admin needs spelled out rather than
+  // inferred from an absence.
+  const withheld = (s.autoBadges || []).filter((id) => s.badges.indexOf(id) === -1);
+  const withheldHtml = withheld.length
+    ? `<div class="badge-admin-item badge-admin-item--withheld">
+         ${chip(withheld)}
+         <span class="badge-admin-source badge-admin-source--withheld">EARNED, NOT SHOWN</span>
+         <span class="helper-text badge-admin-why">${s.suppressed
+           ? 'This store is hidden from all badges.' : 'Removed by an admin.'}</span>
+       </div>`
+    : '';
+
+  const m = s.metrics || {};
+  const figure = (label, value) => `<span><strong>${escapeHtml(String(value))}</strong> ${label}</span>`;
+
+  return `
+    <div class="dash-item badge-admin-row" data-owner-id="${escapeHtml(s.ownerId)}">
+      <div class="badge-admin-head">
+        <strong>${escapeHtml(s.storeName || s.storeSlug)}</strong>
+        <span class="helper-text">${escapeHtml(s.storeSlug)}${s.status && s.status !== 'active' ? ' · ' + escapeHtml(s.status) : ''}</span>
+      </div>
+
+      <p class="helper-text badge-admin-figures">
+        ${s.score === null ? '<span>Not enough data to score</span>' : figure('score', s.score)}
+        ${figure('orders', m.orders || 0)}
+        ${figure('fulfilled', m.fulfilled || 0)}
+        ${figure('cancelled', m.cancelled || 0)}
+        ${figure('reviews', m.reviews || 0)}
+        ${m.rating != null ? figure('average', m.rating) : ''}
+        ${m.medianReplyMinutes != null ? figure('min median reply', m.medianReplyMinutes) : ''}
+        ${figure('repeat customers', m.repeatCustomers || 0)}
+      </p>
+
+      <div class="badge-admin-badges">${shown}${withheldHtml}</div>
+
+      <div class="badge-admin-controls">
+        ${overrideControl(s, 'verified', 'Verified Seller')}
+        ${overrideControl(s, 'recommended', 'Mwakete Recommended')}
+        <label class="badge-admin-suppress">
+          <input type="checkbox" data-badge-suppress ${s.suppressed ? 'checked' : ''}>
+          Hide all badges for this store
+        </label>
+      </div>
+    </div>`;
+}
+
+/**
+ * Three states, not two: granted, removed, and "leave it to the data".
+ *
+ * A plain on/off switch cannot express the third, and it is the one that
+ * matters - clearing an override has to put a seller back under the automatic
+ * rules rather than silently meaning "no".
+ */
+function overrideControl(s, field, label) {
+  const current = s.overrides[field] || '';
+  const opt = (v, text) =>
+    `<option value="${v}"${current === v ? ' selected' : ''}>${text}</option>`;
+  return `
+    <label class="badge-admin-override">
+      <span>${escapeHtml(label)}</span>
+      <select data-badge-field="${field}">
+        ${opt('', 'Automatic')}
+        ${opt('true', 'Granted')}
+        ${opt('false', 'Removed')}
+      </select>
+    </label>`;
+}
+
+function wireSellerBadgeControls() {
+  document.querySelectorAll('.badge-admin-row').forEach((row) => {
+    const ownerId = row.dataset.ownerId;
+    row.querySelectorAll('[data-badge-field]').forEach((sel) => {
+      sel.addEventListener('change', () =>
+        setBadgeOverride(ownerId, sel.dataset.badgeField, sel.value, sel));
+    });
+    const box = row.querySelector('[data-badge-suppress]');
+    if (box) {
+      box.addEventListener('change', () =>
+        setBadgeOverride(ownerId, 'suppressed', box.checked ? 'true' : '', box));
+    }
+  });
+}
+
+async function setBadgeOverride(ownerId, field, value, control) {
+  const errorEl = document.getElementById('badge-error');
+  errorEl.textContent = '';
+  control.disabled = true;
+  const res = await Api.post('setSellerBadgeOverride', {
+    token: Auth.getToken(), ownerId, field, value
+  });
+  control.disabled = false;
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not change that.';
+    return;
+  }
+  // Reloaded rather than patched in place: the backend recomputes every store,
+  // and a relative badge like Popular Seller can move between stores as a
+  // result. Showing a stale table would be showing something untrue.
+  loadSellerBadges();
+}
+
+/* ---- settings ---- */
+
+function renderBadgeConfig() {
+  const el = document.getElementById('badge-config-list');
+  if (!el) return;
+  const keys = Object.keys(badgeConfigValues).sort();
+  el.innerHTML = keys.map((key) => {
+    const value = badgeConfigValues[key];
+    const isFlag = value === 'true' || value === 'false';
+    const id = 'cfg-' + key.replace(/[^a-z0-9]/gi, '-');
+    const input = isFlag
+      ? `<select id="${id}" data-config-key="${escapeHtml(key)}">
+           <option value="true"${value === 'true' ? ' selected' : ''}>On</option>
+           <option value="false"${value === 'false' ? ' selected' : ''}>Off</option>
+         </select>`
+      : `<input id="${id}" type="number" step="any" min="0"
+           data-config-key="${escapeHtml(key)}" value="${escapeHtml(String(value))}">`;
+    return `<div class="field badge-config-field">
+        <label for="${id}">${escapeHtml(key)}</label>
+        ${input}
+      </div>`;
+  }).join('');
+
+  el.querySelectorAll('[data-config-key]').forEach((input) => {
+    input.addEventListener('change', () => saveBadgeConfig(input));
+  });
+}
+
+async function saveBadgeConfig(input) {
+  const errorEl = document.getElementById('badge-error');
+  errorEl.textContent = '';
+  input.disabled = true;
+  const res = await Api.post('setBadgeConfig', {
+    token: Auth.getToken(), key: input.dataset.configKey, value: input.value
+  });
+  input.disabled = false;
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not save that setting.';
+    return;
+  }
+  loadSellerBadges();
+}
+
+async function onRecomputeBadges() {
+  const btn = document.getElementById('badge-recompute-btn');
+  const errorEl = document.getElementById('badge-error');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+  const res = await Api.post('recomputeBadges', { token: Auth.getToken() });
+  btn.disabled = false;
+  btn.textContent = 'Recompute now';
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not recompute.';
+    return;
+  }
+  loadSellerBadges();
 }

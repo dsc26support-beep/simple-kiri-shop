@@ -45,7 +45,8 @@ var PROTECTED_POST_ACTIONS = [
   'listOwnerBookings', 'updateBookingStatus',
   'enable2FARequest', 'confirm2FASetup', 'disable2FA',
   'getVendorConversations', 'deleteConversation', 'archiveConversation', 'getUnreadCount',
-  'listFeatured', 'addFeatured', 'removeFeatured'
+  'listFeatured', 'addFeatured', 'removeFeatured',
+  'listSellerBadges', 'setSellerBadgeOverride', 'setBadgeConfig', 'recomputeBadges'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -65,7 +66,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'store1-2026-09-11';
+var APP_VERSION = 'cats1-2026-09-16';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -126,7 +127,12 @@ var REQUIRED_TABS = {
   CustomerCodes: ['Token', 'Email', 'Code', 'Purpose', 'Name', 'Phone', 'CreatedAt', 'ExpiresAt', 'Attempts'],
   Featured: ['FeaturedId', 'Type', 'RefId', 'SortOrder', 'CreatedAt'],
   Reviews: ['ReviewId', 'ProductId', 'OwnerId', 'StoreSlug', 'CustomerId', 'CustomerName',
-            'Rating', 'Comment', 'VerifiedPurchase', 'Status', 'CreatedAt', 'UpdatedAt']
+            'Rating', 'Comment', 'VerifiedPurchase', 'Status', 'CreatedAt', 'UpdatedAt'],
+  // Both are derived or configuration - nothing but recomputeSellerBadges and
+  // the admin page writes to them - so setupSheets repairing a header row here
+  // can never touch a transaction the way it must never touch Orders.
+  SellerBadges: ['OwnerId', 'Badges', 'Score', 'MetricsJson', 'ReasonJson', 'UpdatedAt'],
+  BadgeConfig: ['Key', 'Value', 'UpdatedAt']
 };
 
 /**
@@ -180,6 +186,7 @@ function actionCheckSetup() {
   if (typeof actionRegisterCustomer !== 'function') missingFiles.push('Customers.gs');
   if (typeof actionGetTips !== 'function') missingFiles.push('Admin.gs');
   if (typeof actionSubmitReview !== 'function') missingFiles.push('Reviews.gs');
+  if (typeof sellerBadgeIndex !== 'function') missingFiles.push('Badges.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -420,6 +427,10 @@ function doPost(e) {
         case 'listFeatured': return jsonOut(actionListFeatured(owner, body));
         case 'addFeatured': return jsonOut(actionAddFeatured(owner, body));
         case 'removeFeatured': return jsonOut(actionRemoveFeatured(owner, body));
+        case 'listSellerBadges': return jsonOut(actionListSellerBadges(owner, body));
+        case 'setSellerBadgeOverride': return jsonOut(actionSetSellerBadgeOverride(owner, body));
+        case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
+        case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }
     }
 
