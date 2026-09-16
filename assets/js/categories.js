@@ -42,6 +42,9 @@ let siteQuery = '';
 let currentType = '';
 // Admin-curated featured items, fetched once. Never re-fetched on a rail tap.
 let featuredProducts = null;
+// The in-flight fetch for the above, so the Featured view can await the same
+// request rather than starting a second one.
+let featuredRequest = null;
 // Results are cached per category for the life of the page, so flicking back
 // and forth along the rail doesn't re-hit a backend that takes a second to
 // answer on a mobile connection.
@@ -53,8 +56,10 @@ async function init() {
   homeMoreButton();
   wireBrowseSearch();
   // Deliberately not awaited: the featured strip is editorial garnish and must
-  // never hold up the products the shopper came for.
-  loadFeatured();
+  // never hold up the products the shopper came for. The promise is kept so
+  // the Featured VIEW - where those items are the whole page, not garnish -
+  // can wait for the one request already in flight instead of making a second.
+  featuredRequest = loadFeatured();
 
   currentType = getQueryParam('type') || '';
   const q = (getQueryParam('q') || '').trim();
@@ -67,7 +72,13 @@ async function init() {
   const requested = getQueryParam('category');
   // An unknown slug (a stale link, a renamed category) falls back to the first
   // rather than rendering an empty page with nothing selected.
-  const known = activeCategories().some((c) => c.id === requested);
+  //
+  // Featured is a valid destination for a shared link but NOT the default
+  // landing: it holds only what an admin has hand-picked, so on a day nobody
+  // has curated anything the page would open empty. The first real category
+  // always has something in it.
+  const known = requested === FEATURED_VIEW.id ||
+    activeCategories().some((c) => c.id === requested);
   await selectCategory(known ? requested : activeCategories()[0].id, { replaceUrl: false });
 }
 
@@ -130,8 +141,13 @@ function renderRail() {
   // anything switched off, so retiring a category is a data change rather than
   // an edit here. This page is "view all", so unlike the homepage strip it
   // deliberately shows every one, Other included.
-  document.getElementById('category-rail').innerHTML = activeCategories().map((c) => `
-    <button type="button" class="category-rail-item" data-category="${escapeHtml(c.id)}" aria-pressed="false">
+  // Featured is prepended rather than being a member of CATEGORIES, because
+  // that list is the set of ids a row may be FILED under and this one is a view
+  // over the curated sheet. See FEATURED_VIEW in helpers.js for why that
+  // separation is the whole safety argument.
+  const entries = [FEATURED_VIEW].concat(activeCategories());
+  document.getElementById('category-rail').innerHTML = entries.map((c) => `
+    <button type="button" class="category-rail-item${c.id === FEATURED_VIEW.id ? ' category-rail-item--featured' : ''}" data-category="${escapeHtml(c.id)}" aria-pressed="false">
       <span class="category-rail-label">${escapeHtml(c.label)}</span>
     </button>
   `).join('');
@@ -172,7 +188,7 @@ async function selectCategory(categoryId, opts) {
   const pane = document.querySelector('.category-pane');
   if (pane) pane.scrollTop = 0;
 
-  const meta = categoryById(categoryId);
+  const meta = categoryId === FEATURED_VIEW.id ? FEATURED_VIEW : categoryById(categoryId);
   document.getElementById('category-pane-heading').textContent = meta ? meta.label : 'Browse';
   document.title = `${meta ? meta.label : 'Browse'} — Mwakete`;
 
@@ -187,6 +203,11 @@ async function selectCategory(categoryId, opts) {
     params.set('category', categoryId);
     if (currentType) params.set('type', currentType);
     history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+  }
+
+  if (categoryId === FEATURED_VIEW.id) {
+    await showFeaturedView();
+    return;
   }
 
   if (categoryCache[categoryId]) {
@@ -279,6 +300,12 @@ function render() {
       runDiscovery();
       return;
     }
+    if (currentCategory === FEATURED_VIEW.id) {
+      statusEl.textContent = searchTerm
+        ? `Nothing featured matches "${searchTerm}".`
+        : 'Nothing featured right now — pick a category to start browsing.';
+      return;
+    }
     statusEl.textContent = searchTerm
       ? `Nothing in this category matches "${searchTerm}".`
       : 'Nothing in this category yet — try another, or search for what you need.';
@@ -300,6 +327,37 @@ function render() {
 }
 
 /**
+ * The whole pane, when the shopper taps Featured at the top of the rail.
+ *
+ * No backend call of its own. loadFeatured() is already in flight from init(),
+ * so this waits on that one request rather than asking for the same rows a
+ * second time - the page is on a connection that takes a second to answer.
+ *
+ * The strip is hidden here: it exists to show a category's featured items
+ * ABOVE that category's products, and above a list of featured items it would
+ * be the same rows printed twice.
+ */
+async function showFeaturedView() {
+  const statusEl = document.getElementById('category-status');
+  const listEl = document.getElementById('category-list');
+  listEl.innerHTML = '';
+  document.getElementById('category-more').hidden = true;
+
+  if (featuredProducts === null) {
+    const stopLoading = startLoadingMessage(statusEl);
+    // whenIdle() waits on this, the same as a category's own request does.
+    window.__criticalReady = featuredRequest;
+    await featuredRequest;
+    stopLoading();
+    // A slow tap onto a real category while this was in flight wins.
+    if (currentCategory !== FEATURED_VIEW.id) return;
+  }
+
+  categoryProducts = featuredProducts || [];
+  render();
+}
+
+/**
  * Featured items, from the admin-curated Featured sheet.
  *
  * Read-only here and admin-only there: addFeatured/removeFeatured are gated by
@@ -310,12 +368,21 @@ async function loadFeatured() {
   const res = await Api.get('getTips', {});
   featuredProducts = (res && res.ok && Array.isArray(res.products)) ? res.products : [];
   renderFeatured();
+  return featuredProducts;
 }
 
 function renderFeatured() {
   const strip = document.getElementById('featured-strip');
   const listEl = document.getElementById('featured-list');
-  if (!strip || !listEl || featuredProducts === null) return;
+  if (!strip || !listEl) return;
+  // Inside the Featured view the main list IS the featured items, so a strip
+  // above it would print the same rows twice.
+  if (currentCategory === FEATURED_VIEW.id) {
+    strip.hidden = true;
+    listEl.innerHTML = '';
+    return;
+  }
+  if (featuredProducts === null) return;
 
   // categoryIdOf, not a raw compare: getTips emits the SHEET's Category value
   // untouched (Admin.gs buildTips), so a legacy 'pantry' would never match

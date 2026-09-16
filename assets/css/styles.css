@@ -3008,6 +3008,22 @@ footer.site-footer .copyright {
   box-shadow: inset 3px 0 0 var(--color-blue);
 }
 
+/* Featured is the first entry and is NOT a category - it is a view over the
+   items an admin hand-picked. Set apart by weight and a rule beneath it, so it
+   reads as a heading above the list rather than as one more thing in it. Not
+   by colour: the label stays --color-ink like every other, which is what keeps
+   it legible in greyscale and forced-colours mode. */
+.category-rail-item--featured {
+  font-weight: 700;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* The selected state already carries a 3px inset rule; without this the
+   bottom border doubles up with it and the entry looks boxed in. */
+.category-rail-item--featured.is-selected {
+  border-bottom-color: transparent;
+}
+
 .category-rail-item:hover,
 .category-rail-item:focus-visible {
   background: rgba(0, 0, 0, 0.04);

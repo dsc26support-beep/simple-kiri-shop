@@ -29,11 +29,27 @@ const BASE = 'http://127.0.0.1:8099';
 
   ok('category select is required', await page.getAttribute('#product-category', 'required') !== null);
   ok('category opens with no selection (value="")', (await page.$eval('#product-category', el => el.value)) === '');
-  // 'general' became 'other' in the new taxonomy. The guarantee that matters is
-  // unchanged and is what this now asserts: there is ALWAYS a fallback category,
-  // so no listing can be un-fileable.
-  ok('Other is always selectable as a fallback',
-    (await page.$$eval('#product-category option', os => os.map(o => o.value))).includes('other'));
+  // 'general' became 'other', and Other has now been taken off this form too.
+  //
+  // The guarantee that ever mattered was that no listing can be un-fileable,
+  // and it was Other that used to carry it. It is asserted directly now: every
+  // listing type has real categories to choose from, so nothing needs a
+  // catch-all. Other itself must NOT be offered on a new listing - it was
+  // becoming the place things went instead of being filed.
+  const catValues = () => page.$$eval('#product-category option', (os) => os.map((o) => o.value).filter(Boolean));
+  ok('Other is no longer offered when filing a new listing',
+    !(await catValues()).includes('other'), (await catValues()).join(','));
+  for (const t of ['product', 'rental', 'service']) {
+    await page.selectOption('#product-listing-type', t);
+    const vals = await catValues();
+    ok(`a ${t} still has categories to choose from - nothing is un-fileable`,
+      vals.length >= 3 && !vals.includes('other'), vals.join(','));
+  }
+  // Back to a fresh Add form: the placeholder option is disabled, so the type
+  // select cannot be put back to '' by selecting it, and the assertions below
+  // are written against an untouched form.
+  await page.evaluate(() => openForm());
+  await page.waitForSelector('#product-form-section:not(.hidden)');
   ok('the retired legacy ids are no longer offered to sellers',
     !(await page.$$eval('#product-category option', os => os.map(o => o.value)))
       .some((v) => ['general', 'pantry', 'clothing', 'household', 'rentals'].includes(v)));

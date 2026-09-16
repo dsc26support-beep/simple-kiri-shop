@@ -41,8 +41,13 @@ function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(categor
  */
 var LISTING_TYPE_IDS = ['product', 'rental', 'service'];
 
+// 'featured' is deliberately NOT here. It is a browse-rail view over the
+// admin-curated Featured sheet, never a value a row may hold - and because an
+// unknown id falls through to 'other' below, a row that somehow carries it
+// shows under Other rather than at the top of the rail.
 var CATEGORY_IDS = ['food', 'fashion', 'electronics', 'home', 'building', 'vehicles',
-  'fishing', 'agriculture', 'handicrafts', 'property', 'services', 'education', 'events', 'other'];
+  'fishing', 'agriculture', 'handicrafts', 'property', 'services', 'education', 'events',
+  'solar', 'hire', 'rental', 'other'];
 
 var LEGACY_CATEGORY_MAP = {
   pantry: 'food',

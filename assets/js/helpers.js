@@ -712,10 +712,35 @@ const CATEGORIES = [
   { id: 'services',    label: 'Services',                    order: 11, popular: true,  active: true, types: ['service'] },
   { id: 'education',   label: 'Education & Jobs',            order: 12, popular: false, active: true, types: ['service'] },
   { id: 'events',      label: 'Events & Travel',             order: 13, popular: false, active: true, types: ALL_TYPES },
-  // Always last, always offered to sellers, and where anything that cannot be
-  // mapped confidently lands. Never 'popular'.
+  { id: 'solar',       label: 'Everything Solar',            order: 14, popular: true,  active: true, types: ALL_TYPES },
+  // Hire and Rental are near-synonyms to a shopper and were asked for as two
+  // entries anyway. They are told apart by TYPE rather than by wording: Hire
+  // also takes services - hiring a person to do a job - and Rental does not.
+  { id: 'hire',        label: 'Hire',                        order: 15, popular: true,  active: true, types: ['rental', 'service'] },
+  { id: 'rental',      label: 'Rental',                      order: 16, popular: true,  active: true, types: ['rental'] },
+  // Still last, still where anything that cannot be mapped confidently lands -
+  // but no longer offered to sellers, see fillCategoryOptions in
+  // owner-products.js. Shoppers can still browse it, so nothing already filed
+  // there became unreachable. Never 'popular'.
   { id: 'other',       label: 'Other',                       order: 99, popular: false, active: true, types: ALL_TYPES }
 ];
+
+/**
+ * The browse rail's first entry, and NOT a category.
+ *
+ * Nothing is ever stored with this id. The Featured sheet is curated by an
+ * admin and read through getTips, so this is a VIEW over other categories'
+ * items rather than a place to file one.
+ *
+ * Keeping it out of CATEGORIES is the whole point. activeCategories() feeds the
+ * seller's category dropdown, and Products.gs's CATEGORY_IDS is the set of ids
+ * a stored row may hold; being in neither means a seller cannot choose it and
+ * the backend will not keep it. Both sides fall back to 'other' for an id they
+ * do not know, so a hand-crafted category='featured' lands in Other rather than
+ * at the top of the rail - which is the one thing the Featured sheet exists to
+ * prevent.
+ */
+const FEATURED_VIEW = { id: 'featured', label: 'Featured' };
 
 /**
  * Old stored category -> new category id.
