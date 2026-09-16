@@ -52,6 +52,10 @@ function renderTrendingProducts(products) {
 
   statusEl.textContent = '';
   listEl.innerHTML = products.map((p) => renderBrowseProductCard(p, { showLocation: true })).join('');
+  // Card badges cannot carry their own popover (they are inside the card's
+  // link), so the page explains them once. Renders nothing when no card on the
+  // page has a badge - which on a young marketplace is most pages.
+  mountBadgeLegend('home-badge-legend', products);
   recordProductViewsOnce(products.map((p) => p.productId));
 }
 

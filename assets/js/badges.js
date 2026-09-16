@@ -251,3 +251,37 @@ function wireSellerBadges(root) {
     btn.dataset.sbWired = '1';
   });
 }
+
+/**
+ * "What do seller badges mean?" - one collapsed panel per page, for the
+ * surfaces whose badges are inside a product card and therefore cannot carry
+ * their own popover (see renderSellerBadges).
+ *
+ * A <details>, so it costs one line until someone wants it: the open/closed
+ * state, keyboard operation and screen-reader announcement all come free, and
+ * it still opens if JS fails.
+ *
+ * Returns NOTHING when no card on the page actually has a badge. A page
+ * explaining eight badges none of which appear on it is clutter, and on a young
+ * marketplace where most sellers have earned nothing yet that would be most
+ * pages.
+ */
+function renderBadgeLegendPanel(items) {
+  const any = Array.isArray(items)
+    && items.some((it) => it && Array.isArray(it.sellerBadges) && it.sellerBadges.length);
+  if (!any) return '';
+  return '<details class="badge-legend-panel">'
+    + '<summary>What do seller badges mean?</summary>'
+    + renderBadgeLegend()
+    + '</details>';
+}
+
+/**
+ * Fills an element with the legend panel, or leaves it empty. Saves every
+ * caller repeating the same null-check and innerHTML dance.
+ */
+function mountBadgeLegend(elementId, items) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.innerHTML = renderBadgeLegendPanel(items);
+}

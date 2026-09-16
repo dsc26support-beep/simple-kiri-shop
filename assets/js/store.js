@@ -50,6 +50,8 @@ async function init() {
     logoImg.classList.remove('hidden');
   }
 
+  renderStoreBadges(res.sellerBadges);
+
   currentStorePhone = res.storePhone || null;
   currentStoreMessenger = res.storeMessenger || null;
   currentStoreWhatsapp = res.storeWhatsapp || null;
@@ -184,6 +186,16 @@ async function loadSimilarProducts() {
     .map((p) => renderBrowseProductCard(p, { cardClass: 'similar-product-card' }))
     .join('');
   document.getElementById('similar-section').classList.remove('hidden');
+  /*
+   * Mounted from the SIMILAR products, not this store's own.
+   *
+   * A store page's own products carry no sellerBadges - they all belong to one
+   * seller, whose badges arrive once at the top of the response and are
+   * rendered interactively above the grid. The only read-only chips on this
+   * page are in the similar-products row, which comes from other stores. Keying
+   * the panel off currentProducts would have meant it never appeared.
+   */
+  mountBadgeLegend('store-badge-legend', similar);
   // After unhiding: a hidden element has no width to measure against.
   fitPriceLabels(document.getElementById('similar-products-list'));
   recordProductViewsOnce(similar.map((p) => p.productId));
@@ -388,6 +400,21 @@ function animateCartOnAdd(prev, next) {
  * The backend re-checks this on createOrder/createBookingRequest; this is the
  * honest UI in front of that gate, not the gate itself.
  */
+/**
+ * The seller's badges, at detail size with their own explanations.
+ *
+ * Interactive because these are not inside a link, unlike the badges on a
+ * product card. Filled in the same task as the product grid, so the row and the
+ * products land together rather than the row arriving first and pushing them
+ * down.
+ */
+function renderStoreBadges(ids) {
+  const el = document.getElementById('store-seller-badges');
+  if (!el || typeof renderSellerBadges !== 'function') return;
+  el.innerHTML = renderSellerBadges(ids, { size: 'detail' });
+  wireSellerBadges(el);
+}
+
 function renderStoreClosedState(open) {
   const existing = document.getElementById('store-closed-banner');
   if (open) {

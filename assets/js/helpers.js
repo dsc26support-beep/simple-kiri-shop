@@ -456,6 +456,27 @@ function renderStars(rating, count) {
  * nobody. Delivery icons stay either way. The Tips page and a store's
  * similar-products row keep the original card, where the seller is the point.
  */
+/**
+ * The seller's badges on a product card: at most two, read-only.
+ *
+ * TWO, because this card is half the width of a phone and the badges are
+ * supporting information - a seller with five of them must not out-shout the
+ * product's own name and price. sortSellerBadges puts them in priority order
+ * first, so the two shown are the two that matter, and the rest collapse into a
+ * counter that says what they are to a screen reader.
+ *
+ * READ-ONLY, because the whole card is one <a>: a <button> inside an anchor is
+ * invalid HTML and navigates instead of explaining. These are read here, and
+ * the page's "What do seller badges mean?" panel covers all of them.
+ *
+ * Returns '' for a seller with none, so a card without badges is exactly the
+ * card that existed before - no empty row, no stray spacing.
+ */
+function sellerBadgeRow(product) {
+  if (typeof renderSellerBadges !== 'function') return '';   // page without badges.js
+  return renderSellerBadges(product.sellerBadges, { size: 'chip', max: 2, interactive: false });
+}
+
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
@@ -514,6 +535,7 @@ function renderBrowseProductCard(product, opts) {
       <div class="product-card-body">
         ${heading}
         ${renderStars(product.rating, product.reviewCount)}
+        ${sellerBadgeRow(product)}
         ${metaBlock}
       </div>
     </a>

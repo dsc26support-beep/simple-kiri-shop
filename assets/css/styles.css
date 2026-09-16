@@ -4620,6 +4620,48 @@ button.seller-badge--ribbon[aria-expanded="true"] {
   font-weight: 400;
 }
 
+/* ---- placements -------------------------------------------------------- */
+
+/* On a product card. Tight to the rating above it and the location line below,
+   because on a half-width phone card this row is sharing space with the
+   product's own name and price - which it must never out-shout. */
+.product-card .seller-badges,
+.store-card .seller-badges {
+  margin: var(--space-1) 0;
+}
+
+/* A notch smaller inside a card, and ONLY inside a card.
+   A product card on a 390px phone is about 156px of usable width. At the
+   normal 12px chip size "Mwakete Recommended" does not fit on one line, so it
+   wrapped to two and a card with two badges grew a third row of them - on a box
+   that also has to carry the product's name, price and rating. At 11px the
+   longest label in the set fits on one line. Same size the availability badge
+   already uses, so it is not a new scale. */
+.product-card .seller-badge--chip,
+.store-card .seller-badge--chip {
+  font-size: 0.6875rem;
+  padding: 0.18em 0.5em;
+}
+
+/* The storefront's own badges, above the product grid.
+   Deliberately NOT in the header branding block: that sits above <main>, so
+   anything added to it after the fetch pushes the entire page down - which is
+   where this page's sibling once measured 0.853 CLS. Empty until the products
+   arrive, and empty elements have no height, so an unbadged store's page is
+   byte-for-byte the layout it had before. */
+.store-seller-badges:not(:empty) {
+  margin-bottom: var(--space-3);
+}
+
+/* Same row as the ratings toggle and the store link on a product page. Pushed
+   to its own line at every width - three detail badges plus "Ratings &
+   reviews" plus "See more from this store" will not share a line on anything
+   narrower than a desktop, and half-wrapping reads worse than not trying. */
+.product-seller-badges:not(:empty) {
+  flex: 1 1 100%;
+  margin-bottom: var(--space-2);
+}
+
 /* ---- "Learn what seller badges mean" ---- */
 
 .badge-legend {
@@ -4651,6 +4693,29 @@ button.seller-badge--ribbon[aria-expanded="true"] {
     align-items: baseline;
     gap: var(--space-3);
   }
+}
+
+/* The collapsed explanation panel, for pages whose badges are inside product
+   cards and so cannot carry their own popover. One line until someone wants
+   it. */
+.badge-legend-panel {
+  margin: var(--space-4) 0 var(--space-3);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
+
+.badge-legend-panel > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-purple);
+}
+
+.badge-legend-panel[open] > summary {
+  margin-bottom: var(--space-3);
 }
 
 /* Windows high-contrast and any other forced-colours mode replaces every

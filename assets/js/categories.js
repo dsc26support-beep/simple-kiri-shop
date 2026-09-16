@@ -327,6 +327,7 @@ function renderFeatured() {
 
   strip.hidden = mine.length === 0;
   listEl.innerHTML = mine.map(renderCategoryTile).join('');
+  mountBadgeLegend('results-badge-legend', mine);
 }
 
 /**

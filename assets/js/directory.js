@@ -72,6 +72,10 @@ async function loadStores() {
   storesHasMore = !!res.hasMore;
   statusEl.textContent = `${res.stores.length} of ${res.total} store${res.total === 1 ? '' : 's'} shown.`;
   document.getElementById('store-list').innerHTML = res.stores.map((store) => renderStoreCard(store)).join('');
+  // Card badges cannot carry their own popover (they sit inside the card's
+  // link), so the page explains them once - and only when something here has
+  // one.
+  mountBadgeLegend('stores-badge-legend', res.stores);
   document.getElementById('stores-load-more').classList.toggle('hidden', !storesHasMore);
   // Search and Load More both rebuild the list, so the markers go back on here
   // rather than once at startup.
@@ -190,6 +194,9 @@ function renderStoreCard(store, opts) {
             airCargoCost: store.deliveryAirCargoCost
           })}
         </div>
+        ${typeof renderSellerBadges === 'function'
+          ? renderSellerBadges(store.sellerBadges, { size: 'chip', max: 2, interactive: false })
+          : ''}
         <p class="helper-text">${resume ? '<span class="store-card-resume">Continue shopping →</span>' : 'Visit store →'}</p>
       </div>
     </a>
