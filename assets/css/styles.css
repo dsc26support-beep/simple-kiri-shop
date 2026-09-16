@@ -165,9 +165,22 @@ header.site-header > .container:first-of-type {
   margin-right: var(--space-1);
 }
 
+/* Width stated, not `auto`.
+ *
+ * favicon.svg carries a viewBox and NO width/height attributes, so until the
+ * file arrives the browser has no intrinsic size for it and `width: auto`
+ * resolves to 0. The moment it loads the logo jumps 0 -> 36px wide and shoves
+ * the nav links beside it 36px to the right - a horizontal shift, which counts
+ * against CLS exactly as a vertical one does. Measured at 0.0006 on every page
+ * that has a nav next to the logo.
+ *
+ * The source is square (viewBox 0 0 100 100, and it decodes to 150x150), so
+ * 36x36 is the real rendered box, not an approximation - and stating it means
+ * the space is held from the first frame with no dependency on the load at
+ * all. */
 .header-logo-mark {
   height: 36px;
-  width: auto;
+  width: 36px;
   display: block;
 }
 
@@ -481,8 +494,19 @@ section {
    listing-type strip was added and it landed above the search box at every
    width up to 1024px. Any new section here needs an order too.
 
-   Scoped to .home-main (only index.html's <main> carries it) so no other page's
-   #main is touched. */
+   Scoped to .home-main, which ONLY index.html's <main> may carry.
+
+   customer-tips, privacy and terms carried it too, and none of them has a
+   .hero, .categories or .trending-* child - so the ordering below did nothing
+   for them and the only thing they got was the `display: flex` above. That is
+   not harmless: .container sets `margin: 0 auto`, and auto side margins on a
+   flex item stop it stretching, so the container shrank to fit its CONTENTS
+   instead of filling the page. Tips sat in a 340px column at x=25 rather than
+   the usual 16px gutter, and its width tracked whatever had loaded - measured
+   as a 44px horizontal jump, 0.0237, when the featured rows arrived.
+
+   Before adding this class to a page, check the page actually needs the
+   ordering. */
 @media (max-width: 1024px) {
   .home-main {
     display: flex;
@@ -2695,6 +2719,23 @@ footer.site-footer .copyright {
 
 .dash-section h2 {
   margin-top: 0;
+}
+
+/* The three profile lines hold their own space before the values arrive.
+ *
+ * getCustomerProfile answers ~900ms after first paint, and until it does these
+ * paragraphs are EMPTY - an empty <p> generates no line box and collapses to
+ * nothing, so the box was 36px (the Edit button alone) and then 144px. That
+ * pushed My Orders and My Bookings down 108px under the reader's thumb, and it
+ * was the largest layout shift on the site: 0.0596 measured at 390px.
+ *
+ * Sized in `em` rather than pixels so ONE rule is right for both text sizes -
+ * 1.5em of the name's 1rem is 24px, and of .helper-text's 0.85rem is 20px,
+ * which is exactly what they measure once filled. min-height, not height, so a
+ * name or address long enough to wrap grows the line instead of being clipped.
+ */
+#profile-view > p {
+  min-height: 1.5em;
 }
 
 .dash-item {
