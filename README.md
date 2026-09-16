@@ -64,7 +64,7 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    the script appends rows as people use the site.
 
    **Owners**
-   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | Messenger | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryPickPay | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits | IdLicenseUrl | IdLicenseFileId`
+   `OwnerId | StoreName | StoreSlug | Username | PasswordHash | PasswordSalt | Email | Phone | Messenger | ANZ_AccountName | ANZ_AccountNumber | ANZ_Branch | Teremo_Name | Teremo_Number | PaymentNotes | Status | CreatedAt | TwoFAEnabled | DeliveryTruck | DeliveryShip | DeliveryAirCargo | DeliveryPickPay | DeliveryTruckCost | DeliveryShipCost | DeliveryAirCargoCost | Island | Village | LogoUrl | LogoFileId | Visits | IdLicenseUrl | IdLicenseFileId | BadgeVerified | BadgeRecommended | BadgeSuppressed`
 
    (The `ANZ_*`/`Teremo_*`/`PaymentNotes` columns are no longer used by the
    app — checkout no longer displays payment details, so Settings no longer
@@ -87,7 +87,14 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    store's page — see "View/visit tracking" below. Leave it blank; the
    script manages it. `IdLicenseUrl`/`IdLicenseFileId` hold an optional
    vendor ID/license photo — see "Booking listings" below for how it's
-   uploaded and why it's kept out of every public response.)
+   uploaded and why it's kept out of every public response.
+   `BadgeVerified`/`BadgeRecommended`/`BadgeSuppressed` are the admin overrides
+   for seller badges — blank means "leave it to the data", `true` grants and
+   `false` removes. Only the admin page writes them, and `ensureBadgeColumns()`
+   appends them to an older sheet without rewriting the header row. `CreatedAt`
+   also drives the New Seller badge, so a blank one is treated as "not new"
+   rather than as a store that joined at the epoch — see
+   `docs/seller-badges.md`.)
 
    **Products**
    `ProductId | OwnerId | StoreSlug | Name | Description | Category | ImageUrl | ImageFileId | ImageUrl2 | ImageFileId2 | Status | SortOrder | CreatedAt | UpdatedAt | Views`
@@ -144,6 +151,19 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    `ConversationId | OwnerId | StoreSlug | CustomerToken | CustomerName | Status | CreatedAt | UpdatedAt | LastMessageAt | LastMessagePreview | LastSenderType | UnreadByVendor | UnreadByCustomer`
    `MessageId | ConversationId | OwnerId | StoreSlug | SenderType | Body | CreatedAt | ImageUrl | ImageFileId`
 
+   **SellerBadges** (derived — only `recomputeSellerBadges` writes it; see
+   `docs/seller-badges.md`)
+   `OwnerId | Badges | Score | MetricsJson | ReasonJson | UpdatedAt`
+
+   **BadgeConfig** (badge thresholds and score weights, editable from the admin
+   page; key/value so a new setting never needs a schema change)
+   `Key | Value | UpdatedAt`
+
+   (Both are created by `setupSheets()`. Leave them empty — an absent or empty
+   `BadgeConfig` is a working configuration, and every badge read path degrades
+   to "no badges" if either tab is missing, so the site browses exactly as it
+   did before until you seed them.)
+
    If you already have this Sheet set up from an earlier version, just add the
    `TwoFAEnabled`, `DeliveryTruck`, `DeliveryShip`, `DeliveryAirCargo`,
    `DeliveryPickPay`, `DeliveryTruckCost`, `DeliveryShipCost`,
@@ -165,7 +185,8 @@ Sheet and deploy the Apps Script backend under your own Google account first.
 
 2. **Extensions → Apps Script.** Create a `.gs` file for each file in
    `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
-   `Bookings.gs`, `Orders.gs`, `Images.gs`, `Reminders.gs`, `Chat.gs`) and
+   `Bookings.gs`, `Orders.gs`, `Images.gs`, `Reminders.gs`, `Chat.gs`,
+   `Badges.gs`) and
    paste in the matching source from this repo. (`Chat.gs` is data-layer
    helpers only — see the Conversations/Messages note above — safe to
    include now even though nothing calls it yet.)

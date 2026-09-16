@@ -168,7 +168,46 @@ function buildTips() {
     productIds.forEach(function (id) { if (byId[id]) products.push(byId[id]); });
   }
 
+  topUpTipsWithRecommended(stores, badges, owners);
   return ok({ products: products, stores: stores });
+}
+
+/*
+ * Mwakete Recommended stores QUALIFY for Tips exposure. They are not guaranteed
+ * it, and they never displace a curated one.
+ *
+ * Curated items keep every slot they had; recommended stores only fill what is
+ * left up to TIPS_STORE_SLOTS, in the order the snapshot happens to hold, and
+ * a store an admin already featured is not listed twice. So a page an admin has
+ * filled looks exactly as it did before, and a thin one gets the stores that
+ * earned their way there rather than staying empty.
+ *
+ * ORGANIC ONLY. There is no paid placement in this application and this is not
+ * a route to one. If sponsored slots are ever added they must be a SEPARATE,
+ * LABELLED list - never mixed into this array, where a shopper would read a
+ * purchase as something a seller earned. The trust badges are the thing that
+ * must not become buyable, and quietly widening this function is how that would
+ * happen.
+ */
+var TIPS_STORE_SLOTS = 8;
+
+function topUpTipsWithRecommended(stores, badges, owners) {
+  if (stores.length >= TIPS_STORE_SLOTS) return;
+
+  var already = {};
+  stores.forEach(function (s) { already[s.storeSlug] = true; });
+
+  for (var i = 0; i < owners.length && stores.length < TIPS_STORE_SLOTS; i++) {
+    var o = owners[i];
+    if (already[o.StoreSlug]) continue;
+    if (!isStoreBrowsable(o)) continue;
+    var ids = badges[String(o.OwnerId)] || [];
+    if (ids.indexOf('recommended') === -1) continue;
+    stores.push(attachSellerBadges(
+      { storeSlug: o.StoreSlug, storeName: o.StoreName, logoUrl: o.LogoUrl,
+        island: o.Island, village: o.Village },
+      badges, o.OwnerId));
+  }
 }
 
 /* ---------- Seller badges (admin) -------------------------------------------

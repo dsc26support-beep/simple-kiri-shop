@@ -168,6 +168,61 @@ function byIdOf(r) {
   ok('with one lookup for the whole page', s.counts.badgeIndex === 1, String(s.counts.badgeIndex));
 }
 
+/* ---------- Recommended stores QUALIFY for Tips, never displace ---------- */
+{
+  // Nothing curated: a thin Tips page gets the store that earned its way there
+  // rather than staying empty.
+  let s = ctx({ badges: { o1: ['recommended'] } });
+  let r = s.buildTips();
+  ok('a Recommended store appears in Tips with nothing curated',
+    r.stores.length === 1 && r.stores[0].storeSlug === 'bong', JSON.stringify(r.stores.map((x) => x.storeSlug)));
+  ok('and carries the badge that explains why it is there',
+    r.stores[0].sellerBadges.join(',') === 'recommended');
+
+  // Not recommended, not curated: still empty. Qualification is not automatic
+  // exposure for everyone.
+  s = ctx({ badges: { o1: ['top', 'verified', 'delivery'] } });
+  ok('a store with other badges does NOT get in - only Recommended qualifies',
+    s.buildTips().stores.length === 0);
+
+  // Curated first, and never replaced.
+  s = ctx({ badges: { o1: ['recommended'], o2: ['recommended'] },
+            tabs: { Featured: [{ FeaturedId: 'f1', Type: 'store', RefId: 'tabon', SortOrder: 1 }] } });
+  r = s.buildTips();
+  ok('a curated store keeps its slot and stays FIRST',
+    r.stores[0].storeSlug === 'tabon', r.stores.map((x) => x.storeSlug).join(','));
+  ok('and a Recommended store fills the space after it, not instead of it',
+    r.stores.length === 2 && r.stores[1].storeSlug === 'bong',
+    r.stores.map((x) => x.storeSlug).join(','));
+  ok('a store that is both curated AND Recommended is listed once, not twice',
+    r.stores.filter((x) => x.storeSlug === 'tabon').length === 1);
+
+  // The cap.
+  s = ctx({ badges: { o1: ['recommended'], o2: ['recommended'] } });
+  ok('the top-up is capped, so Tips cannot become a directory',
+    s.buildTips().stores.length <= 8);
+
+  // A closed store must not be promoted into Tips.
+  s = ctx({ badges: { o1: ['recommended'] },
+            tabs: { Owners: [Object.assign({}, OWNERS[0], { Status: 'closed' }), OWNERS[1]] } });
+  ok('a store that is not browsable is never topped up into Tips',
+    s.buildTips().stores.length === 0);
+
+  // And the guarantee that matters for trust.
+  // CODE only - both comment styles stripped. The first version of this read
+  // prose too and tripped on an unrelated cache comment ("every visit to the
+  // Tips page paid all four"), which is a sentence about sheet reads, not a
+  // placement market.
+  const adminCode = admin.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  // Words that mean PLACEMENT, not words that mean money. "price" is what a
+  // variant costs and appears on every product; matching it said nothing about
+  // whether a slot in Tips can be bought.
+  ok('there is no paid-placement path into this list',
+    !/sponsor|promoted|boost|advert|\badSlot\b/i.test(adminCode));
+  ok('and the only thing that qualifies a store for the top-up is the badge itself',
+    /indexOf\('recommended'\) === -1\) continue;/.test(adminCode));
+}
+
 /* ---------- nothing private escapes ---------- */
 {
   const s = ctx({ badges: { o1: ['recommended'] } });
