@@ -29,8 +29,23 @@ const ok = (name, cond, detail) => {
   ok('it says Mwakete never handles money', /never handles your money|cannot issue\s*refunds/i.test(text));
   ok('and that it cannot refund', /cannot issue\s*<?\/?strong>?\s*refunds|cannot issue refunds/i.test(text.replace(/\s+/g, ' ')));
   ok('and that the sale is between buyer and seller', /between\s*you and that seller/i.test(text));
-  ok('the site itself still says payment is arranged between the two parties',
-    /payments is arranged between Customer and Seller/i.test(fs.readFileSync(REPO + 'index.html', 'utf8')));
+  // The guarantee is that a shopper is told this WITHOUT having to open Terms -
+  // not that any particular page says it. It used to be a line in the home
+  // page footer; it now sits at checkout, which is the moment it matters,
+  // since that is where someone commits to paying a seller directly.
+  //
+  // Asserted by searching the customer-facing pages rather than by naming one,
+  // so moving it again is fine and deleting it is not.
+  {
+    const SHOPPER_PAGES = ['index.html', 'checkout.html', 'cart.html', 'my-carts.html',
+      'product.html', 'store.html', 'stores.html', 'categories.html'];
+    const says = SHOPPER_PAGES.filter((f) => {
+      const t = fs.readFileSync(REPO + f, 'utf8').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+      return /payments? (is|are) arranged (directly )?between/i.test(t);
+    });
+    ok('the site itself still says payment is arranged between the two parties, somewhere a shopper sees',
+      says.length > 0, says.join(', ') || 'NO customer-facing page says it');
+  }
 
   // --- rules quoted must match the backend ----------------------------------
   ok('"Pending Payment" is really the only editable order status',

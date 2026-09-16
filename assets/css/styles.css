@@ -358,8 +358,10 @@ section {
   padding: var(--space-4) 0;
 }
 
+/* No background. The grey band that used to sit behind the search box is gone;
+   the box's own purple outline is what marks it out now. The padding stays, so
+   the search bar keeps its breathing room above the category strip. */
 .hero {
-  background: var(--color-bg-alt);
   text-align: center;
   /* No horizontal padding: the inner .container already insets content by
      var(--space-3). Doubling it here made the home/search search bar narrower
@@ -385,8 +387,17 @@ section {
   margin: 0 auto;
 }
 
+/* Thin purple rather than the shared --color-border grey, on all four search
+   boxes (home, Browse, a storefront, All Stores) so the one control a shopper
+   is looking for reads the same everywhere.
+   
+   Still 1px, from the shared input rule above - only the colour changes, so a
+   search field is the same SIZE as every other field and nothing reflows. The
+   focus ring is a 3px blue outline, so the resting purple cannot be mistaken
+   for focus. */
 .search-box input {
   flex: 1;
+  border-color: var(--color-purple);
 }
 
 /* The magnifier is the phone treatment only - desktop and tablet keep the
