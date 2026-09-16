@@ -288,8 +288,17 @@ function byIdOf(r) {
     && /BadgeConfig: \['Key', 'Value', 'UpdatedAt'\]/.test(codeGs));
   ok('checkSetup reports an empty Badges.gs, which would otherwise look like "no badges yet"',
     /sellerBadgeIndex !== 'function'\) missingFiles\.push\('Badges\.gs'\)/.test(codeGs));
-  ok('APP_VERSION was bumped, so the deploy can be confirmed rather than assumed',
-    /APP_VERSION = 'badges1-2026-09-11'/.test(codeGs));
+  // Pinned to a literal string to begin with, which made every release break
+  // this suite - and it did: the category work bumped the version and this
+  // went red on main. What the assertion is actually for is that ?action=
+  // getVersion can distinguish a deployed build from the one before the badge
+  // work, so that is what it checks: a non-empty version that is no longer the
+  // pre-badges value.
+  const version = (codeGs.match(/APP_VERSION = '([^']*)'/) || [])[1];
+  ok('APP_VERSION is set, so the deploy can be confirmed rather than assumed',
+    !!version && version.length > 3, String(version));
+  ok('...and is no longer the pre-badges build, so a stale deploy is visible',
+    version !== 'store1-2026-09-11', String(version));
 
   // Auth.gs is shared with the chat window's store lookup and is deliberately
   // left alone; the display concern lives in the display builder.

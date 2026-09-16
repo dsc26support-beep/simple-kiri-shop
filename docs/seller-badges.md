@@ -12,7 +12,7 @@ them.
 
 Each badge has a short label a shopper **reads** and a fuller name a screen
 reader **hears** — see "What a shopper reads vs what a screen reader hears"
-below.
+below. New Seller is the exception: it shows no word at all, only its icon.
 
 | | Reads | Announced as | Earned by | What the shopper is told |
 |---|---|---|---|---|
@@ -23,7 +23,7 @@ below.
 | 5 | Delivery | Reliable Delivery | A high share of orders reaching Fulfilled, over enough orders | "Strong record of successful fulfilment." |
 | 6 | Favourite | Customer Favourite | Enough customers coming back, with good ratings | "Popular with returning and satisfied customers." |
 | 7 | Popular | Popular Seller | In the busiest slice of stores by recent orders | "Currently receiving strong customer interest." |
-| 8 | New | New Seller | Joined within the last *n* days | "Recently joined Mwakete." |
+| 8 | *(icon only)* | New Seller | Joined within the last *n* days | "Recently joined Mwakete." |
 
 **Verified Seller has no automatic path at all.** It means a human checked the
 store, and no amount of good data is a substitute for that.
@@ -145,17 +145,47 @@ The "+N" overflow counter names the **full** versions for the same reason.
 
 ### Colour is never the difference
 
-Four treatments, told apart by fill, shape, border weight and font weight before
-any hue is involved, so they survive a greyscale screen, forced-colours mode,
-and a shopper who cannot separate the blue from the purple:
+**No badge carries a resting outline on any customer surface.** The four
+treatments used to be told apart by border width; they are told apart by a
+2×2 of shape and weight now, with fill as a third signal on top:
 
-- **ribbon** — Mwakete Recommended: the only filled badge; square, 2px gold border, bold
-- **shield** — Verified Seller: square, thin border, 3px stripe down the left edge
-- **star** — Top Seller: pill, 2px border
-- **chip** — the rest: pill, 1px border, category-tinted icon
+| | Shape | Weight | Fill |
+|---|---|---|---|
+| **ribbon** — Mwakete Recommended | square | bold | gold |
+| **shield** — Verified Seller | square | regular | blue |
+| **star** — Top Seller | pill | bold | purple |
+| **chip** — the rest | pill | regular | neutral |
+
+Every pair is unique on shape+weight *before* the fill is considered, so the
+four survive a greyscale screen and a shopper who cannot separate the blue from
+the purple. The four fills also differ in lightness, which is a second
+independent signal rather than the only one.
+
+The **"+N" counter** is the one badge with no fill at all, which is what marks
+it out as a pointer to the rest rather than a badge in its own right.
+
+Two places still draw the outlines, and both have a reason:
+
+- **The admin list** (`.badge-admin-item`), where an admin scans a long column
+  of sellers and a single row can carry five badges.
+- **Forced-colours mode**, where the OS replaces every fill — the border is the
+  only thing left to differ with, so the tiers are restated there as border
+  widths.
 
 The label is always `--color-ink`, so no badge's text contrast depends on its
-category. Nothing communicates by movement.
+category, and the category tints only the icon. Nothing communicates by
+movement.
+
+### One badge shows no word at all
+
+**New Seller renders as its icon alone.** The screen-reader name is unchanged —
+someone listening still hears "New Seller" — so this costs the listening
+shopper nothing and asks the sighted one to learn one symbol.
+
+That makes the legend panel the **only** place a sparkle is written down, which
+is why `renderBadgeLegend()` lists every badge rather than only the ones on the
+page. Its `label` is kept in `badges.js`; clearing `iconOnly` puts the word
+back.
 
 ## Tips
 

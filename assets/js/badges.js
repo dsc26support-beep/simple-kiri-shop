@@ -129,10 +129,19 @@ const SELLER_BADGES = {
     explain: 'Currently receiving strong customer interest.',
     tier: 'chip', category: 'popularity', icon: BADGE_ICON_FLAME
   },
+  // The only badge that shows no visible word. `label` is kept because it is
+  // what it WOULD read - clearing iconOnly is all it takes to bring the word
+  // back - and because the "+N" counter and the screen-reader name are built
+  // from this entry either way.
+  //
+  // A sparkle on its own says nothing to a sighted shopper, so the legend
+  // panel is now the only place its meaning is written down. That is why
+  // renderBadgeLegend lists every badge rather than only the ones on screen.
   new: {
     label: 'New',
     srLabel: 'New Seller',
     explain: 'Recently joined Mwakete.',
+    iconOnly: true,
     tier: 'chip', category: 'newcomer', icon: BADGE_ICON_SPARK
   }
 };
@@ -160,6 +169,7 @@ function sellerBadgeClasses(id, size) {
   return 'seller-badge seller-badge--' + size
     + ' seller-badge--' + b.tier
     + ' seller-badge--cat-' + b.category
+    + (b.iconOnly ? ' seller-badge--iconic' : '')
     + ' seller-badge--' + id;
 }
 
@@ -195,8 +205,12 @@ function renderSellerBadges(ids, opts) {
     // would have been shorter, but on a plain <span> - which is what a card
     // badge is, because a <button> inside a card's <a> would navigate - it is
     // not reliably exposed at all.
+    // An iconOnly badge drops the visible word and keeps the sr-only name, so
+    // what a screen reader announces is unchanged - it is the sighted shopper
+    // who now has to reach the legend to decode it, not the listening one.
     const inner = b.icon
-      + '<span class="seller-badge-label" aria-hidden="true">' + escapeHtml(b.label) + '</span>'
+      + (b.iconOnly ? ''
+        : '<span class="seller-badge-label" aria-hidden="true">' + escapeHtml(b.label) + '</span>')
       + '<span class="sr-only">' + escapeHtml(b.srLabel) + '</span>';
     if (!interactive) {
       return '<span class="' + sellerBadgeClasses(id, size) + '">' + inner + '</span>';
