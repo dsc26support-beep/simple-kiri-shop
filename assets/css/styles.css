@@ -4718,6 +4718,150 @@ button.seller-badge--ribbon[aria-expanded="true"] {
   margin-bottom: var(--space-3);
 }
 
+/* ---- Seller badges in the admin back-office -------------------------------
+ *
+ * The SAME .seller-badge component the storefront uses, with admin-only
+ * indicators beside it. Deliberately not a second visual language: an admin
+ * checking what a shopper actually sees should not have to translate.
+ */
+.badge-admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.badge-admin-row {
+  display: block;
+  padding: var(--space-3);
+}
+
+.badge-admin-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* The numbers behind the badges. Admin-only - none of this is in a customer
+   response. Wraps rather than scrolls, so a narrow phone in a shop office
+   still shows every figure. */
+.badge-admin-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0;
+}
+
+.badge-admin-badges {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.badge-admin-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* AUTO AWARDED vs ADMIN OVERRIDE. Uppercase and lettered rather than coloured,
+   because the difference between "earned this" and "someone granted it" is the
+   most important thing on this page and must survive a greyscale screen. */
+.badge-admin-source {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15em 0.5em;
+  border-radius: 3px;
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.badge-admin-source--auto {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.badge-admin-source--admin {
+  color: var(--color-purple);
+  border-color: var(--color-purple);
+}
+
+.badge-admin-source--withheld {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+/* Earned but not shown. Dimmed so the distinction from a live badge is visible
+   at a glance, but never dimmed so far that the label stops being readable. */
+.badge-admin-item--withheld .seller-badge {
+  opacity: 0.6;
+}
+
+.badge-admin-why {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.badge-admin-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.badge-admin-override {
+  display: grid;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.badge-admin-override select {
+  min-height: 44px;
+}
+
+.badge-admin-suppress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font-size: 0.875rem;
+}
+
+.badge-config-panel > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: var(--color-purple);
+}
+
+/* Two columns from tablet up - there are about thirty of these and one per row
+   is a very long page. */
+.badge-config-field {
+  margin-bottom: var(--space-2);
+}
+
+.badge-config-field label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 700px) {
+  #badge-config-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--space-4);
+  }
+}
+
 /* Windows high-contrast and any other forced-colours mode replaces every
    colour above, which would flatten all four treatments into one. The SHAPE
    differences are what survive, so they are restated here in system colours

@@ -201,40 +201,90 @@ const snap = (page) => page.evaluate(() => ({
     await ctx.close();
   }
 
-  /* ---------- CLS: the whole point of where they were put ---------- */
-  for (const [name, url, limit] of [
-    ['home', '/index.html', 0.01],
-    ['storefront', '/store.html?store=bong', 0.01],
-    ['product page', '/product.html?store=bong&product=p1', 0.01],
-    ['directory', '/stores.html', 0.01]
+  /* ---------- CLS: the whole point of where they were put ----------
+   *
+   * MEASURED AS A DIFFERENCE, AND AS THE MINIMUM OF SEVERAL RUNS.
+   *
+   * Both of those are there because a plain threshold lied. The home page read
+   * 0.0539 on roughly one run in five and 0.0001 on the rest, always the same
+   * magnitude and always the same nodes - the header shrinking about 32px
+   * during the first frames and pulling <main> up with it. Running it 16 times
+   * with badges and 16 without settled what it is: it fired 3/16 WITHOUT badges
+   * and 1/16 with. A pre-existing race on that page, nothing to do with this
+   * feature, and one a fixed ceiling would have blamed on whatever happened to
+   * be under test.
+   *
+   * So: each page is loaded with badges and without, and what is asserted is
+   * the difference - the thing actually claimed. And each side is the MINIMUM
+   * of three runs, because a race only ever ADDS shift, so the minimum is the
+   * race-free floor. A badge that really moved the page would raise that floor
+   * and still fail this.
+   */
+  const RUNS_PER_SIDE = 3;
+
+  for (const [name, url] of [
+    ['home', '/index.html'],
+    ['storefront', '/store.html?store=bong'],
+    ['product page', '/product.html?store=bong&product=p1'],
+    ['directory', '/stores.html']
   ]) {
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    await ctx.route('**/macros/s/**', async (route) => {
-      const a = new URL(route.request().url()).searchParams.get('action');
-      await new Promise((r) => setTimeout(r, 600));   // every fetch lands after paint
-      const B = ['recommended', 'verified', 'delivery', 'new'];
-      const products = Array.from({ length: 8 }, (_, i) => prod(i, B));
-      let body = { ok: true };
-      if (a === 'getHomePageData') body = { ok: true, products: products, stores: Array.from({ length: 6 }, (_, i) => store(i, B)) };
-      else if (a === 'listStores') body = { ok: true, stores: Array.from({ length: 8 }, (_, i) => store(i, B)), total: 8, hasMore: false };
-      else if (a === 'listProducts') body = { ok: true, products: products, storeName: 'Bong Store', storeOpen: true, sellerBadges: B };
-      else if (a === 'listProductReviews') body = { ok: true, reviews: [], count: 0, average: 0 };
-      else if (a === 'searchProducts') body = { ok: true, products: products };
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
-    });
-    const page = await ctx.newPage();
-    await page.addInitScript(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
-    await page.addInitScript(() => {
-      window.__cls = 0;
-      new PerformanceObserver((l) => {
-        for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value;
-      }).observe({ type: 'layout-shift', buffered: true });
-    });
-    await page.goto(BASE + url, { waitUntil: 'load' });
-    await page.waitForTimeout(4000);
-    const cls = await page.evaluate(() => +window.__cls.toFixed(4));
-    ok(name + ': badges cost no measurable layout shift', cls <= limit, String(cls));
-    await ctx.close();
+    const measureOnce = async (withBadges) => {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await ctx.route('**/macros/s/**', async (route) => {
+        const a = new URL(route.request().url()).searchParams.get('action');
+        await new Promise((r) => setTimeout(r, 600));   // every fetch lands after paint
+        const B = withBadges ? ['recommended', 'verified', 'delivery', 'new'] : undefined;
+        const products = Array.from({ length: 8 }, (_, i) => prod(i, B));
+        let body = { ok: true };
+        if (a === 'getHomePageData') body = { ok: true, products: products, stores: Array.from({ length: 6 }, (_, i) => store(i, B)) };
+        else if (a === 'listStores') body = { ok: true, stores: Array.from({ length: 8 }, (_, i) => store(i, B)), total: 8, hasMore: false };
+        else if (a === 'listProducts') {
+          body = { ok: true, products: products, storeName: 'Bong Store', storeOpen: true };
+          if (withBadges) body.sellerBadges = B;
+        } else if (a === 'listProductReviews') body = { ok: true, reviews: [], count: 0, average: 0 };
+        else if (a === 'searchProducts') body = { ok: true, products: products };
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+      });
+      const page = await ctx.newPage();
+      await page.addInitScript(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
+      await page.addInitScript(() => {
+        window.__cls = 0; window.__src = [];
+        const path = (n) => {
+          if (!n || !n.tagName) return String(n);
+          return n.tagName.toLowerCase() + (n.id ? '#' + n.id : '');
+        };
+        new PerformanceObserver((l) => {
+          for (const e of l.getEntries()) {
+            if (e.hadRecentInput) continue;
+            window.__cls += e.value;
+            (e.sources || []).forEach((s) => window.__src.push(path(s.node)));
+          }
+        }).observe({ type: 'layout-shift', buffered: true });
+      });
+      await page.goto(BASE + url, { waitUntil: 'load' });
+      await page.waitForTimeout(2800);
+      const out = await page.evaluate(() => ({ cls: +window.__cls.toFixed(4),
+        src: Array.from(new Set(window.__src)).join(',') }));
+      await ctx.close();
+      return out;
+    };
+
+    const best = async (withBadges) => {
+      let lowest = null;
+      for (let i = 0; i < RUNS_PER_SIDE; i++) {
+        const r = await measureOnce(withBadges);
+        if (!lowest || r.cls < lowest.cls) lowest = r;
+        if (lowest.cls === 0) break;        // cannot do better than nothing
+      }
+      return lowest;
+    };
+
+    const withBadges = await best(true);
+    const without = await best(false);
+    ok(name + ': badges add no layout shift of their own',
+      withBadges.cls - without.cls <= 0.01,
+      'with ' + withBadges.cls + ' vs without ' + without.cls
+      + (withBadges.cls - without.cls > 0.01 ? '  MOVED: ' + withBadges.src : ''));
   }
 
   await browser.close();

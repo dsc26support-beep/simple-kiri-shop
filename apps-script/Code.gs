@@ -45,7 +45,8 @@ var PROTECTED_POST_ACTIONS = [
   'listOwnerBookings', 'updateBookingStatus',
   'enable2FARequest', 'confirm2FASetup', 'disable2FA',
   'getVendorConversations', 'deleteConversation', 'archiveConversation', 'getUnreadCount',
-  'listFeatured', 'addFeatured', 'removeFeatured'
+  'listFeatured', 'addFeatured', 'removeFeatured',
+  'listSellerBadges', 'setSellerBadgeOverride', 'setBadgeConfig', 'recomputeBadges'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -426,6 +427,10 @@ function doPost(e) {
         case 'listFeatured': return jsonOut(actionListFeatured(owner, body));
         case 'addFeatured': return jsonOut(actionAddFeatured(owner, body));
         case 'removeFeatured': return jsonOut(actionRemoveFeatured(owner, body));
+        case 'listSellerBadges': return jsonOut(actionListSellerBadges(owner, body));
+        case 'setSellerBadgeOverride': return jsonOut(actionSetSellerBadgeOverride(owner, body));
+        case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
+        case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }
     }
 
