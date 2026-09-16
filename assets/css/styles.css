@@ -3264,6 +3264,117 @@ body.browse-locked .category-rail {
   text-align: center;
 }
 
+
+/* ---------- Three-dot overflow menu in the header ---------------------- */
+
+/* Out of flow for the same reason .header-cart is: header-menu.js injects this
+   at DOMContentLoaded, and anything that enters the flow at that moment moves
+   the page under the reader's thumb. The wrapper is the positioning context
+   for the panel, so the panel hangs off the button rather than off the header
+   and stays in the corner whatever the header's shape is. */
+.header-menu {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+}
+
+.header-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.header-menu-btn:hover,
+.header-menu-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Above the chat FAB (1001) and the chat window (1002). Below the cookie
+   notice (1003) and the login chooser (1006), both of which are blockers that
+   are meant to be answered before anything else. */
+.header-menu-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1002;
+  min-width: 13.5rem;
+  max-width: calc(100vw - var(--space-3) * 2);
+  padding: var(--space-1) 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* header.site-header a is #fff, which inside a white panel is an invisible
+   menu. Beaten on specificity rather than with !important, so a future rule
+   can still override it. */
+header.site-header .header-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;           /* the tap target, not the text */
+  padding: 0 var(--space-3);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+header.site-header .header-menu-item:hover,
+header.site-header .header-menu-item:focus-visible {
+  background: var(--color-bg-alt);
+}
+
+.header-menu-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--color-muted);
+}
+
+/* The page you are already on keeps its entry - the menu reads identically
+   everywhere, which is most of why a shopper learns it - and is told apart by
+   weight and a left rule, not by colour alone. */
+header.site-header .header-menu-item.is-current {
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--color-red);
+}
+
+header.site-header .header-menu-item.is-current .header-menu-icon {
+  color: var(--color-red);
+}
+
+/* stores.html's header row is a plain .container with no position of its own,
+   so without this the button would pin to the window edge there and to the
+   1100px content column on the other five - and the cart button, injected into
+   the same host, has always had that same split. Scoped to the pages that
+   carry the menu, so the other eight headers are untouched. */
+body.has-header-menu header.site-header > .container:first-of-type {
+  position: relative;
+}
+
+/* Pages that carry the menu give the corner to it and step the cart button
+   left. The class is in each page's markup rather than added by JS, so the
+   offset is right in the first paint instead of a frame after it. Below 700px
+   .header-cart is display:none and only the menu is in the corner, so the
+   reservation goes back to one button's width. */
+body.has-header-menu .header-cart {
+  right: calc(var(--space-2) + 44px);
+}
+
+body.has-header-menu header.site-header > .container:first-of-type {
+  padding-right: 96px;
+}
+
 .bottom-nav { display: none; }
 
 .bottom-nav-item {
@@ -3327,6 +3438,12 @@ body.browse-locked .category-rail {
      to the cart, so it stays. */
   .header-cart { display: none; }
 
+  /* With the cart button gone the corner holds one control again, so the row
+     only needs room for one. */
+  body.has-header-menu header.site-header > .container:first-of-type {
+    padding-right: 52px;
+  }
+
   /* Parking space for a page's secondary control, directly above the Account
      tab (the 5th of 5 equal columns, hence right:0 / width:20%).
 
@@ -3348,13 +3465,6 @@ body.browse-locked .category-rail {
   .bottom-nav-more-slot > * {
     pointer-events: auto;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  }
-
-  /* Tips lives in the bottom nav at this width - one of its five tabs - so the
-     header link would be the same destination twice on one screen. Above 700px
-     the bottom nav is display:none and the header link is the only way in. */
-  .site-nav .nav-tips {
-    display: none;
   }
 
   /* The empty <p> the button leaves behind on mobile would otherwise still

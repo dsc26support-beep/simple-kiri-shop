@@ -6,17 +6,25 @@ const BASE = 'http://127.0.0.1:8099';
   const results = [];
   const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
-  // --- §12 Sign In link on homepage ---
+  // --- §12 the way in to an account, from the homepage ---
+  //
+  // Twice repointed since this suite was written: first from owner/login.html
+  // to the customer login (§13/§14), and now out of the header nav row into
+  // the header overflow menu, which replaced that row. The claim is the same
+  // one it always was - the homepage offers a way in, it is below Create
+  // Store, it goes to the customer login, and it does not look like a lesser
+  // link than the one above it.
   const ctx = await browser.newContext({ viewport: { width: 390, height: 800 } });
   const p = await ctx.newPage();
   await p.goto(BASE + '/index.html', { waitUntil: 'load' });
+  await p.waitForSelector('#header-menu-btn');
   const link = await p.evaluate(() => {
-    const links = [...document.querySelectorAll('.site-nav a')];
-    const create = links.find(a => /Create Store/i.test(a.textContent));
-    const signin = links.find(a => /Sign In/i.test(a.textContent));
-    if (!signin) return { signin: false };
+    const links = [...document.querySelectorAll('#header-menu-panel .header-menu-item')];
+    const label = (a) => a.querySelector('.header-menu-label').textContent.trim();
+    const create = links.find((a) => /Create Store/i.test(label(a)));
+    const signin = links.find((a) => /My Account/i.test(label(a)));
+    if (!signin || !create) return { signin: false };
     const cs = getComputedStyle(signin), cc = getComputedStyle(create);
-    // Sign In should sit after Create Store in the list
     const order = create.compareDocumentPosition(signin) & Node.DOCUMENT_POSITION_FOLLOWING;
     return {
       signin: true,
@@ -27,12 +35,10 @@ const BASE = 'http://127.0.0.1:8099';
       sameWeight: cs.fontWeight === cc.fontWeight,
     };
   });
-  ok('§12 Sign In link exists', link.signin);
-  ok('§12 Sign In is beneath Create Store', link.below);
-  // Was owner/login.html when this suite was written; the customer-accounts
-  // work (§13/§14) repointed the homepage Sign In at the customer login.
-  ok('§12 Sign In routes to login', link.href === 'customer-login.html', link.href);
-  ok('§12 Sign In matches Create Store styling', link.sameColor && link.sameSize && link.sameWeight, JSON.stringify(link));
+  ok('§12 account link exists', link.signin);
+  ok('§12 account link is beneath Create Store', link.below);
+  ok('§12 account link routes to login', link.href === 'customer-login.html', link.href);
+  ok('§12 account link matches Create Store styling', link.sameColor && link.sameSize && link.sameWeight, JSON.stringify(link));
   await ctx.close();
 
   // --- §21 chat full-screen on mobile, windowed on desktop ---
@@ -64,7 +70,7 @@ const BASE = 'http://127.0.0.1:8099';
 
   await browser.close();
   let failed = 0;
-  console.log('\n--- Sign In link (§12) + mobile full-screen chat (§21) ---');
+  console.log('\n--- Account link (§12) + mobile full-screen chat (§21) ---');
   for (const [st, n, e] of results) { if (st === 'FAIL') failed++; console.log(`${st}  ${n}${e ? '  [' + e + ']' : ''}`); }
   console.log(`\n${results.length - failed}/${results.length} passed`);
   process.exit(failed ? 1 : 0);

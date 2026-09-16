@@ -21,7 +21,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
 </head>
-<body class="has-bottom-nav">
+<body class="has-bottom-nav has-header-menu">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
@@ -29,17 +29,6 @@
       <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
         <img src="assets/img/favicon.svg" alt="" class="header-logo-mark">
       </a>
-      <nav class="site-nav" aria-label="Main">
-        <ul>
-          <!-- Desktop only. Below 700px the bottom nav carries Tips as one of
-               its five tabs, so a header link there would be the same
-               destination twice on one screen. Above 700px the bottom nav is
-               display:none, and without this the Tips page has no link at all. -->
-          <li class="nav-tips"><a href="customer-tips.html">Tips</a></li>
-          <li id="nav-create-store"><a href="owner/login.html?tab=register">Create Store</a></li>
-          <li id="nav-signin"><a id="nav-signin-link" href="customer-login.html">Sign In</a></li>
-        </ul>
-      </nav>
     </div>
     <div class="container site-branding">
       <p class="site-title">Mwakete</p>
@@ -120,9 +109,9 @@
   <script defer src="assets/js/cookie-consent.min.js"></script>
   <script defer src="assets/js/auth.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
-  <script defer src="assets/js/home-nav.min.js"></script>
   <script defer src="assets/js/home.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>
+  <script defer src="assets/js/header-menu.min.js"></script>
   <script defer src="assets/js/bottom-nav.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>
 </body>

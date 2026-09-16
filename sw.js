@@ -19,7 +19,7 @@
 // PREVIOUS stylesheet and only refreshes it in the background - the change
 // appears one load late, which reads as "my fix didn't ship". Renaming the
 // cache makes activate() drop the old one, so the next load fetches fresh.
-var CACHE = 'mwakete-v73';
+var CACHE = 'mwakete-v74';
 
 // Separate cache for cross-origin product/logo photos. Cache-first is safe here
 // because every uploaded image has a unique URL (Drive file id / Cloudinary
@@ -80,7 +80,7 @@ var PRECACHE = [
   'assets/js/chat-window.min.js',
   'assets/js/kiribati-locations.min.js',
   'assets/js/home.min.js',
-  'assets/js/home-nav.min.js',
+  'assets/js/header-menu.min.js',
   'assets/js/store.min.js',
   'assets/js/product-page.min.js',
   'assets/js/directory.min.js',

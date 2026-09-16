@@ -52,7 +52,16 @@ const probe = (page) => page.evaluate(() => {
     leftMost: !!(L && row && [...row.children]
       .filter((e) => e !== logo && e.getBoundingClientRect().width > 0)
       .every((e) => e.getBoundingClientRect().left >= L.left - 0.5)),
-    beforeNav: !!(L && N && L.right <= N.left + 1),
+    hasNav: !!N,
+    beforeNav: L && N ? L.right <= N.left + 1 : null,
+    // index.html has no nav row any more - the header overflow menu replaced
+    // it - so "ahead of the nav" is vacuous there and this is the claim that
+    // is not: the logo does not run into whatever holds the right corner.
+    clearsMenu: (() => {
+      const m = document.getElementById('header-menu-btn');
+      if (!m || !L) return null;
+      return L.right <= m.getBoundingClientRect().left + 1;
+    })(),
     navClearsCart: !!(N && C ? N.right <= C.left + 1 : true),
     cartHidden: cartHidden,
     logoLeftInset: L && W ? Math.round(L.left - W.left) : null,
@@ -69,7 +78,9 @@ const probe = (page) => page.evaluate(() => {
     ok(`${p}: logo present`, v.hasLogo === true);
     ok(`${p}: logo is the first thing in the header row`, v.isFirstChild === true);
     ok(`${p}: nothing in the header sits further left`, v.leftMost === true);
-    ok(`${p}: logo comes before the nav links`, v.beforeNav === true);
+    ok(`${p}: logo clears the rest of the header row`,
+      v.beforeNav !== false && v.clearsMenu !== false,
+      `nav=${v.hasNav} beforeNav=${v.beforeNav} clearsMenu=${v.clearsMenu}`);
     ok(`${p}: logo is in the flow, not absolutely pinned`,
       v.inFlow === true && v.imgInFlow === true, `link=${v.inFlow} img=${v.imgInFlow}`);
     ok(`${p}: logo links home`, v.href === 'index.html', String(v.href));
@@ -87,7 +98,9 @@ const probe = (page) => page.evaluate(() => {
   {
     const { ctx, page } = await open(browser, 'index.html', 320);
     const v = await probe(page);
-    ok('320px: logo still leftmost', v.leftMost === true && v.beforeNav === true);
+    ok('320px: logo still leftmost and clear of the corner',
+      v.leftMost === true && v.beforeNav !== false && v.clearsMenu !== false,
+      `leftMost=${v.leftMost} beforeNav=${v.beforeNav} clearsMenu=${v.clearsMenu}`);
     ok('320px: header cart still hidden, nav unobstructed', v.cartHidden === true, String(v.cartHidden));
     await ctx.close();
   }
@@ -110,8 +123,15 @@ const probe = (page) => page.evaluate(() => {
     css.indexOf('header-logo-mark ~ .header-cart') === -1);
   for (const p of WITH_LOGO) {
     const html = fs.readFileSync(REPO + p, 'utf8');
-    ok(`${p}: markup has the logo before the nav`,
-      html.indexOf('header-logo-link') < html.indexOf('<nav class="site-nav"'));
+    const logoAt = html.indexOf('header-logo-link');
+    const navAt = html.indexOf('<nav class="site-nav"');
+    // A page with no nav row (index.html since the overflow menu replaced its
+    // links) still has to open its header row WITH the logo - checked here in
+    // the markup so it cannot be true only once a script has run.
+    ok(`${p}: markup opens the header row with the logo`,
+      logoAt > -1 && (navAt === -1 || logoAt < navAt) &&
+      /header-top-row"[^>]*>\s*<a class="header-logo-link"/.test(html),
+      `logo@${logoAt} nav@${navAt}`);
   }
 
   let f = 0;
