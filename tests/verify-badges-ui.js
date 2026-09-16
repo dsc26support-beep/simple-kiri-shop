@@ -167,9 +167,28 @@ const box = (page, sel) => page.evaluate((s) => {
     await render(page, ALL, { size: size, interactive: false });
     const texts = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.seller-badge-label')).map((e) => e.textContent.trim()));
-    // > 0, not > 3: "Top" and "New" are exactly three characters.
-    ok(size + ': all eight labels are present as visible text',
-      texts.length === 8 && texts.every((t) => t.length > 0), texts.join(' | '));
+    // Seven, not eight. New is deliberately icon-only (iconOnly in badges.js),
+    // so it renders no .seller-badge-label at all - asserted just below rather
+    // than allowed to slip through as a shorter list.
+    // > 0, not > 3: "Top" is exactly three characters.
+    ok(size + ': the seven worded labels are present as visible text',
+      texts.length === 7 && texts.every((t) => t.length > 0), texts.join(' | '));
+    ok(size + ': New shows its icon and no word',
+      await page.evaluate(() => {
+        const el = document.querySelector('.seller-badge--new');
+        if (!el) return false;
+        return !el.querySelector('.seller-badge-label')
+          && !!el.querySelector('svg')
+          && el.classList.contains('seller-badge--iconic');
+      }));
+    // The word is gone from the screen, NOT from the accessible name. Someone
+    // listening to a list of products hears exactly what they heard before.
+    ok(size + ': New is still announced "New Seller"',
+      await page.evaluate(() => {
+        const el = document.querySelector('.seller-badge--new');
+        const sr = el && el.querySelector('.sr-only');
+        return !!sr && sr.textContent.trim() === 'New Seller';
+      }));
     const visible = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.seller-badge-label'))
         .every((e) => e.getBoundingClientRect().width > 10));
@@ -205,19 +224,23 @@ const box = (page, sel) => page.evaluate((s) => {
         hears: exposed(e)
       }));
     });
+    // `reads` is null for New: it has no visible word. What it is announced as
+    // is unchanged, which is the half that matters.
     const want = [
       ['Recommended', 'Mwakete Recommended'], ['Top', 'Top Seller'],
       ['Verified', 'Verified Seller'], ['Responsive', 'Responsive Seller'],
       ['Delivery', 'Reliable Delivery'], ['Favourite', 'Customer Favourite'],
-      ['Popular', 'Popular Seller'], ['New', 'New Seller']
+      ['Popular', 'Popular Seller'], [null, 'New Seller']
     ];
     want.forEach(([reads, hears], i) => {
-      ok('a card badge reads "' + reads + '" and is announced "' + hears + '"',
-        rows[i] && rows[i].reads === reads && rows[i].hears === hears,
-        rows[i] ? rows[i].reads + ' / ' + rows[i].hears : 'missing');
+      const label = reads === null ? 'nothing (icon only)' : '"' + reads + '"';
+      const got = rows[i] ? (rows[i].reads === undefined ? null : rows[i].reads) : undefined;
+      ok('a card badge reads ' + label + ' and is announced "' + hears + '"',
+        rows[i] && got === reads && rows[i].hears === hears,
+        rows[i] ? got + ' / ' + rows[i].hears : 'missing');
     });
     ok('the short label itself is never announced twice',
-      rows.every((r) => r.hears.indexOf(r.reads + r.reads) === -1));
+      rows.every((r) => !r.reads || r.hears.indexOf(r.reads + r.reads) === -1));
     await ctx.close();
   }
 
@@ -262,22 +285,44 @@ const box = (page, sel) => page.evaluate((s) => {
     const pick = (c) => styles.filter((s) => s.cls.indexOf('seller-badge--' + c) !== -1)[0];
     const rec = pick('recommended'), ver = pick('verified'),
           top = pick('top'), pop = pick('popular');
-    ok('Recommended is the only filled badge', rec.bg !== pop.bg && ver.bg === pop.bg,
-      JSON.stringify([rec.bg, ver.bg, pop.bg]));
-    ok('Recommended is bolder than the rest', Number(rec.weight) > Number(pop.weight),
+    // No outlines on any customer surface any more, so the four tiers are told
+    // apart by FILL x RADIUS x WEIGHT instead of by border width. The
+    // assertions below are the same guarantee restated against that grid, and
+    // the greyscale check underneath them is unchanged and is the real one.
+    ok('no badge carries a resting outline',
+      styles.every((s2) => parseFloat(s2.width) === 0 && parseFloat(s2.left) === 0),
+      styles.map((s2) => s2.width + '/' + s2.left).join(' '));
+    ok('all four tiers carry a fill, and all four differ',
+      new Set(styles.map((s2) => s2.bg)).size === 4 &&
+      styles.every((s2) => s2.bg !== 'rgba(0, 0, 0, 0)'),
+      JSON.stringify(styles.map((s2) => s2.bg)));
+    ok('Recommended is bolder than a plain chip', Number(rec.weight) > Number(pop.weight),
       rec.weight + ' vs ' + pop.weight);
+    ok('Top is bolder than a plain chip too, which is what separates the two pills',
+      Number(top.weight) > Number(pop.weight), top.weight + ' vs ' + pop.weight);
     ok('Recommended and Verified are square; the others are pills',
       parseFloat(rec.radius) < 10 && parseFloat(ver.radius) < 10 && parseFloat(pop.radius) > 10,
       JSON.stringify([rec.radius, ver.radius, pop.radius]));
-    ok('Verified carries a thicker left stripe than its other edges',
-      parseFloat(ver.left) > parseFloat(ver.width), ver.left + ' vs ' + ver.width);
-    ok('Top Seller has a heavier border than a plain chip',
-      parseFloat(top.width) > parseFloat(pop.width), top.width + ' vs ' + pop.width);
-    // The point of all of the above: strip the colour and they are still four
-    // distinguishable things.
-    const shapes = styles.map((s) => s.radius + '/' + s.width + '/' + s.left + '/' + s.weight);
+    ok('Verified is the square one that is NOT bold, which is what separates the two squares',
+      Number(ver.weight) < Number(rec.weight) && parseFloat(ver.radius) < 10,
+      ver.weight + ' / ' + ver.radius);
+
+    // THE ASSERTION THIS WHOLE BLOCK EXISTS FOR. Take the hue away entirely -
+    // reduce each fill to its perceived lightness - and the four must still be
+    // four different things.
+    const grey = (rgb) => {
+      const m = (rgb || '').match(/\d+/g) || [0, 0, 0];
+      return Math.round(0.2126 * +m[0] + 0.7152 * +m[1] + 0.0722 * +m[2]);
+    };
+    const shapes = styles.map((s2) => s2.radius + '/' + s2.weight + '/' + grey(s2.bg));
     ok('so the four treatments differ without reference to any colour',
       new Set(shapes).size === 4, shapes.join('  '));
+    // ...and belt and braces: even with the fills thrown away completely, the
+    // radius x weight grid alone is still four distinct combinations, so a
+    // shopper who cannot separate ANY of the greys is not left guessing.
+    const noFill = styles.map((s2) => s2.radius + '/' + s2.weight);
+    ok('and they still differ with the fills thrown away as well',
+      new Set(noFill).size === 4, noFill.join('  '));
     await ctx.close();
   }
 
@@ -489,7 +534,7 @@ const box = (page, sel) => page.evaluate((s) => {
   ok('no badge animates - nothing in this set communicates by movement',
     !/animation:/.test(badgeCss) && !/@keyframes/.test(badgeCss));
   ok('the only transition is on colour', (badgeCss.match(/transition:/g) || []).length === 2
-    && /transition: border-color .12s ease, background-color .12s ease/.test(badgeCss));
+    && /transition: background-color .12s ease, box-shadow .12s ease/.test(badgeCss));
 
   const js = fs.readFileSync(REPO + 'assets/js/badges.js', 'utf8');
   ok('no badge loads an image or an icon font - the icons are inline',

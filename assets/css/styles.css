@@ -7,6 +7,14 @@
      and is loud enough to fight the product title beside it; this is the same
      hue at a weight that still reads as gold with --color-ink on top (16:1). */
   --color-gold-soft: #fff7d6;
+  /* Badge tier fills. The outlines that used to tell the four tiers apart are
+     gone, so the fill carries that job - see the .seller-badge block. Chosen
+     so the four differ in LIGHTNESS as well as hue (gold #fff7d6 lightest,
+     then purple, then blue, with the neutral chip between), because a shopper
+     who cannot separate the hues still has to be able to separate the tiers.
+     All four keep --color-ink above 14:1. */
+  --color-blue-soft: #dbe7f5;
+  --color-purple-soft: #e8e5f2;
   --color-blue: #003f87;
   --color-blue-light: #5b9bd5;
   --color-purple: #332d63;
@@ -4586,20 +4594,32 @@ legend {
   max-width: 100%;
 }
 
+/* No outline on any customer surface. What told the four tiers apart used to
+   be border width, and is now FILL plus radius plus font weight - a 2x2 that
+   holds up with no colour at all:
+
+       ribbon  square  bold    gold
+       shield  square  normal  blue
+       star    pill    bold    purple
+       chip    pill    normal  neutral
+
+   Two places still draw the outlines: the admin list, where a long column of
+   sellers reads better with them (further down), and forced-colours mode,
+   where the OS replaces every fill and only a border survives. */
 .seller-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.3em;
   max-width: 100%;
-  border: 1px solid var(--color-border);
+  border: 0;
   border-radius: 999px;
-  background: var(--color-bg);
+  background: var(--color-bg-alt);
   color: var(--color-ink);
   font-family: var(--font-stack);
   font-weight: 600;
   line-height: 1.3;
   text-align: left;
-  transition: border-color .12s ease, background-color .12s ease;
+  transition: background-color .12s ease, box-shadow .12s ease;
 }
 
 /* A <button> only on surfaces where the badge is not inside a link - see
@@ -4651,7 +4671,6 @@ button.seller-badge {
 
 .seller-badge--ribbon {
   background: var(--color-gold-soft);
-  border: 2px solid var(--color-gold);
   border-radius: 4px;
   font-weight: 700;
 }
@@ -4662,9 +4681,8 @@ button.seller-badge {
 }
 
 .seller-badge--shield {
+  background: var(--color-blue-soft);
   border-radius: 4px;
-  border-color: var(--color-blue);
-  border-left: 3px solid var(--color-blue);
   color: var(--color-ink);
 }
 
@@ -4672,49 +4690,59 @@ button.seller-badge {
   color: var(--color-blue);
 }
 
+/* Pill like a plain chip, so the weight and the fill are what separate them. */
 .seller-badge--star {
-  border-width: 2px;
-  border-color: var(--color-purple);
+  background: var(--color-purple-soft);
+  font-weight: 700;
 }
 
-/* ---- categories (tint only) ---- */
-
-.seller-badge--cat-performance {
-  border-color: var(--color-purple);
-}
+/* ---- categories (icon tint only) ----
+   These used to tint the border as well. With the border gone the icon is all
+   they colour, which is the right amount: the category is a nicety, the TIER
+   is the thing that must survive greyscale, and the label stays --color-ink so
+   no badge's text contrast depends on its category. */
 
 .seller-badge--cat-performance svg {
   color: var(--color-purple);
-}
-
-.seller-badge--cat-popularity {
-  border-color: var(--color-red);
 }
 
 .seller-badge--cat-popularity svg {
   color: var(--color-red);
 }
 
-.seller-badge--cat-newcomer {
-  border-color: var(--color-success);
-}
-
 .seller-badge--cat-newcomer svg {
   color: var(--color-success);
 }
 
+/* A badge with no visible word (New). The label's side padding would leave it
+   lopsided, so the padding is squared up and the icon given a little more room
+   - it is carrying the whole badge on its own now. */
+.seller-badge--iconic {
+  padding-left: 0.35em;
+  padding-right: 0.35em;
+}
+
+.seller-badge--iconic svg {
+  width: 1.2em;
+  height: 1.2em;
+}
+
 /* The overflow counter. Deliberately the quietest thing in the row - it is a
-   pointer to the rest, not a badge in its own right. */
+   pointer to the rest, not a badge in its own right. The dashed outline used
+   to do that; with no outlines left it is the only badge with NO fill, which
+   sets it apart from all four tiers at once. */
 .seller-badge--more {
-  border-style: dashed;
+  background: transparent;
   color: var(--color-muted);
   font-weight: 600;
 }
 
 /* ---- states ---- */
 
+/* Darkened with an overlay rather than a named colour, so ONE rule works over
+   all four tier fills instead of needing a hover colour per tier. */
 button.seller-badge:hover {
-  background: var(--color-bg-alt);
+  background-image: linear-gradient(rgba(0, 0, 0, 0.055), rgba(0, 0, 0, 0.055));
 }
 
 button.seller-badge:focus-visible {
@@ -4723,15 +4751,15 @@ button.seller-badge:focus-visible {
 }
 
 /* Open. aria-expanded is the same attribute the screen reader reads, so the
-   visual "pressed" state and the announced state cannot disagree. */
+   visual "pressed" state and the announced state cannot disagree.
+   
+   A ring, not a border: it appears only while the explanation is showing, so
+   it is state rather than the resting outline that was taken off above. It has
+   to be unmistakable - with several badges in a row, this is the only thing
+   saying WHICH one the open panel belongs to. */
 button.seller-badge[aria-expanded="true"] {
-  background: var(--color-bg-alt);
-  border-color: var(--color-purple);
-}
-
-button.seller-badge--ribbon[aria-expanded="true"] {
-  background: var(--color-gold-soft);
-  border-color: var(--color-gold);
+  background-image: linear-gradient(rgba(0, 0, 0, 0.09), rgba(0, 0, 0, 0.09));
+  box-shadow: 0 0 0 2px var(--color-purple);
 }
 
 /* Anchored to the badge's LEFT edge rather than .info-pop's right, because a
@@ -4989,6 +5017,45 @@ body.has-app-update .install-fab {
   border-color: var(--color-danger);
 }
 
+/* The outlines, kept HERE only.
+ *
+ * Shopper-facing badges lost their borders and gained tier fills instead. The
+ * admin list keeps what it had: an admin scans a long column of sellers, and
+ * the outlines are what separate one badge from the next down a dense page
+ * where a row can carry five of them. Restated rather than shared, because the
+ * customer surfaces are now the default and this is the exception.
+ */
+.badge-admin-item .seller-badge {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.badge-admin-item .seller-badge--ribbon {
+  border: 2px solid var(--color-gold);
+  background: var(--color-gold-soft);
+}
+
+.badge-admin-item .seller-badge--shield {
+  border-color: var(--color-blue);
+  border-left: 3px solid var(--color-blue);
+  background: var(--color-bg);
+}
+
+.badge-admin-item .seller-badge--star {
+  border-width: 2px;
+  border-color: var(--color-purple);
+  background: var(--color-bg);
+}
+
+.badge-admin-item .seller-badge--cat-performance { border-color: var(--color-purple); }
+.badge-admin-item .seller-badge--cat-popularity { border-color: var(--color-red); }
+.badge-admin-item .seller-badge--cat-newcomer { border-color: var(--color-success); }
+
+.badge-admin-item .seller-badge--more {
+  border-style: dashed;
+  background: transparent;
+}
+
 /* Earned but not shown. Dimmed so the distinction from a live badge is visible
    at a glance, but never dimmed so far that the label stops being readable. */
 .badge-admin-item--withheld .seller-badge {
@@ -5057,9 +5124,9 @@ body.has-app-update .install-fab {
 }
 
 /* Windows high-contrast and any other forced-colours mode replaces every
-   colour above, which would flatten all four treatments into one. The SHAPE
-   differences are what survive, so they are restated here in system colours
-   rather than left to chance. */
+   colour above - including the four tier FILLS, which is what tells the tiers
+   apart everywhere else now. So the outlines come back here, in system
+   colours: they are the only thing the OS leaves us to differ with. */
 @media (forced-colors: active) {
   .seller-badge {
     border: 1px solid CanvasText;

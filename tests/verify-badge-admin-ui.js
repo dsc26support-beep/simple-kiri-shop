@@ -220,6 +220,40 @@ async function open(browser, opts) {
     await ctx.close();
   }
 
+  /* ---------- the admin keeps the outlines the storefront lost ---------- */
+  //
+  // Shopper-facing badges have no resting border any more; they are told apart
+  // by fill. The admin list is the one place that kept them, because an admin
+  // scans a long column of sellers where a single row can carry five badges
+  // and the outlines are what separate one from the next. Asserted here so a
+  // later tidy-up of the badge CSS cannot quietly take them away too.
+  {
+    const { ctx, page } = await open(browser);
+    const r = await page.evaluate(() => {
+      const inAdmin = document.querySelector('.badge-admin-item .seller-badge');
+      if (!inAdmin) return null;
+      const cs = getComputedStyle(inAdmin);
+      return {
+        width: cs.borderTopWidth,
+        style: cs.borderTopStyle,
+        colour: cs.borderTopColor,
+        scoped: !!inAdmin.closest('.badge-admin-item')
+      };
+    });
+    ok('an admin badge still carries a visible outline',
+      r && parseFloat(r.width) > 0 && r.style !== 'none', JSON.stringify(r));
+    ok('...and it is scoped to the admin row, not put back globally',
+      r && r.scoped === true);
+    // The rule has to be the admin's own, or it would come back on every card.
+    const css = require('fs').readFileSync(
+      '/home/user/simple-kiri-shop/assets/css/styles.css', 'utf8');
+    ok('the outline rule is written against .badge-admin-item',
+      /\.badge-admin-item \.seller-badge \{[^}]*border: 1px solid/.test(css));
+    ok('and the base component has none',
+      /\n\.seller-badge \{[^}]*\n  border: 0;/.test(css));
+    await ctx.close();
+  }
+
   /* ---------- it fits a phone ---------- */
   for (const w of [390, 1100]) {
     const { ctx, page } = await open(browser, { width: w });
