@@ -10,16 +10,20 @@ Shown in this order everywhere, highest first. A dense product card shows the
 top two and a counter; product pages, storefronts and the admin show all of
 them.
 
-| | Badge | Earned by | What the shopper is told |
-|---|---|---|---|
-| 1 | 🏆 Mwakete Recommended | A very high performance score **plus** a real track record, or an admin grant | "Recommended by Mwakete based on seller performance and customer experience." |
-| 2 | Top Seller | A high score plus enough orders and reviews to mean it | "Consistently strong seller performance on Mwakete." |
-| 3 | Verified Seller | **Admin only** — no automatic path | "Store verified by Mwakete." |
-| 4 | Responsive Seller | Median first reply within the threshold, over enough replies | "Usually responds quickly to customer messages." |
-| 5 | Reliable Delivery | A high share of orders reaching Fulfilled, over enough orders | "Strong record of successful fulfilment." |
-| 6 | Customer Favourite | Enough customers coming back, with good ratings | "Popular with returning and satisfied customers." |
-| 7 | Popular Seller | In the busiest slice of stores by recent orders | "Currently receiving strong customer interest." |
-| 8 | New Seller | Joined within the last *n* days | "Recently joined Mwakete." |
+Each badge has a short label a shopper **reads** and a fuller name a screen
+reader **hears** — see "What a shopper reads vs what a screen reader hears"
+below.
+
+| | Reads | Announced as | Earned by | What the shopper is told |
+|---|---|---|---|---|
+| 1 | 🏆 Recommended | Mwakete Recommended | A very high performance score **plus** a real track record, or an admin grant | "Recommended by Mwakete based on seller performance and customer experience." |
+| 2 | Top | Top Seller | A high score plus enough orders and reviews to mean it | "Consistently strong seller performance on Mwakete." |
+| 3 | Verified | Verified Seller | **Admin only** — no automatic path | "Store verified by Mwakete." |
+| 4 | Responsive | Responsive Seller | Median first reply within the threshold, over enough replies | "Usually responds quickly to customer messages." |
+| 5 | Delivery | Reliable Delivery | A high share of orders reaching Fulfilled, over enough orders | "Strong record of successful fulfilment." |
+| 6 | Favourite | Customer Favourite | Enough customers coming back, with good ratings | "Popular with returning and satisfied customers." |
+| 7 | Popular | Popular Seller | In the busiest slice of stores by recent orders | "Currently receiving strong customer interest." |
+| 8 | New | New Seller | Joined within the last *n* days | "Recently joined Mwakete." |
 
 **Verified Seller has no automatic path at all.** It means a human checked the
 store, and no amount of good data is a substitute for that.
@@ -117,6 +121,27 @@ rather than one merged answer that hides which is which.
 `<button>` inside an anchor is invalid HTML that navigates instead of
 explaining. Those pages carry one **"What do seller badges mean?"** panel
 instead, which renders only when a card on the page actually has a badge.
+
+### What a shopper reads vs what a screen reader hears
+
+Labels are one word each, so a chip never wraps on a phone card. That loses the
+noun: "Top" or "New" under a product name could be read as describing the
+*product* rather than the store.
+
+A sighted shopper has the layout to disambiguate — the row sits with the store's
+name and is announced as a group. Someone listening to a list of products has
+none of that, so the full name is supplied for them at no visual cost:
+
+```html
+<span class="seller-badge-label" aria-hidden="true">Top</span>
+<span class="sr-only">Top Seller</span>
+```
+
+The accessible name is computed from content rather than from `aria-label`,
+because a card badge is a plain `<span>` (a `<button>` inside a card's `<a>`
+would navigate) and `aria-label` is not reliably exposed on one.
+
+The "+N" overflow counter names the **full** versions for the same reason.
 
 ### Colour is never the difference
 

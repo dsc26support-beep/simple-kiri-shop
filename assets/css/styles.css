@@ -4630,18 +4630,10 @@ button.seller-badge--ribbon[aria-expanded="true"] {
   margin: var(--space-1) 0;
 }
 
-/* A notch smaller inside a card, and ONLY inside a card.
-   A product card on a 390px phone is about 156px of usable width. At the
-   normal 12px chip size "Mwakete Recommended" does not fit on one line, so it
-   wrapped to two and a card with two badges grew a third row of them - on a box
-   that also has to carry the product's name, price and rating. At 11px the
-   longest label in the set fits on one line. Same size the availability badge
-   already uses, so it is not a new scale. */
-.product-card .seller-badge--chip,
-.store-card .seller-badge--chip {
-  font-size: 0.6875rem;
-  padding: 0.18em 0.5em;
-}
+/* Card chips were shrunk to 11px because "Mwakete Recommended" would not fit
+   on one line in the ~124px a product card gives a label. The labels are now
+   one word each, the longest fits comfortably, and the override is gone - so
+   there is one chip size rather than two. */
 
 /* The storefront's own badges, above the product grid.
    Deliberately NOT in the header branding block: that sits above <main>, so

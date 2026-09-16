@@ -130,14 +130,14 @@ const snap = (page) => page.evaluate(() => ({
           ? c.querySelector('.seller-badge--more').getAttribute('aria-label') : null
       })));
     ok('a card shows the HIGHEST-priority badges first, not the first ones sent',
-      cards[0].labels[0] === 'Mwakete Recommended' && cards[0].labels[1] === 'Verified Seller',
+      cards[0].labels[0] === 'Recommended' && cards[0].labels[1] === 'Verified',
       cards[0].labels.join(' | '));
     ok('and caps a dense card at two plus a counter',
       cards[0].labels.length === 3 && cards[0].labels[2] === '+2', cards[0].labels.join(' | '));
     ok('the counter names what is behind it for a screen reader',
       /2 more seller badges: Reliable Delivery, New Seller/.test(cards[0].more || ''), cards[0].more);
     ok('a seller with exactly two shows both and no counter',
-      cards[1].labels.join(',') === 'Top Seller,Responsive Seller', cards[1].labels.join(','));
+      cards[1].labels.join(',') === 'Top,Responsive', cards[1].labels.join(','));
     ok('and a seller with none shows nothing', cards[2].labels.length === 0, cards[2].labels.join(','));
     await ctx.close();
   }

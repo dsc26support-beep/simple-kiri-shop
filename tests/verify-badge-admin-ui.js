@@ -110,7 +110,7 @@ async function open(browser, opts) {
       })));
     ok('every store is listed', rows.length === 3, String(rows.length));
     ok('badges render with the SHARED component, not admin-only markup',
-      rows[0].badges.join(',') === 'Top Seller,Reliable Delivery', rows[0].badges.join(','));
+      rows[0].badges.join(',') === 'Top,Delivery', rows[0].badges.join(','));
 
     ok('an earned badge is labelled AUTO AWARDED',
       rows[0].sources.every((t) => t === 'AUTO AWARDED'), rows[0].sources.join(' | '));
@@ -121,7 +121,7 @@ async function open(browser, opts) {
     // The case an admin most needs spelled out.
     ok('a badge EARNED but hidden by an override is still shown, marked as such',
       rows[1].sources.indexOf('EARNED, NOT SHOWN') !== -1
-      && rows[1].badges.indexOf('Mwakete Recommended') !== -1,
+      && rows[1].badges.indexOf('Recommended') !== -1,
       rows[1].sources.join(' | ') + ' // ' + rows[1].badges.join(','));
     ok('with the reason it is not showing', /Removed by an admin/.test(rows[1].text));
 

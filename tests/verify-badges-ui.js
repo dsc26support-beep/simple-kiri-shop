@@ -81,8 +81,8 @@ const box = (page, sel) => page.evaluate((s) => {
       keys: Object.keys(SELLER_BADGES),
       entries: SELLER_BADGE_ORDER.map((id) => {
         const b = SELLER_BADGES[id] || {};
-        return { id: id, label: b.label, explain: b.explain, tier: b.tier,
-                 category: b.category, hasIcon: !!b.icon };
+        return { id: id, label: b.label, srLabel: b.srLabel, explain: b.explain,
+                 tier: b.tier, category: b.category, hasIcon: !!b.icon };
       })
     }));
     ok('the priority order is the eight badges, highest first',
@@ -93,6 +93,28 @@ const box = (page, sel) => page.evaluate((s) => {
       ok(e.id + ': has a text label, a sentence and an icon',
         !!e.label && !!e.explain && e.explain.length > 20 && e.hasIcon,
         JSON.stringify(e.label));
+      // The short label loses the noun, so someone listening rather than
+      // looking needs the full one - they have no surrounding layout to tell
+      // them "New" describes the seller and not the product.
+      ok(e.id + ': and a fuller name for screen readers',
+        !!e.srLabel && e.srLabel.length >= e.label.length,
+        e.label + ' -> ' + e.srLabel);
+    });
+
+    const shown = {
+      recommended: 'Recommended', top: 'Top', verified: 'Verified',
+      responsive: 'Responsive', delivery: 'Delivery', favourite: 'Favourite',
+      popular: 'Popular', new: 'New'
+    };
+    const heard = {
+      recommended: 'Mwakete Recommended', top: 'Top Seller', verified: 'Verified Seller',
+      responsive: 'Responsive Seller', delivery: 'Reliable Delivery',
+      favourite: 'Customer Favourite', popular: 'Popular Seller', new: 'New Seller'
+    };
+    Object.keys(shown).forEach((id) => {
+      const e = meta.entries.filter((x) => x.id === id)[0];
+      ok(id + ': reads "' + shown[id] + '"', e.label === shown[id], e.label);
+      ok(id + ': and is announced as "' + heard[id] + '"', e.srLabel === heard[id], e.srLabel);
     });
     // The wording is contractual - these sentences were specified.
     const want = {
@@ -110,8 +132,9 @@ const box = (page, sel) => page.evaluate((s) => {
     Object.keys(want).forEach((id) => {
       ok(id + ': the explanation is the agreed wording', byId[id].explain === want[id], byId[id].explain);
     });
-    ok('Mwakete Recommended is labelled exactly that',
-      byId.recommended.label === 'Mwakete Recommended', byId.recommended.label);
+    ok('every visible label is a single word, so a card chip never wraps',
+      meta.entries.every((e) => e.label.indexOf(' ') === -1),
+      meta.entries.map((e) => e.label).join(' | '));
     await ctx.close();
   }
 
@@ -144,8 +167,9 @@ const box = (page, sel) => page.evaluate((s) => {
     await render(page, ALL, { size: size, interactive: false });
     const texts = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.seller-badge-label')).map((e) => e.textContent.trim()));
+    // > 0, not > 3: "Top" and "New" are exactly three characters.
     ok(size + ': all eight labels are present as visible text',
-      texts.length === 8 && texts.every((t) => t.length > 3), texts.join(' | '));
+      texts.length === 8 && texts.every((t) => t.length > 0), texts.join(' | '));
     const visible = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.seller-badge-label'))
         .every((e) => e.getBoundingClientRect().width > 10));
@@ -153,6 +177,67 @@ const box = (page, sel) => page.evaluate((s) => {
     ok(size + ': every icon is hidden from screen readers, so the label is the name',
       await page.evaluate(() => Array.from(document.querySelectorAll('.seller-badge svg, .seller-badge-emoji'))
         .every((e) => e.getAttribute('aria-hidden') === 'true')));
+    await ctx.close();
+  }
+
+  // ---- what is READ vs what is HEARD --------------------------------------
+  //
+  // Not a textContent check: that would include the visually-hidden half and
+  // pass whatever the markup did. This removes aria-hidden subtrees the way
+  // assistive tech does, and cross-checks the interactive form against the
+  // browser's own accessibility tree.
+  {
+    const { ctx, page } = await open(browser, 1280);
+    await render(page, ALL, { size: 'chip', interactive: false });
+    const rows = await page.evaluate(() => {
+      const exposed = (el) => {
+        let out = '';
+        el.childNodes.forEach((n) => {
+          if (n.nodeType === 3) { out += n.textContent; return; }
+          if (n.nodeType !== 1) return;
+          if (n.getAttribute('aria-hidden') === 'true') return;   // as AT does
+          out += exposed(n);
+        });
+        return out.replace(/\s+/g, ' ').trim();
+      };
+      return Array.from(document.querySelectorAll('.seller-badge')).map((e) => ({
+        reads: (e.querySelector('.seller-badge-label') || {}).textContent,
+        hears: exposed(e)
+      }));
+    });
+    const want = [
+      ['Recommended', 'Mwakete Recommended'], ['Top', 'Top Seller'],
+      ['Verified', 'Verified Seller'], ['Responsive', 'Responsive Seller'],
+      ['Delivery', 'Reliable Delivery'], ['Favourite', 'Customer Favourite'],
+      ['Popular', 'Popular Seller'], ['New', 'New Seller']
+    ];
+    want.forEach(([reads, hears], i) => {
+      ok('a card badge reads "' + reads + '" and is announced "' + hears + '"',
+        rows[i] && rows[i].reads === reads && rows[i].hears === hears,
+        rows[i] ? rows[i].reads + ' / ' + rows[i].hears : 'missing');
+    });
+    ok('the short label itself is never announced twice',
+      rows.every((r) => r.hears.indexOf(r.reads + r.reads) === -1));
+    await ctx.close();
+  }
+
+  {
+    // The tappable form, through the browser's real accessible-name computation
+    // rather than through the markup.
+    const { ctx, page } = await open(browser, 1280);
+    await render(page, ALL, { size: 'detail' });
+    const snap = await page.accessibility.snapshot();
+    const names = [];
+    (function walk(n) {
+      if (!n) return;
+      if (n.role === 'button' && n.name) names.push(n.name);
+      (n.children || []).forEach(walk);
+    })(snap);
+    const badgeNames = names.filter((n) => /Seller|Recommended|Delivery|Favourite/.test(n));
+    ok('every tappable badge has the FULL name as its accessible name',
+      badgeNames.join(' | ') === 'Mwakete Recommended | Top Seller | Verified Seller | '
+        + 'Responsive Seller | Reliable Delivery | Customer Favourite | Popular Seller | New Seller',
+      badgeNames.join(' | '));
     await ctx.close();
   }
 
@@ -208,10 +293,13 @@ const box = (page, sel) => page.evaluate((s) => {
         ? document.querySelector('.seller-badge--more').getAttribute('aria-label') : null
     }));
     ok('a capped row shows the two HIGHEST-priority badges, not the first two given',
-      r.shown.join(' | ') === 'Mwakete Recommended | Top Seller', r.shown.join(' | '));
+      r.shown.join(' | ') === 'Recommended | Top', r.shown.join(' | '));
     ok('the rest collapse into one counter', (r.more || '').trim() === '+6', r.more);
     ok('and a screen reader hears what is behind it, not just "+6"',
       /6 more seller badges: Verified Seller, Responsive Seller/.test(r.moreAria || ''), r.moreAria);
+    ok('the counter names the FULL versions, which is what someone listening needs',
+      /Reliable Delivery, Customer Favourite, Popular Seller, New Seller/.test(r.moreAria || ''),
+      r.moreAria);
     await ctx.close();
   }
 

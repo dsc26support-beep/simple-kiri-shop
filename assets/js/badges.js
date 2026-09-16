@@ -65,6 +65,15 @@ const BADGE_ICON_SPARK =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 3l1.7 4.8L17.5 9.5l-4.8 1.7L11 16l-1.7-4.8L4.5 9.5l4.8-1.7z"></path><path d="M18 15l.7 1.9 1.9.7-1.9.7L18 21l-.7-1.8-1.9-.7 1.9-.7z"></path></svg>';
 
 /**
+ * label is what a shopper READS. srLabel is what a screen reader HEARS.
+ *
+ * They differ because the short labels lose the noun: "Top" and "New" under a
+ * product name could be read as describing the product rather than the store.
+ * A sighted shopper has the surrounding layout to disambiguate - the row sits
+ * with the store's name and is announced as a group. Someone listening to a
+ * list of products has none of that, so they get the full name at no visual
+ * cost.
+ *
  * tier drives the SHAPE, category drives a restrained tint. Shape is what has
  * to survive a greyscale screenshot and forced-colours mode, so no badge is
  * ever distinguished by colour alone.
@@ -75,7 +84,8 @@ const BADGE_ICON_SPARK =
  */
 const SELLER_BADGES = {
   recommended: {
-    label: 'Mwakete Recommended',
+    label: 'Recommended',
+    srLabel: 'Mwakete Recommended',
     explain: 'Recommended by Mwakete based on seller performance and customer experience.',
     tier: 'ribbon',
     category: 'trust',
@@ -84,37 +94,44 @@ const SELLER_BADGES = {
     icon: '<span class="seller-badge-emoji" aria-hidden="true">🏆</span>'
   },
   top: {
-    label: 'Top Seller',
+    label: 'Top',
+    srLabel: 'Top Seller',
     explain: 'Consistently strong seller performance on Mwakete.',
     tier: 'star', category: 'performance', icon: BADGE_ICON_STAR
   },
   verified: {
-    label: 'Verified Seller',
+    label: 'Verified',
+    srLabel: 'Verified Seller',
     explain: 'Store verified by Mwakete.',
     tier: 'shield', category: 'trust', icon: BADGE_ICON_SHIELD
   },
   responsive: {
-    label: 'Responsive Seller',
+    label: 'Responsive',
+    srLabel: 'Responsive Seller',
     explain: 'Usually responds quickly to customer messages.',
     tier: 'chip', category: 'performance', icon: BADGE_ICON_CHAT
   },
   delivery: {
-    label: 'Reliable Delivery',
+    label: 'Delivery',
+    srLabel: 'Reliable Delivery',
     explain: 'Strong record of successful fulfilment.',
     tier: 'chip', category: 'performance', icon: BADGE_ICON_PACKAGE
   },
   favourite: {
-    label: 'Customer Favourite',
+    label: 'Favourite',
+    srLabel: 'Customer Favourite',
     explain: 'Popular with returning and satisfied customers.',
     tier: 'chip', category: 'popularity', icon: BADGE_ICON_HEART
   },
   popular: {
-    label: 'Popular Seller',
+    label: 'Popular',
+    srLabel: 'Popular Seller',
     explain: 'Currently receiving strong customer interest.',
     tier: 'chip', category: 'popularity', icon: BADGE_ICON_FLAME
   },
   new: {
-    label: 'New Seller',
+    label: 'New',
+    srLabel: 'New Seller',
     explain: 'Recently joined Mwakete.',
     tier: 'chip', category: 'newcomer', icon: BADGE_ICON_SPARK
   }
@@ -173,7 +190,14 @@ function renderSellerBadges(ids, opts) {
 
   const one = (id) => {
     const b = SELLER_BADGES[id];
-    const inner = b.icon + '<span class="seller-badge-label">' + escapeHtml(b.label) + '</span>';
+    // The visible text is hidden from assistive tech and the full name supplied
+    // beside it, so the accessible name is computed from content. An aria-label
+    // would have been shorter, but on a plain <span> - which is what a card
+    // badge is, because a <button> inside a card's <a> would navigate - it is
+    // not reliably exposed at all.
+    const inner = b.icon
+      + '<span class="seller-badge-label" aria-hidden="true">' + escapeHtml(b.label) + '</span>'
+      + '<span class="sr-only">' + escapeHtml(b.srLabel) + '</span>';
     if (!interactive) {
       return '<span class="' + sellerBadgeClasses(id, size) + '">' + inner + '</span>';
     }
@@ -192,7 +216,7 @@ function renderSellerBadges(ids, opts) {
     // Named in full for a screen reader, counted for a thumb. On a card this is
     // not pressable (see above) - it says there is more to see on the product
     // page, which is where the tap was already going.
-    const names = hidden.map((id) => SELLER_BADGES[id].label).join(', ');
+    const names = hidden.map((id) => SELLER_BADGES[id].srLabel).join(', ');
     const label = '+' + hidden.length;
     const aria = hidden.length + ' more seller badge' + (hidden.length === 1 ? '' : 's') + ': ' + names;
     if (!interactive) {
