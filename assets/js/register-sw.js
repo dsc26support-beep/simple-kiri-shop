@@ -14,12 +14,163 @@
 
   if (!('serviceWorker' in navigator)) return;
 
+  /* ---- keeping an INSTALLED app up to date ---------------------------------
+   *
+   * sw.js already calls skipWaiting() and clients.claim(), so a new build takes
+   * over the moment the browser notices it. The gap this closes is that on an
+   * installed app the browser may not notice for days: it only checks sw.js on
+   * a navigation, and someone who leaves Mwakete resident on their phone and
+   * switches back to it does not navigate. They can sit on an old build
+   * indefinitely.
+   *
+   * So the check is explicit - once on launch, and again every time the app is
+   * brought back to the foreground.
+   */
+
+  // Was this page already under a service worker when it loaded?
+  //
+  // This is the difference between "a NEW version took over" and "the very
+  // first service worker just installed". Both fire controllerchange, and
+  // reloading on the second is a pointless refresh on someone's first ever
+  // visit. Captured now, before registration can change it.
+  var hadController = !!navigator.serviceWorker.controller;
+  var reloading = false;
+
+  /**
+   * Is it safe to refresh the page out from under whoever is holding the phone?
+   *
+   * Everything here is a case where a reload costs the person something real
+   * rather than just being startling. Getting this wrong in the permissive
+   * direction means losing someone's typed delivery address or half-written
+   * message; getting it wrong the other way just means they see the update bar.
+   * So the bar is the fallback, always.
+   */
+  function safeToReload() {
+    // Money. An order mid-flight is never worth interrupting for a cosmetic
+    // update, whatever else is true.
+    if (/checkout/i.test(location.pathname)) return false;
+
+    // A form the unsaved-changes guard is watching and considers genuinely
+    // changed. Reuses that judgement rather than inventing a second one.
+    try {
+      if (typeof UnsavedGuard !== 'undefined' && UnsavedGuard.isDirty()) return false;
+    } catch (e) { return false; }
+
+    // A half-written chat message lives in an input the guard does not watch.
+    if (document.querySelector('.chat-window--open')) return false;
+
+    // Someone typing at this very moment, anywhere.
+    var el = document.activeElement;
+    if (el && (el.tagName === 'TEXTAREA'
+      || (el.tagName === 'INPUT' && !/^(button|submit|checkbox|radio|hidden)$/i.test(el.type)))) {
+      return false;
+    }
+
+    // A dialog waiting on an answer.
+    if (document.querySelector('.unsaved-overlay, dialog[open]')) return false;
+
+    return true;
+  }
+
+  function applyUpdate() {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  }
+
+  /**
+   * The fallback when a refresh would cost someone their work: a small bar,
+   * bottom of the screen, that waits.
+   *
+   * Not a modal. The update is never urgent enough to block what they are
+   * doing, and a modal over a checkout form would be worse than the stale
+   * build it is trying to replace.
+   */
+  function showUpdateBar() {
+    if (document.getElementById('app-update-bar')) return;
+    var bar = document.createElement('div');
+    bar.id = 'app-update-bar';
+    bar.className = 'app-update-bar';
+    bar.setAttribute('role', 'status');
+    bar.innerHTML =
+      '<span class="app-update-bar-text">A new version of Mwakete is ready.</span>'
+      + '<button type="button" class="btn btn-small btn-primary" id="app-update-refresh">Refresh</button>'
+      + '<button type="button" class="app-update-dismiss" id="app-update-later"'
+      + ' aria-label="Not now">\u00d7</button>';
+    document.body.appendChild(bar);
+    // Hides the install pill, which sits in exactly this slot - see styles.css.
+    document.body.classList.add('has-app-update');
+    document.getElementById('app-update-refresh').addEventListener('click', applyUpdate);
+    document.getElementById('app-update-later').addEventListener('click', function () {
+      bar.remove();
+      document.body.classList.remove('has-app-update');
+      // Nothing more is needed: the new worker is already in control, so the
+      // next page they open is the new build either way.
+    });
+  }
+
+  function onNewVersionReady() {
+    if (!hadController) return;      // first install, not an update
+    if (safeToReload()) applyUpdate();
+    else showUpdateBar();
+  }
+
   window.addEventListener('load', function () {
     var swUrl = new URL('../../sw.js', scriptUrl).href;
     // Fail silently - a missing or blocked service worker must never break the
     // page; the site works fine without it, just without offline caching.
-    navigator.serviceWorker.register(swUrl).catch(function () {});
+    navigator.serviceWorker.register(swUrl, {
+      // Never answer an update check from the HTTP cache. GitHub Pages serves
+      // sw.js with its own caching, and a cached copy would report "no change"
+      // for as long as it lived - which is the whole bug this is fixing.
+      updateViaCache: 'none'
+    }).then(function (reg) {
+      if (!reg) return;
+
+      var check = function () { try { reg.update(); } catch (e) {} };
+
+      // On launch, and again whenever the app comes back to the foreground -
+      // which on an installed app is the only moment that reliably happens.
+      check();
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') check();
+      });
+      // Android sometimes delivers pageshow rather than visibilitychange when
+      // an installed app is resumed from the task switcher.
+      window.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
+    }).catch(function () {});
+
+    // Fires when a different worker takes control - i.e. a new build activated.
+    navigator.serviceWorker.addEventListener('controllerchange', onNewVersionReady);
   });
+
+  /**
+   * Which build is this phone actually running? Resolves to the service
+   * worker's own cache name, or null when there is no worker.
+   *
+   * Exposed for the account page. Always resolves - a support line that hangs
+   * because the worker did not answer is worse than one that says "unknown".
+   */
+  window.MwaketeVersion = {
+    get: function () {
+      return new Promise(function (resolve) {
+        var sw = navigator.serviceWorker.controller;
+        if (!sw) { resolve(null); return; }
+        var timer = setTimeout(function () { resolve(null); }, 1500);
+        try {
+          var channel = new MessageChannel();
+          channel.port1.onmessage = function (e) {
+            clearTimeout(timer);
+            resolve((e.data && e.data.version) || null);
+          };
+          sw.postMessage({ type: 'MWAKETE_GET_VERSION' }, [channel.port2]);
+        } catch (e) {
+          clearTimeout(timer);
+          resolve(null);
+        }
+      });
+    }
+  };
 })();
 
 // ---------------------------------------------------------------------------

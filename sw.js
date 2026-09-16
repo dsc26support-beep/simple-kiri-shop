@@ -19,7 +19,7 @@
 // PREVIOUS stylesheet and only refreshes it in the background - the change
 // appears one load late, which reads as "my fix didn't ship". Renaming the
 // cache makes activate() drop the old one, so the next load fetches fresh.
-var CACHE = 'mwakete-v72';
+var CACHE = 'mwakete-v73';
 
 // Separate cache for cross-origin product/logo photos. Cache-first is safe here
 // because every uploaded image has a unique URL (Drive file id / Cloudinary
@@ -139,6 +139,22 @@ function trimImageCache() {
     });
   });
 }
+
+/**
+ * Answers "which build are you?" so the account page can show it.
+ *
+ * The SERVICE WORKER is asked rather than the page, deliberately. An installed
+ * app can be running a service worker several releases older than the HTML a
+ * fresh browser would fetch - which is exactly the situation someone reporting a
+ * problem is in. Asking the page would report what the newest build says it is;
+ * asking the worker reports what the phone in their hand is actually running.
+ */
+self.addEventListener('message', function (event) {
+  if (!event.data || event.data.type !== 'MWAKETE_GET_VERSION') return;
+  var reply = { type: 'MWAKETE_VERSION', version: CACHE };
+  if (event.ports && event.ports[0]) event.ports[0].postMessage(reply);
+  else if (event.source) event.source.postMessage(reply);
+});
 
 self.addEventListener('fetch', function (event) {
   var req = event.request;

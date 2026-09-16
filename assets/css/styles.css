@@ -4710,6 +4710,82 @@ button.seller-badge--ribbon[aria-expanded="true"] {
   margin-bottom: var(--space-3);
 }
 
+/* ---- "A new version is ready" ---------------------------------------------
+ *
+ * Shown only when refreshing would cost someone their work - a checkout, an
+ * open chat, an unsaved form, or a cursor in a text field. Everywhere else the
+ * app just refreshes itself and this is never seen.
+ *
+ * A bar, not a modal. The update is never urgent enough to block what someone
+ * is doing, and a modal over a half-filled delivery address would be worse
+ * than the stale build it is replacing.
+ */
+.app-update-bar {
+  position: fixed;
+  left: var(--space-3);
+  right: var(--space-3);
+  /* ABOVE THE CHAT BUTTON, not merely above the page.
+     The first version sat at z-index 60 and the full width of the screen, which
+     put the Refresh button directly underneath the floating chat button - fixed
+     at z-index 1001 in the lower right. The bar was visible and its main
+     control was not tappable. Same slot the install pill uses, and the same
+     expression, so the three stay in one stack. */
+  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
+  /* Above the FABs (1001), below the cookie banner (1003), which is a legal
+     notice and outranks a version update. */
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-purple);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  font-size: 0.875rem;
+}
+
+.app-update-bar-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-update-bar .btn {
+  flex: 0 0 auto;
+}
+
+.app-update-dismiss {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-update-dismiss:hover {
+  color: var(--color-ink);
+}
+
+/* The install pill occupies exactly this slot. Both are transient and the
+   update matters more - someone running an old build has a problem now, where
+   "add to home screen" can wait for the next visit. */
+body.has-app-update .install-fab {
+  display: none !important;
+}
+
+/* The build this phone is actually running, for support. Quiet on purpose -
+   it is a thing to read out when something is wrong, not a thing to notice. */
+.app-version-line {
+  margin-top: var(--space-4);
+  color: var(--color-muted-light);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
 /* ---- Seller badges in the admin back-office -------------------------------
  *
  * The SAME .seller-badge component the storefront uses, with admin-only
