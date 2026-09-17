@@ -197,8 +197,11 @@ const PAGES = [
     const wide = await page.evaluate(probe, { formSel: '#browse-search-form', inputSel: '#browse-search-input' });
     ok('desktop still shows the written "Search" pill even with an empty field',
       wide.btnW > 60 && wide.visibility === 'visible', JSON.stringify(wide));
-    ok('desktop keeps the blue .btn-primary, not the phone purple',
-      wide.bg === 'rgb(0, 63, 135)', wide.bg);
+    // Desktop and phone used to differ by colour too. Both are brand purple
+    // since the theme pass, so the assertion that still means something is that
+    // desktop keeps a WRITTEN pill (checked above) on the standard primary fill.
+    ok('desktop keeps the standard primary fill',
+      wide.bg === 'rgb(51, 45, 99)', wide.bg);
     ok('desktop draws no magnifier', !wide.iconShown, String(wide.iconShown));
     ok('desktop label is not clipped', !wide.labelClipped, String(wide.labelClipped));
     await ctx.close();

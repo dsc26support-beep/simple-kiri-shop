@@ -18,6 +18,26 @@
   --color-blue: #003f87;
   --color-blue-light: #5b9bd5;
   --color-purple: #332d63;
+  /* Lighter purples, for the surfaces that used to be light blue. Picked for
+     contrast, not just hue: --light carries WHITE text (5.2:1, where the old
+     light blue managed 3.0 and failed), --pale carries DARK text on the dark
+     theme's surfaces (7.4:1). */
+  --color-purple-light: #6a61b8;
+  --color-purple-pale: #a8a1e0;
+
+  /* FOCUS STAYS BLUE, on purpose, and is the only blue chrome left.
+     A focus ring is not decoration - it is how somebody using a keyboard knows
+     where they are - and a purple ring around an already-purple control is far
+     harder to see. Aliased rather than spelled out so it reads as intent at
+     every use site. */
+  --color-focus: var(--color-blue);
+  --color-focus-soft: var(--color-blue-light);
+
+  /* Save, and only Save. Reuses the success green the site already shows after
+     something is stored, so one green means one thing. White text on it is
+     5.4:1. */
+  --color-save: var(--color-success);
+  --color-save-hover: #17612a;
   --color-ink: #1a1a1a;
   --color-muted: #5f6368;
   --color-border: #dcdfe3;
@@ -72,7 +92,7 @@ img {
 }
 
 a {
-  color: var(--color-blue);
+  color: var(--color-purple);
 }
 
 h1, h2, h3 {
@@ -99,7 +119,7 @@ h1, h2, h3 {
   position: absolute;
   left: -999px;
   top: 0;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   padding: var(--space-2) var(--space-3);
   z-index: 100;
@@ -111,7 +131,7 @@ h1, h2, h3 {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-blue);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -341,7 +361,7 @@ header.site-header a {
 }
 
 .delivery-method-option:has(input:checked) {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 .delivery-method-option input {
@@ -473,7 +493,7 @@ section {
 }
 
 .search-voice-btn:focus-visible {
-  outline: 3px solid var(--color-blue);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -520,7 +540,7 @@ section {
    it: ">" reads as "next", not as "search", and stripping the pill to
    transparent left it looking like a stray bracket rather than a control.
 
-   Purple, not the .btn-primary blue, so the disc rhymes with the active chip
+   The same purple as .btn-primary now, so the disc rhymes with the active chip
    sitting directly under it on the search and home pages. The desktop pill is
    untouched.
 
@@ -789,7 +809,7 @@ section {
 
 .category-btn:hover,
 .category-btn:focus-visible {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 /* Rentals & Services are the two booking categories - give their quick-filter
@@ -847,7 +867,7 @@ footer.site-footer .copyright {
   gap: var(--space-2);
   padding: 0.75em 1.5em;
   border-radius: 999px;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-weight: 700;
   text-decoration: none;
@@ -866,8 +886,8 @@ footer.site-footer .copyright {
 .floating-action-btn--small {
   padding: 0.4em 0.9em;
   font-size: 0.85rem;
-  background: var(--color-blue-light);
-  color: var(--color-blue);
+  background: var(--color-purple-pale);
+  color: var(--color-purple);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -1072,23 +1092,23 @@ footer.site-footer .copyright {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
-/* Cart button on store.html: light blue (--color-blue-light, same hue the
+/* Cart button on store.html: light purple (--color-purple-light, same hue the
    chat FAB uses), 25%-transparent background, sized at ~100.5%. transform-
    origin keeps it anchored to the left/bottom edges as it scales, rather
    than scaling from its center and drifting off position. */
 .floating-action-btn--cart {
   transform: scale(1.005);
   transform-origin: left bottom;
-  background: rgba(91, 155, 213, 0.75); /* --color-blue-light */
+  background: rgba(106, 97, 184, 0.75); /* --color-blue-light */
 }
 
 /* The cart button escalates its look as distinct products are added (see
    updateCartCount / animateCartOnAdd in store.js). Effects stack and track the
    current count. Two-class selectors outspecify the base --cart rule above. */
 
-/* 1+ items: solid deep brand blue (over the resting translucent light blue). */
+/* 1+ items: solid deep brand purple (over the resting translucent light purple). */
 .floating-action-btn--cart.cart-fab--bold {
-  background: var(--color-blue);
+  background: var(--color-purple);
 }
 
 /* 2+ items: relocate from bottom-left to a fixed top-right corner, and stay. */
@@ -1101,10 +1121,10 @@ footer.site-footer .copyright {
 }
 
 /* 3rd item added: flash twice; each add after that: one blink. Flashes between
-   the deep blue and light blue so the white label stays readable throughout. */
+   the deep purple and light purple so the white label stays readable throughout. */
 @keyframes cart-bg-flash {
-  0%, 100% { background-color: var(--color-blue); }
-  50%      { background-color: var(--color-blue-light); }
+  0%, 100% { background-color: var(--color-purple); }
+  50%      { background-color: var(--color-purple-light); }
 }
 
 .floating-action-btn--cart.cart-fab--flash2 {
@@ -1122,13 +1142,13 @@ footer.site-footer .copyright {
   }
 }
 
-/* "Continue Shopping" button on cart.html: 50% smaller, light blue
+/* "Continue Shopping" button on cart.html: 50% smaller, light purple
    (#5b9bd5), 10%-transparent background. transform-origin keeps it anchored
    to the left/bottom edges as it shrinks. */
 .floating-action-btn--continue-shopping {
   transform: scale(0.5);
   transform-origin: left bottom;
-  background: rgba(91, 155, 213, 0.9);
+  background: rgba(106, 97, 184, 0.9);
 }
 
 /*
@@ -1165,13 +1185,13 @@ footer.site-footer .copyright {
 }
 
 .chat-fab-btn:focus-visible {
-  outline: 3px solid var(--color-blue-light);
+  outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
 
 @media (prefers-color-scheme: dark) {
   .chat-fab-btn {
-    background: var(--color-blue-light);
+    background: var(--color-purple-pale);
     color: var(--color-ink);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
@@ -1236,7 +1256,7 @@ footer.site-footer .copyright {
   max-width: calc(100vw - 2 * var(--space-3));
   padding: 0.75em 1.25em;
   border-radius: 999px;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-weight: 600;
   font-size: 0.9rem;
@@ -1336,7 +1356,7 @@ footer.site-footer .copyright {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   flex: 0 0 auto;
 }
@@ -1472,7 +1492,7 @@ footer.site-footer .copyright {
   width: 28px;
   height: 28px;
   border: 3px solid var(--color-border);
-  border-top-color: var(--color-blue);
+  border-top-color: var(--color-purple);
   border-radius: 50%;
   animation: chat-spin 0.8s linear infinite;
 }
@@ -1518,7 +1538,7 @@ footer.site-footer .copyright {
 
 .chat-message--customer {
   align-self: flex-end;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -1614,7 +1634,7 @@ footer.site-footer .copyright {
 }
 
 .chat-message-input:focus-visible {
-  outline: 2px solid var(--color-blue-light);
+  outline: 2px solid var(--color-focus-soft);
   outline-offset: 1px;
 }
 
@@ -1627,7 +1647,7 @@ footer.site-footer .copyright {
   justify-content: center;
   border: none;
   border-radius: 50%;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   cursor: pointer;
   transition: transform 0.12s ease, background-color 0.15s ease;
@@ -1647,7 +1667,7 @@ footer.site-footer .copyright {
 }
 
 .chat-send-btn:focus-visible {
-  outline: 3px solid var(--color-blue-light);
+  outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
 
@@ -1676,7 +1696,7 @@ footer.site-footer .copyright {
 }
 
 .chat-attach-btn:focus-visible {
-  outline: 3px solid var(--color-blue-light);
+  outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
 
@@ -1799,7 +1819,7 @@ footer.site-footer .copyright {
   }
 
   .chat-message--customer {
-    background: var(--color-blue-light);
+    background: var(--color-purple-pale);
     color: #0b1a2b;
   }
 
@@ -1820,7 +1840,7 @@ footer.site-footer .copyright {
   }
 
   .chat-send-btn {
-    background: var(--color-blue-light);
+    background: var(--color-purple-pale);
     color: #0b1a2b;
   }
 
@@ -1881,7 +1901,7 @@ footer.site-footer .copyright {
   margin-left: 0.4em;
   padding: 0 0.35em;
   border-radius: 999px;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
@@ -1938,7 +1958,7 @@ footer.site-footer .copyright {
 }
 
 .filter-chip:focus-within {
-  outline: 2px solid var(--color-blue);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -2083,7 +2103,7 @@ footer.site-footer .copyright {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--color-blue);
+  color: var(--color-purple);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
@@ -2560,17 +2580,36 @@ footer.site-footer .copyright {
 }
 
 .btn-primary {
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
 }
 
-.btn-light-blue {
-  background: var(--color-blue-light);
+/* SAVE, AND ONLY SAVE. The three buttons that store what somebody has typed:
+   the profile on My Account, Save Settings, Save Product.
+
+   Deliberately not every button that writes something - not Place Order, not
+   Create Store Account, not Send me a code. If green covered all of those it
+   would just be the second action colour and would stop meaning anything; kept
+   to Save, it says one thing, and it sits opposite the red of the delete
+   buttons. */
+.btn-save,
+.btn-primary.btn-save {
+  background: var(--color-save);
+  color: #fff;
+}
+
+.btn-save:hover,
+.btn-primary.btn-save:hover {
+  background: var(--color-save-hover);
+}
+
+.btn-light-purple {
+  background: var(--color-purple-light);
   color: #fff;
 }
 
 .btn-adding {
-  background: var(--color-blue-light) !important;
+  background: var(--color-purple-light) !important;
   opacity: 1;
 }
 
@@ -2774,7 +2813,7 @@ footer.site-footer .copyright {
 
 .auth-tab.is-active {
   color: var(--color-ink);
-  border-bottom-color: var(--color-blue);
+  border-bottom-color: var(--color-purple);
 }
 
 .auth-panel .btn + .btn {
@@ -3203,7 +3242,7 @@ footer.site-footer .copyright {
 .category-rail-item.is-selected {
   background: #fff;
   font-weight: 700;
-  box-shadow: inset 3px 0 0 var(--color-blue);
+  box-shadow: inset 3px 0 0 var(--color-purple);
 }
 
 /* Featured is the first entry and is NOT a category - it is a view over the
@@ -3417,7 +3456,7 @@ body.browse-locked .category-rail {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-weight: 700;
   text-transform: uppercase;
@@ -3716,18 +3755,18 @@ body.has-header-menu header.site-header > .container:first-of-type {
 }
 
 /* Static "Continue Shopping" button on cart.html - sits beneath the bigger
-   "Proceed to Checkout" primary button. Secondary weight: light-blue outline
+   "Proceed to Checkout" primary button. Secondary weight: light-purple outline
    on a tinted fill so it reads clearly below the solid primary CTA. */
 .btn-continue-shopping {
   margin-top: var(--space-2);
-  background: rgba(91, 155, 213, 0.12); /* --color-blue-light tint */
-  color: var(--color-blue);
-  border-color: var(--color-blue-light);
+  background: rgba(106, 97, 184, 0.12); /* --color-purple-light tint */
+  color: var(--color-purple);
+  border-color: var(--color-purple-light);
 }
 
 @media (hover: hover) {
   .btn-continue-shopping:hover {
-    background: rgba(91, 155, 213, 0.22);
+    background: rgba(106, 97, 184, 0.22);
   }
 }
 
@@ -3770,7 +3809,7 @@ input[type="radio"] {
   padding: 0;
   border: 0;
   border-radius: 0;
-  accent-color: var(--color-blue);
+  accent-color: var(--color-purple);
 }
 
 /* The five labels that wrap a checkbox or radio. Each carries the 44px target
@@ -3900,8 +3939,8 @@ legend {
 }
 
 @keyframes product-highlight-pulse {
-  0% { box-shadow: 0 0 0 3px var(--color-blue-light); }
-  70% { box-shadow: 0 0 0 3px var(--color-blue-light); }
+  0% { box-shadow: 0 0 0 3px var(--color-purple-light); }
+  70% { box-shadow: 0 0 0 3px var(--color-purple-light); }
   100% { box-shadow: 0 0 0 3px transparent; }
 }
 
@@ -3927,7 +3966,7 @@ legend {
   font-size: 2rem;
   font-weight: 700;
   color: #fff;
-  background: var(--color-blue);
+  background: var(--color-purple);
 }
 
 /* Swatch colours for the thirteen categories. Shown only when a listing has no
@@ -4122,7 +4161,7 @@ legend {
 }
 
 .product-gallery-thumb.active {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 .product-gallery-thumb img {
@@ -4423,7 +4462,7 @@ legend {
 
 .store-card:hover,
 .store-card:focus-visible {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 /* --- Stores the shopper already has a cart with (directory.js) ------------
@@ -4465,12 +4504,12 @@ legend {
    below it, without shouting. */
 .store-card--resume {
   background: var(--color-bg-alt);
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 .store-card-resume {
   font-weight: 600;
-  color: var(--color-blue);
+  color: var(--color-purple);
 }
 
 /* One line, always. The placeholder above can't know how long the real store
@@ -4486,7 +4525,7 @@ legend {
 /* Inline marker on a directory card. The label carries the meaning; the border
    only reinforces it, so this never depends on colour alone. */
 .store-card.is-in-cart {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 .store-card-cart-flag {
@@ -4494,7 +4533,7 @@ legend {
   margin-bottom: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 600;
@@ -4522,7 +4561,7 @@ legend {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-weight: 700;
   font-size: 1.1rem;
@@ -5443,7 +5482,7 @@ body.has-app-update .install-fab {
   border: 0;
   padding: 0;
   font: inherit;
-  color: var(--color-blue);
+  color: var(--color-purple);
   text-decoration: underline;
   cursor: pointer;
 }

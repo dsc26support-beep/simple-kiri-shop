@@ -7,7 +7,7 @@
 }
 
 .owner-topbar {
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   padding: var(--space-2) 0;
   position: relative;
@@ -99,8 +99,8 @@
 }
 
 .auth-tab[aria-selected="true"] {
-  border-bottom-color: var(--color-blue);
-  color: var(--color-blue);
+  border-bottom-color: var(--color-purple);
+  color: var(--color-purple);
 }
 
 .dashboard-cards {
@@ -384,8 +384,8 @@
 }
 
 .delivery-toggle-btn[aria-pressed="true"] {
-  border-color: var(--color-blue);
-  background: var(--color-blue);
+  border-color: var(--color-purple);
+  background: var(--color-purple);
   color: #fff;
 }
 
@@ -528,7 +528,7 @@
 
 .conversation-list-item.is-active {
   background: var(--color-bg-alt);
-  border-left-color: var(--color-blue);
+  border-left-color: var(--color-purple);
 }
 
 .conversation-list-item.is-unread .conversation-item-name,
@@ -554,7 +554,7 @@
   height: 8px;
   margin-left: 6px;
   border-radius: 50%;
-  background: var(--color-blue);
+  background: var(--color-purple);
   vertical-align: middle;
 }
 
@@ -661,7 +661,7 @@
  */
 .chat-message--mine {
   align-self: flex-end;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -698,7 +698,7 @@
 }
 
 .conversation-reply-input:focus-visible {
-  outline: 2px solid var(--color-blue-light);
+  outline: 2px solid var(--color-focus-soft);
   outline-offset: 1px;
 }
 
@@ -711,7 +711,7 @@
   justify-content: center;
   border: none;
   border-radius: 50%;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   cursor: pointer;
   transition: transform 0.12s ease, background-color 0.15s ease;
@@ -726,7 +726,7 @@
 }
 
 .conversation-send-btn:focus-visible {
-  outline: 3px solid var(--color-blue-light);
+  outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
 

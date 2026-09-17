@@ -34,14 +34,16 @@ const rgb = s => s.replace(/\s+/g,'');
     ok(`mobile ${p}: no ::after glyph left behind`, s.after==='none'||s.after==='normal', s.after);
     await page.close();
   }
-  // desktop unchanged: blue "Search"
+  // desktop unchanged: the brand-filled "Search" button (purple since the
+  // blue-to-purple theme pass; the point here is that desktop still shows a
+  // filled button with the word on it)
   {
     const page=await ctx.newPage();
     await page.setViewportSize({width:900,height:800});
     await page.goto(BASE+'/categories.html',{waitUntil:'load'});
     await page.waitForSelector('.search-box button[type="submit"]');
     const d=await page.evaluate(()=>{const btn=document.querySelector('.search-box button[type="submit"]');return {bg:getComputedStyle(btn).backgroundColor,text:btn.textContent.trim()};});
-    ok('desktop: blue Search unchanged', rgb(d.bg)==='rgb(0,63,135)' && d.text==='Search', JSON.stringify(d));
+    ok('desktop: filled Search button unchanged', rgb(d.bg)==='rgb(51,45,99)' && d.text==='Search', JSON.stringify(d));
     await page.close();
   }
   await b.close();
