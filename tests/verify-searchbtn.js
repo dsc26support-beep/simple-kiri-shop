@@ -15,8 +15,11 @@ const BASE = 'http://127.0.0.1:8099';
   const results = [];
   const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
+  // index.html is gone from this list: its Search button was replaced by the
+  // voice-search microphone. The a11y guarantee this suite exists for - a real
+  // "Search" word in the DOM behind the glass - still applies to the three
+  // boxes that kept their button.
   const pages = [
-    ['index.html', 'index.html'],
     ['categories.html', 'categories.html'],
     ['store.html?store=x', 'store.html'],
     ['stores.html', 'stores.html'],
@@ -65,7 +68,7 @@ const BASE = 'http://127.0.0.1:8099';
   {
     const page = await ctx.newPage();
     await page.setViewportSize({ width: 900, height: 800 });
-    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
     await page.waitForSelector('.search-box button[type="submit"]', { state: 'attached' });
     await page.fill('.search-box input[type="search"]', 'r');   // same collapse rule applies
     await page.waitForSelector('.search-box button[type="submit"]', { state: 'visible' });

@@ -7,7 +7,7 @@
 }
 
 .owner-topbar {
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   padding: var(--space-2) 0;
   position: relative;
@@ -53,6 +53,34 @@
   border-radius: var(--radius);
 }
 
+/* Contact Email is shown, not edited - it has its own two-step action. The
+   heading has to look exactly like the <label> above and below it, or the
+   field reads as a different kind of thing to the ones either side. */
+.field-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+  font-size: 0.95rem;
+}
+
+.settings-readonly {
+  margin: 0 0 var(--space-2);
+  word-break: break-all;   /* a long address must not widen the page */
+}
+
+/* The "a store account is a separate account" note, and anything else the
+   login page needs to say before the form. Tinted rather than bordered in an
+   accent colour: it is an explanation, not a warning, and the page already has
+   a red error line for things that went wrong. */
+.auth-note {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2);
+  background: var(--color-bg-alt);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
 .auth-tabs {
   display: flex;
   border-bottom: 1px solid var(--color-border);
@@ -71,8 +99,8 @@
 }
 
 .auth-tab[aria-selected="true"] {
-  border-bottom-color: var(--color-blue);
-  color: var(--color-blue);
+  border-bottom-color: var(--color-purple);
+  color: var(--color-purple);
 }
 
 .dashboard-cards {
@@ -356,8 +384,8 @@
 }
 
 .delivery-toggle-btn[aria-pressed="true"] {
-  border-color: var(--color-blue);
-  background: var(--color-blue);
+  border-color: var(--color-purple);
+  background: var(--color-purple);
   color: #fff;
 }
 
@@ -500,7 +528,7 @@
 
 .conversation-list-item.is-active {
   background: var(--color-bg-alt);
-  border-left-color: var(--color-blue);
+  border-left-color: var(--color-purple);
 }
 
 .conversation-list-item.is-unread .conversation-item-name,
@@ -526,7 +554,7 @@
   height: 8px;
   margin-left: 6px;
   border-radius: 50%;
-  background: var(--color-blue);
+  background: var(--color-purple);
   vertical-align: middle;
 }
 
@@ -633,7 +661,7 @@
  */
 .chat-message--mine {
   align-self: flex-end;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -670,7 +698,7 @@
 }
 
 .conversation-reply-input:focus-visible {
-  outline: 2px solid var(--color-blue-light);
+  outline: 2px solid var(--color-focus-soft);
   outline-offset: 1px;
 }
 
@@ -683,7 +711,7 @@
   justify-content: center;
   border: none;
   border-radius: 50%;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   cursor: pointer;
   transition: transform 0.12s ease, background-color 0.15s ease;
@@ -698,7 +726,7 @@
 }
 
 .conversation-send-btn:focus-visible {
-  outline: 3px solid var(--color-blue-light);
+  outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
 

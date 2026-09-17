@@ -12,10 +12,9 @@ async function init() {
   document.getElementById('profile-cancel').addEventListener('click', () => toggleProfileEdit(false));
   document.getElementById('profile-form').addEventListener('submit', onSaveProfile);
 
-  // If they also own a store, offer a jump to the seller side.
-  if (typeof Auth !== 'undefined' && Auth.getToken()) {
-    document.getElementById('seller-link-wrap').classList.remove('hidden');
-  }
+  // A seller signed in on THIS device is known without asking anyone, so this
+  // is settled in the page's first script run rather than a round trip later.
+  if (typeof Auth !== 'undefined' && Auth.getToken()) showStoreLink();
 
   wireDashActions();
   loadOrders();
@@ -28,29 +27,48 @@ async function init() {
 }
 
 /**
- * Swap "Create Store" to "My Store" when this customer's email already owns
- * one. The backend decides - it checks the signed-in customer's OWN address
- * and never an address supplied by the page, so this cannot be used to find
- * out which addresses belong to vendors.
+ * "My Store" - shown only to somebody who has one. Two independent signals,
+ * and either one is enough:
  *
- * Only the label and the destination change. The button's box is sized to
- * "Create Store", the wider of the two, so the swap cannot move anything -
- * including sideways, which counts towards CLS exactly as a vertical shift
- * does.
+ *   1. This device holds a seller token. Free: no request, so the button is
+ *      revealed immediately and nothing moves at all.
+ *   2. The signed-in customer's own email owns a store. That needs the
+ *      backend, so it lands after first paint - which is why the button's box
+ *      is reserved in the markup instead of being created here.
+ *
+ * Signal 1 is also why the old "Go to seller dashboard" link is gone. It was
+ * this same condition wearing different words, sitting two lines below a
+ * button that pointed at the same page - and the pair could disagree on
+ * screen, because they were answering different questions. Folding it in keeps
+ * the case it existed for: a seller whose store is registered under a
+ * different address from their shopper account.
+ *
+ * Nobody else sees anything here. Create Store is no longer offered on this
+ * page at all.
+ */
+function showStoreLink(storeName) {
+  const link = document.getElementById('store-link');
+  if (!link) return;
+  if (storeName) link.setAttribute('title', storeName);
+  link.classList.add('is-visible');
+}
+
+/**
+ * The backend decides signal 2, and it checks the signed-in customer's OWN
+ * address - never one supplied by the page - so this cannot be walked to learn
+ * which addresses belong to vendors.
  */
 async function resolveStoreLink() {
   const link = document.getElementById('store-link');
-  if (!link) return;
+  if (!link || link.classList.contains('is-visible')) return;  // signal 1 settled it
   let res;
   try {
     res = await Api.post('getCustomerStore', { token: CustomerAuth.getToken() });
   } catch (e) {
-    return; // leave "Create Store" - the honest default when we cannot tell
+    return;  // stays hidden - the honest answer when we cannot tell
   }
   if (!res || !res.ok || !res.hasStore) return;
-  link.textContent = 'My Store';
-  link.href = 'owner/dashboard.html';
-  if (res.storeName) link.setAttribute('title', res.storeName);
+  showStoreLink(res.storeName);
 }
 
 /* ---------- Profile ---------- */

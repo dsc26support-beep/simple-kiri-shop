@@ -41,6 +41,7 @@ async function init() {
   fillForm(owner);
   renderTwoFAStatus(owner);
   wireTwoFA();
+  wireEmailChange();
   renderStoreStatus(owner);
   wireStoreStatus();
 
@@ -53,9 +54,132 @@ async function init() {
   UnsavedGuard.watch(document.getElementById('password-form'));
 }
 
+/* ---------------------------------------------------------------------------
+ * Changing the contact email
+ *
+ * Not part of Save Settings any more. That address is where customer orders
+ * arrive, where password-reset codes go and where login codes go, so one Save
+ * used to repoint all three with nothing but a session behind it.
+ *
+ * Two steps now, matching the backend (actionRequestEmailChange /
+ * actionConfirmEmailChange in Auth.gs): password plus the new address, then a
+ * code sent to that new address. The live address does not change until the
+ * code comes back, so abandoning halfway leaves a store still receiving its
+ * orders. The old address is warned by the backend either way.
+ * ------------------------------------------------------------------------- */
+
+let emailChangeToken = null;
+
+// Local rather than shared: setButtonBusy/setButtonIdle live in owner-login.js,
+// which this page does not load. Same dots markup as everywhere else.
+function setEmailButtonBusy(btn, label) {
+  btn.dataset.idleLabel = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = label + '<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+}
+
+function setEmailButtonIdle(btn) {
+  btn.disabled = false;
+  btn.textContent = btn.dataset.idleLabel;
+}
+
+function renderContactEmail(owner) {
+  document.getElementById('contact-email-current').textContent = owner.email || 'Not set';
+  const pending = document.getElementById('contact-email-pending');
+  if (owner.pendingEmail) {
+    // Survives a reload: without this, a seller who closed the page has no way
+    // of knowing a request is still outstanding.
+    pending.textContent = 'Waiting for confirmation of ' + owner.pendingEmail
+      + '. Until you enter the code we sent there, your store keeps using the address above.';
+    pending.hidden = false;
+  } else {
+    pending.textContent = '';
+    pending.hidden = true;
+  }
+}
+
+function wireEmailChange() {
+  document.getElementById('email-change-btn').addEventListener('click', () => {
+    showEmailBlock('change');
+    document.getElementById('email-change-new').focus();
+  });
+  document.getElementById('email-change-cancel').addEventListener('click', () => showEmailBlock(null));
+  document.getElementById('email-confirm-cancel').addEventListener('click', () => showEmailBlock(null));
+  document.getElementById('email-change-send').addEventListener('click', onRequestEmailChange);
+  document.getElementById('email-confirm-send').addEventListener('click', onConfirmEmailChange);
+  wirePasswordToggle('email-change-password');
+}
+
+function showEmailBlock(which) {
+  document.getElementById('email-change-block').hidden = which !== 'change';
+  document.getElementById('email-confirm-block').hidden = which !== 'confirm';
+  document.getElementById('email-change-btn').hidden = which !== null;
+  document.getElementById('email-change-error').textContent = '';
+  document.getElementById('email-confirm-error').textContent = '';
+  if (which === null) {
+    // Nothing typed here is worth keeping around, and one of the two is a
+    // password.
+    document.getElementById('email-change-new').value = '';
+    document.getElementById('email-change-password').value = '';
+    document.getElementById('email-confirm-code').value = '';
+    emailChangeToken = null;
+  }
+}
+
+async function onRequestEmailChange() {
+  const errorEl = document.getElementById('email-change-error');
+  const btn = document.getElementById('email-change-send');
+  const email = document.getElementById('email-change-new').value.trim();
+  const password = document.getElementById('email-change-password').value;
+  errorEl.textContent = '';
+  document.getElementById('email-change-success').textContent = '';
+
+  if (!email) { errorEl.textContent = 'Enter the new email address.'; return; }
+  if (!password) { errorEl.textContent = 'Enter your password.'; return; }
+
+  setEmailButtonBusy(btn, 'Sending');
+  const res = await Api.post('requestEmailChange', { token: Auth.getToken(), email, password });
+  setEmailButtonIdle(btn);
+  if (!res.ok) { errorEl.textContent = res.error || 'Could not start the change.'; return; }
+
+  emailChangeToken = res.verifyToken;
+  document.getElementById('email-confirm-hint').textContent =
+    'We sent a 6-digit code to ' + res.sentTo + '. Your store keeps using its current '
+    + 'address until you enter it.';
+  showEmailBlock('confirm');
+  document.getElementById('email-confirm-code').focus();
+}
+
+async function onConfirmEmailChange() {
+  const errorEl = document.getElementById('email-confirm-error');
+  const btn = document.getElementById('email-confirm-send');
+  const code = document.getElementById('email-confirm-code').value.trim();
+  errorEl.textContent = '';
+  if (!code) { errorEl.textContent = 'Enter the 6-digit code.'; return; }
+
+  setEmailButtonBusy(btn, 'Confirming');
+  const res = await Api.post('confirmEmailChange', {
+    token: Auth.getToken(), verifyToken: emailChangeToken, code
+  });
+  setEmailButtonIdle(btn);
+  if (!res.ok) { errorEl.textContent = res.error || 'Could not confirm that code.'; return; }
+
+  showEmailBlock(null);
+  // Keep the stored profile honest - the 2FA copy and the dashboard both read
+  // it, and a stale email there would be worse than none.
+  const owner = Auth.getOwner() || {};
+  owner.email = res.email;
+  owner.pendingEmail = '';
+  Auth.saveSession(Auth.getToken(), owner);
+  renderContactEmail(owner);
+  renderTwoFAStatus(owner);
+  document.getElementById('email-change-success').textContent =
+    'Your contact email is now ' + res.email + '. Orders and login codes go there from now on.';
+}
+
 function fillForm(owner) {
   document.getElementById('store-name').value = owner.storeName || '';
-  document.getElementById('contact-email').value = owner.email || '';
+  renderContactEmail(owner);
   document.getElementById('contact-phone').value = owner.phone || '';
   document.getElementById('contact-messenger').value = owner.messenger || '';
   // Blank is the normal state: an empty box means "same as the contact phone",
@@ -242,11 +366,6 @@ function findFirstInvalidSettingsField(village, villageSelectValue) {
     return { message: 'Store Name is required.', el: storeNameEl };
   }
 
-  const emailEl = document.getElementById('contact-email');
-  if (!emailEl.value.trim()) {
-    return { message: 'Contact Email is required.', el: emailEl };
-  }
-
   const phoneEl = document.getElementById('contact-phone');
   if (!phoneEl.value.trim()) {
     return { message: 'Contact Phone is required.', el: phoneEl };
@@ -303,7 +422,6 @@ async function onSaveSettings(e) {
   const payload = {
     token: Auth.getToken(),
     storeName: document.getElementById('store-name').value.trim(),
-    email: document.getElementById('contact-email').value.trim(),
     phone: document.getElementById('contact-phone').value.trim(),
     // Normalized the same way registration does, so a later edit lands in the
     // same shape. Blank stays blank - this page must keep saving for the stores
@@ -412,7 +530,7 @@ function renderTwoFAStatus(owner) {
   } else {
     statusEl.textContent = owner.email
       ? '2FA is currently OFF.'
-      : '2FA is currently OFF. Add a contact email above and save settings before enabling 2FA.';
+      : '2FA is currently OFF. Set a contact email above before enabling 2FA.';
     enableBtn.classList.remove('hidden');
     disableBtn.classList.add('hidden');
   }

@@ -48,16 +48,19 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
   const s1 = await page.evaluate(() => window.__stateFor(1));
   const s2 = await page.evaluate(() => window.__stateFor(2));
 
-  const DEEP_BLUE = 'rgb(0, 63, 135)'; // --color-blue #003f87
+  // The bold state used to be the deep brand BLUE; the site is purple now, and
+  // what this suite actually guards is that the bold state is a solid brand
+  // fill while the resting state is not - not which hue that fill happens to be.
+  const BOLD_FILL = 'rgb(51, 45, 99)'; // --color-purple #332d63
   ok('empty: no bold, no corner', !s0.bold && !s0.corner, JSON.stringify(s0));
   ok('empty: resting bottom-left (bottom & left anchored 16px)', s0.bottom === '16px' && s0.left === '16px', `${s0.left}/${s0.bottom}`);
-  ok('empty: NOT bold deep-blue bg', s0.bg !== DEEP_BLUE, s0.bg);
+  ok('empty: NOT the bold solid fill', s0.bg !== BOLD_FILL, s0.bg);
   ok('1 item: bold, not corner', s1.bold && !s1.corner, JSON.stringify(s1));
   ok('1 item: still bottom-left', s1.bottom === '16px' && s1.left === '16px', `${s1.left}/${s1.bottom}`);
-  ok('1 item: background is deep brand blue', s1.bg === DEEP_BLUE, s1.bg);
+  ok('1 item: background is the solid brand fill', s1.bg === BOLD_FILL, s1.bg);
   ok('2 items: bold AND corner', s2.bold && s2.corner, JSON.stringify(s2));
   ok('2 items: top-right (top & right anchored 16px)', s2.top === '16px' && s2.right === '16px', `T${s2.top} R${s2.right}`);
-  ok('2 items: still deep brand blue', s2.bg === DEEP_BLUE, s2.bg);
+  ok('2 items: still the solid brand fill', s2.bg === BOLD_FILL, s2.bg);
 
   // Animation: crossing to 3 => flash2; further add at >=3 => blink
   const anim = await page.evaluate(() => {
@@ -123,7 +126,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
   });
   ok('reduced-motion: flash animation is none', rm.animName === 'none', rm.animName);
   ok('reduced-motion: bold/corner static still apply',
-    rm.bg === 'rgb(0, 63, 135)' && rm.top === '16px' && rm.right === '16px', JSON.stringify(rm));
+    rm.bg === BOLD_FILL && rm.top === '16px' && rm.right === '16px', JSON.stringify(rm));
   await ctx3.close();
 
   await browser.close();

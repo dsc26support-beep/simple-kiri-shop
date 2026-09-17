@@ -18,6 +18,26 @@
   --color-blue: #003f87;
   --color-blue-light: #5b9bd5;
   --color-purple: #332d63;
+  /* Lighter purples, for the surfaces that used to be light blue. Picked for
+     contrast, not just hue: --light carries WHITE text (5.2:1, where the old
+     light blue managed 3.0 and failed), --pale carries DARK text on the dark
+     theme's surfaces (7.4:1). */
+  --color-purple-light: #6a61b8;
+  --color-purple-pale: #a8a1e0;
+
+  /* FOCUS STAYS BLUE, on purpose, and is the only blue chrome left.
+     A focus ring is not decoration - it is how somebody using a keyboard knows
+     where they are - and a purple ring around an already-purple control is far
+     harder to see. Aliased rather than spelled out so it reads as intent at
+     every use site. */
+  --color-focus: var(--color-blue);
+  --color-focus-soft: var(--color-blue-light);
+
+  /* Save, and only Save. Reuses the success green the site already shows after
+     something is stored, so one green means one thing. White text on it is
+     5.4:1. */
+  --color-save: var(--color-success);
+  --color-save-hover: #17612a;
   --color-ink: #1a1a1a;
   --color-muted: #5f6368;
   --color-border: #dcdfe3;
@@ -72,7 +92,7 @@ img {
 }
 
 a {
-  color: var(--color-blue);
+  color: var(--color-purple);
 }
 
 h1, h2, h3 {
@@ -99,7 +119,7 @@ h1, h2, h3 {
   position: absolute;
   left: -999px;
   top: 0;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   padding: var(--space-2) var(--space-3);
   z-index: 100;
@@ -111,7 +131,7 @@ h1, h2, h3 {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-blue);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -221,6 +241,39 @@ header.site-header .container.store-branding {
   font-size: 1.5rem;
 }
 
+/* The title shares the logo's row now, centred on the PAGE.
+ *
+ * Positioned rather than flexed on purpose: a flex item with text-align:center
+ * centres inside the space LEFT OVER beside the logo, which is off-centre by
+ * half the logo's width. This is centred on the row itself.
+ *
+ * pointer-events:none so it cannot sit over the cart or the menu button and
+ * swallow a tap - it is a heading, nothing is clickable in it. The logo link
+ * and the two corner buttons keep their hit areas whatever the width.
+ *
+ * max-width keeps it clear of both corners: 36px of logo on the left, and the
+ * cart plus the three-dot menu on the right. */
+.header-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: calc(100% - 200px);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 1.25rem;
+    max-width: calc(100% - 150px);
+  }
+}
+
 .store-logo {
   width: 64px;
   height: 64px;
@@ -308,7 +361,7 @@ header.site-header a {
 }
 
 .delivery-method-option:has(input:checked) {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 .delivery-method-option input {
@@ -358,8 +411,10 @@ section {
   padding: var(--space-4) 0;
 }
 
+/* No background. The grey band that used to sit behind the search box is gone;
+   the box's own purple outline is what marks it out now. The padding stays, so
+   the search bar keeps its breathing room above the category strip. */
 .hero {
-  background: var(--color-bg-alt);
   text-align: center;
   /* No horizontal padding: the inner .container already insets content by
      var(--space-3). Doubling it here made the home/search search bar narrower
@@ -385,8 +440,90 @@ section {
   margin: 0 auto;
 }
 
+/* Thin purple rather than the shared --color-border grey, on all four search
+   boxes (home, Browse, a storefront, All Stores) so the one control a shopper
+   is looking for reads the same everywhere.
+   
+   Still 1px, from the shared input rule above - only the colour changes, so a
+   search field is the same SIZE as every other field and nothing reflows. The
+   focus ring is a 3px blue outline, so the resting purple cannot be mistaken
+   for focus. */
 .search-box input {
   flex: 1;
+  border-color: var(--color-purple);
+}
+
+/* ---- the microphone, home only ----------------------------------------- *
+ *
+ * .search-box--voice is on the home form alone. That box has no submit button
+ * any more, so the mic sits INSIDE the field's right edge rather than beside
+ * it - which is also why the input needs room reserved on that side, or a long
+ * query would run underneath the button.
+ *
+ * The other three search boxes are untouched and keep their Search button.
+ */
+.search-box--voice {
+  position: relative;
+}
+
+.search-box--voice input {
+  padding-right: 44px;
+}
+
+.search-voice-btn {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-purple);
+  cursor: pointer;
+}
+
+.search-voice-btn:hover {
+  background: var(--color-bg-alt);
+}
+
+.search-voice-btn:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Live. Told apart by FILL and a ring as well as hue, so it is still obviously
+   different on a greyscale screen - a microphone that might be recording is
+   the last thing that should be signalled by colour alone. */
+.search-voice-btn.is-listening {
+  background: var(--color-red);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(206, 17, 38, 0.25);
+}
+
+/* The pulse is decoration on top of the fill above, never the thing carrying
+   the meaning, so switching it off loses nothing. */
+@media (prefers-reduced-motion: no-preference) {
+  .search-voice-btn.is-listening {
+    animation: voice-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes voice-pulse {
+  50% { box-shadow: 0 0 0 7px rgba(206, 17, 38, 0.12); }
+}
+
+@media (forced-colors: active) {
+  .search-voice-btn.is-listening {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
 }
 
 /* The magnifier is the phone treatment only - desktop and tablet keep the
@@ -403,7 +540,7 @@ section {
    it: ">" reads as "next", not as "search", and stripping the pill to
    transparent left it looking like a stray bracket rather than a control.
 
-   Purple, not the .btn-primary blue, so the disc rhymes with the active chip
+   The same purple as .btn-primary now, so the disc rhymes with the active chip
    sitting directly under it on the search and home pages. The desktop pill is
    untouched.
 
@@ -672,7 +809,7 @@ section {
 
 .category-btn:hover,
 .category-btn:focus-visible {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 /* Rentals & Services are the two booking categories - give their quick-filter
@@ -730,7 +867,7 @@ footer.site-footer .copyright {
   gap: var(--space-2);
   padding: 0.75em 1.5em;
   border-radius: 999px;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-weight: 700;
   text-decoration: none;
@@ -749,8 +886,8 @@ footer.site-footer .copyright {
 .floating-action-btn--small {
   padding: 0.4em 0.9em;
   font-size: 0.85rem;
-  background: var(--color-blue-light);
-  color: var(--color-blue);
+  background: var(--color-purple-pale);
+  color: var(--color-purple);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -955,23 +1092,23 @@ footer.site-footer .copyright {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
-/* Cart button on store.html: light blue (--color-blue-light, same hue the
+/* Cart button on store.html: light purple (--color-purple-light, same hue the
    chat FAB uses), 25%-transparent background, sized at ~100.5%. transform-
    origin keeps it anchored to the left/bottom edges as it scales, rather
    than scaling from its center and drifting off position. */
 .floating-action-btn--cart {
   transform: scale(1.005);
   transform-origin: left bottom;
-  background: rgba(91, 155, 213, 0.75); /* --color-blue-light */
+  background: rgba(106, 97, 184, 0.75); /* --color-blue-light */
 }
 
 /* The cart button escalates its look as distinct products are added (see
    updateCartCount / animateCartOnAdd in store.js). Effects stack and track the
    current count. Two-class selectors outspecify the base --cart rule above. */
 
-/* 1+ items: solid deep brand blue (over the resting translucent light blue). */
+/* 1+ items: solid deep brand purple (over the resting translucent light purple). */
 .floating-action-btn--cart.cart-fab--bold {
-  background: var(--color-blue);
+  background: var(--color-purple);
 }
 
 /* 2+ items: relocate from bottom-left to a fixed top-right corner, and stay. */
@@ -984,10 +1121,10 @@ footer.site-footer .copyright {
 }
 
 /* 3rd item added: flash twice; each add after that: one blink. Flashes between
-   the deep blue and light blue so the white label stays readable throughout. */
+   the deep purple and light purple so the white label stays readable throughout. */
 @keyframes cart-bg-flash {
-  0%, 100% { background-color: var(--color-blue); }
-  50%      { background-color: var(--color-blue-light); }
+  0%, 100% { background-color: var(--color-purple); }
+  50%      { background-color: var(--color-purple-light); }
 }
 
 .floating-action-btn--cart.cart-fab--flash2 {
@@ -1005,13 +1142,13 @@ footer.site-footer .copyright {
   }
 }
 
-/* "Continue Shopping" button on cart.html: 50% smaller, light blue
+/* "Continue Shopping" button on cart.html: 50% smaller, light purple
    (#5b9bd5), 10%-transparent background. transform-origin keeps it anchored
    to the left/bottom edges as it shrinks. */
 .floating-action-btn--continue-shopping {
   transform: scale(0.5);
   transform-origin: left bottom;
-  background: rgba(91, 155, 213, 0.9);
+  background: rgba(106, 97, 184, 0.9);
 }
 
 /*
@@ -1048,13 +1185,13 @@ footer.site-footer .copyright {
 }
 
 .chat-fab-btn:focus-visible {
-  outline: 3px solid var(--color-blue-light);
+  outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
 
 @media (prefers-color-scheme: dark) {
   .chat-fab-btn {
-    background: var(--color-blue-light);
+    background: var(--color-purple-pale);
     color: var(--color-ink);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
@@ -1119,7 +1256,7 @@ footer.site-footer .copyright {
   max-width: calc(100vw - 2 * var(--space-3));
   padding: 0.75em 1.25em;
   border-radius: 999px;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-weight: 600;
   font-size: 0.9rem;
@@ -1219,7 +1356,7 @@ footer.site-footer .copyright {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   flex: 0 0 auto;
 }
@@ -1355,7 +1492,7 @@ footer.site-footer .copyright {
   width: 28px;
   height: 28px;
   border: 3px solid var(--color-border);
-  border-top-color: var(--color-blue);
+  border-top-color: var(--color-purple);
   border-radius: 50%;
   animation: chat-spin 0.8s linear infinite;
 }
@@ -1401,7 +1538,7 @@ footer.site-footer .copyright {
 
 .chat-message--customer {
   align-self: flex-end;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -1497,7 +1634,7 @@ footer.site-footer .copyright {
 }
 
 .chat-message-input:focus-visible {
-  outline: 2px solid var(--color-blue-light);
+  outline: 2px solid var(--color-focus-soft);
   outline-offset: 1px;
 }
 
@@ -1510,7 +1647,7 @@ footer.site-footer .copyright {
   justify-content: center;
   border: none;
   border-radius: 50%;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   cursor: pointer;
   transition: transform 0.12s ease, background-color 0.15s ease;
@@ -1530,7 +1667,7 @@ footer.site-footer .copyright {
 }
 
 .chat-send-btn:focus-visible {
-  outline: 3px solid var(--color-blue-light);
+  outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
 
@@ -1559,7 +1696,7 @@ footer.site-footer .copyright {
 }
 
 .chat-attach-btn:focus-visible {
-  outline: 3px solid var(--color-blue-light);
+  outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
 
@@ -1682,7 +1819,7 @@ footer.site-footer .copyright {
   }
 
   .chat-message--customer {
-    background: var(--color-blue-light);
+    background: var(--color-purple-pale);
     color: #0b1a2b;
   }
 
@@ -1703,7 +1840,7 @@ footer.site-footer .copyright {
   }
 
   .chat-send-btn {
-    background: var(--color-blue-light);
+    background: var(--color-purple-pale);
     color: #0b1a2b;
   }
 
@@ -1764,7 +1901,7 @@ footer.site-footer .copyright {
   margin-left: 0.4em;
   padding: 0 0.35em;
   border-radius: 999px;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
@@ -1821,7 +1958,7 @@ footer.site-footer .copyright {
 }
 
 .filter-chip:focus-within {
-  outline: 2px solid var(--color-blue);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -1966,7 +2103,7 @@ footer.site-footer .copyright {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--color-blue);
+  color: var(--color-purple);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
@@ -2443,17 +2580,36 @@ footer.site-footer .copyright {
 }
 
 .btn-primary {
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
 }
 
-.btn-light-blue {
-  background: var(--color-blue-light);
+/* SAVE, AND ONLY SAVE. The three buttons that store what somebody has typed:
+   the profile on My Account, Save Settings, Save Product.
+
+   Deliberately not every button that writes something - not Place Order, not
+   Create Store Account, not Send me a code. If green covered all of those it
+   would just be the second action colour and would stop meaning anything; kept
+   to Save, it says one thing, and it sits opposite the red of the delete
+   buttons. */
+.btn-save,
+.btn-primary.btn-save {
+  background: var(--color-save);
+  color: #fff;
+}
+
+.btn-save:hover,
+.btn-primary.btn-save:hover {
+  background: var(--color-save-hover);
+}
+
+.btn-light-purple {
+  background: var(--color-purple-light);
   color: #fff;
 }
 
 .btn-adding {
-  background: var(--color-blue-light) !important;
+  background: var(--color-purple-light) !important;
   opacity: 1;
 }
 
@@ -2657,7 +2813,7 @@ footer.site-footer .copyright {
 
 .auth-tab.is-active {
   color: var(--color-ink);
-  border-bottom-color: var(--color-blue);
+  border-bottom-color: var(--color-purple);
 }
 
 .auth-panel .btn + .btn {
@@ -3007,13 +3163,45 @@ footer.site-footer .copyright {
   align-items: start;
 }
 
+/* The rail stays narrow until there is genuinely room for a wide one.
+   It used to widen to 190px at 600, at the same moment the tiles' minimum
+   went up - the pane was squeezed from both sides at once and a 600px tablet
+   ended up showing FEWER products than a 390px phone. */
 @media (min-width: 600px) {
   .category-browser {
-    grid-template-columns: 190px 1fr;
+    grid-template-columns: 108px 1fr;
     gap: var(--space-4);
     padding: var(--space-4);
-    max-width: 1100px;
+    /* 1600, not 1100. The old cap letterboxed the page on anything bigger than
+       a small laptop - two panes of content with a third of a large monitor
+       empty either side. A ceiling stays, though: past about this width a row
+       of tiles gets long enough that the eye loses its place scanning across
+       it, so the gain turns into a cost. */
+    max-width: 1600px;
+    /* width:100% is load-bearing next to the auto margins, not belt-and-braces.
+       .category-browser is a flex item of #main under .browse-locked, and auto
+       side margins on a flex item STOP it stretching - so with the tiles free
+       to size themselves it collapsed to its own content and sat 427px wide in
+       a 1920px window. Exactly the trap .home-main hit on the tips page.
+       width:100% fills, max-width caps, the auto margins then centre. */
+    width: 100%;
     margin: 0 auto;
+  }
+}
+
+/* A wider rail once there is room for one, in two steps rather than one jump.
+   The labels wrap at 108px and stop wrapping around 240px ("Agriculture &
+   Local Products" is the longest), and every pixel the rail takes is a pixel
+   the products do not get - so it widens only where that trade is free. */
+@media (min-width: 800px) {
+  .category-browser {
+    grid-template-columns: 190px 1fr;
+  }
+}
+
+@media (min-width: 1100px) {
+  .category-browser {
+    grid-template-columns: 240px 1fr;
   }
 }
 
@@ -3054,7 +3242,7 @@ footer.site-footer .copyright {
 .category-rail-item.is-selected {
   background: #fff;
   font-weight: 700;
-  box-shadow: inset 3px 0 0 var(--color-blue);
+  box-shadow: inset 3px 0 0 var(--color-purple);
 }
 
 /* Featured is the first entry and is NOT a category - it is a view over the
@@ -3167,18 +3355,30 @@ body.browse-locked .category-rail {
 
 /* Three across, like the reference. Its own class rather than .product-grid:
    these tiles are a different, lighter thing than a product card. */
+/* The tiles size themselves: as many as fit at the minimum below, each then
+   stretching to share the row evenly.
+ *
+ * One rule instead of a column count per breakpoint, so the page fills any
+ * screen rather than only the three that were measured. The minimum is what
+ * changes with width, not the count - on a phone the pane is only ~258px wide
+ * beside the rail, so the floor has to be small there to keep three across;
+ * given room, a bigger floor is what stops a wide monitor showing a dozen
+ * thumbnails in a row. */
 .category-grid {
+  --tile-min: 78px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-min), 1fr));
   gap: var(--space-2);
 }
 
+/* Stepping this in breakpoints is what made a tablet show fewer tiles than a
+   phone: each step raised the floor faster than the pane grew, so the count
+   fell at the boundary and climbed back afterwards. A clamp scales it with the
+   window instead, so the count only ever goes up - which a test asserts at
+   eight widths. 105px is the floor that keeps three across on a 600px tablet;
+   190px is where a tile stops usefully getting bigger. */
 @media (min-width: 600px) {
-  .category-grid { grid-template-columns: repeat(4, 1fr); }
-}
-
-@media (min-width: 900px) {
-  .category-grid { grid-template-columns: repeat(5, 1fr); }
+  .category-grid { --tile-min: clamp(105px, 11vw, 190px); }
 }
 
 /* Photo and name, nothing else - no price, store, phone or delivery icons.
@@ -3256,7 +3456,7 @@ body.browse-locked .category-rail {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-weight: 700;
   text-transform: uppercase;
@@ -3555,18 +3755,18 @@ body.has-header-menu header.site-header > .container:first-of-type {
 }
 
 /* Static "Continue Shopping" button on cart.html - sits beneath the bigger
-   "Proceed to Checkout" primary button. Secondary weight: light-blue outline
+   "Proceed to Checkout" primary button. Secondary weight: light-purple outline
    on a tinted fill so it reads clearly below the solid primary CTA. */
 .btn-continue-shopping {
   margin-top: var(--space-2);
-  background: rgba(91, 155, 213, 0.12); /* --color-blue-light tint */
-  color: var(--color-blue);
-  border-color: var(--color-blue-light);
+  background: rgba(106, 97, 184, 0.12); /* --color-purple-light tint */
+  color: var(--color-purple);
+  border-color: var(--color-purple-light);
 }
 
 @media (hover: hover) {
   .btn-continue-shopping:hover {
-    background: rgba(91, 155, 213, 0.22);
+    background: rgba(106, 97, 184, 0.22);
   }
 }
 
@@ -3609,7 +3809,7 @@ input[type="radio"] {
   padding: 0;
   border: 0;
   border-radius: 0;
-  accent-color: var(--color-blue);
+  accent-color: var(--color-purple);
 }
 
 /* The five labels that wrap a checkbox or radio. Each carries the 44px target
@@ -3739,8 +3939,8 @@ legend {
 }
 
 @keyframes product-highlight-pulse {
-  0% { box-shadow: 0 0 0 3px var(--color-blue-light); }
-  70% { box-shadow: 0 0 0 3px var(--color-blue-light); }
+  0% { box-shadow: 0 0 0 3px var(--color-purple-light); }
+  70% { box-shadow: 0 0 0 3px var(--color-purple-light); }
   100% { box-shadow: 0 0 0 3px transparent; }
 }
 
@@ -3766,7 +3966,7 @@ legend {
   font-size: 2rem;
   font-weight: 700;
   color: #fff;
-  background: var(--color-blue);
+  background: var(--color-purple);
 }
 
 /* Swatch colours for the thirteen categories. Shown only when a listing has no
@@ -3961,7 +4161,7 @@ legend {
 }
 
 .product-gallery-thumb.active {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 .product-gallery-thumb img {
@@ -4262,7 +4462,7 @@ legend {
 
 .store-card:hover,
 .store-card:focus-visible {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 /* --- Stores the shopper already has a cart with (directory.js) ------------
@@ -4304,12 +4504,12 @@ legend {
    below it, without shouting. */
 .store-card--resume {
   background: var(--color-bg-alt);
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 .store-card-resume {
   font-weight: 600;
-  color: var(--color-blue);
+  color: var(--color-purple);
 }
 
 /* One line, always. The placeholder above can't know how long the real store
@@ -4325,7 +4525,7 @@ legend {
 /* Inline marker on a directory card. The label carries the meaning; the border
    only reinforces it, so this never depends on colour alone. */
 .store-card.is-in-cart {
-  border-color: var(--color-blue);
+  border-color: var(--color-purple);
 }
 
 .store-card-cart-flag {
@@ -4333,7 +4533,7 @@ legend {
   margin-bottom: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 600;
@@ -4361,7 +4561,7 @@ legend {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-blue);
+  background: var(--color-purple);
   color: #fff;
   font-weight: 700;
   font-size: 1.1rem;
@@ -4422,6 +4622,32 @@ legend {
 .confirmation-cta strong {
   font-size: 1.25em;
   font-weight: 700;
+}
+
+/* ---- Post-order account offer ---------------------------------------------
+   The quietest thing on the confirmation screen, and last in the document. A
+   plain rule and a tint set it apart from the order details above it; no accent
+   border, no card shadow, nothing that competes with CALL SELLER NOW. Its
+   heading is deliberately the same size as body copy. */
+.post-order-account {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.post-order-account h2 {
+  font-size: 1rem;
+  margin: 0 0 var(--space-1);
+}
+
+.post-order-account .helper-text {
+  margin-top: 0;
+}
+
+/* Google's button is 280px and centred (see .auth-social); the email route is
+   full width below it, so they read as two options rather than one row. */
+.post-order-account .btn {
+  margin-top: var(--space-2);
 }
 
 .empty-state {
@@ -5256,7 +5482,7 @@ body.has-app-update .install-fab {
   border: 0;
   padding: 0;
   font: inherit;
-  color: var(--color-blue);
+  color: var(--color-purple);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -5300,6 +5526,29 @@ html.has-remembered-email .login-remembered {
   flex-wrap: wrap;
   gap: var(--space-2);
   margin: var(--space-3) 0;
+}
+
+/* "My Store" on My Account: reserved from first paint, revealed only for
+   someone who has one.
+
+   visibility rather than display:none or [hidden], because the box has to
+   exist from the start - revealing it must not push My Messages sideways, and
+   a sideways shift counts towards CLS exactly as a vertical one does.
+   visibility also keeps the link out of the tab order and the accessibility
+   tree while it is hidden, which opacity alone would not. */
+.dash-store-link {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 180ms ease-in;
+}
+
+.dash-store-link.is-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-store-link { transition: none; }
 }
 
 .btn-outline {

@@ -4,6 +4,21 @@
  * Customers only. Vendors sign in with username + password + 2FA and this file
  * is not loaded on any owner page - see apps-script/CustomerOAuth.gs for why.
  *
+ * Two pages load this file, and they need different things after a successful
+ * sign-in:
+ *
+ *   customer-login.html - signing in IS the task, so go where they were headed.
+ *   checkout.html       - the order is already placed and the screen says
+ *                         "CALL SELLER NOW". Navigating away from that would be
+ *                         actively harmful, so that page supplies
+ *                         window.onCustomerSignedIn and nothing redirects.
+ *
+ * checkout.html also needs the button rendered LATE: its block starts hidden
+ * inside the confirmation section, and Google measures the container when
+ * renderButton runs, so rendering into a display:none parent can leave a
+ * zero-height button. That page sets window.GOOGLE_SIGNIN_DEFER and calls
+ * initGoogleSignIn() itself once the block is on screen.
+ *
  * Degrades quietly, in this order:
  *   no GOOGLE_CLIENT_ID configured -> the whole block stays hidden
  *   Google's script blocked/offline -> the block stays hidden
@@ -34,6 +49,11 @@ function initGoogleSignIn() {
         auto_select: false,
         cancel_on_tap_outside: true
       });
+      // Shown BEFORE renderButton, not after. Google measures the container it
+      // is handed, and a container inside a [hidden] parent measures 0 - which
+      // produced a zero-height button on the checkout confirmation screen,
+      // where this block is revealed late. Put back on failure.
+      wrap.hidden = false;
       google.accounts.id.renderButton(document.getElementById('google-signin-btn'), {
         theme: 'outline',
         size: 'large',
@@ -41,9 +61,8 @@ function initGoogleSignIn() {
         text: 'continue_with',
         shape: 'rectangular'
       });
-      wrap.hidden = false;
     } catch (e) {
-      // Leave it hidden. A half-rendered Google button is worse than none.
+      wrap.hidden = true;   // a half-rendered Google button is worse than none
     }
   });
 }
@@ -86,6 +105,13 @@ async function onGoogleCredential(response) {
     return;
   }
   CustomerAuth.saveSession(res.token, res.customer);
+  // A page that wants to stay where it is says so. Checkout does: its
+  // confirmation screen is the only place the order summary and the seller's
+  // number exist.
+  if (typeof window.onCustomerSignedIn === 'function') {
+    window.onCustomerSignedIn(res.customer);
+    return;
+  }
   // nextDest() lives in customer-login.js, which is loaded on this page before
   // this file. Reused rather than reimplemented: a second redirect allowlist
   // that disagreed with the first is how one of them ends up being the wrong
@@ -93,4 +119,7 @@ async function onGoogleCredential(response) {
   window.location.href = typeof nextDest === 'function' ? nextDest() : 'customer-dashboard.html';
 }
 
-document.addEventListener('DOMContentLoaded', initGoogleSignIn);
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.GOOGLE_SIGNIN_DEFER) return;   // the page will call it when ready
+  initGoogleSignIn();
+});

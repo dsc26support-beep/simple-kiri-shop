@@ -101,6 +101,11 @@ function publicOwnerFields(owner) {
     deliveryShipCost: owner.DeliveryShipCost === '' || owner.DeliveryShipCost == null ? null : Number(owner.DeliveryShipCost),
     deliveryAirCargoCost: owner.DeliveryAirCargoCost === '' || owner.DeliveryAirCargoCost == null ? null : Number(owner.DeliveryAirCargoCost),
     twoFAEnabled: String(owner.TwoFAEnabled) === 'true',
+    // An email change that was asked for but never confirmed. Sent so Settings
+    // can say so after a reload - otherwise a seller who closed the page has no
+    // way of knowing a request is outstanding, and the warning that went to
+    // their old address would be the only trace of it.
+    pendingEmail: owner.PendingEmail || '',
     // Where this vendor's one-time codes go. Blank means email. Deliberately
     // NOT on publicStoreFields - a shopper has no business knowing how a seller
     // logs in.
@@ -445,6 +450,16 @@ function issueTwoFACode(ownerId, email, storeName, purpose, ownerRow) {
       TWOFA_CODE_EXPIRY_MINUTES + ' minutes.\n\nIf you did not request this, you can ignore this email.';
     smsBody = 'Mwakete password reset code: ' + code + ' (expires in ' +
       TWOFA_CODE_EXPIRY_MINUTES + ' min). Not you? Ignore this.';
+  } else if (purpose === 'emailchange') {
+    subject = 'Confirm your new Mwakete store email';
+    body = 'Hi ' + storeName + ',\n\nYour confirmation code is: ' + code + '\n\n' +
+      'Enter this code in your store Settings to start using this address for ' +
+      'customer orders and for your login codes. This code expires in ' +
+      TWOFA_CODE_EXPIRY_MINUTES + ' minutes.\n\n' +
+      'Until then, nothing has changed - the store keeps using its old address.\n\n' +
+      'If you were not expecting this, ignore this email. Nothing will happen.';
+    smsBody = 'Mwakete email change code: ' + code + ' (expires in ' +
+      TWOFA_CODE_EXPIRY_MINUTES + ' min).';
   } else if (purpose === 'setup') {
     subject = 'Confirm two-factor authentication for Mwakete';
     body = 'Hi ' + storeName + ',\n\nYour verification code is: ' + code + '\n\n' +
@@ -548,6 +563,114 @@ function actionResetPasswordWithCode(body) {
     revokeAllSessions(owner.OwnerId);
 
     return ok({});
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Changing the contact email
+ *
+ * This address is three things at once: where customer orders are emailed
+ * (Orders.gs), where password-reset codes go (actionRequestPasswordReset), and
+ * where login 2FA codes go (actionLoginOwner). Until now a live session could
+ * repoint all three in one Save, with no proof of anything - so anyone who got
+ * into a session once could make it permanent and lock the real owner out.
+ *
+ * Three separate things are now required, each closing a different hole:
+ *
+ *   the password       - the only one that PREVENTS a takeover. A stolen
+ *                        session token is not enough any more.
+ *   a code to the NEW  - proves the address exists and is readable, so a typo
+ *     address            cannot silently swallow the store's orders.
+ *   a warning to the   - the only one the real owner ever sees if the other
+ *     OLD address        two are in an attacker's hands. It is sent whether or
+ *                        not the change is ever confirmed, on purpose.
+ *
+ * The live Email is not touched until the code comes back. A seller who starts
+ * this and wanders off keeps receiving orders at an address that works.
+ * ------------------------------------------------------------------------- */
+
+function actionRequestEmailChange(owner, body) {
+  var password = String(body.password || '');
+  var newEmail = String(body.email || '').trim();
+  if (!password) return fail('Enter your password to change the contact email');
+
+  var emailErr = validateOwnerEmail(newEmail, owner.OwnerId);
+  if (emailErr) return emailErr;
+  if (String(owner.Email || '').toLowerCase() === newEmail.toLowerCase()) {
+    return fail('That is already your contact email');
+  }
+
+  // Same check and the same lockout as the login form. An attacker holding a
+  // session would otherwise have an unlimited, unthrottled password oracle
+  // here, which is precisely what the login form refuses to be.
+  var candidateHash = hashPassword(password, owner.PasswordSalt);
+  var passwordOk = constantTimeEquals(candidateHash, owner.PasswordHash);
+  var lockout = checkAndRecordLoginAttempt(String(owner.Username).toLowerCase(), passwordOk);
+  if (lockout.locked) {
+    return fail('Too many incorrect passwords. Please try again in ' + lockout.retryAfterMinutes + ' minute(s).');
+  }
+  if (!passwordOk) return fail('That password is not right');
+
+  var sheet = getSheet('Owners');
+  // Older sheets predate this column, and updateRowFromObject silently drops a
+  // field with no matching header - so the pending address would vanish and
+  // the confirm step would have nothing to apply.
+  ensureColumn(sheet, 'PendingEmail');
+  var row = findRowById(sheet, 'OwnerId', owner.OwnerId);
+  if (!row) return fail('Store account not found');
+  updateRowFromObject(sheet, row.__row, { PendingEmail: newEmail });
+
+  // Sent BEFORE the code, and sent even if the change is never confirmed: a
+  // request the owner did not make is exactly the thing they need to hear
+  // about, and hearing about it is useless after the fact.
+  if (owner.Email) {
+    sendAppEmail(owner.Email, 'Someone is changing your Mwakete store email',
+      'Hi ' + owner.StoreName + ',\n\n' +
+      'A request was made to change your store contact email to ' + newEmail + '.\n\n' +
+      'Your store is still using this address. The change only happens if the ' +
+      'code we sent to the new address is entered in Settings.\n\n' +
+      'IF THIS WAS NOT YOU, someone may be signed in to your store account. ' +
+      'Change your password now from Settings, or use "Forgot your password?" ' +
+      'on the login page, then tell us through the Enquiry link at the bottom ' +
+      'of any Mwakete page.');
+  // The address itself is deliberately not written here. It lives in the
+  // Enquiry link in the page footers, and verify-deletedmsg asserts no script
+  // file pastes it into a message - one place to change it, one place to get
+  // it wrong.
+  }
+
+  var pending = issueTwoFACode(owner.OwnerId, newEmail, owner.StoreName, 'emailchange', owner);
+  return ok({ verifyToken: pending.token, sentTo: newEmail });
+}
+
+function actionConfirmEmailChange(owner, body) {
+  var result = consumeTwoFACode(body.verifyToken, body.code, 'emailchange', owner.OwnerId);
+  if (!result.ok) return result;
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var sheet = getSheet('Owners');
+    ensureColumn(sheet, 'PendingEmail');
+    var row = findRowById(sheet, 'OwnerId', owner.OwnerId);
+    if (!row) return fail('Store account not found');
+
+    var pendingEmail = String(row.PendingEmail || '').trim();
+    if (!pendingEmail) return fail('There is no email change waiting. Please start again.');
+
+    // Re-validated here, not just at request time: another store could have
+    // taken that address in the minutes between the two steps, and uniqueness
+    // is what the rest of the app relies on to find a store by its email.
+    var emailErr = validateOwnerEmail(pendingEmail, owner.OwnerId);
+    if (emailErr) {
+      updateRowFromObject(sheet, row.__row, { PendingEmail: '' });
+      return emailErr;
+    }
+
+    updateRowFromObject(sheet, row.__row, { Email: pendingEmail, PendingEmail: '' });
+    return ok({ email: pendingEmail });
   } finally {
     lock.releaseLock();
   }

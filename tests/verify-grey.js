@@ -6,7 +6,11 @@ const rgb = s => s.replace(/\s+/g,'');
   const ctx = await b.newContext();
   await ctx.route('**/macros/s/**', r => r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,products:[],stores:[]})}));
   const results=[]; const ok=(n,c,e)=>results.push([c?'PASS':'FAIL',n,e||'']);
-  const pages=['index.html','categories.html','store.html?store=x','stores.html'];
+  // index.html is not here any more: the home search box lost its Search
+  // button when the microphone replaced it. The other three keep theirs, and
+  // the purple-disc-not-grey-chevron rule this suite exists for still applies
+  // to all three. verify-home-search asserts home has no submit button at all.
+  const pages=['categories.html','store.html?store=x','stores.html'];
   for(const p of pages){
     const page=await ctx.newPage();
     await page.setViewportSize({width:390,height:800});
@@ -30,14 +34,16 @@ const rgb = s => s.replace(/\s+/g,'');
     ok(`mobile ${p}: no ::after glyph left behind`, s.after==='none'||s.after==='normal', s.after);
     await page.close();
   }
-  // desktop unchanged: blue "Search"
+  // desktop unchanged: the brand-filled "Search" button (purple since the
+  // blue-to-purple theme pass; the point here is that desktop still shows a
+  // filled button with the word on it)
   {
     const page=await ctx.newPage();
     await page.setViewportSize({width:900,height:800});
-    await page.goto(BASE+'/index.html',{waitUntil:'load'});
+    await page.goto(BASE+'/categories.html',{waitUntil:'load'});
     await page.waitForSelector('.search-box button[type="submit"]');
     const d=await page.evaluate(()=>{const btn=document.querySelector('.search-box button[type="submit"]');return {bg:getComputedStyle(btn).backgroundColor,text:btn.textContent.trim()};});
-    ok('desktop: blue Search unchanged', rgb(d.bg)==='rgb(0,63,135)' && d.text==='Search', JSON.stringify(d));
+    ok('desktop: filled Search button unchanged', rgb(d.bg)==='rgb(51,45,99)' && d.text==='Search', JSON.stringify(d));
     await page.close();
   }
   await b.close();

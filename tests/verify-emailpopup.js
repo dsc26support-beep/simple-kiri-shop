@@ -25,7 +25,12 @@ async function run(emailedSeller) {
 
   // Fill the form
   await page.fill('#customer-name', 'Debby Hakau');
-  await page.fill('#customer-phone', '+686111');
+  await page.fill('#customer-email', 'debby@example.com');   // required now
+  // '+686111' until now - a Kiribati number that fails the §16 rule (local
+  // numbers must start 730 or 630), so the order was blocked on validation and
+  // this suite could never reach the popup it exists to test. It has been
+  // crashing since that rule landed, identically on main.
+  await page.fill('#customer-phone', '+68673012345');
   await page.selectOption('#checkout-island', 'South Tarawa');
   // pick first village option that isn't the placeholder
   await page.evaluate(() => {

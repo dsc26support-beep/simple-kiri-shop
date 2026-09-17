@@ -853,23 +853,24 @@ function actionUpdateOwnerProfile(owner, body) {
     update.PasswordHash = hashPassword(body.newPassword, salt);
   }
 
-  // Email gets its own validated path (format, non-blank, not already
-  // claimed by another owner) - actionRegisterOwner already enforces all
-  // three at signup, this closes the gap where an update could silently
-  // skip them, including blanking out the very email password reset
-  // depends on. The dedupe check is a check-then-write, so it needs the
-  // same lock-guarded read every other duplicate check in this codebase uses.
+  // THE CONTACT EMAIL IS NOT SETTABLE HERE, deliberately.
+  //
+  // It used to be: validated for format and uniqueness, then written straight
+  // in. But that address is where customer orders are sent, where password
+  // reset codes go and where login 2FA codes go - so a live session alone
+  // could repoint all three in one Save, and anyone who got into a session
+  // once could make it permanent and lock the real owner out.
+  //
+  // It now has its own two-step path that asks for the password, sends a code
+  // to the new address and warns the old one: actionRequestEmailChange /
+  // actionConfirmEmailChange in Auth.gs. A body.email sent here is ignored
+  // rather than refused, so an older cached build's Save keeps working on
+  // every OTHER field instead of failing whole.
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
     var row = findRowById(sheet, 'OwnerId', owner.OwnerId);
     if (!row) return fail('Store account not found');
-
-    if (body.email !== undefined) {
-      var emailErr = validateOwnerEmail(body.email, owner.OwnerId);
-      if (emailErr) return emailErr;
-      update.Email = String(body.email).trim();
-    }
 
     updateRowFromObject(sheet, row.__row, update);
     invalidateCache(storeCacheKeys(owner.StoreSlug));

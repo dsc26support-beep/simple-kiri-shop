@@ -118,8 +118,16 @@
               <input id="customer-phone" name="customerPhone" type="tel" autocomplete="tel" required>
             </div>
             <div class="field">
-              <label for="customer-email">Email (optional)</label>
-              <input id="customer-email" name="customerEmail" type="email" autocomplete="email">
+              <label for="customer-email">Email</label>
+              <input id="customer-email" name="customerEmail" type="email" autocomplete="email" required>
+              <!-- Required now, where it used to be optional. An order carries
+                   no account id - the customer dashboard finds a shopper's
+                   orders by matching CustomerEmail (Customers.gs,
+                   buildCustomerOrders). So an order placed without one can
+                   never appear in an account, however much later that account
+                   is created, and the offer at the end of this page would be a
+                   promise it could not keep. -->
+              <p class="helper-text">So you can see this order later, and the store can reach you.</p>
             </div>
             <div class="field">
               <label for="checkout-island">Island</label>
@@ -160,7 +168,13 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
               <span>Back to Cart</span>
             </a>
-            <p class="helper-text">After you order, we'll email the store your details automatically — then call them to arrange payment.</p>
+            <!-- The second sentence moved here from the home page footer, which
+                 is where it used to be the only place a shopper was told it.
+                 This is the moment it matters: they are about to commit to
+                 paying a seller directly. Folded into the line that was already
+                 here rather than added beside it, which would have said the
+                 same thing twice. -->
+            <p class="helper-text">After you order, we'll email the store your details automatically &mdash; then call them to arrange payment. <strong>All payments are arranged directly between you and the seller</strong> &mdash; Mwakete never handles the money.</p>
           </form>
         </div>
 
@@ -199,6 +213,36 @@
         <div class="booking-vendor-contact" id="order-contact"></div>
 
         <p style="margin-top:2rem;"><a href="stores.html">← Back to All Stores</a></p>
+
+        <!-- Deliberately the LAST thing on this screen. The job of this page is
+             "CALL SELLER NOW" - that is how the order actually gets filled -
+             and nothing should sit above it competing for the tap.
+
+             Guests only: revealed by showAccountOffer() in checkout.js, and
+             only when there is no customer session already. -->
+        <aside id="post-order-account" class="post-order-account" hidden
+               aria-labelledby="post-order-account-heading">
+          <h2 id="post-order-account-heading">Keep this order</h2>
+          <!-- Reviews really do need an account - actionSubmitReview requires a
+               customer session (Reviews.gs) - so this is a true statement, and
+               they are per product rather than per store. -->
+          <p class="helper-text">Create an account and this order shows up in My
+            Account, along with every order after it. You will be able to review
+            what you bought, too.</p>
+
+          <!-- Same ids google-signin.js binds to on the sign-in page. It stays
+               hidden unless a client id is configured AND Google's script
+               loads, so a filtered or slow connection just leaves the email
+               route below. -->
+          <div id="google-signin-wrap" class="auth-social" hidden>
+            <div id="google-signin-btn"></div>
+            <p id="google-signin-error" class="form-error" role="alert"></p>
+          </div>
+
+          <a id="post-order-email-link" class="btn btn-block btn-outline"
+             href="customer-login.html?tab=signup">Create an account with my email</a>
+          <p id="post-order-done" class="helper-text" role="status" hidden></p>
+        </aside>
       </div>
     </section>
   </main>
@@ -214,6 +258,7 @@
   <script defer src="assets/js/unsaved-guard.min.js"></script>
   <script defer src="assets/js/checkout.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/google-signin.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>
   <script defer src="assets/js/bottom-nav.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>

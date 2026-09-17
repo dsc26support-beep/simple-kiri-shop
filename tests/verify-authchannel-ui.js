@@ -109,7 +109,13 @@ const OWNER = {
     await h.page.waitForTimeout(1200);
     const saved = h.saved();
     ok('saving still sends the existing contact fields',
-      saved && saved.phone === '73007552' && saved.email === 'a@b.com', JSON.stringify(saved));
+      saved && saved.phone === '73007552' && saved.storeName === 'Bong', JSON.stringify(saved));
+    // The contact email deliberately left this payload: it is where orders,
+    // password resets and login codes all go, so it now has its own two-step
+    // action (password + a code to the new address) rather than riding along
+    // with an ordinary Save. See test-emailchange.js.
+    ok('but the contact email is NOT one of them any more',
+      saved && !('email' in saved), JSON.stringify(saved && Object.keys(saved)));
     ok('and does not invent an authChannel the vendor never chose',
       saved && saved.authChannel === undefined, JSON.stringify(saved && saved.authChannel));
     await h.ctx.close();

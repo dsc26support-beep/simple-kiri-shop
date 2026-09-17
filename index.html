@@ -29,9 +29,11 @@
       <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
         <img src="assets/img/favicon.svg" alt="" class="header-logo-mark">
       </a>
-    </div>
-    <div class="container site-branding">
-      <p class="site-title">Mwakete</p>
+      <!-- On the same row as the logo now, and centred on the PAGE rather than
+           in the space left over beside the logo - which is why it is
+           positioned rather than flexed. The row it used to have is gone, so
+           the header is one line shorter. -->
+      <p class="site-title header-title">Mwakete</p>
     </div>
   </header>
 
@@ -40,16 +42,23 @@
          gets there fastest. Everything below is for someone who does not. -->
     <section class="hero">
       <div class="container">
-        <form id="search-form" class="search-box" role="search">
+        <!-- No submit button on this one. The magnifying glass is gone and the
+             search runs on Enter, or the "Go" key every mobile keyboard puts
+             there for an <input type="search"> inside a <form>. The other three
+             search boxes keep theirs. -->
+        <form id="search-form" class="search-box search-box--voice" role="search">
           <label class="sr-only" for="search-input">Search products, services and rentals</label>
-          <input id="search-input" type="search" placeholder="Search products, services, rentals…">
-          <!-- The label stays in the markup at every width: on the phone it is
-               clipped rather than removed, so the button's accessible name is
-               still "Search" even when only the glass is drawn. -->
-          <button type="submit" class="btn btn-primary search-submit">
-            <svg class="search-submit-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
-            <span class="search-submit-label">Search</span>
+          <input id="search-input" type="search" placeholder="What is on your mind?">
+          <!-- Hidden until the script confirms the browser can actually listen -
+             see startVoiceSearch in home.js. Drawn hidden rather than added
+             later so it can never appear after first paint and move the bar. -->
+          <button type="button" id="voice-search-btn" class="search-voice-btn" hidden
+                  aria-label="Search by voice — speak in English">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"></path><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg>
           </button>
+          <!-- Announced, not just drawn: someone who cannot see the button turn
+               red still has to know the microphone is live. -->
+          <p id="voice-search-status" class="sr-only" role="status" aria-live="polite"></p>
         </form>
       </div>
     </section>
@@ -96,8 +105,6 @@
 
   <footer class="site-footer">
     <div class="container">
-      <p>All payments is arranged between Customer and Seller</p>
-      <p><a href="stores.html">Browse All Stores</a> · <a href="owner/login.html">Vendor Login</a> · <a href="mailto:admin@mwakete.com?subject=Mwakete%20Enquiry">Enquiry</a></p>
       <p class="copyright">©MainKT Enterprises <a href="terms.html">Terms</a> <span aria-hidden="true">|</span> <a href="privacy.html">Privacy</a></p>
     </div>
   </footer>

@@ -15,7 +15,10 @@ const rgb = s => s.replace(/\s+/g, '');
 
   const results = [];
   const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
-  const pages = ['index.html', 'categories.html', 'store.html?store=x', 'stores.html'];
+  // index.html is not here: its Search button was replaced by the voice-search
+  // microphone, so there is no disc on the home bar to check. The three boxes
+  // that kept their button still have to obey every rule below.
+  const pages = ['categories.html', 'store.html?store=x', 'stores.html'];
 
   // Written for a BLUE ::after chevron, which later became grey and has now
   // been replaced by a purple disc that only appears once the shopper types.
@@ -39,23 +42,29 @@ const rgb = s => s.replace(/\s+/g, '');
     await page.fill('.search-box input[type="search"]', 'r');
     await page.waitForTimeout(300);
     const s = await state(page);
-    ok(`mobile ${p}: not the desktop blue pill`, rgb(s.bg) !== 'rgb(0,63,135)', s.bg);
+    // Mobile and desktop used to differ by COLOUR as well as shape. They are
+    // both brand purple now, so the difference this suite exists to protect is
+    // the shape: a round 44px disc on a phone, a labelled pill on desktop.
+    ok(`mobile ${p}: a disc, not the desktop pill`, s.radius === '999px' && s.w === 44,
+       JSON.stringify(s));
     ok(`mobile ${p}: a round 44px purple disc`,
        rgb(s.bg) === 'rgb(51,45,99)' && s.radius === '999px' && s.w === 44, JSON.stringify(s));
     await page.close();
   }
 
-  // Desktop keeps blue fill + "Search"
+  // Desktop keeps the brand fill + the word "Search"
   {
     const page = await ctx.newPage();
     await page.setViewportSize({ width: 900, height: 800 });
-    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
     await page.waitForSelector('.search-box button[type="submit"]');
     const bgAndText = await page.evaluate(() => {
       const b = document.querySelector('.search-box button[type="submit"]');
       return { bg: getComputedStyle(b).backgroundColor, text: b.textContent.trim(), fs: getComputedStyle(b).fontSize, radius: getComputedStyle(b).borderTopLeftRadius };
     });
-    ok('desktop: blue fill retained', rgb(bgAndText.bg) === 'rgb(0,63,135)', bgAndText.bg);
+    ok('desktop: brand purple fill retained', rgb(bgAndText.bg) === 'rgb(51,45,99)', bgAndText.bg);
+    ok('desktop: and it is NOT a disc - shape is what separates the two now',
+       bgAndText.radius !== '999px', bgAndText.radius);
     ok('desktop: shows "Search"', bgAndText.text === 'Search' && bgAndText.fs !== '0px', JSON.stringify(bgAndText));
     ok('desktop: no disc radius leaked up from the phone rules',
        bgAndText.radius !== '999px', String(bgAndText.radius));

@@ -1,5 +1,13 @@
 document.addEventListener('DOMContentLoaded', init);
 
+// google-signin.js would otherwise render Google's button on DOMContentLoaded,
+// into a block that is still inside the hidden confirmation section - Google
+// measures the container at render time, so that can produce a 0-height button.
+// showAccountOffer() calls initGoogleSignIn() once the block is on screen.
+// Set at script scope, not inside init(), because google-signin.js is a later
+// deferred script: both run before DOMContentLoaded, in tag order.
+window.GOOGLE_SIGNIN_DEFER = true;
+
 let currentSlug = null;
 let storeInfo = null;
 
@@ -441,6 +449,27 @@ async function onSubmit(e) {
     errorEl.textContent = 'Local phone numbers must start with 730 or 630. For an overseas number, include your country code (e.g. +64…).';
     return;
   }
+  // Email used to be optional. It is required now because it is the ONLY thing
+  // that ties this order to a person: an order row carries no account id, and
+  // the customer dashboard finds someone's orders by matching CustomerEmail
+  // (Customers.gs, buildCustomerOrders). Without it the order cannot be looked
+  // up later by the shopper, and the seller has no written record to reply to.
+  //
+  // Checked here rather than left to the `required` attribute, because the form
+  // is novalidate - every other rule on this page is enforced in this function
+  // and a second, browser-level path would report errors somewhere else.
+  //
+  // Deliberately NOT enforced in the backend: a phone still holding an older
+  // cached build would have its orders rejected outright, which is a worse
+  // outcome than an order with no email.
+  if (!customerEmail) {
+    errorEl.textContent = 'Please enter your email — it is how you can see this order later, and how the store reaches you.';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+    errorEl.textContent = 'That email address does not look right. Please check it.';
+    return;
+  }
   if (!island || !village) {
     errorEl.textContent = 'Please select your island and village.';
     return;
@@ -536,6 +565,63 @@ function showConfirmation(orderResult, payload) {
   document.getElementById('order-summary-text').value = summaryText;
 
   renderOrderContact();
+  showAccountOffer(payload);
+}
+
+/**
+ * Under everything else on the confirmation screen: would you like an account?
+ *
+ * Deliberately not a step, a modal or a condition. The order is already placed
+ * and carries no account id - the customer dashboard finds a shopper's orders by
+ * matching CustomerEmail (Customers.gs, buildCustomerOrders) - so an account
+ * created in a minute, or next month, picks this order up either way. Nothing is
+ * lost by ignoring this, which is exactly why it can sit quietly at the bottom
+ * rather than above "CALL SELLER NOW", the one thing on this page that actually
+ * gets the order filled.
+ *
+ * Not shown to someone already signed in: they have an account, and this order
+ * is in it.
+ *
+ * Not shown on the fallback path either (see showFallbackConfirmation) - that
+ * order never reached the backend, so there is no Orders row for an account to
+ * find, and offering to "keep this order" would be a promise we can't keep.
+ */
+function showAccountOffer(payload) {
+  const box = document.getElementById('post-order-account');
+  if (!box) return;
+  if (typeof CustomerAuth === 'undefined' || CustomerAuth.getToken()) return;
+
+  // Carry the email they just typed so the sign-up form is one field shorter,
+  // and - more importantly - so it matches the address on the order. A typo'd
+  // second attempt is an account that never sees this order.
+  const email = (payload && payload.customerEmail) || '';
+  const link = document.getElementById('post-order-email-link');
+  if (link) {
+    link.href = 'customer-login.html?tab=signup'
+      + (email ? '&email=' + encodeURIComponent(email) : '');
+  }
+
+  window.onCustomerSignedIn = onPostOrderSignIn;
+  box.hidden = false;
+  // Now that the block is laid out, Google's button can be sized correctly.
+  if (typeof initGoogleSignIn === 'function') initGoogleSignIn();
+}
+
+/**
+ * Signed in with Google from the confirmation screen. Stay put: this page is
+ * the only place the order summary and the seller's number exist, and the
+ * customer has not called them yet.
+ */
+function onPostOrderSignIn(customer) {
+  const wrap = document.getElementById('google-signin-wrap');
+  const link = document.getElementById('post-order-email-link');
+  const done = document.getElementById('post-order-done');
+  if (wrap) wrap.hidden = true;
+  if (link) link.hidden = true;
+  if (!done) return;
+  const name = customer && customer.name ? customer.name : '';
+  done.textContent = (name ? name + ', your' : 'Your') + ' account is ready \u2014 this order is saved in My Account.';
+  done.hidden = false;
 }
 
 /**

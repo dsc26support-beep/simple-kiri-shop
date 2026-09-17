@@ -43,7 +43,16 @@ const Auth = (function () {
   async function guardOwnerAuth() {
     const token = getToken();
     if (!token) {
-      window.location.href = 'login.html';
+      // No session has ever existed on this device, so this is most likely
+      // somebody who has not opened a store yet - a bookmark, a shared link,
+      // the app icon. They used to be dropped on the Log In form with no
+      // explanation at all. ?needStore=1 opens Register with a line saying
+      // what is needed; Log In is still one tap away for a seller on a new
+      // phone, and the wording never claims they have no account.
+      //
+      // Deliberately NOT the same as ?expired=1 below: that one had a session,
+      // so it is a returning seller and belongs on Log In.
+      window.location.href = 'login.html?needStore=1';
       return null;
     }
     const res = await Api.post('getOwnerProfile', { token });

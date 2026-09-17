@@ -52,12 +52,14 @@ function route(ctx, opts, posted) {
       orderText: document.getElementById('orders-list').textContent,
       bookingCount: document.querySelectorAll('#bookings-list .dash-item').length,
       bookingText: document.getElementById('bookings-list').textContent,
-      sellerShown: !document.getElementById('seller-link-wrap').classList.contains('hidden'),
+      // The separate "Go to seller dashboard" link is gone - My Store is the
+      // one control now, revealed by the same device-token signal.
+      sellerShown: document.getElementById('store-link').classList.contains('is-visible'),
     }));
     ok('profile shows name/email/phone', st.name === 'Debby' && st.email === 'd@x.com' && st.phone === '7301234', JSON.stringify(st));
     ok('my orders renders 1 order with total+status', st.orderCount === 1 && /Bong/.test(st.orderText) && /Pending Payment/.test(st.orderText), st.orderText);
     ok('my bookings renders 1 booking', st.bookingCount === 1 && /Kayak/.test(st.bookingText), st.bookingText);
-    ok('seller link shown (also owns a store)', st.sellerShown);
+    ok('My Store shown (this device is signed in as a seller)', st.sellerShown);
 
     // profile edit: bad phone blocked, then good save
     await page.click('#profile-edit-btn');
@@ -92,7 +94,8 @@ function route(ctx, opts, posted) {
     const s = await page.evaluate(() => ({ orders: document.getElementById('orders-status').textContent, bookings: document.getElementById('bookings-status').textContent }));
     ok('orders error shows a refresh/failed message (not blank)', /refresh|Refresh/.test(s.orders), s.orders);
     ok('bookings empty shows "No bookings yet."', /No bookings yet/.test(s.bookings), s.bookings);
-    ok('no seller link when not an owner', await page.evaluate(() => document.getElementById('seller-link-wrap').classList.contains('hidden')));
+    ok('no My Store button when not an owner', await page.evaluate(() =>
+      !document.getElementById('store-link').classList.contains('is-visible')));
     await ctx.close();
   }
 
