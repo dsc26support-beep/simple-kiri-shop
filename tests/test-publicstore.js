@@ -89,8 +89,13 @@ ok('publicOwnerFields still exposes ownerId/email/status/twoFAEnabled/isAdmin',
 // authChannel / authChannelEffective joined this list deliberately (PR #27, the
 // auth-code channel router). Both are about how the VENDOR receives a login
 // code; neither is customer data, and neither is on publicStoreFields.
+// pendingEmail joined for the same kind of reason: an email change that has
+// been asked for but not yet confirmed. It is the vendor's own in-progress
+// address, publicOwnerFields is only ever returned to an AUTHENTICATED owner
+// (loginOwner, verifyLoginCode, getOwnerProfile, updateOwnerProfile - checked),
+// and it is not on publicStoreFields, so no shopper can see it.
 const OWNER_KEYS = ['ownerId', 'storeName', 'storeSlug', 'email', 'phone', 'messenger', 'whatsapp', 'logoUrl',
-  'authChannel', 'authChannelEffective',
+  'authChannel', 'authChannelEffective', 'pendingEmail',
   'island', 'village', 'status', 'isOpen', 'deliveryTruck', 'deliveryShip', 'deliveryAirCargo',
   'deliveryPickPay', 'deliveryTruckCost', 'deliveryShipCost', 'deliveryAirCargoCost',
   'twoFAEnabled', 'isAdmin'];
@@ -111,7 +116,13 @@ const mainAuth = require('child_process')
 // and put it back on merge.
 const mainOwnerSrc = grab(mainAuth, 'publicOwnerFields');
 const hereOwnerSrc = grab(auth, 'publicOwnerFields');
-ok('publicOwnerFields source is byte-identical to main', mainOwnerSrc === hereOwnerSrc);
+// RELAXED FOR THE LIFE OF THIS BRANCH, exactly as the note above prescribes:
+// the verified-email-change work adds pendingEmail. The only differences
+// allowed are that one field and its comment - anything else still fails, and
+// this goes back to a strict equality check when the branch merges.
+const ownerDiff = hereOwnerSrc.split('\n').filter((l) => mainOwnerSrc.indexOf(l) === -1);
+ok('publicOwnerFields differs from main ONLY by the pending-email field',
+  ownerDiff.every((l) => /pendingEmail:|^\s*\/\//.test(l)), ownerDiff.join(' | '));
 ok('nothing was removed from publicOwnerFields',
   mainOwnerSrc.split('\n').filter((l) => /^\s+\w+: /.test(l))
     .every((l) => hereOwnerSrc.indexOf(l) !== -1));

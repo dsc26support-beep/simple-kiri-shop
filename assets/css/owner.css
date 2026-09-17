@@ -53,6 +53,21 @@
   border-radius: var(--radius);
 }
 
+/* Contact Email is shown, not edited - it has its own two-step action. The
+   heading has to look exactly like the <label> above and below it, or the
+   field reads as a different kind of thing to the ones either side. */
+.field-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+  font-size: 0.95rem;
+}
+
+.settings-readonly {
+  margin: 0 0 var(--space-2);
+  word-break: break-all;   /* a long address must not widen the page */
+}
+
 /* The "a store account is a separate account" note, and anything else the
    login page needs to say before the form. Tinted rather than bordered in an
    accent colour: it is an explanation, not a warning, and the page already has

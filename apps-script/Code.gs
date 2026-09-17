@@ -66,7 +66,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'cats1-2026-09-16';
+var APP_VERSION = 'sellermail1-2026-09-17';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -420,6 +420,8 @@ function doPost(e) {
         case 'enable2FARequest': return jsonOut(actionEnable2FARequest(owner));
         case 'confirm2FASetup': return jsonOut(actionConfirm2FASetup(owner, body));
         case 'disable2FA': return jsonOut(actionDisable2FA(owner));
+        case 'requestEmailChange': return jsonOut(actionRequestEmailChange(owner, body));
+        case 'confirmEmailChange': return jsonOut(actionConfirmEmailChange(owner, body));
         case 'getVendorConversations': return jsonOut(actionGetVendorConversations(owner, body));
         case 'deleteConversation': return jsonOut(actionDeleteConversation(owner, body));
         case 'archiveConversation': return jsonOut(actionArchiveConversation(owner, body));

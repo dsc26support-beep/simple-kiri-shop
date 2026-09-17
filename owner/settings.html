@@ -41,10 +41,44 @@
           <label for="store-name">Store Name</label>
           <input id="store-name">
         </div>
+        <!-- Not an editable field any more. This address receives customer
+             orders, password-reset codes AND login codes, so changing it is its
+             own two-step action below: password, then a code sent to the new
+             address. Saving the rest of this page never touches it. -->
         <div class="field">
-          <label for="contact-email">Contact Email</label>
-          <input id="contact-email" type="email">
+          <span class="field-label">Contact Email</span>
+          <p id="contact-email-current" class="settings-readonly"></p>
+          <p id="contact-email-pending" class="helper-text" hidden></p>
+          <button type="button" id="email-change-btn" class="btn btn-small">Change contact email</button>
         </div>
+
+        <div id="email-change-block" class="auth-note" hidden>
+          <div class="field">
+            <label for="email-change-new">New contact email</label>
+            <input id="email-change-new" type="email" autocomplete="email">
+          </div>
+          <div class="field">
+            <label for="email-change-password">Your password</label>
+            <input id="email-change-password" type="password" autocomplete="current-password">
+            <p class="helper-text">Asked for because this address also receives your
+              login and password-reset codes.</p>
+          </div>
+          <p id="email-change-error" class="form-error" role="alert"></p>
+          <button type="button" id="email-change-send" class="btn btn-primary">Send me a code</button>
+          <button type="button" id="email-change-cancel" class="btn btn-small">Cancel</button>
+        </div>
+
+        <div id="email-confirm-block" class="auth-note" hidden>
+          <p class="helper-text" id="email-confirm-hint"></p>
+          <div class="field">
+            <label for="email-confirm-code">Confirmation code</label>
+            <input id="email-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+          </div>
+          <p id="email-confirm-error" class="form-error" role="alert"></p>
+          <button type="button" id="email-confirm-send" class="btn btn-primary">Confirm new email</button>
+          <button type="button" id="email-confirm-cancel" class="btn btn-small">Cancel</button>
+        </div>
+        <p id="email-change-success" class="form-success" role="status"></p>
         <div class="field">
           <label for="contact-phone">Contact Phone (used for WhatsApp order sharing)</label>
           <input id="contact-phone" type="tel">

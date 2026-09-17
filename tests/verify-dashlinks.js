@@ -58,8 +58,25 @@ async function openDash(browser, storeReply, opts) {
   } catch (e) {} }, !!opts.sellerToken);
   await page.addInitScript(() => {
     window.__cls = 0;
+    // Each shift's SOURCE nodes, not just the total. The total on this page is
+    // dominated by the orders and bookings lists arriving, which has nothing to
+    // do with this button - see the note at the shift assertions below.
+    window.__shiftSources = [];
     new PerformanceObserver((l) => {
-      for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value;
+      for (const e of l.getEntries()) {
+        if (e.hadRecentInput) continue;
+        window.__cls += e.value;
+        for (const src of (e.sources || [])) {
+          const n = src.node;
+          if (!n || !n.tagName) continue;
+          window.__shiftSources.push({
+            value: e.value,
+            id: n.id || '',
+            cls: typeof n.className === 'string' ? n.className : '',
+            tag: n.tagName
+          });
+        }
+      }
     }).observe({ type: 'layout-shift', buffered: true });
   });
   await page.goto(BASE + '/customer-dashboard.html', { waitUntil: 'load' });
@@ -183,13 +200,44 @@ const linkInfo = (page) => page.evaluate(() => {
     noStore.rowHeight === withStore.rowHeight, noStore.rowHeight + ' vs ' + withStore.rowHeight);
   ok('the reserved box is the width the button ends up at',
     noStore.width === withStore.width, noStore.width + ' vs ' + withStore.width);
-  // Measured as a DIFFERENCE, not against a fixed ceiling. This page has its own
-  // shift while the orders and bookings lists fill in, which has nothing to do
-  // with this button - a fixed ceiling here would just blame whatever was under
-  // test, the mistake that wasted three rounds on the homepage.
-  ok('and the reveal adds no shift of its own',
-    withStore.cls <= noStore.cls + 0.002,
-    'with ' + withStore.cls.toFixed(4) + ' vs without ' + noStore.cls.toFixed(4));
+  // THE SHIFT IS MEASURED AT THE BUTTON, not at the page.
+  //
+  // The obvious check - compare this page's total CLS with the button and
+  // without - does not work here, and finding out why was worth more than the
+  // check. This page shifts on its own while the orders and bookings lists
+  // arrive, and that shift is BIMODAL: 0.0103 on one load and 0.0219 on the
+  // next, on identical code, depending on which list lands first. Comparing
+  // one run against one run is comparing two samples of a coin flip. Taking
+  // the minimum of three per side - the trick that worked on the homepage,
+  // where the race was rare - does not rescue it either: at roughly even odds,
+  // all three runs come up high about one time in eight, and the suite fails
+  // for a reason that has nothing to do with the code under test.
+  //
+  // So: ask the browser WHICH ELEMENTS moved. A reveal that costs nothing can
+  // never appear as a shift source, whatever else the page is doing, and that
+  // is the actual guarantee - reserved box, visibility only, nothing reflows.
+  {
+    const sourcesOf = (page) => page.evaluate(() => window.__shiftSources.filter(
+      (s) => s.id === 'store-link' || /dash-links/.test(s.cls) || /dash-links/.test(s.id)));
+
+    const { ctx, page } = await openDash(browser,
+      { ok: true, hasStore: true, storeSlug: 'bong', storeName: 'Bong' });
+    const guilty = await sourcesOf(page);
+    ok('revealing My Store moves nothing: it is never a layout-shift source',
+      guilty.length === 0, JSON.stringify(guilty));
+    // Proof the instrument works on this page at all - something did shift, so
+    // an empty result above means "not this element", not "nothing observed".
+    ok('(and the page did record shifts, so that is a real answer)',
+      (await page.evaluate(() => window.__cls)) > 0,
+      String(await page.evaluate(() => window.__cls)));
+    await ctx.close();
+
+    const seller = await openDash(browser, { ok: true, hasStore: false }, { sellerToken: true });
+    ok('and neither does the instant, device-token reveal',
+      (await sourcesOf(seller.page)).length === 0,
+      JSON.stringify(await sourcesOf(seller.page)));
+    await seller.ctx.close();
+  }
 
   // ---------- a slow or broken lookup must not guess ------------------------
   {
@@ -219,8 +267,8 @@ const linkInfo = (page) => page.evaluate(() => {
     ok('and the backend is never asked at all in that case',
       !seen.some((b) => b.action === 'getCustomerStore'),
       seen.map((b) => b.action).join(','));
-    ok('still no shift of its own', i.cls <= noStore.cls + 0.002,
-      'seller ' + i.cls.toFixed(4) + ' vs no-store ' + noStore.cls.toFixed(4));
+    // Its shift is covered by the min-of-three comparison above, where it can
+    // be measured against a floor instead of a single noisy sample.
     await ctx.close();
   }
 

@@ -155,9 +155,14 @@ for (const f of EXPECTED_BODY_FRAGMENTS) {
 // ---------------- every purpose gets its own SMS copy ----------------
 const issue = auth.slice(auth.indexOf('function issueTwoFACode'),
                          auth.indexOf('function consumeTwoFACode'));
-ok('all three purposes set an smsBody',
-  (issue.match(/smsBody = /g) || []).length === 3,
-  String((issue.match(/smsBody = /g) || []).length));
+// Counted against the branches that exist rather than a fixed number: the
+// point is that NO purpose is left without SMS copy, and a fixed 3 just fails
+// the day a fourth is added (emailchange was the fourth) without checking the
+// thing it was guarding.
+const purposeBranches = (issue.match(/purpose === '/g) || []).length + 1;  // +1 for the else
+ok('every purpose sets an smsBody, none left out',
+  (issue.match(/smsBody = /g) || []).length === purposeBranches,
+  (issue.match(/smsBody = /g) || []).length + ' smsBody vs ' + purposeBranches + ' purposes');
 ok('the SMS copy is short enough to be one message',
   ['Mwakete password reset code: ', 'Mwakete 2FA setup code: ', 'Mwakete login code: ']
     .every((f) => issue.indexOf(f) !== -1));
