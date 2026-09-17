@@ -47,6 +47,9 @@ const BASE = 'http://127.0.0.1:8099';
 
   // §16: bad local phone blocks the order
   await page.fill('#customer-name', 'Debby');
+  // Email is required at checkout now (it is what links the order to a person),
+  // so it has to be filled before the phone rules can be the thing under test.
+  await page.fill('#customer-email', 'debby@example.com');
   await page.fill('#customer-phone', '7201234'); // local but not 730/630
   await page.click('#place-order-btn');
   await page.waitForTimeout(150);

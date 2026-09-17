@@ -24,10 +24,29 @@ function init() {
   if (getQueryParam('tab') === 'signup') showTab('signup');
 
   prefillRememberedEmail();
+  prefillSignupEmail();
   // wireInfoDot/closeAllInfoPops now live in helpers.js - the seller badges use
   // the same disclosure, and two copies of one accessibility contract drift.
   wireInfoDot('guest-info-btn', 'guest-info');
   wireInfoDot('shared-info-btn', 'shared-info');
+}
+
+/**
+ * ?email= - set by the post-order prompt on the confirmation screen, so the
+ * address on the new account matches the address on the order they just placed.
+ * A typo'd second attempt is an account that never sees that order, since orders
+ * are matched to a customer by email (Customers.gs, buildCustomerOrders).
+ *
+ * It is only ever written into a form field. It signs nobody in and looks
+ * nothing up - the six-digit code still has to arrive in that mailbox - so a
+ * hand-edited URL gains an attacker nothing. Shape-checked regardless, and it
+ * never overwrites something already typed.
+ */
+function prefillSignupEmail() {
+  const email = (getQueryParam('email') || '').trim();
+  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+  const input = document.getElementById('signup-email');
+  if (input && !input.value) input.value = email;
 }
 
 /**
