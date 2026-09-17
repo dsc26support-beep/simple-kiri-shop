@@ -53,6 +53,19 @@
   border-radius: var(--radius);
 }
 
+/* The "a store account is a separate account" note, and anything else the
+   login page needs to say before the form. Tinted rather than bordered in an
+   accent colour: it is an explanation, not a warning, and the page already has
+   a red error line for things that went wrong. */
+.auth-note {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2);
+  background: var(--color-bg-alt);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
 .auth-tabs {
   display: flex;
   border-bottom: 1px solid var(--color-border);

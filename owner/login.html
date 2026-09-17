@@ -40,6 +40,12 @@
 
         <p id="session-message" class="helper-text"></p>
 
+        <!-- Filled by owner-login.js for somebody who is signed in as a shopper:
+             a store account is a separate thing with its own username and
+             password, and nothing on this form said so. Empty and hidden for
+             everyone else. -->
+        <p id="shopper-note" class="auth-note" hidden></p>
+
         <form id="login-form" role="tabpanel">
           <div class="field">
             <label for="login-username">Username</label>
@@ -52,6 +58,15 @@
           <p id="login-error" class="form-error" role="alert"></p>
           <button type="submit" id="login-submit-btn" class="btn btn-primary btn-block">Log In</button>
           <p class="helper-text" style="text-align:center; margin-top:0.75rem;"><a href="forgot-password.html">Forgot your password?</a></p>
+          <!-- Shown only after a log-in fails. The error above stays vague on
+               purpose - the backend compares against a dummy hash so this form
+               cannot be used to find out which usernames exist - so this says
+               nothing about the account and only offers the route a brand new
+               vendor was missing. -->
+          <p id="login-register-hint" class="helper-text" hidden>
+            New here?
+            <button type="button" id="login-go-register" class="link-button">Register your store</button>
+          </p>
         </form>
 
         <form id="twofa-form" class="hidden" role="tabpanel">
@@ -115,6 +130,10 @@
   <script defer src="../assets/js/helpers.min.js"></script>
   <script defer src="../assets/js/cookie-consent.min.js"></script>
   <script defer src="../assets/js/auth.min.js"></script>
+  <!-- Read-only here: owner-login.js asks whether this device holds a SHOPPER
+       session, to explain that a store account is a separate one. No customer
+       call is made from this page. -->
+  <script defer src="../assets/js/customer-auth.min.js"></script>
   <script defer src="../assets/js/owner-login.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>
