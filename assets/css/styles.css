@@ -221,6 +221,39 @@ header.site-header .container.store-branding {
   font-size: 1.5rem;
 }
 
+/* The title shares the logo's row now, centred on the PAGE.
+ *
+ * Positioned rather than flexed on purpose: a flex item with text-align:center
+ * centres inside the space LEFT OVER beside the logo, which is off-centre by
+ * half the logo's width. This is centred on the row itself.
+ *
+ * pointer-events:none so it cannot sit over the cart or the menu button and
+ * swallow a tap - it is a heading, nothing is clickable in it. The logo link
+ * and the two corner buttons keep their hit areas whatever the width.
+ *
+ * max-width keeps it clear of both corners: 36px of logo on the left, and the
+ * cart plus the three-dot menu on the right. */
+.header-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: calc(100% - 200px);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 1.25rem;
+    max-width: calc(100% - 150px);
+  }
+}
+
 .store-logo {
   width: 64px;
   height: 64px;
@@ -3091,13 +3124,45 @@ footer.site-footer .copyright {
   align-items: start;
 }
 
+/* The rail stays narrow until there is genuinely room for a wide one.
+   It used to widen to 190px at 600, at the same moment the tiles' minimum
+   went up - the pane was squeezed from both sides at once and a 600px tablet
+   ended up showing FEWER products than a 390px phone. */
 @media (min-width: 600px) {
   .category-browser {
-    grid-template-columns: 190px 1fr;
+    grid-template-columns: 108px 1fr;
     gap: var(--space-4);
     padding: var(--space-4);
-    max-width: 1100px;
+    /* 1600, not 1100. The old cap letterboxed the page on anything bigger than
+       a small laptop - two panes of content with a third of a large monitor
+       empty either side. A ceiling stays, though: past about this width a row
+       of tiles gets long enough that the eye loses its place scanning across
+       it, so the gain turns into a cost. */
+    max-width: 1600px;
+    /* width:100% is load-bearing next to the auto margins, not belt-and-braces.
+       .category-browser is a flex item of #main under .browse-locked, and auto
+       side margins on a flex item STOP it stretching - so with the tiles free
+       to size themselves it collapsed to its own content and sat 427px wide in
+       a 1920px window. Exactly the trap .home-main hit on the tips page.
+       width:100% fills, max-width caps, the auto margins then centre. */
+    width: 100%;
     margin: 0 auto;
+  }
+}
+
+/* A wider rail once there is room for one, in two steps rather than one jump.
+   The labels wrap at 108px and stop wrapping around 240px ("Agriculture &
+   Local Products" is the longest), and every pixel the rail takes is a pixel
+   the products do not get - so it widens only where that trade is free. */
+@media (min-width: 800px) {
+  .category-browser {
+    grid-template-columns: 190px 1fr;
+  }
+}
+
+@media (min-width: 1100px) {
+  .category-browser {
+    grid-template-columns: 240px 1fr;
   }
 }
 
@@ -3251,18 +3316,30 @@ body.browse-locked .category-rail {
 
 /* Three across, like the reference. Its own class rather than .product-grid:
    these tiles are a different, lighter thing than a product card. */
+/* The tiles size themselves: as many as fit at the minimum below, each then
+   stretching to share the row evenly.
+ *
+ * One rule instead of a column count per breakpoint, so the page fills any
+ * screen rather than only the three that were measured. The minimum is what
+ * changes with width, not the count - on a phone the pane is only ~258px wide
+ * beside the rail, so the floor has to be small there to keep three across;
+ * given room, a bigger floor is what stops a wide monitor showing a dozen
+ * thumbnails in a row. */
 .category-grid {
+  --tile-min: 78px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-min), 1fr));
   gap: var(--space-2);
 }
 
+/* Stepping this in breakpoints is what made a tablet show fewer tiles than a
+   phone: each step raised the floor faster than the pane grew, so the count
+   fell at the boundary and climbed back afterwards. A clamp scales it with the
+   window instead, so the count only ever goes up - which a test asserts at
+   eight widths. 105px is the floor that keeps three across on a 600px tablet;
+   190px is where a tile stops usefully getting bigger. */
 @media (min-width: 600px) {
-  .category-grid { grid-template-columns: repeat(4, 1fr); }
-}
-
-@media (min-width: 900px) {
-  .category-grid { grid-template-columns: repeat(5, 1fr); }
+  .category-grid { --tile-min: clamp(105px, 11vw, 190px); }
 }
 
 /* Photo and name, nothing else - no price, store, phone or delivery icons.

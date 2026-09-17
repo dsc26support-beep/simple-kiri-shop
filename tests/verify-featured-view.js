@@ -98,8 +98,13 @@ const tiles = (page) => page.$$eval('#category-list a', (els) => els.map((e) => 
       ids.indexOf('solar') > 0 && ids.indexOf('hire') === ids.indexOf('solar') + 1 &&
       ids.indexOf('rental') === ids.indexOf('hire') + 1, ids.join(','));
     ok('Other is still on the rail, still last', ids[ids.length - 1] === 'other');
-    ok('Featured is NOT the default landing - it can be empty on any given day',
-      await page.evaluate(() => (document.querySelector('.category-rail-item.is-selected') || {}).dataset.category) === 'food');
+    // Featured IS the default landing now. It used to be deliberately excluded
+    // because it can be empty on any given day - that concern did not go away,
+    // it moved: init() falls back to the first real category when the curated
+    // list comes back with nothing. verify-browse-desktop.js drives both the
+    // populated and the empty case; this mock has items, so Featured stays.
+    ok('Featured IS the default landing when something is curated',
+      await page.evaluate(() => (document.querySelector('.category-rail-item.is-selected') || {}).dataset.category) === 'featured');
     await ctx.close();
   }
 
@@ -107,6 +112,13 @@ const tiles = (page) => page.$$eval('#category-list a', (els) => els.map((e) => 
   {
     const { ctx, page, calls } = await open(browser, '/categories.html');
     const before = calls.filter((c) => c.action === 'getTips').length;
+    // Away first, then back. Featured is the landing category now, so clicking
+    // it straight away is a no-op - selectCategory returns early when the id is
+    // already current - and this block would assert nothing about the tap.
+    // Going somewhere else first makes it a real navigation again, which is
+    // also what a shopper does.
+    await page.click('.category-rail-item[data-category="fishing"]');
+    await page.waitForTimeout(400);
     await page.click('.category-rail-item[data-category="featured"]');
     await page.waitForTimeout(500);
 

@@ -72,14 +72,43 @@ async function init() {
   const requested = getQueryParam('category');
   // An unknown slug (a stale link, a renamed category) falls back to the first
   // rather than rendering an empty page with nothing selected.
-  //
-  // Featured is a valid destination for a shared link but NOT the default
-  // landing: it holds only what an admin has hand-picked, so on a day nobody
-  // has curated anything the page would open empty. The first real category
-  // always has something in it.
   const known = requested === FEATURED_VIEW.id ||
     activeCategories().some((c) => c.id === requested);
-  await selectCategory(known ? requested : activeCategories()[0].id, { replaceUrl: false });
+  if (known) {
+    await selectCategory(requested, { replaceUrl: false });
+    return;
+  }
+
+  // Featured is the default landing, with a floor under it.
+  //
+  // It holds only what an admin has hand-picked, so on a day nobody has
+  // curated anything it is empty - and a browse page that opens blank is a
+  // browse page a shopper backs out of. So: open on Featured, and if the
+  // curated list comes back with nothing, move to the first real category,
+  // which always has something in it.
+  //
+  // The switch happens only in the empty case, and only when the shopper has
+  // not already tapped elsewhere while the request was in flight. Featured
+  // becomes the real default the moment the sheet has rows, with nothing to
+  // change here.
+  await selectCategory(FEATURED_VIEW.id, { replaceUrl: false });
+  await fallBackIfFeaturedEmpty();
+}
+
+/**
+ * The floor under the Featured default. Nothing curated yet -> open the first
+ * real category instead of a blank pane.
+ *
+ * Deliberately after selectCategory rather than before it: waiting for the
+ * curated list BEFORE painting anything would hold the whole page on a request
+ * that is usually answered with an empty array.
+ */
+async function fallBackIfFeaturedEmpty() {
+  if (featuredProducts === null) await featuredRequest;
+  // They tapped a category while we were waiting - their choice wins.
+  if (currentCategory !== FEATURED_VIEW.id) return;
+  if (featuredProducts && featuredProducts.length) return;
+  await selectCategory(activeCategories()[0].id, { replaceUrl: false });
 }
 
 /**
