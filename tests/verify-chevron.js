@@ -15,7 +15,10 @@ const rgb = s => s.replace(/\s+/g, '');
 
   const results = [];
   const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
-  const pages = ['index.html', 'categories.html', 'store.html?store=x', 'stores.html'];
+  // index.html is not here: its Search button was replaced by the voice-search
+  // microphone, so there is no disc on the home bar to check. The three boxes
+  // that kept their button still have to obey every rule below.
+  const pages = ['categories.html', 'store.html?store=x', 'stores.html'];
 
   // Written for a BLUE ::after chevron, which later became grey and has now
   // been replaced by a purple disc that only appears once the shopper types.
@@ -49,7 +52,7 @@ const rgb = s => s.replace(/\s+/g, '');
   {
     const page = await ctx.newPage();
     await page.setViewportSize({ width: 900, height: 800 });
-    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
     await page.waitForSelector('.search-box button[type="submit"]');
     const bgAndText = await page.evaluate(() => {
       const b = document.querySelector('.search-box button[type="submit"]');

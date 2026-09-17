@@ -11,8 +11,12 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 
+// index.html is gone from this list: the home Search button was replaced by
+// the voice-search microphone, so there is no collapsing disc there to test.
+// The guarantee that mattered most in this suite - search works from the
+// keyboard alone, with no button on screen - is now permanently true on home
+// rather than only true at rest, and verify-home-search asserts it there.
 const PAGES = [
-  ['/index.html',  '#search-form',          '#search-input'],
   ['/categories.html', '#browse-search-form', '#browse-search-input'],
   ['/stores.html', '#stores-search-form',   '#stores-search-input'],
   ['/store.html?store=bong', '#products-search-form', '#products-search-input']
@@ -97,12 +101,12 @@ const PAGES = [
   {
     const ctx = await makeCtx(390);
     const page = await ctx.newPage();
-    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
-    await page.waitForSelector('#search-form .search-submit', { timeout: 6000, state: 'attached' });
+    await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
+    await page.waitForSelector('#browse-search-form .search-submit', { timeout: 6000, state: 'attached' });
 
-    await page.fill('#search-input', 'r');
+    await page.fill('#browse-search-input', 'r');
     await page.waitForTimeout(350);
-    const typed = await page.evaluate(probe, { formSel: '#search-form', inputSel: '#search-input' });
+    const typed = await page.evaluate(probe, { formSel: '#browse-search-form', inputSel: '#browse-search-input' });
 
     ok('one keystroke un-marks the form', !typed.isEmpty, JSON.stringify(typed));
     ok('the button is a 44px circle', typed.btnW === 44 && typed.btnH === 44,
@@ -118,29 +122,29 @@ const PAGES = [
     ok('the field gives up room for it', typed.inputW < typed.formW - 44, JSON.stringify({ i: typed.inputW, f: typed.formW }));
 
     // Clearing puts it away again.
-    await page.fill('#search-input', '');
+    await page.fill('#browse-search-input', '');
     await page.waitForTimeout(350);
-    const cleared = await page.evaluate(probe, { formSel: '#search-form', inputSel: '#search-input' });
+    const cleared = await page.evaluate(probe, { formSel: '#browse-search-form', inputSel: '#browse-search-input' });
     ok('clearing the field collapses it again', cleared.isEmpty && cleared.btnW === 0, JSON.stringify(cleared));
 
     // Whitespace is not a search term.
-    await page.fill('#search-input', '   ');
+    await page.fill('#browse-search-input', '   ');
     await page.waitForTimeout(250);
-    const spaces = await page.evaluate(probe, { formSel: '#search-form', inputSel: '#search-input' });
+    const spaces = await page.evaluate(probe, { formSel: '#browse-search-form', inputSel: '#browse-search-input' });
     ok('spaces alone do not summon the button', spaces.isEmpty, JSON.stringify(spaces));
 
     // The collapsed button must not be reachable by keyboard.
-    await page.fill('#search-input', '');
+    await page.fill('#browse-search-input', '');
     await page.waitForTimeout(250);
     const focusPath = await page.evaluate(() => {
-      document.getElementById('search-input').focus();
+      document.getElementById('browse-search-input').focus();
       const before = document.activeElement.id;
-      const btn = document.querySelector('#search-form .search-submit');
+      const btn = document.querySelector('#browse-search-form .search-submit');
       btn.focus();
       return { before, landedOnButton: document.activeElement === btn };
     });
     ok('a collapsed button cannot even be focused programmatically',
-      focusPath.before === 'search-input' && !focusPath.landedOnButton, JSON.stringify(focusPath));
+      focusPath.before === 'browse-search-input' && !focusPath.landedOnButton, JSON.stringify(focusPath));
 
     await ctx.close();
   }
@@ -149,12 +153,12 @@ const PAGES = [
   {
     const ctx = await makeCtx(390);
     const page = await ctx.newPage();
-    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
     // 'attached', not visible: with an empty box the disc is collapsed, which
     // is the whole point of this block - search has to work without it.
-    await page.waitForSelector('#search-form .search-submit', { timeout: 6000, state: 'attached' });
+    await page.waitForSelector('#browse-search-form .search-submit', { timeout: 6000, state: 'attached' });
     // Type and press Enter without ever touching the button.
-    await page.click('#search-input');
+    await page.click('#browse-search-input');
     await page.keyboard.type('rice');
     await page.keyboard.press('Enter');
     // The homepage search now lands on the browse page - search.html is gone.

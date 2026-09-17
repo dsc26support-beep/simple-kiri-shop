@@ -400,6 +400,79 @@ section {
   border-color: var(--color-purple);
 }
 
+/* ---- the microphone, home only ----------------------------------------- *
+ *
+ * .search-box--voice is on the home form alone. That box has no submit button
+ * any more, so the mic sits INSIDE the field's right edge rather than beside
+ * it - which is also why the input needs room reserved on that side, or a long
+ * query would run underneath the button.
+ *
+ * The other three search boxes are untouched and keep their Search button.
+ */
+.search-box--voice {
+  position: relative;
+}
+
+.search-box--voice input {
+  padding-right: 44px;
+}
+
+.search-voice-btn {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-purple);
+  cursor: pointer;
+}
+
+.search-voice-btn:hover {
+  background: var(--color-bg-alt);
+}
+
+.search-voice-btn:focus-visible {
+  outline: 3px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+/* Live. Told apart by FILL and a ring as well as hue, so it is still obviously
+   different on a greyscale screen - a microphone that might be recording is
+   the last thing that should be signalled by colour alone. */
+.search-voice-btn.is-listening {
+  background: var(--color-red);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(206, 17, 38, 0.25);
+}
+
+/* The pulse is decoration on top of the fill above, never the thing carrying
+   the meaning, so switching it off loses nothing. */
+@media (prefers-reduced-motion: no-preference) {
+  .search-voice-btn.is-listening {
+    animation: voice-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes voice-pulse {
+  50% { box-shadow: 0 0 0 7px rgba(206, 17, 38, 0.12); }
+}
+
+@media (forced-colors: active) {
+  .search-voice-btn.is-listening {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
 /* The magnifier is the phone treatment only - desktop and tablet keep the
    written "Search" pill, which has room for the word. */
 .search-submit-icon {

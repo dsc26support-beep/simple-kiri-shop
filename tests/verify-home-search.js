@@ -232,6 +232,194 @@ const ph = (page) => page.$eval('#search-input', (el) => el.placeholder);
       /we'll email the store your details automatically/.test(checkout));
   }
 
+  /* ---- the Search button is gone from home, and only from home --------- */
+  {
+    const { ctx, page } = await open(browser, '/index.html');
+    ok('the home search box has no submit button',
+      (await page.$$('#search-form button[type="submit"]')).length === 0);
+    ok('and no magnifying glass is left behind',
+      (await page.$$('#search-form .search-submit, #search-form .search-submit-icon')).length === 0);
+    // Removing the button must not remove the ability to search.
+    await page.fill('#search-input', 'rice');
+    await page.press('#search-input', 'Enter');
+    await page.waitForURL(/categories\.html\?q=rice/, { timeout: 6000 }).catch(() => {});
+    ok('Enter still runs the search', /categories\.html\?q=rice/.test(page.url()), page.url());
+    await ctx.close();
+  }
+  for (const path of ['/categories.html', '/store.html?store=x', '/stores.html']) {
+    const { ctx, page } = await open(browser, path);
+    ok('the other boxes keep their Search button: ' + path,
+      (await page.$$('.search-box button[type="submit"]')).length === 1);
+    await ctx.close();
+  }
+
+  /* ---- the microphone ---------------------------------------------------- */
+  //
+  // Playwright's Chromium has no working SpeechRecognition, so the API is
+  // faked before any script runs. That is the point: it lets the whole flow be
+  // exercised - reveal, listen, transcript, submit - rather than only checking
+  // that a button exists.
+  const FAKE = (transcript, errorKind) => `
+    (function () {
+      function R() { this.lang = ''; this._h = {}; }
+      R.prototype.addEventListener = function (k, fn) { (this._h[k] = this._h[k] || []).push(fn); };
+      R.prototype._fire = function (k, e) { (this._h[k] || []).forEach(function (fn) { fn(e || {}); }); };
+      R.prototype.start = function () {
+        var self = this;
+        window.__voiceLang = this.lang;
+        self._fire('start');
+        setTimeout(function () {
+          ${errorKind
+            ? `self._fire('error', { error: ${JSON.stringify(errorKind)} }); self._fire('end');`
+            : `self._fire('result', { results: [[{ transcript: ${JSON.stringify(transcript)} }]] }); self._fire('end');`}
+        }, 60);
+      };
+      R.prototype.abort = function () { this._fire('end'); };
+      window.SpeechRecognition = R;
+    })();`;
+
+  async function withVoice(transcript, errorKind) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.route('**/macros/s/**', (r) => r.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ok: true, products: [], stores: [] })
+    }));
+    const page = await ctx.newPage();
+    await page.addInitScript(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
+    await page.addInitScript(FAKE(transcript, errorKind));
+    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    return { ctx, page };
+  }
+
+  {
+    // No API at all: the button must never be shown.
+    //
+    // Headless Chromium DOES define webkitSpeechRecognition, so this has to
+    // take it away explicitly - relying on the test browser not having it
+    // would have asserted nothing.
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.route('**/macros/s/**', (r) => r.fulfill({
+      status: 200, contentType: 'application/json', body: '{"ok":true,"products":[],"stores":[]}'
+    }));
+    const page = await ctx.newPage();
+    await page.addInitScript(() => {
+      try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {}
+      try {
+        delete window.SpeechRecognition;
+        delete window.webkitSpeechRecognition;
+        Object.defineProperty(window, 'SpeechRecognition', { value: undefined, configurable: true });
+        Object.defineProperty(window, 'webkitSpeechRecognition', { value: undefined, configurable: true });
+      } catch (e) {}
+    });
+    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    const hidden = await page.evaluate(() => {
+      const b = document.getElementById('voice-search-btn');
+      return b ? (b.hidden || getComputedStyle(b).display === 'none') : null;
+    });
+    ok('WITHOUT speech support the mic stays hidden', hidden === true, String(hidden));
+    ok('...and the search box still works without it',
+      !!(await page.$('#search-input')));
+    await ctx.close();
+  }
+
+  {
+    const { ctx, page } = await withVoice('solar panel');
+    ok('with speech support the mic is shown',
+      await page.$eval('#voice-search-btn', (b) => !b.hidden));
+    ok('and it says the language out loud in its name',
+      /english/i.test(await page.$eval('#voice-search-btn', (b) => b.getAttribute('aria-label') || '')),
+      await page.$eval('#voice-search-btn', (b) => b.getAttribute('aria-label')));
+    ok('it starts not-pressed',
+      (await page.$eval('#voice-search-btn', (b) => b.getAttribute('aria-pressed'))) === 'false');
+
+    await page.click('#voice-search-btn');
+    // encodeURIComponent, so a space is %20 - not the '+' a form GET would use.
+    await page.waitForURL(/categories\.html\?q=solar%20panel/, { timeout: 6000 }).catch(() => {});
+    ok('speaking fills the box and runs the search',
+      /categories\.html\?q=solar%20panel/.test(page.url()), page.url());
+    await ctx.close();
+  }
+
+  {
+    const { ctx, page } = await withVoice('rice');
+    const lang = await page.evaluate(async () => {
+      document.getElementById('voice-search-btn').click();
+      return window.__voiceLang;
+    });
+    ok('it listens in English, since Kiribati is not a language browsers offer',
+      lang === 'en-GB', String(lang));
+    await ctx.close();
+  }
+
+  {
+    // A blocked microphone is one mis-tap on a permission sheet, so it is the
+    // common case, not an edge case. The button must not stay stuck looking live.
+    const { ctx, page } = await withVoice('', 'not-allowed');
+    await page.click('#voice-search-btn');
+    await page.waitForTimeout(250);
+    const after = await page.evaluate(() => ({
+      pressed: document.getElementById('voice-search-btn').getAttribute('aria-pressed'),
+      listening: document.getElementById('voice-search-btn').classList.contains('is-listening'),
+      said: document.getElementById('voice-search-status').textContent
+    }));
+    ok('a blocked microphone resets the button', after.pressed === 'false' && after.listening === false,
+      JSON.stringify(after));
+    ok('and says what went wrong, out loud', /microphone blocked/i.test(after.said), after.said);
+    ok('and does not navigate anywhere', /index\.html$/.test(page.url()), page.url());
+    await ctx.close();
+  }
+
+  {
+    // Listening must be announced, not only drawn red.
+    const { ctx, page } = await withVoice('rice');
+    await page.evaluate(() => document.getElementById('voice-search-btn').click());
+    const live = await page.evaluate(() => ({
+      status: document.getElementById('voice-search-status').textContent,
+      role: document.getElementById('voice-search-status').getAttribute('aria-live'),
+      pressed: document.getElementById('voice-search-btn').getAttribute('aria-pressed'),
+      red: document.getElementById('voice-search-btn').classList.contains('is-listening')
+    }));
+    ok('listening is announced, not just coloured',
+      /listening/i.test(live.status) && live.role === 'polite', JSON.stringify(live));
+    ok('and the pressed state matches what is drawn',
+      live.pressed === 'true' && live.red === true, JSON.stringify(live));
+    await ctx.close();
+  }
+
+  {
+    // The live state cannot be signalled by hue alone.
+    const { ctx, page } = await withVoice('rice');
+    const diff = await page.evaluate(() => {
+      const b = document.getElementById('voice-search-btn');
+      const before = getComputedStyle(b);
+      const idle = { bg: before.backgroundColor, shadow: before.boxShadow };
+      b.classList.add('is-listening');
+      const on = getComputedStyle(b);
+      return { idle: idle, live: { bg: on.backgroundColor, shadow: on.boxShadow } };
+    });
+    ok('the live state changes fill AND adds a ring, not just colour',
+      diff.idle.bg !== diff.live.bg && diff.idle.shadow !== diff.live.shadow, JSON.stringify(diff));
+    await ctx.close();
+  }
+
+  {
+    // A long query must not run underneath the button.
+    const { ctx, page } = await withVoice('rice');
+    const r = await page.evaluate(() => {
+      const input = document.getElementById('search-input');
+      const btn = document.getElementById('voice-search-btn');
+      const pad = parseFloat(getComputedStyle(input).paddingRight);
+      const ib = input.getBoundingClientRect();
+      const bb = btn.getBoundingClientRect();
+      return { pad: pad, btnW: Math.round(bb.width), btnH: Math.round(bb.height),
+        insideRight: bb.right <= ib.right + 1, insideLeft: bb.left >= ib.left };
+    });
+    ok('the mic sits inside the bar at its right edge', r.insideRight && r.insideLeft, JSON.stringify(r));
+    ok('and the field reserves room so text cannot run under it', r.pad >= r.btnW, JSON.stringify(r));
+    ok('the mic is a reasonable tap target', r.btnW >= 32 && r.btnH >= 32, r.btnW + 'x' + r.btnH);
+    await ctx.close();
+  }
+
   await browser.close();
   console.log('\n' + pass + '/' + (pass + fail) + ' passed');
   process.exit(fail ? 1 : 0);
