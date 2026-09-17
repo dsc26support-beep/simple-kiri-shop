@@ -5,6 +5,7 @@
 // looks right (both panes present, both with an overflow value) can still
 // scroll as one lump, which is exactly the bug being fixed.
 const fs = require('fs');
+const { assertCacheBump } = require('./lib/cache-bump.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -176,16 +177,9 @@ async function suite(browser, label, width, height) {
 
   const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
   const { execSync } = require('child_process');
-  let mainCache = '';
-  try {
-    mainCache = (execSync('git -C ' + REPO + ' show origin/main:sw.js', { encoding: 'utf8' })
-      .match(/CACHE = 'mwakete-v(\d+)'/) || [])[1];
-  } catch (e) {}
-  const mine = (sw.match(/CACHE = 'mwakete-v(\d+)'/) || [])[1];
-  let changed = '';
-  try { changed = execSync('git -C ' + REPO + ' diff --name-only origin/main', { encoding: 'utf8' }).trim(); } catch (e) {}
-  if (changed) ok('CACHE bumped past main', Number(mine) > Number(mainCache), `${mainCache} -> ${mine}`);
-  else ok('no CACHE bump owed - tree matches main', true);
+  // Shared rule - see tests/lib/cache-bump.js. The version this replaces fired
+  // when ANY file differed from main, docs and .gs files included.
+  assertCacheBump(REPO, ok, 'pane scroll');
 
   let pass = 0;
   for (const [s, n, e] of R) { if (s === 'PASS') pass++; console.log(`${s}  ${n}${e ? '  [' + e + ']' : ''}`); }
