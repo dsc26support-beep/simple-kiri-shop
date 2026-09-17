@@ -5489,6 +5489,29 @@ html.has-remembered-email .login-remembered {
   margin: var(--space-3) 0;
 }
 
+/* "My Store" on My Account: reserved from first paint, revealed only for
+   someone who has one.
+
+   visibility rather than display:none or [hidden], because the box has to
+   exist from the start - revealing it must not push My Messages sideways, and
+   a sideways shift counts towards CLS exactly as a vertical one does.
+   visibility also keeps the link out of the tab order and the accessibility
+   tree while it is hidden, which opacity alone would not. */
+.dash-store-link {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 180ms ease-in;
+}
+
+.dash-store-link.is-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-store-link { transition: none; }
+}
+
 .btn-outline {
   background: transparent;
   color: var(--color-purple);

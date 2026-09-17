@@ -1,7 +1,7 @@
 /**
- * My Account: the "My Messages" and "Create Store" / "My Store" buttons.
+ * My Account: the "My Messages" and "My Store" buttons.
  *
- * Two things are load-bearing here.
+ * Three things are load-bearing here.
  *
  * SECURITY. The backend answers "does this person own a store" for the
  * AUTHENTICATED customer's own address only. Written the obvious way - taking
@@ -9,9 +9,15 @@
  * to learn which addresses belong to vendors. Asserted at the source, because
  * it is the kind of thing a later refactor makes "more flexible" by accident.
  *
- * NO MOVEMENT. The label swap happens after first paint, so the button's box is
- * sized to the wider of its two labels. A width change would shift the row
- * sideways, and horizontal shifts count towards CLS exactly as vertical ones do.
+ * NO MOVEMENT. My Store is revealed after first paint, so its box is reserved
+ * in the markup and only its visibility changes. A button that appeared would
+ * push My Messages sideways, and horizontal shifts count towards CLS exactly as
+ * vertical ones do. Asserted by measuring My Messages with and without the
+ * reveal, and by reading the browser's own layout-shift entries.
+ *
+ * NOT OFFERED IS NOT MERELY UNSEEN. While it is hidden the link must be out of
+ * the tab order and out of the accessibility tree - otherwise it is invisible
+ * to sighted users and present for everyone else, which is the worst of both.
  */
 const fs = require('fs');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
@@ -26,8 +32,10 @@ const ok = (name, cond, detail) => {
 const CUST = { customerId: 'c1', name: 'Aroita', email: 'a@example.com', phone: '73012345' };
 const PURPLE = 'rgb(51, 45, 99)'; // --color-purple #332d63
 
-async function openDash(browser, storeReply, delayMs) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+/** opts: { delayMs, sellerToken, width } */
+async function openDash(browser, storeReply, opts) {
+  opts = opts || {};
+  const ctx = await browser.newContext({ viewport: { width: opts.width || 390, height: 844 } });
   const seen = [];
   await ctx.route('**/script.google.com/**', async (r) => {
     let body = {}; try { body = r.request().postDataJSON() || {}; } catch (e) {}
@@ -35,7 +43,7 @@ async function openDash(browser, storeReply, delayMs) {
     const J = (o) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
     if (body.action === 'getCustomerProfile') return J({ ok: true, customer: CUST });
     if (body.action === 'getCustomerStore') {
-      if (delayMs) await new Promise((s) => setTimeout(s, delayMs));
+      if (opts.delayMs) await new Promise((s) => setTimeout(s, opts.delayMs));
       if (storeReply === 'error') return r.fulfill({ status: 500, body: 'boom' });
       return J(storeReply);
     }
@@ -43,10 +51,11 @@ async function openDash(browser, storeReply, delayMs) {
   });
   const page = await ctx.newPage();
   await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => { try {
+  await page.evaluate((seller) => { try {
     localStorage.setItem('skiri_customer_token', 't');
     localStorage.setItem('skiri_cookie_consent', 'true');
-  } catch (e) {} });
+    if (seller) localStorage.setItem('skiri_owner_token', 'ot');
+  } catch (e) {} }, !!opts.sellerToken);
   await page.addInitScript(() => {
     window.__cls = 0;
     new PerformanceObserver((l) => {
@@ -61,10 +70,18 @@ async function openDash(browser, storeReply, delayMs) {
 const linkInfo = (page) => page.evaluate(() => {
   const l = document.getElementById('store-link');
   const cs = getComputedStyle(l);
-  return { label: l.textContent.trim(), href: l.getAttribute('href'),
+  const msgs = document.querySelector('.dash-links a[href="customer-messages.html"]').getBoundingClientRect();
+  return { label: l.textContent.trim(), href: l.getAttribute('href'), title: l.getAttribute('title'),
+    shown: l.classList.contains('is-visible'),
+    visibility: cs.visibility, opacity: cs.opacity,
     width: Math.round(l.getBoundingClientRect().width),
     color: cs.color, borderColor: cs.borderTopColor, borderWidth: cs.borderTopWidth,
-    bg: cs.backgroundColor };
+    bg: cs.backgroundColor,
+    // Where the button BESIDE it sits, and how tall the row is: the two numbers
+    // that would move if the reveal were done by adding an element.
+    msgsX: Math.round(msgs.x), msgsWidth: Math.round(msgs.width),
+    rowHeight: Math.round(document.querySelector('.dash-links').getBoundingClientRect().height),
+    cls: window.__cls };
 });
 
 (async () => {
@@ -75,59 +92,147 @@ const linkInfo = (page) => page.evaluate(() => {
   ok('it authenticates the caller', /requireCustomerAuth\(body\.token\)/.test(fn));
   ok('it reads the email from the AUTHENTICATED customer, not the request body',
     /normalizeEmail\(customer\.Email\)/.test(fn) && !/body\.email/.test(fn));
-  ok('a closed or deleted store does not count as having one', /isStoreBrowsable/.test(fn));
+  // isStoreBrowsable is 'active' or 'standby' - which is exactly ownerCanLogIn.
+  // The only status it excludes is 'closed', the soft delete from Settings,
+  // where the owner is locked out and their sessions revoked. Sending them to
+  // owner/dashboard.html would dead-end at a login that refuses them, so this
+  // filter is the right one and must stay.
+  ok('a deleted store does not count as having one', /isStoreBrowsable/.test(fn));
+  const auth = fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8');
+  const canLogIn = (auth.match(/function ownerCanLogIn[\s\S]*?\n}/) || [''])[0];
+  const browsable = (auth.match(/function isStoreBrowsable[\s\S]*?\n}/) || [''])[0];
+  const bodyOf = (f) => f.replace(/^function \w+\(owner\) \{/, '').replace(/\s+/g, ' ').trim();
+  ok('and "browsable" still means the same statuses as "can log in" - which is '
+    + 'what makes My Store a link they can actually follow',
+    bodyOf(canLogIn) === bodyOf(browsable) && bodyOf(browsable).length > 0, bodyOf(browsable));
   const code = fs.readFileSync(REPO + 'apps-script/Code.gs', 'utf8');
   ok('the action is routed', /case 'getCustomerStore'/.test(code));
 
+  // ---------- Create Store is gone from this page --------------------------
+  // Comments stripped first: the markup explains WHY Create Store is not here,
+  // and naming it in a comment is not offering it.
+  const dashHtml = fs.readFileSync(REPO + 'customer-dashboard.html', 'utf8')
+    .replace(/<!--[\s\S]*?-->/g, '');
+  ok('My Account no longer offers Create Store', !/Create Store/.test(dashHtml));
+  ok('and the duplicate "Go to seller dashboard" link is gone too',
+    !/seller-link/.test(dashHtml) && !/seller-link/.test(fs.readFileSync(REPO + 'assets/js/customer-dashboard.js', 'utf8')));
+  // It has to stay reachable SOMEWHERE, or new sellers have no route in.
+  ok('Create Store still lives in the header menu',
+    /label: 'Create Store'/.test(fs.readFileSync(REPO + 'assets/js/header-menu.js', 'utf8')));
+
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 
-  // ---------- no store: the default, and the honest one --------------------
+  // ---------- no store: nothing is offered ---------------------------------
+  let noStore;
   {
     const { ctx, page } = await openDash(browser, { ok: true, hasStore: false });
-    const i = await linkInfo(page);
-    ok('with no store it offers Create Store', i.label === 'Create Store', i.label);
-    ok('pointing at vendor registration', /owner\/login\.html\?tab=register/.test(i.href), i.href);
-    ok('outline only - transparent fill', i.bg === 'rgba(0, 0, 0, 0)', i.bg);
-    ok('purple border', i.borderColor === PURPLE && i.borderWidth === '1px', i.borderColor + ' ' + i.borderWidth);
-    ok('purple text', i.color === PURPLE, i.color);
+    noStore = await linkInfo(page);
+    ok('with no store the button is not shown', noStore.shown === false && noStore.visibility === 'hidden',
+      noStore.visibility);
+    ok('and it is out of the tab order', await page.evaluate(() => {
+      const l = document.getElementById('store-link');
+      l.focus();
+      return document.activeElement !== l;
+    }));
+    ok('and out of the accessibility tree', await page.evaluate(() => {
+      const l = document.getElementById('store-link');
+      // checkVisibility ignores visibility:hidden unless asked - the default
+      // only covers display:none and content-visibility.
+      return l.checkVisibility({ visibilityProperty: true, opacityProperty: true }) === false;
+    }));
+    ok('nothing on the page says Create Store',
+      await page.evaluate(() => !/Create Store/.test(document.body.textContent)));
+    ok('My Messages is still there and unaffected', noStore.msgsWidth > 0);
     await ctx.close();
   }
 
   // ---------- has a store ---------------------------------------------------
-  let widthNoStore, widthStore;
-  {
-    const { ctx, page } = await openDash(browser, { ok: true, hasStore: false });
-    widthNoStore = (await linkInfo(page)).width;
-    await ctx.close();
-  }
+  let withStore;
   {
     const { ctx, page, seen } = await openDash(browser,
       { ok: true, hasStore: true, storeSlug: 'bong', storeName: 'Bong Store' });
-    const i = await linkInfo(page);
-    widthStore = i.width;
-    ok('with a store it becomes My Store', i.label === 'My Store', i.label);
-    ok('pointing at the seller dashboard', i.href === 'owner/dashboard.html', i.href);
-    ok('still outline only', i.bg === 'rgba(0, 0, 0, 0)' && i.borderColor === PURPLE);
+    withStore = await linkInfo(page);
+    ok('with a store it appears, reading My Store', withStore.shown && withStore.label === 'My Store',
+      withStore.label);
+    ok('visible for real, not just class-flagged',
+      withStore.visibility === 'visible' && withStore.opacity === '1',
+      withStore.visibility + ' / ' + withStore.opacity);
+    ok('pointing at the seller dashboard', withStore.href === 'owner/dashboard.html', withStore.href);
+    ok('and it names the store on hover', withStore.title === 'Bong Store', String(withStore.title));
+    ok('outline only - transparent fill', withStore.bg === 'rgba(0, 0, 0, 0)', withStore.bg);
+    ok('purple border', withStore.borderColor === PURPLE && withStore.borderWidth === '1px',
+      withStore.borderColor + ' ' + withStore.borderWidth);
+    ok('purple text', withStore.color === PURPLE, withStore.color);
+    ok('it is a real tap target', await page.evaluate(() => {
+      const l = document.getElementById('store-link');
+      l.focus();
+      return document.activeElement === l
+        && Math.round(l.getBoundingClientRect().height) >= 44;
+    }));
     ok('the lookup sent the session token, not an email',
       seen.some((b) => b.action === 'getCustomerStore' && b.token === 't' && !b.email),
       JSON.stringify(seen.find((b) => b.action === 'getCustomerStore') || {}));
     await ctx.close();
   }
 
-  ok('the button is the SAME width either way, so the swap moves nothing',
-    widthNoStore === widthStore, widthNoStore + 'px vs ' + widthStore + 'px');
+  // ---------- revealing it moves nothing -----------------------------------
+  ok('My Messages sits in exactly the same place either way',
+    noStore.msgsX === withStore.msgsX && noStore.msgsWidth === withStore.msgsWidth,
+    `x ${noStore.msgsX} vs ${withStore.msgsX}, w ${noStore.msgsWidth} vs ${withStore.msgsWidth}`);
+  ok('the row is the same height either way, so nothing below it moves',
+    noStore.rowHeight === withStore.rowHeight, noStore.rowHeight + ' vs ' + withStore.rowHeight);
+  ok('the reserved box is the width the button ends up at',
+    noStore.width === withStore.width, noStore.width + ' vs ' + withStore.width);
+  // Measured as a DIFFERENCE, not against a fixed ceiling. This page has its own
+  // shift while the orders and bookings lists fill in, which has nothing to do
+  // with this button - a fixed ceiling here would just blame whatever was under
+  // test, the mistake that wasted three rounds on the homepage.
+  ok('and the reveal adds no shift of its own',
+    withStore.cls <= noStore.cls + 0.002,
+    'with ' + withStore.cls.toFixed(4) + ' vs without ' + noStore.cls.toFixed(4));
 
-  // ---------- a slow or broken lookup must not break the page --------------
+  // ---------- a slow or broken lookup must not guess ------------------------
   {
-    const { ctx, page } = await openDash(browser, { ok: true, hasStore: true }, 3000);
+    const { ctx, page } = await openDash(browser, { ok: true, hasStore: true }, { delayMs: 3000 });
     const i = await linkInfo(page);
-    ok('a slow lookup just leaves Create Store standing', i.label === 'Create Store', i.label);
+    ok('a slow lookup leaves the button hidden rather than flashing it', i.shown === false);
     await ctx.close();
   }
   {
     const { ctx, page } = await openDash(browser, 'error');
     const i = await linkInfo(page);
-    ok('a failed lookup leaves Create Store rather than guessing', i.label === 'Create Store', i.label);
+    ok('a failed lookup leaves it hidden rather than guessing', i.shown === false);
+    await ctx.close();
+  }
+
+  // ---------- the device signal: a seller signed in here --------------------
+  // This is the case the removed "Go to seller dashboard" link existed for: a
+  // store registered under a different address from the shopper account, so the
+  // email lookup says no. It has to keep working, and it costs no request.
+  {
+    const { ctx, page, seen } = await openDash(browser, { ok: true, hasStore: false },
+      { sellerToken: true });
+    const i = await linkInfo(page);
+    ok('a seller token on this device shows My Store even when the email lookup says no',
+      i.shown === true && i.label === 'My Store', JSON.stringify({ shown: i.shown, label: i.label }));
+    ok('pointing at the seller dashboard', i.href === 'owner/dashboard.html', i.href);
+    ok('and the backend is never asked at all in that case',
+      !seen.some((b) => b.action === 'getCustomerStore'),
+      seen.map((b) => b.action).join(','));
+    ok('still no shift of its own', i.cls <= noStore.cls + 0.002,
+      'seller ' + i.cls.toFixed(4) + ' vs no-store ' + noStore.cls.toFixed(4));
+    await ctx.close();
+  }
+
+  // ---------- the reserved slot must not wrap on the narrowest phone -------
+  {
+    const { ctx, page } = await openDash(browser, { ok: true, hasStore: false }, { width: 320 });
+    const rows = await page.evaluate(() => {
+      const kids = [...document.querySelector('.dash-links').children];
+      return new Set(kids.map((k) => Math.round(k.getBoundingClientRect().y))).size;
+    });
+    ok('at 320px both buttons still sit on one row, so the empty slot adds no band',
+      rows === 1, rows + ' row(s)');
     await ctx.close();
   }
 
