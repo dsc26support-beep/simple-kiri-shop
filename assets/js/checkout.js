@@ -215,6 +215,42 @@ function customerVillageMatchesTruckList(customerVillage) {
  * location whenever the vendor has it enabled - it doesn't involve a
  * delivery route, so none of the island/village logic above applies to it.
  */
+/**
+ * THE ONE QUESTION ABOUT ROUTES: may off-island freight (ship or air cargo)
+ * move from the seller's island to the customer's?
+ *
+ * Truck is not asked here - it is a same-island question, plus the one
+ * causeway exception, and each branch below decides it for itself.
+ *
+ * THE LINE ISLANDS CORRIDOR. Tabuaeran and Teraina have no freight route of
+ * their own: everything moves through Kiritimati. So they connect to
+ * Kiritimati and to nothing else, in either direction - including Tarawa,
+ * which they could reach until this rule existed. Offering a direct Tarawa
+ * route would be a promise the boats do not keep, and an order that strands
+ * somewhere is worse than an order never taken.
+ *
+ * Two consequences worth naming, because neither was written down and both
+ * fall out of "Kiritimati only":
+ *   - Tabuaeran <-> Teraina is NO. They are both corridor islands; neither is
+ *     Kiritimati.
+ *   - A Tarawa store can no longer reach Tabuaeran or Teraina, and they
+ *     cannot reach it. That is a route removed, not just one not added.
+ *
+ * Everything outside the corridor is unchanged: South Tarawa reaches every
+ * other island, and every other island reaches South Tarawa and nowhere else.
+ */
+function isLineOuterIsland(island) {
+  return island === 'Tabuaeran' || island === 'Teraina';
+}
+
+function offIslandRouteExists(storeIsland, customerIsland) {
+  if (storeIsland === customerIsland) return false;
+  if (isLineOuterIsland(storeIsland)) return customerIsland === 'Kiritimati';
+  if (isLineOuterIsland(customerIsland)) return storeIsland === 'Kiritimati';
+  if (storeIsland === 'South Tarawa') return true;
+  return customerIsland === 'South Tarawa';
+}
+
 function computeEligibleDeliveryMethods(subtotal) {
   if (!storeInfo) return [];
   const customerIsland = getCustomerIsland();
@@ -222,22 +258,26 @@ function computeEligibleDeliveryMethods(subtotal) {
   const storeIsland = storeInfo.island || '';
   const eligible = [];
   const shipOk = storeInfo.deliveryShip && subtotal >= 500;
+  // Whatever this page decides, Orders.gs decides again from the same rules
+  // before an order is written - this copy exists so a shopper is not offered
+  // something that will be refused, not to be the thing that authorises it.
+  const routeExists = offIslandRouteExists(storeIsland, customerIsland);
 
   if (storeIsland === 'South Tarawa') {
     if (storeInfo.deliveryTruck) {
       if (customerIsland === 'South Tarawa') eligible.push('truck');
       else if (customerIsland === 'North Tarawa' && customerVillageMatchesTruckList(customerVillage)) eligible.push('truck');
     }
-    if (shipOk && customerIsland !== 'South Tarawa') eligible.push('ship');
-    if (storeInfo.deliveryAirCargo && customerIsland !== 'South Tarawa' && customerIsland !== 'North Tarawa') eligible.push('airCargo');
+    if (shipOk && routeExists) eligible.push('ship');
+    if (storeInfo.deliveryAirCargo && routeExists && customerIsland !== 'North Tarawa') eligible.push('airCargo');
   } else if (storeIsland === 'North Tarawa') {
     if (storeInfo.deliveryTruck && customerIsland === 'North Tarawa' && !customerVillageMatchesTruckList(customerVillage)) eligible.push('truck');
-    if (shipOk && customerIsland === 'South Tarawa') eligible.push('ship');
+    if (shipOk && routeExists) eligible.push('ship');
     // Air Cargo is never offered by a North Tarawa vendor.
   } else {
     if (storeInfo.deliveryTruck && customerIsland === storeIsland) eligible.push('truck');
-    if (shipOk && customerIsland === 'South Tarawa') eligible.push('ship');
-    if (storeInfo.deliveryAirCargo && customerIsland === 'South Tarawa') eligible.push('airCargo');
+    if (shipOk && routeExists) eligible.push('ship');
+    if (storeInfo.deliveryAirCargo && routeExists) eligible.push('airCargo');
   }
 
   if (storeInfo.deliveryPickPay) eligible.push('pickPay');

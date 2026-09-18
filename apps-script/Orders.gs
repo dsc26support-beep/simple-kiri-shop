@@ -24,20 +24,58 @@ function customerVillageMatchesTruckList(customerVillage) {
 }
 
 /**
+ * THE ONE QUESTION ABOUT ROUTES: may off-island freight (ship or air cargo)
+ * move from the seller's island to the customer's?
+ *
+ * Truck is not asked here - it is a same-island question, plus the one
+ * causeway exception, and each branch below decides it for itself.
+ *
+ * THE LINE ISLANDS CORRIDOR. Tabuaeran and Teraina have no freight route of
+ * their own: everything moves through Kiritimati. So they connect to
+ * Kiritimati and to nothing else, in either direction - including Tarawa,
+ * which they could reach until this rule existed. Offering a direct Tarawa
+ * route would be a promise the boats do not keep, and an order that strands
+ * somewhere is worse than an order never taken.
+ *
+ * Two consequences worth naming, because neither was written down and both
+ * fall out of "Kiritimati only":
+ *   - Tabuaeran <-> Teraina is NO. They are both corridor islands; neither is
+ *     Kiritimati.
+ *   - A Tarawa store can no longer reach Tabuaeran or Teraina, and they
+ *     cannot reach it. That is a route removed, not just one not added.
+ *
+ * Everything outside the corridor is unchanged: South Tarawa reaches every
+ * other island, and every other island reaches South Tarawa and nowhere else.
+ */
+function isLineOuterIsland(island) {
+  return island === 'Tabuaeran' || island === 'Teraina';
+}
+
+function offIslandRouteExists(storeIsland, customerIsland) {
+  if (storeIsland === customerIsland) return false;
+  if (isLineOuterIsland(storeIsland)) return customerIsland === 'Kiritimati';
+  if (isLineOuterIsland(customerIsland)) return storeIsland === 'Kiritimati';
+  if (storeIsland === 'South Tarawa') return true;
+  return customerIsland === 'South Tarawa';
+}
+
+/**
  * Mirrors the client-side eligibility check in checkout.js - re-derived here
  * so a crafted request can't unlock a delivery method the UI would have
  * hidden (e.g. Ship under the $500 minimum, or Air Cargo across a route the
  * store doesn't actually serve).
  *
- * Eligibility is organized around the VENDOR's own island:
+ * Eligibility is organized around the VENDOR's own island, with every
+ * off-island question delegated to offIslandRouteExists above:
  *  - South Tarawa vendor: truck to South Tarawa + the 3 listed North Tarawa
- *    villages; ship blocked to South Tarawa only; air blocked to South/North
- *    Tarawa only.
+ *    villages; ship and air wherever a route exists (air additionally never
+ *    to North Tarawa).
  *  - North Tarawa vendor: truck to North Tarawa EXCEPT the 3 listed
- *    villages; ship ("boat") to South Tarawa only, as the one exception that
- *    lets them reach off-island at all; air never available.
+ *    villages; ship to South Tarawa, the one thing that lets them reach
+ *    off-island at all; air never available.
  *  - Any other (outer island) vendor: truck only to their own same island;
- *    ship and air only to South Tarawa.
+ *    ship and air wherever a route exists - South Tarawa for most, the
+ *    Kiritimati corridor for the Line Islands.
  *
  * Pick & Pay (in-person pickup at the store, always free) sits outside all
  * of the above - it doesn't involve a physical delivery route, so it's
@@ -53,21 +91,23 @@ function computeEligibleDeliveryMethods(owner, customerIsland, customerVillage, 
   var hasAirCargo = String(owner.DeliveryAirCargo) === 'true';
   var shipOk = hasShip && subtotal >= 500;
 
+  var routeExists = offIslandRouteExists(storeIsland, customerIsland);
+
   if (storeIsland === 'South Tarawa') {
     if (hasTruck) {
       if (customerIsland === 'South Tarawa') eligible.push('truck');
       else if (customerIsland === 'North Tarawa' && customerVillageMatchesTruckList(customerVillage)) eligible.push('truck');
     }
-    if (shipOk && customerIsland !== 'South Tarawa') eligible.push('ship');
-    if (hasAirCargo && customerIsland !== 'South Tarawa' && customerIsland !== 'North Tarawa') eligible.push('airCargo');
+    if (shipOk && routeExists) eligible.push('ship');
+    if (hasAirCargo && routeExists && customerIsland !== 'North Tarawa') eligible.push('airCargo');
   } else if (storeIsland === 'North Tarawa') {
     if (hasTruck && customerIsland === 'North Tarawa' && !customerVillageMatchesTruckList(customerVillage)) eligible.push('truck');
-    if (shipOk && customerIsland === 'South Tarawa') eligible.push('ship');
+    if (shipOk && routeExists) eligible.push('ship');
     // Air Cargo is never offered by a North Tarawa vendor.
   } else {
     if (hasTruck && customerIsland === storeIsland) eligible.push('truck');
-    if (shipOk && customerIsland === 'South Tarawa') eligible.push('ship');
-    if (hasAirCargo && customerIsland === 'South Tarawa') eligible.push('airCargo');
+    if (shipOk && routeExists) eligible.push('ship');
+    if (hasAirCargo && routeExists) eligible.push('airCargo');
   }
 
   if (String(owner.DeliveryPickPay) === 'true') eligible.push('pickPay');
