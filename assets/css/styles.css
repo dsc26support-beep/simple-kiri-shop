@@ -5628,3 +5628,25 @@ html.has-remembered-email .login-remembered {
 .unsaved-card .btn + .btn {
   margin-top: var(--space-2);
 }
+
+/* The trending grid deals out one card at a time - see dealInCards in home.js.
+   Scoped to that one list: the same card component is used on Browse, a
+   storefront and the stores page, and none of those asked for this.
+
+   Opacity only. It leaves layout untouched, so the grid holds its full space
+   from the first frame and a reveal can never push the page around.
+   pointer-events guards the gap a tap could otherwise fall into - a card that
+   has not started fading in yet is not something anybody meant to press. A card
+   mid-fade IS pressable, because by then it is visibly arriving. */
+#trending-products-list .product-card {
+  transition: opacity 220ms ease-out;
+}
+
+#trending-products-list .product-card--dealing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #trending-products-list .product-card { transition: none; }
+}

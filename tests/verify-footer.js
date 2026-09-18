@@ -5,6 +5,7 @@
 // string search while rendering a broken page, so the browser's own parse is
 // the assertion that counts.
 const fs = require('fs');
+const { assertCacheBump } = require('./lib/cache-bump.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -139,11 +140,10 @@ const probe = (page) => page.evaluate(() => {
       html.slice(html.indexOf('</main>'), html.indexOf('</main>') + 40).replace(/\n/g, '\\n'));
   }
 
-  const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
-  const main = require('child_process').execSync('git -C ' + REPO + ' show origin/main:sw.js').toString();
-  const v = (s) => (s.match(/mwakete-v(\d+)/) || [])[1];
-  ok('sw.js cache bumped past main (cached HTML changed)',
-    Number(v(sw)) > Number(v(main)), `${v(main)} -> ${v(sw)}`);
+  // Shared rule - see tests/lib/cache-bump.js. The version this replaces
+  // demanded the tree always be AHEAD of main, which fires the moment a branch
+  // merges: tree and main are equal by definition then, with nothing to bump.
+  assertCacheBump(REPO, ok, 'footer');
 
   let f = 0;
   console.log('\n--- Footer only on home and the login pages ---');

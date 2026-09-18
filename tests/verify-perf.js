@@ -2,6 +2,7 @@
 // was supposed to change. Real files over http.server; the API is mocked with
 // a delay so ordering is observable.
 const fs = require('fs');
+const { assertCacheBump } = require('./lib/cache-bump.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -160,22 +161,11 @@ async function open(browser, path, opts = {}) {
   const undeferred = allHtml.filter((f) => /<script src=/.test(fs.readFileSync(REPO + f, 'utf8')));
   ok('no undeferred <script src> left', undeferred.length === 0, undeferred.join(','));
   const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
-  const swMain = require('child_process')
-    .execSync('git -C /home/user/simple-kiri-shop show origin/main:sw.js', { encoding: 'utf8' });
-  const ver = (t) => (t.match(/var CACHE = 'mwakete-v(\d+)';/) || [])[1];
-  // The bump is only OWED when the frontend actually differs from main. Written
-  // as an unconditional "must be ahead", this fired the moment the branch
-  // merged - tree and main both at v27, nothing left to bump - which is a
-  // false alarm, not a regression. Same shape as the APP_VERSION guard in
-  // test-publicstore.js.
-  const frontendChanged = require('child_process')
-    .execSync("git -C /home/user/simple-kiri-shop diff --name-only origin/main -- '*.html' '*.css' '*.js'",
-      { encoding: 'utf8' })
-    .split('\n').filter(Boolean);
-  ok(frontendChanged.length ? 'sw CACHE bumped, because frontend files differ from main'
-                            : 'no sw CACHE bump owed - frontend matches main',
-    frontendChanged.length === 0 || Number(ver(sw)) > Number(ver(swMain)),
-    frontendChanged.length + ' changed | v' + ver(swMain) + ' -> v' + ver(sw));
+  // One shared rule now - tests/lib/cache-bump.js explains why the three
+  // hand-rolled versions of this check all fired on branches that owed nothing.
+  // This one's predecessor matched '*.js', which includes tests/*.js: a file
+  // no browser is ever served.
+  assertCacheBump(REPO, ok, 'perf');
   ok('sw never caches the backend', sw.indexOf("origin !== self.location.origin") !== -1);
   const helpers = fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8');
   ok('whenIdle waits on the critical request', /__criticalReady/.test(helpers));

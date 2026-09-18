@@ -1,5 +1,6 @@
 // Browse-by-category page, the nav swap, and the header cart button.
 const fs = require('fs');
+const { assertCacheBump } = require('./lib/cache-bump.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -245,11 +246,10 @@ ok('bottom-nav counts the cart locally, with no request',
   ok('categories.html precached', sw.indexOf("'categories.html'") !== -1);
   ok('categories.js precached', /'assets\/js\/categories(\.min)?\.js'/.test(sw));
   ok('header-cart.js precached', /'assets\/js\/header-cart(\.min)?\.js'/.test(sw));
-  // Version-agnostic: pinning a literal means every later release breaks this.
-  const swMain = require('child_process')
-    .execSync('git -C /home/user/simple-kiri-shop show origin/main:sw.js', { encoding: 'utf8' });
-  const ver = (t) => Number((t.match(/var CACHE = 'mwakete-v(\d+)';/) || [])[1]);
-  ok('CACHE bumped past main', ver(sw) > ver(swMain), ver(swMain) + ' -> ' + ver(sw));
+  // Shared rule - see tests/lib/cache-bump.js. The version this replaces
+  // demanded the tree always be AHEAD of main, which fires the moment a branch
+  // merges: tree and main are equal by definition then, with nothing to bump.
+  assertCacheBump(REPO, ok, 'categories');
   const cats = fs.readFileSync(REPO + 'categories.html', 'utf8');
   ok('category page preconnects to the backend', cats.indexOf('preconnect" href="https://script.google.com"') !== -1);
   // The opposite of every other list page, and measured rather than assumed:

@@ -1,6 +1,7 @@
 // "Your Carts": the header cart's destination, per-store rows, and the
 // ?store= slug that finally makes cart.html unambiguous.
 const fs = require('fs');
+const { assertCacheBump } = require('./lib/cache-bump.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -154,23 +155,9 @@ const rows = (page) => page.evaluate(() => ({
   const sw = fs.readFileSync(REPO + 'sw.js', 'utf8');
   ok('my-carts.html precached', sw.indexOf("'my-carts.html'") !== -1);
   ok('my-carts.js precached', /'assets\/js\/my-carts(\.min)?\.js'/.test(sw));
-  // Version-agnostic: pinning a literal breaks on every later release.
-  const swMain = require('child_process')
-    .execSync('git -C /home/user/simple-kiri-shop show origin/main:sw.js', { encoding: 'utf8' });
-  const ver = (t) => Number((t.match(/var CACHE = 'mwakete-v(\d+)';/) || [])[1]);
-  // The bump is only OWED when the frontend actually differs from main. Written
-  // as an unconditional "must be ahead", this fired the moment the branch
-  // merged - tree and main both at v27, nothing left to bump - which is a
-  // false alarm, not a regression. Same shape as the APP_VERSION guard in
-  // test-publicstore.js.
-  const frontendChanged = require('child_process')
-    .execSync("git -C /home/user/simple-kiri-shop diff --name-only origin/main -- '*.html' '*.css' '*.js'",
-      { encoding: 'utf8' })
-    .split('\n').filter(Boolean);
-  ok(frontendChanged.length ? 'CACHE bumped, because frontend files differ from main'
-                            : 'no CACHE bump owed - frontend matches main',
-    frontendChanged.length === 0 || ver(sw) > ver(swMain),
-    frontendChanged.length + ' changed | v' + ver(swMain) + ' -> v' + ver(sw));
+  // Shared rule - see tests/lib/cache-bump.js. The version this replaces
+  // matched '*.js', which includes tests/*.js, a file no browser is served.
+  assertCacheBump(REPO, ok, 'my carts');
   const helpers = fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8');
   ok('cartStoreSlugs consolidated into helpers', /function cartStoreSlugs/.test(helpers));
   ok('directory.js no longer defines its own copy',

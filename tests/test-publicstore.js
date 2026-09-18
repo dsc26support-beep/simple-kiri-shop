@@ -116,16 +116,20 @@ const mainAuth = require('child_process')
 // and put it back on merge.
 const mainOwnerSrc = grab(mainAuth, 'publicOwnerFields');
 const hereOwnerSrc = grab(auth, 'publicOwnerFields');
-// RELAXED FOR THE LIFE OF THIS BRANCH, exactly as the note above prescribes:
-// the verified-email-change work adds pendingEmail. The only differences
-// allowed are that one field and its comment - anything else still fails, and
-// this goes back to a strict equality check when the branch merges.
-const ownerDiff = hereOwnerSrc.split('\n').filter((l) => mainOwnerSrc.indexOf(l) === -1);
-ok('publicOwnerFields differs from main ONLY by the pending-email field',
-  ownerDiff.every((l) => /pendingEmail:|^\s*\/\//.test(l)), ownerDiff.join(' | '));
+// Back to strict, now that #44 has merged and main carries pendingEmail too.
+//
+// While that PR was open this was relaxed to "the only difference may be the
+// pendingEmail line". Left relaxed after the merge it would quietly retire the
+// guard: it would keep passing while some LATER change added a field, since
+// tree and main would differ by that instead. Strict is the resting state;
+// relax it only for the life of a branch that is deliberately adding a field,
+// and put it back on merge.
+ok('publicOwnerFields source is byte-identical to main', mainOwnerSrc === hereOwnerSrc);
 ok('nothing was removed from publicOwnerFields',
   mainOwnerSrc.split('\n').filter((l) => /^\s+\w+: /.test(l))
     .every((l) => hereOwnerSrc.indexOf(l) !== -1));
+ok('the pending-email field is on main, not just in the working tree',
+  /pendingEmail: owner\.PendingEmail/.test(mainOwnerSrc), 'still branch-only');
 ok('the auth-channel fields are on main, not just in the working tree',
   /authChannel: owner\.AuthChannel/.test(mainOwnerSrc) &&
   /authChannelEffective: effectiveAuthChannel\(owner\)/.test(mainOwnerSrc), 'still branch-only');
