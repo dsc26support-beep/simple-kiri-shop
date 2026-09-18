@@ -207,11 +207,60 @@ function renderTrendingProducts(products) {
 
   statusEl.textContent = '';
   listEl.innerHTML = products.map((p) => renderBrowseProductCard(p, { showLocation: true })).join('');
+  dealInCards(listEl);
   // Card badges cannot carry their own popover (they are inside the card's
   // link), so the page explains them once. Renders nothing when no card on the
   // page has a badge - which on a young marketplace is most pages.
   mountBadgeLegend('home-badge-legend', products);
   recordProductViewsOnce(products.map((p) => p.productId));
+}
+
+/**
+ * The trending grid deals itself out, one card just after the last, instead of
+ * appearing as one block.
+ *
+ * Three things this deliberately does NOT do:
+ *
+ * NOT slower. Every card is in the DOM in the same frame as before and every
+ * photo starts downloading at the same moment - only opacity is animated. A
+ * version that waited for one picture before asking for the next would multiply
+ * the time this page takes to finish on exactly the connections that can least
+ * afford it.
+ *
+ * NOT a layout shift. Opacity does not affect layout, so the grid occupies its
+ * final space from the first frame and nothing below it moves. The homepage
+ * measures 0.0001 and several suites guard that.
+ *
+ * NOT below the fold. Cards off screen are revealed immediately: nobody watches
+ * an animation they cannot see, and staggering all twenty would leave the page
+ * reporting itself busy for over a second for no one's benefit.
+ *
+ * Off entirely under prefers-reduced-motion.
+ */
+const DEAL_INTERVAL_MS = 80;
+
+function dealInCards(listEl) {
+  const cards = Array.prototype.slice.call(listEl.children);
+  if (!cards.length) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  // Hidden before the browser has painted them, so there is no flash of the
+  // finished grid first.
+  cards.forEach((card) => card.classList.add('product-card--dealing'));
+
+  // Read AFTER hiding: opacity leaves layout alone, so every card already sits
+  // at its final position and this tells us which ones a person can actually
+  // see.
+  const fold = window.innerHeight;
+  let delay = 0;
+  cards.forEach((card) => {
+    if (card.getBoundingClientRect().top >= fold) {
+      card.classList.remove('product-card--dealing');
+      return;
+    }
+    setTimeout(() => card.classList.remove('product-card--dealing'), delay);
+    delay += DEAL_INTERVAL_MS;
+  });
 }
 
 function renderTrendingStores(stores) {
