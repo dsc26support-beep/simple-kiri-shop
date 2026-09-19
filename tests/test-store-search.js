@@ -294,5 +294,7 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /* ---------- report ---------------------------------------------------------- */
 const failed = R.filter(function (r) { return r[0] === 'FAIL'; });
 R.forEach(function (r) { console.log(r[0] + '  ' + r[1] + (r[2] ? '   -> ' + r[2] : '')); });
-console.log('\n' + (R.length - failed.length) + '/' + R.length + (failed.length ? '  ** ' + failed.length + ' FAILED **' : '  ALL PASS'));
+// "N/N passed" is the line the sweep script greps for - any other wording and
+// a suite that passed is recorded as a crash.
+console.log('\n' + (R.length - failed.length) + '/' + R.length + ' passed');
 process.exit(failed.length ? 1 : 0);
