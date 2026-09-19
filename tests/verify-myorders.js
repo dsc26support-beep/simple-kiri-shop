@@ -137,15 +137,25 @@ async function open(browser, width) {
         out[r.dataset.orderId] = {
           edit: !!r.querySelector('[data-edit]'),
           remove: !!r.querySelector('[data-archive]'),
-          locked: (r.querySelector('.dash-item-locked') || {}).textContent || null
+          status: (r.querySelector('.dash-status') || {}).textContent || null
         };
       });
       return out;
     });
     ok('a Pending Payment order offers Edit', buttons.o1.edit === true, JSON.stringify(buttons.o1));
-    ok('a Paid order offers neither, and explains why',
-      buttons.o2.edit === false && buttons.o2.remove === false &&
-      /can no longer be edited/.test(buttons.o2.locked || ''), JSON.stringify(buttons.o2));
+    ok('a Paid order offers neither Edit nor Remove',
+      buttons.o2.edit === false && buttons.o2.remove === false, JSON.stringify(buttons.o2));
+    // It used to say "This order can no longer be edited." on every locked row -
+    // the widest text on the row, a negative, and repeated down the whole list.
+    // The reason is the status itself, which is now a pill beside the row, so
+    // the guarantee kept here is that the reason is VISIBLE, not that it is
+    // spelled out in a sentence. Trying to edit a locked order still fails in
+    // the backend with that exact wording, which is where it is useful - see
+    // the "refuses an edit the backend rejects" case below, unchanged.
+    ok('and the reason is visible as its status', /Paid/.test(buttons.o2.status || ''),
+      JSON.stringify(buttons.o2));
+    ok('the locked sentence is gone from the page entirely',
+      await page.evaluate(() => !/can no longer be edited/.test(document.body.textContent)));
     ok('a Fulfilled order offers Remove but not Edit',
       buttons.o3.edit === false && buttons.o3.remove === true, JSON.stringify(buttons.o3));
     ok('a Cancelled order offers Remove but not Edit',

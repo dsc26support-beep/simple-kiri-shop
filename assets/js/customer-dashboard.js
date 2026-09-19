@@ -230,22 +230,66 @@ function renderOrders() {
   listEl.innerHTML = rows.map(orderRow).join('');
 }
 
+/**
+ * One order, as three aligned lines rather than four ragged ones.
+ *
+ *   Bong Store                          $86.50
+ *   16 Sep 2026 · 1 x Rice 10kg, 2 x Cooking oil 2L
+ *   [Pending Payment]                    [Edit]
+ *
+ * The date is new. It was always in the payload and never shown, which left a
+ * shopper unable to tell last week's order from one in August - while the
+ * widest text on a finished row was a sentence saying it could not be edited.
+ *
+ * Everything stays inside .dash-item-main because the inline editor replaces
+ * that element's contents wholesale (see openEditor) and expects the form to
+ * take the whole row.
+ */
 function orderRow(o) {
   const id = escapeHtml(o.orderId);
+  const meta = [dashDate(o.createdAt), o.itemsSummary].filter(Boolean)
+    .map((part) => escapeHtml(part)).join(' · ');
   return `
     <div class="dash-item" data-order-id="${id}">
       <div class="dash-item-main">
-        <strong>${escapeHtml(o.storeName || o.storeSlug || 'Store')}</strong>
-        <span class="helper-text">${escapeHtml(o.itemsSummary || '')}</span>
-        ${dashActions(o.archived, o.canEdit, o.canArchive, 'order', id,
-          'This order can no longer be edited.')}
+        <div class="dash-item-head">
+          <strong class="dash-item-title">${escapeHtml(o.storeName || o.storeSlug || 'Store')}</strong>
+          <strong class="dash-item-amount">${formatMoney(o.total)}</strong>
+        </div>
+        ${meta ? `<p class="dash-item-meta">${meta}</p>` : ''}
+        <div class="dash-item-foot">
+          ${statusPill(o.status)}
+          ${dashActions(o.archived, o.canEdit, o.canArchive, 'order', id)}
+        </div>
         <p class="dash-item-error form-error" id="order-error-${id}" role="alert"></p>
       </div>
-      <div class="dash-item-side">
-        <strong>${formatMoney(o.total)}</strong>
-        <span class="dash-status">${escapeHtml(o.status || '')}</span>
-      </div>
     </div>`;
+}
+
+/**
+ * "16 Sep 2026". Returns '' for a missing or unparseable date rather than
+ * "Invalid Date", so a malformed row loses the date and keeps the order.
+ */
+function dashDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/**
+ * The status as a pill instead of grey text floating bottom-right, where it
+ * wrapped under the price on a phone.
+ *
+ * Colour is never the only signal - the pill always carries the word, so it
+ * reads the same in greyscale, and every tint takes --color-ink for at least
+ * 12:1 contrast rather than tinted text on a tinted ground.
+ */
+function statusPill(status) {
+  const text = String(status || '').trim();
+  if (!text) return '<span class="dash-status-gap"></span>';
+  const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return `<span class="dash-status dash-status--${escapeAttr(slug)}">${escapeHtml(text)}</span>`;
 }
 
 /* ---------- Bookings ---------- */
@@ -313,18 +357,21 @@ function renderBookings() {
 
 function bookingRow(b) {
   const id = escapeHtml(b.bookingId);
-  const dates = [b.startDate, b.endDate].filter(Boolean).join(' → ');
+  const dates = [b.startDate, b.endDate].filter(Boolean).map(dashDate).filter(Boolean).join(' \u2192 ');
+  const meta = [escapeHtml(b.storeName || b.storeSlug || ''), escapeHtml(dates)]
+    .filter(Boolean).join(' · ');
   return `
     <div class="dash-item" data-booking-id="${id}">
       <div class="dash-item-main">
-        <strong>${escapeHtml(b.productName || 'Booking')}</strong>
-        <span class="helper-text">${escapeHtml(b.storeName || b.storeSlug || '')}${dates ? ' · ' + escapeHtml(dates) : ''}</span>
-        ${dashActions(b.archived, b.canEdit, b.canArchive, 'booking', id,
-          'This booking can no longer be edited.')}
+        <div class="dash-item-head">
+          <strong class="dash-item-title">${escapeHtml(b.productName || 'Booking')}</strong>
+        </div>
+        ${meta ? `<p class="dash-item-meta">${meta}</p>` : ''}
+        <div class="dash-item-foot">
+          ${statusPill(b.status)}
+          ${dashActions(b.archived, b.canEdit, b.canArchive, 'booking', id)}
+        </div>
         <p class="dash-item-error form-error" id="booking-error-${id}" role="alert"></p>
-      </div>
-      <div class="dash-item-side">
-        <span class="dash-status">${escapeHtml(b.status || '')}</span>
       </div>
     </div>`;
 }
@@ -333,7 +380,19 @@ function bookingRow(b) {
 
 // Plain buttons in the existing .btn/.btn-small style - no new component, and
 // nothing shown that the backend has not said is allowed.
-function dashActions(archived, canEdit, canArchive, kind, id, lockedNote) {
+/**
+ * Says something only when there is something to do.
+ *
+ * A row that can be neither edited nor removed used to carry "This order can no
+ * longer be edited." - the widest text on the row, a negative, and repeated
+ * down the whole list. The status pill beside it already says Paid or
+ * Fulfilled, which IS the reason it is locked.
+ *
+ * Nothing about what may be done changed: the flags still come from the
+ * backend, and trying to edit a locked order still fails there with that exact
+ * sentence, which is where it is actually useful.
+ */
+function dashActions(archived, canEdit, canArchive, kind, id) {
   if (archived) {
     return `<p class="dash-item-actions">
       <button type="button" class="btn btn-small" data-restore="${kind}" data-id="${id}">Put back</button>
@@ -342,9 +401,7 @@ function dashActions(archived, canEdit, canArchive, kind, id, lockedNote) {
   const parts = [];
   if (canEdit) parts.push(`<button type="button" class="btn btn-small" data-edit="${kind}" data-id="${id}">Edit</button>`);
   if (canArchive) parts.push(`<button type="button" class="btn btn-small" data-archive="${kind}" data-id="${id}">Remove</button>`);
-  if (parts.length === 0) {
-    return `<p class="dash-item-locked helper-text">${escapeHtml(lockedNote)}</p>`;
-  }
+  if (parts.length === 0) return '';
   return `<p class="dash-item-actions">${parts.join(' ')}</p>`;
 }
 
