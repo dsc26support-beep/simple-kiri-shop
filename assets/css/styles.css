@@ -2873,8 +2873,41 @@ footer.site-footer .copyright {
   border-radius: 12px;
 }
 
+/* The outline stays purple and 1px - verify-dashlinks asserts both, and it is
+   what separates this page's cards from the grey ones on customer-messages and
+   the admin page. The weight came off the heading instead, which was running at
+   full h2 size for what is really a label on a list. */
 .dash-section h2 {
   margin-top: 0;
+  margin-bottom: var(--space-2);
+  font-size: 1.15rem;
+}
+
+/* Desktop gets two columns. One narrow column of things you set once - who you
+   are, your messages - beside the lists you actually came to read. Below 900px
+   this does not apply at all and the phone layout is untouched. */
+@media (min-width: 900px) {
+  .page-account > .container {
+    display: grid;
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    gap: 0 var(--space-4);
+    align-items: start;
+  }
+
+  .page-account > .container > .dash-head,
+  .page-account > .container > .app-version-line {
+    grid-column: 1 / -1;
+  }
+
+  .page-account > .container > .dash-links,
+  .page-account > .container > .dash-section--profile {
+    grid-column: 1;
+  }
+
+  .page-account > .container > .dash-section--orders,
+  .page-account > .container > .dash-section--bookings {
+    grid-column: 2;
+  }
 }
 
 /* The three profile lines hold their own space before the values arrive.
@@ -2894,11 +2927,12 @@ footer.site-footer .copyright {
   min-height: 1.5em;
 }
 
+/* A row is three aligned lines, not four ragged ones. The old layout put the
+   title and actions in a left column and the price and status in a right one,
+   at different heights, so nothing lined up and "Pending Payment" wrapped under
+   the price on a phone. Now: title/amount, then meta, then status/action - two
+   clean edges down the row. */
 .dash-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
   padding: var(--space-2) 0;
   border-top: 1px solid var(--color-border);
 }
@@ -2907,10 +2941,61 @@ footer.site-footer .copyright {
   border-top: none;
 }
 
+/* Still the element the inline editor replaces wholesale (openEditor in
+   customer-dashboard.js), so it has to own the whole row body. */
 .dash-item-main {
   display: flex;
   flex-direction: column;
+  gap: 2px;
   min-width: 0;
+}
+
+.dash-item-head,
+.dash-item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dash-item-foot:empty {
+  display: none;
+}
+
+.dash-item-title {
+  min-width: 0;
+}
+
+/* Never wraps and never shrinks: the amount is the thing being scanned down
+   the right edge, and tabular figures keep the decimal points in a line. */
+.dash-item-amount {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Date and contents. Capped at two lines so one order with a long basket
+   cannot make its row three times the height of its neighbours. */
+.dash-item-meta {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.dash-item-foot {
+  margin-top: 6px;
+}
+
+/* Holds the left edge when a row has no status, so the action button does not
+   jump across to where the pill would have been. */
+.dash-status-gap {
+  flex: 1 1 auto;
 }
 
 /* Filter row for My Orders / My Bookings. A scrolling strip rather than a
@@ -2951,13 +3036,53 @@ footer.site-footer .copyright {
   font-weight: 600;
 }
 
-.dash-item-actions,
-.dash-item-locked {
-  margin: var(--space-1) 0 0;
+.dash-item-actions {
+  flex: 0 0 auto;
+  margin: 0;
 }
 
-.dash-item-locked {
-  font-size: 0.78rem;
+/* The status, as a pill instead of grey text floating under the price.
+   Every tint takes --color-ink rather than tinted text on a tinted ground, so
+   the quietest one still clears 12:1 - and the word is always there, so none of
+   this depends on telling the colours apart. */
+.dash-status {
+  flex: 0 1 auto;
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-alt);
+  color: var(--color-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Waiting on the customer. */
+.dash-status--pending-payment,
+.dash-status--pending {
+  background: var(--color-gold-soft);
+  border-color: #f0d98a;
+}
+
+/* Settled, moving. */
+.dash-status--paid,
+.dash-status--confirmed {
+  background: var(--color-purple-soft);
+  border-color: #cdc7e6;
+}
+
+/* Done. */
+.dash-status--fulfilled {
+  background: #e3f4e8;
+  border-color: #b7dcc3;
+}
+
+/* Stopped. */
+.dash-status--cancelled,
+.dash-status--declined {
+  background: #fbe9e9;
+  border-color: #e9c4c4;
 }
 
 /* Empty until something goes wrong, so it must not hold a line of space open
