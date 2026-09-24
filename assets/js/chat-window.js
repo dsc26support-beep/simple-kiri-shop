@@ -40,6 +40,8 @@ function initChatWindow() {
   const form = document.getElementById('chat-window-form');
   const input = document.getElementById('chat-message-input');
   const badge = document.getElementById('chat-unread-badge');
+  const videoCallBtn = document.getElementById('chat-video-call-btn');
+  const meetingPanelHost = document.getElementById('meeting-panel-host');
   const attachBtn = document.getElementById('chat-attach-btn');
   const imageInput = document.getElementById('chat-image-input');
   const previewEl = document.getElementById('chat-image-preview');
@@ -420,6 +422,69 @@ function initChatWindow() {
 
   if (loadEarlierBtn) loadEarlierBtn.addEventListener('click', loadEarlierMessages);
 
+  /**
+   * Video Call (meeting requests). assets/js/meetings-ui.js is NOT one of
+   * this page's <script defer> tags - it is fetched with a plain dynamic
+   * <script> element, and only the first time someone actually opens this
+   * panel, so a chat widget that's never used for a meeting costs a normal
+   * page load nothing extra. See that file's own header comment.
+   */
+  function loadMeetingsUi() {
+    if (window.MwaketeMeetings) return Promise.resolve(window.MwaketeMeetings);
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'assets/js/meetings-ui.min.js';
+      s.onload = () => resolve(window.MwaketeMeetings);
+      s.onerror = () => reject(new Error('Could not load meetings-ui'));
+      document.body.appendChild(s);
+    });
+  }
+
+  function meetingsCtx() {
+    return {
+      role: 'customer',
+      // Read live on every call (not captured once) - CustomerAuth.getToken()
+      // can change between panel opens if the customer signs in mid-visit.
+      params: () => ({
+        storeSlug,
+        customerToken,
+        customerName: getCustomerName(),
+        customerAuthToken: (typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken()) || ''
+      }),
+      // A signed-in-only requirement, one level above chat's own anonymous
+      // trust bar - see Meetings.gs's file header for why. Anonymous
+      // customers can still see and respond to a vendor-initiated meeting;
+      // they just cannot start one themselves.
+      canRequest: () => typeof CustomerAuth !== 'undefined' && CustomerAuth.isLoggedIn(),
+      signInHint: 'Sign in to your account to request a meeting.'
+    };
+  }
+
+  async function openMeetingsPanel() {
+    meetingPanelHost.classList.remove('hidden');
+    try {
+      await loadMeetingsUi(); // no-op after the first call - the script itself stays cached
+    } catch (e) {
+      meetingPanelHost.textContent = "Couldn't load Video Call. Please try again.";
+      return;
+    }
+    // Re-mounted fresh on every open, not just refreshed - cheap (one small,
+    // server-side-cached read) and guarantees no stale card or abandoned
+    // request-form draft can ever be left showing from a previous open.
+    window.MwaketeMeetings.mount(meetingPanelHost, meetingsCtx());
+  }
+
+  function closeMeetingsPanel() {
+    meetingPanelHost.classList.add('hidden');
+  }
+
+  if (videoCallBtn) {
+    videoCallBtn.addEventListener('click', () => {
+      if (meetingPanelHost.classList.contains('hidden')) openMeetingsPanel();
+      else closeMeetingsPanel();
+    });
+  }
+
   function scheduleNextPoll() {
     pollTimer = setTimeout(pollTick, pollDelayMs);
   }
@@ -685,6 +750,7 @@ function initChatWindow() {
     win.style.bottom = '';
     win.style.maxHeight = '';
     stopPolling();
+    if (meetingPanelHost) closeMeetingsPanel();
     fab.focus();
   }
 

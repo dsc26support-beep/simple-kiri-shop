@@ -44,6 +44,7 @@ async function init() {
   document.getElementById('conversation-list').addEventListener('click', onConversationClick);
   document.getElementById('conversation-list-load-more').addEventListener('click', onLoadMoreConversations);
   document.getElementById('back-to-list-btn').addEventListener('click', closeConversation);
+  document.getElementById('video-call-btn').addEventListener('click', onVideoCallClick);
   document.getElementById('archive-btn').addEventListener('click', onArchive);
   document.getElementById('delete-btn').addEventListener('click', onDelete);
   document.getElementById('conversation-load-earlier-btn').addEventListener('click', loadEarlierConversationMessages);
@@ -167,6 +168,7 @@ async function openConversation(conversationId) {
   activeHasMoreBefore = false;
   renderedMessageIds = new Set();
   updateLoadEarlierMessagesButton();
+  closeMeetingsPanel();
 
   document.getElementById('messages-layout').classList.add('has-open-conversation');
   document.getElementById('conversation-empty-state').classList.add('hidden');
@@ -196,10 +198,70 @@ function closeConversation() {
   updateLoadEarlierMessagesButton();
   showTyping(false);
   stopConversationPolling();
+  closeMeetingsPanel();
   document.getElementById('messages-layout').classList.remove('has-open-conversation');
   document.getElementById('conversation-empty-state').classList.remove('hidden');
   document.getElementById('conversation-detail').classList.add('hidden');
   renderConversationList();
+}
+
+/**
+ * Video Call (meeting requests). assets/js/meetings-ui.js is NOT one of this
+ * page's <script defer> tags - it is fetched with a plain dynamic <script>
+ * element, and only the first time the owner actually opens this panel, so a
+ * normal inbox visit never pays for it. See that file's own header comment.
+ *
+ * The panel is closed (not just left stale) on every conversation switch -
+ * see openConversation/closeConversation - so it's never possible to see one
+ * conversation's meetings while believing they belong to another.
+ */
+function loadMeetingsUi() {
+  if (window.MwaketeMeetings) return Promise.resolve(window.MwaketeMeetings);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '../assets/js/meetings-ui.min.js';
+    s.onload = () => resolve(window.MwaketeMeetings);
+    s.onerror = () => reject(new Error('Could not load meetings-ui'));
+    document.body.appendChild(s);
+  });
+}
+
+function meetingsCtx() {
+  return {
+    role: 'vendor',
+    // Read live on every call, not captured once - the vendor can switch to
+    // a different conversation while this panel is open.
+    params: () => ({ token: Auth.getToken(), conversationId: activeConversationId }),
+    canRequest: () => true, // a vendor is always a real, authenticated account - no sign-in gate needed
+    signInHint: null
+  };
+}
+
+async function openMeetingsPanel() {
+  const host = document.getElementById('meeting-panel-host');
+  host.classList.remove('hidden');
+  try {
+    await loadMeetingsUi(); // no-op after the first call - the script itself stays cached
+  } catch (e) {
+    host.textContent = "Couldn't load Video Call. Please try again.";
+    return;
+  }
+  // Re-mounted fresh on every open, not just refreshed - cheap (one small,
+  // server-side-cached read) and guarantees the vendor never sees a stale
+  // card, or an abandoned request-form draft, left over from a different
+  // conversation.
+  window.MwaketeMeetings.mount(host, meetingsCtx());
+}
+
+function closeMeetingsPanel() {
+  document.getElementById('meeting-panel-host').classList.add('hidden');
+}
+
+function onVideoCallClick() {
+  if (!activeConversationId) return;
+  const host = document.getElementById('meeting-panel-host');
+  if (host.classList.contains('hidden')) openMeetingsPanel();
+  else closeMeetingsPanel();
 }
 
 /**
