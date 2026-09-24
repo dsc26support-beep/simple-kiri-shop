@@ -159,7 +159,15 @@ const selected = (page) => page.evaluate(() =>
   ok('and it stops widening at the ceiling rather than running on forever',
     rows[rows.length - 1].browserW === 1600, String(rows[rows.length - 1].browserW));
 
-  /* ---- the header title ---------------------------------------------------- */
+  /* ---- the header, with the "Mwakete" wordmark removed ---------------------
+   *
+   * .header-title used to sit centred on this row, overlaying the space
+   * between the logo and the corner controls. Removed by request - the logo
+   * alone is the home header now, still named for a screen reader via the
+   * logo link's aria-label. This section used to check the title's own
+   * centring and clearances; now it checks that removing it left nothing
+   * behind (no dead class still present) and broke nothing else in the row
+   * it used to overlay. */
   for (const width of [320, 390, 768, 1366]) {
     const ctx = await browser.newContext({ viewport: { width: width, height: 844 } });
     await ctx.route('**/macros/s/**', (r) => r.fulfill({
@@ -178,23 +186,28 @@ const selected = (page) => page.evaluate(() =>
         const b = e.getBoundingClientRect();
         return { l: Math.round(b.left), r: Math.round(b.right) };
       };
-      const t = box('.header-title');
       return {
-        title: t, logo: box('.header-logo-link'), cart: box('#header-cart-link'), menu: box('#header-menu-btn'),
-        centre: t ? Math.round((t.l + t.r) / 2) : null,
-        vw: window.innerWidth,
-        rows: document.querySelectorAll('header.site-header > .container').length,
-        clickable: getComputedStyle(document.querySelector('.header-title')).pointerEvents
+        titleGone: !document.querySelector('.header-title') && !document.querySelector('.site-title'),
+        logo: box('.header-logo-link'),
+        // .container centres with max-width:1100px, so past that width the
+        // logo's own left edge tracks the container's, not the viewport's.
+        containerLeft: box('header.site-header .header-top-row').l,
+        logoName: (document.querySelector('.header-logo-link') || {}).getAttribute
+          ? document.querySelector('.header-logo-link').getAttribute('aria-label') : null,
+        cart: box('#header-cart-link'), menu: box('#header-menu-btn'),
+        rows: document.querySelectorAll('header.site-header > .container').length
       };
     });
-    ok('the title is centred on the page @' + width,
-      Math.abs(h.centre - h.vw / 2) <= 1, h.centre + ' vs ' + h.vw / 2);
-    ok('it clears the logo @' + width, h.title.l > h.logo.r, h.logo.r + ' -> ' + h.title.l);
+    ok('the "Mwakete" title text is gone from the header @' + width, h.titleGone === true, JSON.stringify(h));
+    ok('the logo sits at the start of its row @' + width,
+      h.logo && Math.abs(h.logo.l - h.containerLeft) < 20,
+      h.logo.l + ' vs container ' + h.containerLeft);
+    ok('the logo link still names the site for a screen reader @' + width,
+      h.logoName === 'Mwakete — home', String(h.logoName));
     const rightEdge = (h.cart || h.menu).l;
-    ok('and clears the cart and the menu @' + width, h.title.r < rightEdge, h.title.r + ' -> ' + rightEdge);
-    // It sits over the corner controls' row, so it must not eat their taps.
-    ok('and cannot swallow a tap meant for them @' + width, h.clickable === 'none', h.clickable);
-    ok('the header is one row now, not two @' + width, h.rows === 1, String(h.rows));
+    ok('the logo clears the cart and the menu, nothing overlaps @' + width,
+      h.logo.r < rightEdge, h.logo.r + ' -> ' + rightEdge);
+    ok('the header is still one row @' + width, h.rows === 1, String(h.rows));
     await ctx.close();
   }
 
