@@ -279,9 +279,43 @@ function byIdOf(r) {
     && /invalidateCache\(storeCacheKeys\(owner\.StoreSlug\)\)/.test(
          fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8')));
 
-  // The per-card regression this whole design exists to prevent.
+  /*
+   * The per-card regression this whole design exists to prevent: the badge
+   * index is built ONCE per builder, never once per product.
+   *
+   * This used to be a proximity match - ".map(function" with a
+   * sellerBadgeIndex() call somewhere in the next 600 characters - which asks
+   * "are these two things near each other", not "is one inside the other". It
+   * went red on an unrelated .map added to actionListStores that simply
+   * happened to sit a few lines above the NEXT builder's legitimate, once-per-
+   * builder call. So it now reads each map callback's own body, matched brace
+   * to brace, and asks the question it was always trying to ask.
+   */
+  const mapCallbackBodies = (src) => {
+    const bodies = [];
+    const re = /\.map\(function\s*\([^)]*\)\s*\{/g;
+    let m;
+    while ((m = re.exec(src))) {
+      let depth = 1;
+      let i = re.lastIndex;
+      while (i < src.length && depth > 0) {
+        if (src[i] === '{') depth++;
+        else if (src[i] === '}') depth--;
+        i++;
+      }
+      bodies.push(src.slice(re.lastIndex, i - 1));
+    }
+    return bodies;
+  };
+  const badgeInMap = mapCallbackBodies(products)
+    .filter((body) => body.indexOf('sellerBadgeIndex()') !== -1);
   ok('no builder calls sellerBadgeIndex from inside a map over products',
-    !/\.map\(function[\s\S]{0,600}sellerBadgeIndex\(\)[\s\S]{0,600}\}\)/.test(products));
+    badgeInMap.length === 0, badgeInMap.length + ' offending callback(s)');
+  // The guard is only worth having if it still catches the thing it is for,
+  // so the offending shape is fed to it here and required to be caught.
+  ok('...and that check still catches the call it exists to forbid',
+    mapCallbackBodies('rows.map(function (p) { var b = sellerBadgeIndex(); return b; });')
+      .filter((body) => body.indexOf('sellerBadgeIndex()') !== -1).length === 1);
 
   ok('the new tabs are in REQUIRED_TABS, so setupSheets creates them',
     /SellerBadges: \['OwnerId', 'Badges', 'Score', 'MetricsJson', 'ReasonJson', 'UpdatedAt'\]/.test(codeGs)

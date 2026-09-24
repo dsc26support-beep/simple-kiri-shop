@@ -171,6 +171,64 @@ function attachSellerBadges(obj, index, ownerId) {
   return obj;
 }
 
+// A search query is untrusted text of unbounded length. Capped before anything
+// is done with it: 200 characters is far longer than any store name, and
+// without a cap a multi-kilobyte query is normalised and scanned against every
+// store on every request. actionSearchProducts already slices to 100 for its
+// cache key; this is the same idea applied where the work actually happens.
+var STORE_SEARCH_MAX_QUERY = 200;
+
+/**
+ * Brings a query and a store's text to the same shape so they can be compared
+ * honestly: lowercased, internal runs of whitespace collapsed to one space,
+ * then trimmed.
+ *
+ * The collapse is the part that was missing. "Abc  Store" typed with two
+ * spaces found nothing, because the stored name has one - a formatting
+ * difference no shopper can see, and none should be punished for.
+ */
+function normalizeStoreSearchText(value) {
+  return String(value == null ? '' : value)
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * How well a store answers a query. Higher is better; 0 means it does not
+ * answer it at all.
+ *
+ * The order is the one a shopper expects: the store they actually named, then
+ * ones beginning with what they typed, then ones containing it, then every
+ * word of the query somewhere in the name, then a match on WHERE the store is
+ * rather than what it is called, and last of all the old joined-text match
+ * kept for compatibility (see the bottom of the function).
+ *
+ * Place is ranked below every name match on purpose. Searching "betio" has
+ * always found the Betio stores and still does, but a store literally called
+ * Betio Hire should come first.
+ */
+function storeSearchScore(store, q, name) {
+  if (!q) return 1;
+  // The caller has usually normalised the name already - doing it once per
+  // store and handing it in keeps the regex off the hot path.
+  if (name == null) name = normalizeStoreSearchText(store.storeName);
+  if (name === q) return 100;
+  if (name.indexOf(q) === 0) return 80;
+  if (name.indexOf(q) !== -1) return 60;
+  var words = q.split(' ').filter(function (w) { return w; });
+  if (words.length > 1 && words.every(function (w) { return name.indexOf(w) !== -1; })) return 40;
+  var place = normalizeStoreSearchText((store.island || '') + ' ' + (store.village || ''));
+  if (place.indexOf(q) !== -1) return 20;
+  // Last, and only so that nothing that used to be found stops being found.
+  // The old directory search compared the query against name, island and
+  // village JOINED TOGETHER, so a query spanning the join - "shop south" for
+  // Corner Shop in South Tarawa - was a match. It is a strange thing to type,
+  // but it worked, so it still works, at the bottom of the order.
+  if ((name + ' ' + place).indexOf(q) !== -1) return 10;
+  return 0;
+}
+
 function actionListStores(params) {
   params = params || {};
   // v1 -> v2 with the sellerBadges field below. A warm entry holding the old
@@ -191,13 +249,28 @@ function actionListStores(params) {
   // every query shares the same 60s cache entry instead of minting a new
   // cache key per search string, and the query never affects the eligible
   // page-size cap below.
-  var q = String(params.q || '').trim().toLowerCase();
-  var filtered = q
-    ? all.filter(function (s) {
-        var haystack = (s.storeName + ' ' + (s.island || '') + ' ' + (s.village || '')).toLowerCase();
-        return haystack.indexOf(q) !== -1;
+  var q = normalizeStoreSearchText(String(params.q || '').slice(0, STORE_SEARCH_MAX_QUERY));
+  // Ranked only when there IS a query. With an empty box the directory keeps
+  // the order it has always had, so browsing stores.html is untouched and the
+  // only page that sees a new order is one the shopper asked to sort.
+  var filtered = all;
+  if (q) {
+    filtered = all
+      .map(function (s) {
+        // Each name is normalised exactly once, here, and reused for both the
+        // score and the tie-break below.
+        var name = normalizeStoreSearchText(s.storeName);
+        return { store: s, name: name, score: storeSearchScore(s, q, name) };
       })
-    : all;
+      .filter(function (e) { return e.score > 0; })
+      .sort(function (a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        // Alphabetical inside a score band, so two identical requests can
+        // never come back in two different orders.
+        return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0);
+      })
+      .map(function (e) { return e.store; });
+  }
 
   var limit = clampPageSize(params.limit, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE);
   var offset = Math.max(0, Number(params.offset) || 0);
