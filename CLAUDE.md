@@ -18,10 +18,15 @@ agent would help, get it or ask for the one step only the owner can complete
   connector settings (or `claude mcp` / `/mcp` interactively), then keep
   working on whatever doesn't depend on it. Never ask the owner for tokens or
   codes.
-- **Anything with a cost** (a paid API, a paid tier, a subscription): never
-  sign up or spend on Mwakete's behalf silently. Name the tool, the cost, and
-  why it's worth it, and get a yes first. Once approved for a given tool, it
-  stays approved for reuse — don't re-ask every time.
+- **Anything with a cost** (a paid API, a paid tier, a subscription): **no
+  self-approve threshold, no exceptions.** Always ask first, every time,
+  and give a brief reason why — even for something small. Once approved for
+  a given tool, it stays approved for reuse — don't re-ask on every later
+  use of that same tool, but a new tool or a new cost is a new ask.
+- **CEO-level decisions outside pure engineering** (registering a domain,
+  signing up for a service, anything that commits Mwakete to something
+  beyond writing and shipping code): same rule as spending — always ask
+  first and briefly explain why, no self-approve.
 - **Destructive or hard-to-reverse actions** (deploys, merges, deleting data,
   pushing to `main`): the existing rules below still apply in full. Full
   authority to acquire tools is not authority to skip approval gates on
