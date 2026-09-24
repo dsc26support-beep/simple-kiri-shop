@@ -63,11 +63,21 @@ const render = (page, ids, opts) => page.evaluate(([i, o]) => {
   return host.innerHTML;
 }, [ids, opts || {}]);
 
+// Document-relative, not viewport-relative. getBoundingClientRect() alone is
+// viewport-relative, and Playwright's click() auto-scrolls its target into
+// view first if it isn't already visible - so a click on something below the
+// fold moves the WHOLE VIEWPORT, and every getBoundingClientRect() on the page
+// shifts with it, whether or not anything actually moved. Adding scrollY/X
+// asks the question this file actually means to ask: did the element move ON
+// THE PAGE, not did the page happen to scroll to reach the button that opens
+// it. (The "panel stays on screen" checks elsewhere want viewport-relative
+// coordinates on purpose and do not use this helper.)
 const box = (page, sel) => page.evaluate((s) => {
   const el = document.querySelector(s);
   if (!el) return null;
   const r = el.getBoundingClientRect();
-  return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+  return { x: Math.round(r.x + window.scrollX), y: Math.round(r.y + window.scrollY),
+    w: Math.round(r.width), h: Math.round(r.height) };
 }, sel);
 
 (async () => {

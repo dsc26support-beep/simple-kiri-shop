@@ -114,24 +114,42 @@ const prod = (id, name) => ({ productId: id, name, storeSlug: 'x', storeName: 'S
       };
     })();
   }
-  // 6. A short list on a TALL viewport so 60vh (900px) exceeds the content -
-  // exactly the case where the old floor created the gap. With the fix, main
-  // hugs content and the footer sits just after the products.
+  // 6. A short list on a TALL viewport so 60vh exceeds the content - exactly
+  // the case where the old floor created the gap. With the fix, main hugs
+  // content and the footer sits just after the products.
   //
   // index.html, not the browse page: browse is body.browse-locked (a fixed
   // 100dvh column with its own scrollers), so main fills the viewport BY
   // DESIGN there and "hugs content" is not a meaningful question. It also has
   // to be a page with a FOOTER - gapFn measures to it - and footers live only
   // on home and login.
+  //
+  // Viewport height moved from 1500 to 2200 when the homepage restructure
+  // (promo strip, quick actions, trust strip, Popular Stores made visible on
+  // mobile) genuinely grew "short content" past the old 900px floor - main
+  // measured 1069px with only 2 products, which is real added content, not
+  // the floor bug reappearing (confirmed below). 2200 restores headroom the
+  // same way 1500 did before that content existed, but a magic pixel number
+  // is exactly the kind of thing more homepage content keeps invalidating -
+  // see the CSS-rule assertion right after this one, which does not need
+  // recalibrating no matter how much real content the homepage grows.
   {
-    const ctx = await ctxWith(2, { viewport: { width: 390, height: 1500 } });
+    const ctx = await ctxWith(2, { viewport: { width: 390, height: 2200 } });
     const page = await ctx.newPage();
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
     await page.waitForSelector('.product-grid .product-card');
     const g = await page.evaluate(gapFn);
-    const floor = Math.round(g.vh * 0.6); // 900px
+    const floor = Math.round(g.vh * 0.6);
     ok('hug: small gap below a short list', g.gap < 80, JSON.stringify(g));
     ok('hug: main hugs content, NOT inflated to 60vh floor', g.mainH < floor, JSON.stringify(g) + ' floor=' + floor);
+    // The rule itself, asserted directly rather than inferred from a height
+    // comparison - this is the actual bug class this section guards against,
+    // and unlike the pixel checks above it is exact and cannot be defeated by
+    // the homepage legitimately growing taller over time.
+    const minHeight = await page.evaluate(() =>
+      getComputedStyle(document.querySelector('main.page-products')).minHeight);
+    ok('hug: main.page-products has no 60vh floor at this width (min-height: 0)',
+      minHeight === '0px', minHeight);
     await ctx.close();
   }
   // 7. store.html with 10 products, mobile: footer directly after grid
