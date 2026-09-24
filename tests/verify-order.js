@@ -12,7 +12,11 @@ const BASE = 'http://127.0.0.1:8099';
   async function tops(page) {
     return page.evaluate(() => {
       const t = (s) => { const el = document.querySelector(s); return el ? Math.round(el.getBoundingClientRect().top) : null; };
-      return { hero: t('.hero'), categories: t('.categories'), products: t('.trending-products') };
+      return {
+        hero: t('.hero'), promo: t('.home-promo'), quickActions: t('.home-quick-actions'),
+        trust: t('.home-trust'), categories: t('.categories'), stores: t('.trending-stores'),
+        products: t('.trending-products')
+      };
     });
   }
 
@@ -27,38 +31,54 @@ const BASE = 'http://127.0.0.1:8099';
   }
 
   const mob = await measure(390, 800, 'mobile');
-// Reversed on purpose: search leads now. Someone who knows what they want
-  // should not scroll past two rows of navigation to type it.
-  ok('mobile: search above categories', mob.t.hero < mob.t.categories, JSON.stringify(mob.t));
+  // Reversed on purpose: search leads now. Someone who knows what they want
+  // should not scroll past two rows of navigation to type it. The full chain,
+  // Alibaba-inspired: search -> promo -> quick actions -> trust -> categories
+  // -> discovery (Popular Stores, moved up) -> product grid.
+  ok('mobile: search above everything else', mob.t.hero < mob.t.categories, JSON.stringify(mob.t));
   ok('mobile: search above products', mob.t.hero < mob.t.products, JSON.stringify(mob.t));
+  ok('mobile: full section chain is in order',
+    mob.t.hero < mob.t.promo && mob.t.promo <= mob.t.quickActions &&
+    mob.t.quickActions <= mob.t.trust && mob.t.trust <= mob.t.categories &&
+    mob.t.categories < mob.t.stores && mob.t.stores < mob.t.products,
+    JSON.stringify(mob.t));
 
   const tab = await measure(900, 1200, 'tablet');
   ok('tablet: search above categories', tab.t.hero < tab.t.categories, JSON.stringify(tab.t));
 
   const desk = await measure(1280, 900, 'desktop');
   ok('desktop: search above categories (original)', desk.t.hero < desk.t.categories, JSON.stringify(desk.t));
-  ok('desktop: categories above products', desk.t.categories < desk.t.products, JSON.stringify(desk.t));
+  ok('desktop: categories above discovery above products',
+    desk.t.categories < desk.t.stores && desk.t.stores < desk.t.products, JSON.stringify(desk.t));
 
-  // Gap check: on mobile the space between search(hero) bottom and products top
-  // should reflect the added row-gap. Compare mobile gap vs desktop gap between
-  // the same two adjacent-in-flow sections is not apples-to-apples (order differs),
-  // so just assert a positive, non-trivial gap exists on mobile between hero and products.
+  // Gap check: every adjacent pair in the mobile flow should show the added
+  // row-gap, not just hero->categories as before - there are more neighbours
+  // now that the restructure added sections between them.
   const page = await ctx.newPage();
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto(BASE + '/index.html', { waitUntil: 'load' });
   await page.waitForSelector('#category-strip .chip-strip-item');
   const gaps = await page.evaluate(() => {
     const r = (s) => document.querySelector(s).getBoundingClientRect();
-    const cat = r('.categories'), hero = r('.hero'), prod = r('.trending-products');
-    // .listing-types held the [All|Products|Rentals|Services] strip and was
-    // removed with it, so the hero's neighbour below is now the categories.
-    return { heroToCat: Math.round(cat.top - hero.bottom),
-             catToProd: Math.round(prod.top - cat.bottom) };
+    const hero = r('.hero'), promo = r('.home-promo'), qa = r('.home-quick-actions'),
+      trust = r('.home-trust'), cat = r('.categories'), stores = r('.trending-stores'),
+      prod = r('.trending-products');
+    return {
+      heroToPromo: Math.round(promo.top - hero.bottom),
+      promoToQa: Math.round(qa.top - promo.bottom),
+      qaToTrust: Math.round(trust.top - qa.bottom),
+      trustToCat: Math.round(cat.top - trust.bottom),
+      catToStores: Math.round(stores.top - cat.bottom),
+      storesToProd: Math.round(prod.top - stores.bottom)
+    };
   });
   await page.close();
-  // row-gap var(--space-4)=1.5rem=24px is added between flex items; both gaps should be >= ~24.
-ok('mobile: extra spacer categories->products (>=24px)', gaps.catToProd >= 24, 'catToProd=' + gaps.catToProd);
-  ok('mobile: extra spacer search->categories (>=24px)', gaps.heroToCat >= 24, 'heroToCat=' + gaps.heroToCat);
+  // row-gap var(--space-4)=1.5rem=24px is added between flex items; every gap
+  // should be >= ~24 (some sections zero their own top/bottom padding, so the
+  // row-gap is the only spacer between them - exactly what this checks for).
+  Object.keys(gaps).forEach((k) => {
+    ok('mobile: extra spacer ' + k + ' (>=24px)', gaps[k] >= 24, k + '=' + gaps[k]);
+  });
 
   await browser.close();
   console.log('\n--- home section order/spacing ---');

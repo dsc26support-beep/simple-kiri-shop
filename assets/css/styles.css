@@ -651,10 +651,19 @@ section {
     row-gap: var(--space-4);
   }
   .home-main > .hero { order: 1; }
-  .home-main > .categories { order: 3; }
-  .home-main > .trending-products { order: 4; }
-  .home-main > .trending-stores { order: 5; }
-  .home-main > noscript { order: 6; }
+  /* Alibaba-inspired sections, search -> promo -> quick actions -> trust ->
+     categories -> discovery -> product grid. Every new section added here
+     needs its own order, same as the warning above says - .trending-stores
+     moved from 5 to 6 and now sits BEFORE .trending-products (7), doing the
+     job of the discovery carousel with the same component and data it always
+     had. */
+  .home-main > .home-promo { order: 2; }
+  .home-main > .home-quick-actions { order: 3; }
+  .home-main > .home-trust { order: 4; }
+  .home-main > .categories { order: 5; }
+  .home-main > .trending-stores { order: 6; }
+  .home-main > .trending-products { order: 7; }
+  .home-main > noscript { order: 8; }
 }
 
 /* Horizontally scrolling chip strips: the listing-type filter and the popular
@@ -4373,22 +4382,21 @@ legend {
   text-overflow: ellipsis;
 }
 
-/* Mobile: no "Trending Products" heading (the row speaks for itself) and
-   no "Popular Stores" row at all - both come back from 600px up. */
-#trending-products-heading {
-  display: none;
-}
+/* Mobile: no "Trending Products" heading - the row speaks for itself, and it
+   comes back from 600px up.
 
-.trending-stores {
+   .trending-stores used to be display:none here too, hiding "Popular Stores"
+   on every phone. That changed with the homepage restructure: this section is
+   now repositioned (see index.html and the .home-main order rules above) to
+   do the job of an Alibaba-inspired discovery carousel, and a carousel hidden
+   on the exact viewport it is meant for cannot do that job. It is now visible
+   at every width, same component and same data as before. */
+#trending-products-heading {
   display: none;
 }
 
 @media (min-width: 600px) {
   #trending-products-heading {
-    display: block;
-  }
-
-  .trending-stores {
     display: block;
   }
 }
@@ -5774,4 +5782,131 @@ html.has-remembered-email .login-remembered {
 
 @media (prefers-reduced-motion: reduce) {
   #trending-products-list .product-card { transition: none; }
+}
+
+/* ---------- Homepage restructure: Alibaba-inspired information architecture,
+   Mwakete's own theme ---------------------------------------------------- */
+
+/* Compact, single line, no image - the whole point is that it does not
+   dominate the homepage. Purple-on-pale, the same surface pairing the badge
+   chips and category strip already use, so it reads as Mwakete rather than as
+   an inserted advert. */
+.home-promo {
+  padding-top: 0;
+  padding-bottom: var(--space-2);
+}
+
+.home-promo-text {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-purple-soft);
+  color: var(--color-ink);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.home-quick-actions {
+  padding-top: 0;
+  padding-bottom: var(--space-2);
+}
+
+/* Same horizontal-scroll mechanics as .chip-strip (momentum + snap, bleed to
+   the screen edge, no visible scrollbar) but its own rule set: the items are
+   icon-over-label tiles, not pill-shaped text chips, so reusing .chip-strip's
+   pill padding/border would have fought this shape instead of fitting it. */
+.quick-action-strip {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* Reserved so five tiles arriving cannot push the categories strip down -
+     72px tile + label, the same reservation pattern .chip-strip uses. */
+  min-height: 72px;
+  padding-bottom: var(--space-2);
+  margin-left: calc(var(--space-3) * -1);
+  margin-right: calc(var(--space-3) * -1);
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+  scroll-padding-left: var(--space-3);
+}
+
+.quick-action-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-action-item {
+  flex: 0 0 68px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-decoration: none;
+  color: var(--color-ink);
+}
+
+.quick-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+}
+
+.quick-action-item:hover .quick-action-icon,
+.quick-action-item:focus-visible .quick-action-icon {
+  background: var(--color-purple);
+  color: #fff;
+}
+
+.quick-action-label {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.home-trust {
+  padding-top: 0;
+  padding-bottom: var(--space-3);
+}
+
+/* A row of short facts, not a feature list - each one true of Mwakete today.
+   Wraps rather than scrolling: three short phrases fit on one or two lines at
+   every width this site supports, so there is nothing here worth losing to a
+   sideways swipe. */
+.home-trust-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.home-trust-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-trust-list li::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  flex: 0 0 auto;
+}
+
+@media (min-width: 700px) {
+  .home-trust-list { font-size: 0.85rem; }
 }
