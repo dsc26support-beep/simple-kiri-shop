@@ -30,10 +30,10 @@ const GOOD = JSON.parse(JSON.stringify(REQUIRED_TABS));
 
 // One probe per hand-pasted .gs file, kept in step with actionCheckSetup.
 // One probe per .gs file checkSetup reports on. Badges.gs joined the list when
-// seller badges landed; a file pasted in empty leaves its functions undefined,
-// which is what this catches.
+// seller badges landed, Meetings.gs when meeting requests did; a file pasted
+// in empty leaves its functions undefined, which is what this catches.
 const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitReview',
-                     'sellerBadgeIndex'];
+                     'sellerBadgeIndex', 'actionRequestMeeting'];
 
 let pass = 0, fail = 0;
 const t = (n, c, extra) => { if (c) { pass++; console.log('PASS  ' + n); } else { fail++; console.log('FAIL  ' + n + (extra ? '  [' + extra + ']' : '')); } };
