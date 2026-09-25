@@ -53,9 +53,9 @@ const PRODUCTS = [{ productId: 'p1', name: 'Rice', category: 'pantry', descripti
   // CLOSED store
   ({ ctx, page } = await open('/store.html?store=bong', { storeOpen: false }));
   ok('closed: banner shown', (await page.$('#store-closed-banner')) !== null);
-  ok('closed: banner says Closed and explains', /Closed/.test(await page.textContent('#store-closed-banner')) && /still browse and chat/.test(await page.textContent('#store-closed-banner')));
+  ok('closed: banner says Closed and explains orders still work', /Closed/.test(await page.textContent('#store-closed-banner')) && /still order/.test(await page.textContent('#store-closed-banner')));
   ok('closed: store still browsable (products rendered)', (await page.$$('.product-card')).length > 0);
-  ok('closed: Add to Cart disabled', await page.evaluate(() => [...document.querySelectorAll('.add-to-cart-btn')].every((b) => b.disabled)));
+  ok('closed: Add to Cart stays enabled - an order just waits for the owner', await page.evaluate(() => ![...document.querySelectorAll('.add-to-cart-btn')].some((b) => b.disabled)));
   c = await chatState(page);
   ok('closed: chat header reads Closed', c.text === 'Closed', c.text);
   ok('closed: header carries the closed class (red)', c.isClosed === true);
@@ -74,7 +74,7 @@ const PRODUCTS = [{ productId: 'p1', name: 'Rice', category: 'pantry', descripti
   ({ ctx, page } = await open('/product.html?store=bong&product=p1', { storeOpen: false }));
   await page.waitForSelector('#product-detail .product-card');
   ok('product page: closed notice shown', /Closed/.test(await page.textContent('#product-detail')));
-  ok('product page: Add to Cart disabled', await page.evaluate(() => [...document.querySelectorAll('#product-detail .add-to-cart-btn')].every((b) => b.disabled)));
+  ok('product page: Add to Cart stays enabled - an order just waits for the owner', await page.evaluate(() => ![...document.querySelectorAll('#product-detail .add-to-cart-btn')].some((b) => b.disabled)));
   await ctx.close();
 
   await browser.close();

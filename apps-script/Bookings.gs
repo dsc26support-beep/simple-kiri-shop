@@ -78,11 +78,9 @@ function actionCreateBookingRequest(body) {
   if (!slug) return fail('storeSlug is required');
   var owner = getOwnerBySlug(slug);
   if (!isStoreBrowsable(owner)) return fail('Store not found');
-  // Browsable but closed: the storefront and chat stay open, taking money
-  // does not. Re-checked here because the client cannot be trusted to.
-  if (!isStoreOpenForBusiness(owner)) {
-    return fail('This store is closed right now and cannot take bookings. You can still chat with them to ask when they reopen.');
-  }
+  // A standby (closed) store still takes booking requests - same as chat, the
+  // request just waits for the owner to come back and process it. See
+  // isStoreOpenForBusiness's header comment in Auth.gs.
 
   var customerName = String(body.customerName || '').trim();
   var customerPhone = String(body.customerPhone || '').trim();

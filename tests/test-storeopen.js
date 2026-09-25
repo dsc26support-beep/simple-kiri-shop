@@ -20,12 +20,16 @@ for (const [status, browsable, open] of [
 ok('null owner is neither', !isStoreBrowsable(null) && !isStoreOpenForBusiness(null));
 ok('unknown status is neither', !isStoreBrowsable({ Status: 'wat' }) && !isStoreOpenForBusiness({ Status: 'wat' }));
 
-// The money gates must reject standby, and say why.
+// A standby (closed) store still takes orders/bookings - same as chat, they
+// just wait for the owner to come back. Only the soft-deleted 'closed'
+// status (isStoreBrowsable) gates these actions at all.
 for (const [file, word] of [['Orders.gs', 'order'], ['Bookings.gs', 'booking']]) {
   const src = fs.readFileSync('/home/user/simple-kiri-shop/apps-script/' + file, 'utf8');
-  ok(`${file} allows browsable stores through`, /if \(!isStoreBrowsable\(owner\)\) return fail\('Store not found'\);/.test(src));
-  ok(`${file} blocks a closed store from taking ${word}s`,
-    new RegExp(`if \\(!isStoreOpenForBusiness\\(owner\\)\\)[\\s\\S]{0,200}closed right now and cannot take ${word}s`).test(src));
+  const fn = word === 'order'
+    ? src.match(/function actionCreateOrder[\s\S]*?\n}\n/)[0]
+    : src.match(/function actionCreateBookingRequest[\s\S]*?\n}\n/)[0];
+  ok(`${file} allows browsable stores through`, /if \(!isStoreBrowsable\(owner\)\) return fail\('Store not found'\);/.test(fn));
+  ok(`${file} no longer gates ${word}s on isStoreOpenForBusiness`, !/isStoreOpenForBusiness\(/.test(fn), fn);
 }
 
 // No customer-facing read path may still gate on 'active' alone.

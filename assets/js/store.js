@@ -79,7 +79,6 @@ async function init() {
   } else {
     statusEl.textContent = '';
     listEl.innerHTML = currentProducts.map((p) => renderProductCard(p, { storeSlug: currentSlug })).join('');
-    disableOrderingControls();
     fitPriceLabels(listEl);
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
   }
@@ -119,7 +118,6 @@ function renderFilteredProducts(query) {
 
   statusEl.textContent = '';
   listEl.innerHTML = filtered.map((p) => renderProductCard(p, { storeSlug: currentSlug })).join('');
-  disableOrderingControls();
   fitPriceLabels(listEl);
   // Re-render replaces the gallery track elements, and their scroll sync
   // (wireGalleryScrollSync) is per-element, not delegated like the click
@@ -393,14 +391,6 @@ function animateCartOnAdd(prev, next) {
 
 
 /**
- * A closed store stays fully browsable - customers can read listings, see
- * prices and chat - but must not be able to order. The banner explains why
- * the buttons are disabled, so a dead button never looks like a bug.
- *
- * The backend re-checks this on createOrder/createBookingRequest; this is the
- * honest UI in front of that gate, not the gate itself.
- */
-/**
  * The seller's badges, at detail size with their own explanations.
  *
  * Interactive because these are not inside a link, unlike the badges on a
@@ -415,33 +405,26 @@ function renderStoreBadges(ids) {
   wireSellerBadges(el);
 }
 
+/**
+ * A closed store stays fully orderable - same as chat, an order placed while
+ * closed just waits for the owner to come back and process it (see
+ * actionCreateOrder in Orders.gs). The banner is purely informational, so a
+ * customer isn't left wondering whether a slow reply means nobody saw it.
+ */
 function renderStoreClosedState(open) {
   const existing = document.getElementById('store-closed-banner');
   if (open) {
     if (existing) existing.remove();
-    document.body.classList.remove('store-is-closed');
     return;
   }
-  document.body.classList.add('store-is-closed');
-  if (!existing) {
-    const banner = document.createElement('div');
-    banner.id = 'store-closed-banner';
-    banner.className = 'store-closed-banner';
-    banner.setAttribute('role', 'status');
-    banner.innerHTML =
-      '<span class="store-closed-pill">Closed</span>' +
-      '<span>This store is not taking orders right now. You can still browse and chat with them.</span>';
-    const anchor = document.getElementById('store-name-tagline');
-    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(banner, anchor.nextSibling);
-  }
-  disableOrderingControls();
-}
-
-// Re-applied after every product render, since the grid is rebuilt.
-function disableOrderingControls() {
-  if (!document.body.classList.contains('store-is-closed')) return;
-  document.querySelectorAll('.add-to-cart-btn, .request-booking-btn').forEach((btn) => {
-    btn.disabled = true;
-    btn.title = 'This store is closed right now';
-  });
+  if (existing) return;
+  const banner = document.createElement('div');
+  banner.id = 'store-closed-banner';
+  banner.className = 'store-closed-banner';
+  banner.setAttribute('role', 'status');
+  banner.innerHTML =
+    '<span class="store-closed-pill">Closed</span>' +
+    '<span>This store is closed right now. You can still order — they’ll process it when they reopen.</span>';
+  const anchor = document.getElementById('store-name-tagline');
+  if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(banner, anchor.nextSibling);
 }
