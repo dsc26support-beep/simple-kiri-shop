@@ -53,6 +53,9 @@
         <p id="chat-window-vendor-name" class="chat-vendor-name">This Store</p>
         <p class="chat-vendor-status"><span class="chat-status-dot" aria-hidden="true"></span>Online</p>
       </div>
+      <button type="button" id="chat-video-call-btn" class="chat-video-call-btn" aria-label="Video call">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+      </button>
       <button type="button" id="chat-window-close" class="chat-window-close" aria-label="Close chat">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>
       </button>
@@ -72,6 +75,8 @@
         <span class="chat-spinner" aria-hidden="true"></span>
         <span>Loading conversation…</span>
       </div>
+
+      <div id="meeting-panel-host" class="meeting-panel hidden"></div>
 
       <div id="chat-messages" class="chat-messages hidden">
         <button type="button" id="chat-load-earlier-btn" class="chat-load-earlier-btn btn btn-small hidden">Load earlier messages</button>

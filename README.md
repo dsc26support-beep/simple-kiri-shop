@@ -410,6 +410,77 @@ that account and keep their order history — no duplicate is created. That is
 safe only because `email_verified` is checked: Google has proven the person
 controls that mailbox, which is exactly what the email-code flow proves.
 
+## Video Call (meeting requests) — one-time setup
+
+Customers and vendors can request a meeting from inside their existing chat
+thread; accepting one sets up a video call automatically. Customer↔Admin and
+Vendor↔Admin meetings are **not** part of this — only Customer↔Vendor, on a
+single existing conversation. See `apps-script/Meetings.gs`'s header comment
+for why.
+
+**Until the scope below is added, accepting a meeting will fail** (safely —
+the request itself still works, the meeting just sits with a "Setup failed,
+retry" state instead of a join link). Nothing else in the site depends on
+this, so skipping it does not break chat, orders, or anything already live.
+
+### 1. Add the API scope (Apps Script manifest)
+
+`Meetings.gs` creates the video call by calling a Google REST API directly
+(`UrlFetchApp.fetch` to `meet.googleapis.com`), authenticated as the script's
+own identity via `ScriptApp.getOAuthToken()`. Apps Script only auto-detects
+scopes for its own built-in services, not for a URL fetched by hand, so this
+one has to be declared:
+
+1. In the Apps Script editor: ⚙️ **Project Settings** → check **"Show
+   `appsscript.json` manifest file in editor"**.
+2. Open `appsscript.json` and add to `oauthScopes` (create the array if it
+   isn't there yet):
+
+   ```json
+   "oauthScopes": [
+     "https://www.googleapis.com/auth/meetings.space.created"
+   ]
+   ```
+
+   Keep whatever scopes are already listed (Sheets, etc.) — this adds to the
+   array, it doesn't replace it.
+3. Save, then run any function once from the editor (e.g. `actionCheckSetup`)
+   and approve the new permission when prompted — this re-authorizes the
+   project under the new scope. Redeploying alone does not trigger this
+   prompt; running a function does.
+
+### 2. The `Meetings` sheet
+
+Created automatically by `setupSheets`, same as every other tab — see
+**Creating or repairing the Sheet tabs** above. No manual column setup.
+
+### 3. Redeploy and verify
+
+Backend code changed, so this needs a redeployment — see **Redeploying after
+a code change** above, including the `?action=getVersion` check. That probe
+confirms the deployment is live; it does **not** confirm the Meet API call
+itself works, since it touches no Sheets and calls no external API.
+
+### 4. Verify the Meet API call itself, before relying on it
+
+`createGoogleMeetSpace()` in `Meetings.gs` is built on Claude's training-
+knowledge understanding of the Google Meet REST API v2
+(`spaces.create`), **not a live documentation check** — this sandbox has no
+network path to `developers.google.com`. Before telling real customers or
+vendors about Video Call:
+
+1. Compare the request/response shape against
+   <https://developers.google.com/workspace/meet/api/reference/rest/v2/spaces/create>
+   and adjust `createGoogleMeetSpace()` if the field names differ.
+2. Do one real end-to-end run: request a meeting, accept it from the other
+   side, confirm the meeting moves to "Ready to join," and confirm the Join
+   Video Call link actually opens a working room.
+
+If step 4 turns up a mismatch, the failure is already safe by design — a bad
+API response is caught, logged server-side (`Logger.log`, visible under
+**Executions** in the Apps Script editor), and shown to the user as "Setup
+failed" with a Retry button, never as a false "ready."
+
 ### Facebook
 
 Not built. Facebook Login needs a Facebook app whose `email` permission has
