@@ -141,9 +141,9 @@ async function loadCartStores() {
  * Marks cards in the main directory that the shopper already has a cart with.
  *
  * Must run after EVERY render of #store-list: a search re-run and Load More
- * both rebuild it from scratch, which would wipe the markers. Same trap
- * disableOrderingControls hits in store.js, so it is called from the same
- * place - the end of loadStores - as well as after the pinned section renders.
+ * both rebuild it from scratch, which would wipe the markers - so it is
+ * called from the end of loadStores as well as after the pinned section
+ * renders.
  */
 function markCartStoresInList() {
   const slugs = cartStoreSlugs();

@@ -66,7 +66,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'storesearch1-2026-09-19';
+var APP_VERSION = 'openorders1-2026-09-25';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is

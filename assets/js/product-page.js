@@ -94,14 +94,13 @@ async function init() {
   wireActions();
   wireGallery();
   if (!window.__storeOpen) {
-    // Browsable but closed: keep the listing readable, take the buy buttons
-    // out of play, and say why so a dead button never looks broken.
-    document.querySelectorAll('#product-detail .add-to-cart-btn, #product-detail .request-booking-btn')
-      .forEach((btn) => { btn.disabled = true; btn.title = 'This store is closed right now'; });
+    // Closed is informational only - same as chat, an order placed now just
+    // waits for the owner to come back and process it (see actionCreateOrder
+    // in Orders.gs), so the buy buttons stay enabled.
     const detail = document.getElementById('product-detail');
     const note = document.createElement('p');
     note.className = 'store-closed-note';
-    note.innerHTML = '<span class="store-closed-pill">Closed</span> This store is not taking orders right now. You can still chat with them.';
+    note.innerHTML = '<span class="store-closed-pill">Closed</span> This store is closed right now. You can still order — they’ll process it when they reopen.';
     detail.insertBefore(note, detail.firstChild);
   }
   // Deliberately not awaited: reviews are supporting information, and a slow

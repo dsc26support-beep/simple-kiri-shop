@@ -172,13 +172,17 @@ function ownerCanLogIn(owner) {
 /**
  * Two different questions, deliberately separated.
  *
- * isStoreBrowsable  - may customers see this store at all? True for 'active'
- *                     and 'standby'. A standby store is CLOSED FOR BUSINESS,
- *                     not hidden: customers can still find it, read its
- *                     listings and chat with it, and it is clearly marked
- *                     Closed everywhere it appears.
- * isStoreOpenForBusiness - may it take money? 'active' only. A standby store
- *                     must never accept an order or a booking.
+ * isStoreBrowsable      - may customers see this store at all? True for
+ *                     'active' and 'standby'.
+ * isStoreOpenForBusiness - is the owner actively watching for new orders
+ *                     right now? 'active' only. This is INFORMATIONAL, not an
+ *                     enforcement gate: a standby ("Closed") store still
+ *                     shows a Closed badge everywhere it appears, and chat,
+ *                     orders and booking requests all still work while
+ *                     closed - they simply wait for the owner to come back,
+ *                     the same way a chat message already did. See
+ *                     actionCreateOrder (Orders.gs) and
+ *                     actionCreateBookingRequest (Bookings.gs).
  *
  * 'closed' is neither. That is the soft delete from Settings, and it stays
  * hidden from customers and locked out for the owner.

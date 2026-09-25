@@ -735,8 +735,12 @@ or linked anywhere but their own Settings page.
 
 A store owner can pause or delete their store from Settings:
 - **Active** — normal, visible in the directory/search, owner can log in.
-- **Standby** (Pause Store) — hidden from customers, but the owner can still
-  log in and switch it back to Active at any time.
+- **Standby** (Pause Store) — marked **Closed** everywhere it appears, but
+  still fully browsable: customers can find it, read its listings, chat with
+  it, place orders, and request bookings exactly as before. Nothing is
+  blocked — an order or booking placed while Standby simply waits for the
+  owner to come back and process it, the same way a chat message already
+  did. The owner can still log in and switch back to Active at any time.
 - **Closed** (Delete Store) — hidden from customers *and* the owner is
   signed out and can no longer log in. This is a soft delete: no Sheet rows
   are ever erased, so it's reversible by editing the `Status` cell back to

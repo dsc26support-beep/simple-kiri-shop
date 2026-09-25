@@ -181,11 +181,9 @@ function actionCreateOrder(body) {
   if (!slug) return fail('storeSlug is required');
   var owner = getOwnerBySlug(slug);
   if (!isStoreBrowsable(owner)) return fail('Store not found');
-  // Browsable but closed: the storefront and chat stay open, taking money
-  // does not. Re-checked here because the client cannot be trusted to.
-  if (!isStoreOpenForBusiness(owner)) {
-    return fail('This store is closed right now and cannot take orders. You can still chat with them to ask when they reopen.');
-  }
+  // A standby (closed) store still takes orders - same as chat, the order
+  // just waits for the owner to come back and process it. See
+  // isStoreOpenForBusiness's header comment in Auth.gs.
 
   var requestedItems = Array.isArray(body.items) ? body.items : [];
   if (requestedItems.length === 0) return fail('Your cart is empty');
