@@ -237,43 +237,6 @@ header.site-header .container.store-branding {
   min-height: 68px;
 }
 
-.site-branding .site-title {
-  font-size: 1.5rem;
-}
-
-/* The title shares the logo's row now, centred on the PAGE.
- *
- * Positioned rather than flexed on purpose: a flex item with text-align:center
- * centres inside the space LEFT OVER beside the logo, which is off-centre by
- * half the logo's width. This is centred on the row itself.
- *
- * pointer-events:none so it cannot sit over the cart or the menu button and
- * swallow a tap - it is a heading, nothing is clickable in it. The logo link
- * and the two corner buttons keep their hit areas whatever the width.
- *
- * max-width keeps it clear of both corners: 36px of logo on the left, and the
- * cart plus the three-dot menu on the right. */
-.header-title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  max-width: calc(100% - 200px);
-  font-size: 1.5rem;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
-}
-
-@media (max-width: 480px) {
-  .header-title {
-    font-size: 1.25rem;
-    max-width: calc(100% - 150px);
-  }
-}
-
 .store-logo {
   width: 64px;
   height: 64px;
@@ -287,12 +250,6 @@ header.site-header .container.store-branding {
 header.site-header a {
   color: #fff;
   text-decoration: none;
-}
-
-.site-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
 }
 
 .site-tagline {
