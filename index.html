@@ -24,16 +24,19 @@
 <body class="has-bottom-nav has-header-menu">
   <a class="skip-link" href="#main">Skip to content</a>
 
+  <!-- The "Mwakete" text that used to sit centred on the row below, next to
+       the logo, is gone by request - the logo alone is the home header now.
+       The link still carries the name as its accessible name (aria-label
+       below), so a screen reader loses nothing; a sighted visitor loses only
+       the repeated wordmark next to the logo. The row's height was never set
+       by this text (it was position:absolute, see the styles.css history for
+       .header-title), so nothing else here moves. The logo has to open this
+       row with nothing before it, not even a comment - see verify-logo.js. -->
   <header class="site-header">
     <div class="container header-top-row">
       <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
         <img src="assets/img/favicon.svg" alt="" class="header-logo-mark">
       </a>
-      <!-- On the same row as the logo now, and centred on the PAGE rather than
-           in the space left over beside the logo - which is why it is
-           positioned rather than flexed. The row it used to have is gone, so
-           the header is one line shorter. -->
-      <p class="site-title header-title">Mwakete</p>
     </div>
   </header>
 
