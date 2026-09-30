@@ -106,8 +106,10 @@
    *             live on every call, not captured once, so a vendor switching
    *             conversations always talks about the one currently open.
    *   canRequest(): boolean - whether to show "Request Meeting" at all.
-   *   signInHint: string|null - shown instead of the trigger when canRequest()
-   *             is false, so the customer knows why rather than seeing nothing.
+   *   signInHint: {href, label, after}|null - shown instead of the trigger
+   *             when canRequest() is false, so the customer knows why rather
+   *             than seeing nothing: a link (label, pointing at href)
+   *             followed by trailing text (after).
    * }
    */
   function mount(container, ctx) {
@@ -127,7 +129,15 @@
     function renderTrigger() {
       formWrap.innerHTML = '';
       if (!ctx.canRequest()) {
-        if (ctx.signInHint) formWrap.appendChild(el('p', 'meeting-request-signin-hint', ctx.signInHint));
+        if (ctx.signInHint) {
+          var hint = el('p', 'meeting-request-signin-hint');
+          var hintLink = document.createElement('a');
+          hintLink.href = ctx.signInHint.href;
+          hintLink.textContent = ctx.signInHint.label;
+          hint.appendChild(hintLink);
+          hint.appendChild(document.createTextNode(ctx.signInHint.after));
+          formWrap.appendChild(hint);
+        }
         return;
       }
 
