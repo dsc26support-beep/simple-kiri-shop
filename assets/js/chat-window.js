@@ -499,32 +499,34 @@ function initChatWindow() {
     activeMeetingsUi = null;
     shownIncomingCallId = null;
     RingingLoop.stopAll();
+    VideoCallOverlay.hide();
   }
 
   if (videoCallBtn) {
     videoCallBtn.addEventListener('click', () => {
-      // Hidden -> open. Showing only the lightweight incoming-call banner
-      // below (not yet mounted) -> promote to the full panel. Fully open ->
-      // close. This is the one place all three of that banner's states meet
-      // a single button, so it has to check both, not just "hidden".
+      // Not mounted (hidden, or visible only because the lazy load just
+      // failed and left its error text showing) -> open/retry. Mounted ->
+      // close. An incoming call no longer touches meetingPanelHost at all
+      // (it's on VideoCallOverlay instead), so this button only ever sees
+      // these two states now.
       const isMounted = meetingPanelHost.classList.contains('meeting-panel--mounted');
-      if (meetingPanelHost.classList.contains('hidden') || !isMounted) openMeetingsPanel();
+      if (!isMounted) openMeetingsPanel();
       else closeMeetingsPanel();
     });
   }
 
   /**
-   * Incoming Video Call Now - a lightweight, NOT-lazy-loaded banner (plain
-   * DOM + Api, same as the rest of this file), because a ring must reach
-   * someone whose chat is open even if they have never opened the Video
-   * Call panel and so never triggered meetings-ui.js to load. Rides the
-   * SAME getConversation poll this file already runs (see loadConversation)
-   * - see Chat.gs's incomingCall field and Meetings.gs's activeIncomingCall
-   * for where this comes from; costs zero extra requests.
+   * Incoming Video Call Now - shown on the full-screen VideoCallOverlay
+   * (helpers.js) straight away, without ever loading meetings-ui.js, because
+   * a ring must reach someone whose chat is open even if they have never
+   * opened the Video Call panel. Rides the SAME getConversation poll this
+   * file already runs (see loadConversation) - see Chat.gs's incomingCall
+   * field and Meetings.gs's activeIncomingCall for where this comes from;
+   * costs zero extra requests.
    *
    * Once the full panel is mounted, this gets out of the way entirely - the
-   * module's own card list already shows the same RINGING meeting with
-   * Accept/Decline, refreshed by its own bounded fast poll.
+   * module's own reconcileOverlay() takes over the SAME overlay (same key,
+   * so no flicker/rebuild) with its own bounded fast poll.
    */
   let shownIncomingCallId = null;
 
@@ -534,8 +536,8 @@ function initChatWindow() {
     if (!call) {
       if (shownIncomingCallId) {
         RingingLoop.stop(shownIncomingCallId);
+        VideoCallOverlay.hide();
         shownIncomingCallId = null;
-        closeMeetingsPanel();
       }
       return;
     }
@@ -543,61 +545,38 @@ function initChatWindow() {
     shownIncomingCallId = call.meetingId;
     playChatNotificationSound();
     RingingLoop.start(call.meetingId);
-    renderIncomingCallBanner(call);
+    showIncomingCallOverlay(call);
   }
 
-  function renderIncomingCallBanner(call) {
-    meetingPanelHost.classList.remove('hidden');
-    meetingPanelHost.innerHTML = '';
-
-    const card = document.createElement('div');
-    card.className = 'meeting-card meeting-card--ringing';
-    const top = document.createElement('div');
-    top.className = 'meeting-card-top';
-    const label = document.createElement('span');
-    label.className = 'meeting-card-purpose';
-    label.textContent = 'Incoming Video Call';
-    top.appendChild(label);
-    card.appendChild(top);
-
-    const actions = document.createElement('div');
-    actions.className = 'meeting-card-actions';
-    const acceptBtn = document.createElement('button');
-    acceptBtn.type = 'button';
-    acceptBtn.className = 'btn btn-primary';
-    acceptBtn.textContent = 'Accept';
-    const declineBtn = document.createElement('button');
-    declineBtn.type = 'button';
-    declineBtn.className = 'btn';
-    declineBtn.textContent = 'Decline';
-    actions.appendChild(acceptBtn);
-    actions.appendChild(declineBtn);
-    card.appendChild(actions);
-    meetingPanelHost.appendChild(card);
-
+  function showIncomingCallOverlay(call) {
     function respond(accept) {
       RingingLoop.stop(call.meetingId); // stop the moment the customer acts, not on the next poll
-      acceptBtn.disabled = true;
-      declineBtn.disabled = true;
+      VideoCallOverlay.show({ key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(), busy: true });
       Api.post('respondToMeeting', Object.assign(meetingsCtx().params(), { meetingId: call.meetingId, accept })).then((res) => {
         if (!res.ok) {
-          acceptBtn.disabled = false;
-          declineBtn.disabled = false;
           alert(res.error || 'Something went wrong. Please try again.');
+          VideoCallOverlay.show({
+            key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(),
+            onAccept: () => respond(true), onDecline: () => respond(false)
+          });
           return;
         }
         if (accept) {
-          // Promote to the full (lazy-loaded) panel - shows Join Video Call
-          // once ready, or Setup failed/Retry if the Meet space couldn't be
-          // created.
+          // Promote to the full (lazy-loaded) panel - its own
+          // reconcileOverlay() picks up this exact call (same meetingId)
+          // and keeps showing Connecting/Ready to join/Setup failed on the
+          // SAME overlay element, no flicker.
           openMeetingsPanel();
         } else {
+          VideoCallOverlay.hide();
           closeMeetingsPanel(); // done - no need to pull in the full module for a plain decline
         }
       });
     }
-    acceptBtn.addEventListener('click', () => respond(true));
-    declineBtn.addEventListener('click', () => respond(false));
+    VideoCallOverlay.show({
+      key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(),
+      onAccept: () => respond(true), onDecline: () => respond(false)
+    });
   }
 
   function scheduleNextPoll() {

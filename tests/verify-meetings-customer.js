@@ -192,7 +192,8 @@ async function openChat(browser, opts) {
     ok('...opened in a new tab, without leaking window.opener', join.target === '_blank' && /noopener/.test(join.rel), JSON.stringify(join));
 
     const panelText = await page.$eval('#meeting-panel-host', (e) => e.textContent);
-    ok('no provider branding is exposed anywhere in the panel', !/google/i.test(panelText), panelText);
+    const overlayText = await page.$eval('.video-call-overlay', (e) => e.textContent);
+    ok('no provider branding is exposed anywhere in the panel', !/google/i.test(panelText + overlayText), panelText + overlayText);
     await ctx.close();
   }
 
@@ -205,8 +206,8 @@ async function openChat(browser, opts) {
     }] };
     const { ctx, page } = await openChat(browser, { loggedIn: true, meetingsState: state });
     await page.click('#chat-video-call-btn');
-    await page.waitForSelector('.meeting-card');
-    const before = await page.$eval('.meeting-card', (e) => e.textContent);
+    await page.waitForSelector('.video-call-overlay:not(.hidden)');
+    const before = await page.$eval('.video-call-overlay', (e) => e.textContent);
     ok('a failed setup never shows a Join Video Call button', !/Join Video Call/.test(before), before);
     ok('...and offers Retry instead', /Retry/.test(before), before);
 

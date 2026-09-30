@@ -150,10 +150,11 @@
       var row = el('div', 'meeting-trigger-row');
 
       // Hidden rather than disabled while a call is already ringing/connected
-      // on this conversation - the backend refuses a second one outright
+      // on this conversation, or a startVideoCallNow request is still in
+      // flight (callNowPending) - the backend refuses a second one outright
       // (Meetings.gs's actionStartVideoCallNow), so offering a button that
       // would only ever fail is worse than not offering it.
-      if (!hasActiveCall()) {
+      if (!hasActiveCall() && !callNowPending) {
         var callBtn = el('button', 'btn btn-primary', 'Video Call Now');
         callBtn.type = 'button';
         callBtn.addEventListener('click', startCallNow);
@@ -178,10 +179,22 @@
      * window/owner-messages.js already renders from the SAME poll this panel
      * itself uses (Chat.gs's getConversation), not from anything in this file.
      */
+    // Guards the gap between a tap and the response landing - without it, a
+    // double-tap (easy to trigger on mobile with any network lag) fires two
+    // startVideoCallNow requests; the first creates the RINGING call, the
+    // second hits the backend's own one-call-per-conversation guard and
+    // surfaces as a spurious "already an active video call" alert for what
+    // the customer experienced as a single tap.
+    var callNowPending = false;
     function startCallNow() {
+      if (callNowPending) return;
+      callNowPending = true;
+      renderTrigger();
       return Api.post('startVideoCallNow', ctx.params()).then(function (res) {
+        callNowPending = false;
         if (!res.ok) {
           alert(friendlyError(res));
+          renderTrigger();
           return;
         }
         var idx = meetings.findIndex(function (m) { return m.meetingId === res.meeting.meetingId; });
@@ -309,6 +322,11 @@
       });
     }
 
+    // RINGING/ACCEPTED/READY never reach this function - render() routes
+    // them to the full-screen VideoCallOverlay instead (see
+    // reconcileOverlay below). This only ever draws a pending REQUESTED
+    // (scheduled, not yet accepted) or a terminal MISSED/DECLINED/
+    // CANCELLED/ENDED history entry.
     function renderCard(m) {
       var card = el('div', 'meeting-card meeting-card--' + m.status.toLowerCase());
       var top = el('div', 'meeting-card-top');
@@ -324,60 +342,21 @@
       var isRecipient = m.recipientType === ctx.role;
       var actions = el('div', 'meeting-card-actions');
 
-      if ((m.status === 'REQUESTED' || m.status === 'RINGING') && isRecipient) {
+      if (m.status === 'REQUESTED' && isRecipient) {
         actions.appendChild(actionButton('Accept', 'btn-primary', isBusy, function () {
           callAction('respondToMeeting', m.meetingId, { accept: true });
         }));
         actions.appendChild(actionButton('Decline', '', isBusy, function () {
           callAction('respondToMeeting', m.meetingId, { accept: false });
         }));
-      } else if (m.status === 'RINGING') {
-        var callingHint = el('p', 'meeting-card-hint meeting-card-hint--calling');
-        var counterpartyName = (typeof ctx.counterpartyName === 'function' && ctx.counterpartyName()) || '';
-        callingHint.appendChild(document.createTextNode(counterpartyName ? 'Calling ' + counterpartyName : 'Calling'));
-        var dots = el('span', 'meeting-calling-dots');
-        dots.appendChild(el('span', 'meeting-calling-dot meeting-calling-dot--1'));
-        dots.appendChild(el('span', 'meeting-calling-dot meeting-calling-dot--2'));
-        dots.appendChild(el('span', 'meeting-calling-dot meeting-calling-dot--3'));
-        callingHint.appendChild(dots);
-        if (m.ringingSecondsLeft != null) callingHint.appendChild(document.createTextNode(' (' + m.ringingSecondsLeft + 's)'));
-        card.appendChild(callingHint);
       }
 
       if (m.status === 'MISSED') {
         card.appendChild(el('p', 'meeting-card-hint', 'No answer.'));
-        actions.appendChild(actionButton('Call Again', 'btn-primary', isBusy, startCallNow));
+        actions.appendChild(actionButton('Call Again', 'btn-primary', isBusy || callNowPending, startCallNow));
       }
 
-      if (m.status === 'ACCEPTED' && m.meetFailed) {
-        card.appendChild(el('p', 'meeting-card-error', "We couldn't set up the video call."));
-        actions.appendChild(actionButton('Retry', 'btn-primary', isBusy, function () {
-          callAction('retryMeetingSpace', m.meetingId);
-        }));
-      } else if (m.status === 'ACCEPTED') {
-        card.appendChild(el('p', 'meeting-card-hint', 'Setting up the video call…'));
-      }
-
-      // https:// only, even though the backend only ever fills this from its
-      // own trusted API response (never from anything a browser sent) - one
-      // more guard against a link this file didn't expect ever being handed
-      // to a customer or vendor as something safe to click.
-      if (m.status === 'READY' && m.meetingUrl && /^https:\/\//.test(m.meetingUrl)) {
-        var join = el('a', 'btn btn-primary', 'Join Video Call');
-        join.href = m.meetingUrl;
-        join.target = '_blank';
-        join.rel = 'noopener';
-        actions.appendChild(join);
-        actions.appendChild(actionButton('End Meeting', '', isBusy, function () {
-          if (confirm('End this meeting?')) callAction('endMeeting', m.meetingId);
-        }));
-      }
-
-      // A RINGING call already offers Decline to its recipient above - Cancel
-      // alongside it would be a redundant second way to do the same thing, so
-      // only the CALLER gets Cancel (hang up) while it's still ringing.
-      if (m.status === 'REQUESTED' || m.status === 'ACCEPTED' || m.status === 'READY' ||
-          (m.status === 'RINGING' && !isRecipient)) {
+      if (m.status === 'REQUESTED') {
         actions.appendChild(actionButton('Cancel Meeting', 'btn-danger', isBusy, function () {
           if (confirm('Cancel this meeting?')) callAction('cancelMeeting', m.meetingId);
         }));
@@ -387,16 +366,30 @@
       return card;
     }
 
+    // Any meeting that's actually live - ringing, connecting, or ready to
+    // join - is owned entirely by the full-screen VideoCallOverlay (see
+    // reconcileOverlay below), never the small card list. At most one of
+    // these can exist per conversation (Meetings.gs's own guard), so "the"
+    // active call is unambiguous.
+    function activeCallMeeting() {
+      return meetings.filter(function (m) {
+        return m.status === 'RINGING' || m.status === 'ACCEPTED' || m.status === 'READY';
+      })[0];
+    }
+
     function render() {
       list.innerHTML = '';
-      if (meetings.length === 0) {
+      var listedMeetings = meetings.filter(function (m) {
+        return m.status !== 'RINGING' && m.status !== 'ACCEPTED' && m.status !== 'READY';
+      });
+      if (listedMeetings.length === 0 && !activeCallMeeting()) {
         list.appendChild(el('p', 'meeting-empty-state', 'No meetings yet.'));
       } else {
         // Oldest requested first at the bottom, most relevant (newest) on top -
         // the same ordering direction as everywhere else this matters less; a
         // meeting list is short enough that recency, not history, is what
         // someone opening this panel wants to see first.
-        meetings.slice().reverse().forEach(function (m) { list.appendChild(renderCard(m)); });
+        listedMeetings.slice().reverse().forEach(function (m) { list.appendChild(renderCard(m)); });
       }
       // A card list re-render must never clobber an in-progress request-form
       // draft sitting in formWrap - only refresh the trigger area when it's
@@ -404,6 +397,73 @@
       if (!formWrap.querySelector('.meeting-request-form')) renderTrigger();
       scheduleRingPollIfNeeded();
       reconcileRingingSound();
+      reconcileOverlay();
+    }
+
+    // Drives the full-screen VideoCallOverlay off the same meetings array -
+    // one call site here instead of duplicating the phase logic in both
+    // hosts (chat-window.js/owner-messages.js also call VideoCallOverlay
+    // directly, but only for the lightweight pre-mount incoming-call case;
+    // once this panel is mounted, this function is the single source of
+    // truth and simply keeps re-showing/updating the same overlay).
+    var lastOverlayMeetingId = null;
+    function reconcileOverlay() {
+      var active = activeCallMeeting();
+      var name = (typeof ctx.counterpartyName === 'function' && ctx.counterpartyName()) || '';
+      if (active) {
+        lastOverlayMeetingId = active.meetingId;
+        var isRecipient = active.recipientType === ctx.role;
+        var busy = busyMeetingId === active.meetingId;
+        if (active.status === 'RINGING' && isRecipient) {
+          VideoCallOverlay.show({
+            key: active.meetingId, phase: 'ringing-recipient', name: name, busy: busy,
+            onAccept: function () { callAction('respondToMeeting', active.meetingId, { accept: true }); },
+            onDecline: function () { callAction('respondToMeeting', active.meetingId, { accept: false }); }
+          });
+        } else if (active.status === 'RINGING') {
+          VideoCallOverlay.show({
+            key: active.meetingId, phase: 'ringing-caller', name: name, busy: busy, secondsLeft: active.ringingSecondsLeft,
+            onCancel: function () { callAction('cancelMeeting', active.meetingId); }
+          });
+        } else if (active.status === 'ACCEPTED' && active.meetFailed) {
+          VideoCallOverlay.show({
+            key: active.meetingId, phase: 'failed', name: name, busy: busy,
+            onRetry: function () { callAction('retryMeetingSpace', active.meetingId); },
+            onCancel: function () { callAction('cancelMeeting', active.meetingId); }
+          });
+        } else if (active.status === 'ACCEPTED') {
+          VideoCallOverlay.show({
+            key: active.meetingId, phase: 'connecting', name: name, busy: busy,
+            onCancel: function () { callAction('cancelMeeting', active.meetingId); }
+          });
+        } else if (active.status === 'READY') {
+          VideoCallOverlay.show({
+            key: active.meetingId, phase: 'ready', name: name, busy: busy, meetingUrl: active.meetingUrl,
+            onEnd: function () { callAction('endMeeting', active.meetingId); }
+          });
+        }
+        return;
+      }
+      // Nothing active any more - if the overlay was showing THIS exact call
+      // when it left the active set, flash why (missed/declined/cancelled)
+      // instead of just yanking the screen away with no explanation. A
+      // meeting this panel never showed as active (e.g. one that arrived
+      // already DECLINED from a stale poll) gets no flash - only a real
+      // transition does.
+      if (lastOverlayMeetingId && VideoCallOverlay.isShowing(lastOverlayMeetingId)) {
+        var id = lastOverlayMeetingId;
+        var ended = meetings.filter(function (m) { return m.meetingId === id; })[0];
+        lastOverlayMeetingId = null;
+        if (ended && ended.status === 'MISSED') {
+          VideoCallOverlay.show({ key: id, phase: 'missed', name: name, busy: callNowPending, onCallAgain: startCallNow });
+        } else if (ended && ended.status === 'DECLINED') {
+          VideoCallOverlay.show({ key: id, phase: 'declined', name: name });
+        } else if (ended && ended.status === 'CANCELLED') {
+          VideoCallOverlay.show({ key: id, phase: 'cancelled', name: name });
+        } else {
+          VideoCallOverlay.hide();
+        }
+      }
     }
 
     // Both the caller (this panel) and the recipient hear a repeating ring
@@ -442,6 +502,7 @@
     function stopRingPolling() {
       if (ringPollTimer) { clearTimeout(ringPollTimer); ringPollTimer = null; }
       RingingLoop.stopAll();
+      VideoCallOverlay.hide();
     }
 
     function refresh() {

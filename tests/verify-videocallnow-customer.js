@@ -91,9 +91,9 @@ async function openChat(browser, opts) {
     ok('both Video Call Now and Request Meeting are offered', labels.includes('Video Call Now') && labels.includes('Request Meeting'), labels.join(','));
 
     await page.click('.meeting-trigger-row button:has-text("Video Call Now")');
-    await page.waitForSelector('.meeting-card--ringing');
-    const cardText = await page.$eval('.meeting-card--ringing', (e) => e.textContent);
-    ok('starting a call shows a RINGING card with a countdown', /Ringing/.test(cardText) && /\d+s\)/.test(cardText), cardText);
+    await page.waitForSelector('.video-call-overlay:not(.hidden)');
+    const overlayText = await page.$eval('.video-call-overlay', (e) => e.textContent);
+    ok('starting a call shows the full-screen overlay with a countdown', /Calling/.test(overlayText) && /\d+s\)/.test(overlayText), overlayText);
 
     const triggerGone = await page.$('.meeting-trigger-row button:has-text("Video Call Now")');
     ok('the trigger hides itself while a call is already active', triggerGone === null);
@@ -119,24 +119,25 @@ async function openChat(browser, opts) {
       }
     };
     const { ctx, page, requested } = await openChat(browser, { loggedIn: true, state });
-    await page.waitForSelector('#meeting-panel-host:not(.hidden)');
-    ok('the incoming-call banner appears without ever opening the panel manually', true);
+    await page.waitForSelector('.video-call-overlay:not(.hidden)');
+    ok('the incoming-call overlay appears without ever opening the panel manually', true);
     ok('...and WITHOUT loading meetings-ui.js', requested.length === 0, JSON.stringify(requested));
-    const bannerText = await page.$eval('#meeting-panel-host', (e) => e.textContent);
-    ok('the banner says Incoming Video Call, in Mwakete-native terms', /Incoming Video Call/.test(bannerText), bannerText);
-    const btns = await page.$$eval('#meeting-panel-host button', (els) => els.map((e) => e.textContent.trim()));
-    ok('Accept and Decline are both offered', btns.includes('Accept') && btns.includes('Decline'), btns.join(','));
+    const overlayText = await page.$eval('.video-call-overlay', (e) => e.textContent);
+    ok('the overlay says Incoming Video Call, in Mwakete-native terms', /Incoming Video Call/.test(overlayText), overlayText);
+    const acceptBtn = await page.$('.video-call-overlay-round-btn--accept');
+    const declineBtn = await page.$('.video-call-overlay-round-btn--decline');
+    ok('Accept and Decline are both offered', !!acceptBtn && !!declineBtn);
 
-    // Accepting promotes to the full (lazy) panel.
-    await page.click('#meeting-panel-host button:has-text("Accept")');
+    // Accepting promotes to the full (lazy) panel - same overlay, same key.
+    await page.click('.video-call-overlay-round-btn--accept');
     await page.waitForSelector('a:has-text("Join Video Call")');
-    ok('accepting from the lightweight banner loads the full panel and shows Join Video Call', requested.length === 1, JSON.stringify(requested));
+    ok('accepting from the lightweight overlay loads the full panel and shows Join Video Call', requested.length === 1, JSON.stringify(requested));
     const href = await page.$eval('a:has-text("Join Video Call")', (a) => a.href);
     ok('...with the real meeting URL', href === 'https://example-video.test/room/now', href);
     await ctx.close();
   }
 
-  /* ---- incoming call banner: decline dismisses it ---- */
+  /* ---- incoming call overlay: decline dismisses it ---- */
   {
     const state = {
       incomingCall: {
@@ -145,8 +146,8 @@ async function openChat(browser, opts) {
       }
     };
     const { ctx, page, requested } = await openChat(browser, { loggedIn: true, state });
-    await page.waitForSelector('#meeting-panel-host:not(.hidden)');
-    await page.click('#meeting-panel-host button:has-text("Decline")');
+    await page.waitForSelector('.video-call-overlay:not(.hidden)');
+    await page.click('.video-call-overlay-round-btn--decline');
     await page.waitForTimeout(300);
     ok('declining does not load the full lazy module either', requested.length === 0, JSON.stringify(requested));
     await ctx.close();

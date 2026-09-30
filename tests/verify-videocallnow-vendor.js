@@ -71,7 +71,7 @@ async function openMessages(browser, state) {
     await page.click('#video-call-btn');
     await page.waitForSelector('.meeting-trigger-row');
     await page.click('.meeting-trigger-row button:has-text("Video Call Now")');
-    await page.waitForSelector('.meeting-card--ringing');
+    await page.waitForSelector('.video-call-overlay:not(.hidden)');
     ok('the vendor can start a Video Call Now too', true);
     await ctx.close();
   }
@@ -87,13 +87,14 @@ async function openMessages(browser, state) {
     };
     const { ctx, page, requested } = await openMessages(browser, state);
     await page.click('.conversation-list-item[data-conversation-id="c1"]');
-    await page.waitForSelector('#meeting-panel-host:not(.hidden)');
+    await page.waitForSelector('.video-call-overlay:not(.hidden)');
     ok('opening the conversation surfaces the incoming call without a manual click', true);
     ok('...and without loading meetings-ui.js', requested.length === 0, JSON.stringify(requested));
-    const btns = await page.$$eval('#meeting-panel-host button', (els) => els.map((e) => e.textContent.trim()));
-    ok('Accept and Decline are offered', btns.includes('Accept') && btns.includes('Decline'), btns.join(','));
+    const acceptBtn = await page.$('.video-call-overlay-round-btn--accept');
+    const declineBtn = await page.$('.video-call-overlay-round-btn--decline');
+    ok('Accept and Decline are offered', !!acceptBtn && !!declineBtn);
 
-    await page.click('#meeting-panel-host button:has-text("Accept")');
+    await page.click('.video-call-overlay-round-btn--accept');
     await page.waitForSelector('a:has-text("Join Video Call")');
     ok('accepting promotes to the full panel', requested.length === 1, JSON.stringify(requested));
     const href = await page.$eval('a:has-text("Join Video Call")', (a) => a.href);
