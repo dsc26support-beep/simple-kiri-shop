@@ -457,8 +457,21 @@ function initChatWindow() {
       // customers can still see and respond to a vendor-initiated meeting;
       // they just cannot start one themselves.
       canRequest: () => typeof CustomerAuth !== 'undefined' && CustomerAuth.isLoggedIn(),
-      signInHint: 'Sign in to your account to request a meeting.'
+      signInHint: { href: meetingSignInUrl(), label: 'Sign in', after: ' to make a video call.' }
     };
+  }
+
+  // customer-login.html's own nextDest() only follows same-site relative
+  // ?next= values (open-redirect guard) - chat=open&video=1 replays the
+  // exact deep link below so signing in from the "Sign in to make a video
+  // call" hint lands the customer straight back in this panel, not just on
+  // the storefront.
+  function meetingSignInUrl() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('chat', 'open');
+    params.set('video', '1');
+    const page = window.location.pathname.split('/').pop() || 'store.html';
+    return 'customer-login.html?next=' + encodeURIComponent(page + '?' + params.toString());
   }
 
   let activeMeetingsUi = null; // the { stop } handle mount() returns, so an incoming-ring's fast poll doesn't outlive the panel
@@ -867,9 +880,13 @@ function initChatWindow() {
   });
 
   // Deep-link: store.html?store=<slug>&chat=open jumps straight into the chat -
-  // used by the customer Messages inbox to open a tapped conversation.
+  // used by the customer Messages inbox to open a tapped conversation, and by
+  // meetingSignInUrl() above (with &video=1 added) so a customer who signed
+  // in from the "Sign in to make a video call" hint lands back in the Video
+  // Call panel instead of just the storefront.
   if (storeSlug && getQueryParam('chat') === 'open') {
     openWindow();
+    if (getQueryParam('video') === '1') openMeetingsPanel();
   }
 
   closeBtn.addEventListener('click', closeWindow);
