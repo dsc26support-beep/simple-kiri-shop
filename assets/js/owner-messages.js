@@ -274,26 +274,30 @@ function closeMeetingsPanel() {
   activeMeetingsUi = null;
   shownIncomingCallId = null;
   RingingLoop.stopAll();
+  VideoCallOverlay.hide();
 }
 
 function onVideoCallClick() {
   if (!activeConversationId) return;
   const host = document.getElementById('meeting-panel-host');
   const isMounted = host.classList.contains('meeting-panel--mounted');
-  // Same three-state button as the customer side - see chat-window.js's
-  // identical comment on its own videoCallBtn handler.
-  if (host.classList.contains('hidden') || !isMounted) openMeetingsPanel();
+  // Not mounted (hidden, or visible only because the lazy load just failed
+  // and left its error text showing) -> open/retry. Mounted -> close. An
+  // incoming call no longer touches this host element at all (it's on
+  // VideoCallOverlay instead) - see chat-window.js's identical comment.
+  if (!isMounted) openMeetingsPanel();
   else closeMeetingsPanel();
 }
 
 /**
- * Incoming Video Call Now - lightweight, NOT-lazy-loaded (plain DOM + Api),
- * mirroring chat-window.js's identical banner on the customer side. Rides
- * the same getConversation poll this file already runs for the OPEN
- * conversation (loadConversationMessages); a call on a conversation the
- * vendor hasn't opened surfaces instead through the inbox list's
- * hasIncomingCall flag (renderConversationListItem/listPollTick) - slower
- * and best-effort, not this same live path.
+ * Incoming Video Call Now - shown on the full-screen VideoCallOverlay
+ * (helpers.js) straight away, without ever loading meetings-ui.js, mirroring
+ * chat-window.js's identical handling on the customer side. Rides the same
+ * getConversation poll this file already runs for the OPEN conversation
+ * (loadConversationMessages); a call on a conversation the vendor hasn't
+ * opened surfaces instead through the inbox list's hasIncomingCall flag
+ * (renderConversationListItem/listPollTick) - slower and best-effort, not
+ * this same live path.
  */
 let shownIncomingCallId = null;
 
@@ -304,8 +308,8 @@ function handleIncomingCall(call) {
   if (!call) {
     if (shownIncomingCallId) {
       RingingLoop.stop(shownIncomingCallId);
+      VideoCallOverlay.hide();
       shownIncomingCallId = null;
-      closeMeetingsPanel();
     }
     return;
   }
@@ -313,59 +317,34 @@ function handleIncomingCall(call) {
   shownIncomingCallId = call.meetingId;
   playChatNotificationSound();
   RingingLoop.start(call.meetingId);
-  renderIncomingCallBanner(call);
+  showIncomingCallOverlay(call);
 }
 
-function renderIncomingCallBanner(call) {
-  const host = document.getElementById('meeting-panel-host');
-  host.classList.remove('hidden');
-  host.innerHTML = '';
-
-  const card = document.createElement('div');
-  card.className = 'meeting-card meeting-card--ringing';
-  const top = document.createElement('div');
-  top.className = 'meeting-card-top';
-  const label = document.createElement('span');
-  label.className = 'meeting-card-purpose';
-  label.textContent = 'Incoming Video Call';
-  top.appendChild(label);
-  card.appendChild(top);
-
-  const actions = document.createElement('div');
-  actions.className = 'meeting-card-actions';
-  const acceptBtn = document.createElement('button');
-  acceptBtn.type = 'button';
-  acceptBtn.className = 'btn btn-primary';
-  acceptBtn.textContent = 'Accept';
-  const declineBtn = document.createElement('button');
-  declineBtn.type = 'button';
-  declineBtn.className = 'btn';
-  declineBtn.textContent = 'Decline';
-  actions.appendChild(acceptBtn);
-  actions.appendChild(declineBtn);
-  card.appendChild(actions);
-  host.appendChild(card);
-
+function showIncomingCallOverlay(call) {
   function respond(accept) {
     RingingLoop.stop(call.meetingId); // stop the moment the vendor acts, not on the next poll
-    acceptBtn.disabled = true;
-    declineBtn.disabled = true;
+    VideoCallOverlay.show({ key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(), busy: true });
     Api.post('respondToMeeting', Object.assign(meetingsCtx().params(), { meetingId: call.meetingId, accept })).then((res) => {
       if (!res.ok) {
-        acceptBtn.disabled = false;
-        declineBtn.disabled = false;
         alert(res.error || 'Could not respond to this call.');
+        VideoCallOverlay.show({
+          key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(),
+          onAccept: () => respond(true), onDecline: () => respond(false)
+        });
         return;
       }
       if (accept) {
-        openMeetingsPanel(); // promote to the full panel - Join/End once ready, or Setup failed/Retry
+        openMeetingsPanel(); // promote to the full panel - its own reconcileOverlay() keeps the SAME overlay going, no flicker
       } else {
+        VideoCallOverlay.hide();
         closeMeetingsPanel(); // done - no need to pull in the full module for a plain decline
       }
     });
   }
-  acceptBtn.addEventListener('click', () => respond(true));
-  declineBtn.addEventListener('click', () => respond(false));
+  VideoCallOverlay.show({
+    key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(),
+    onAccept: () => respond(true), onDecline: () => respond(false)
+  });
 }
 
 /**

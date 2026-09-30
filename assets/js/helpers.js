@@ -1025,10 +1025,12 @@ function playChatNotificationSound() {
 }
 
 /**
- * One ring pulse for Video Call Now - a lower, two-beat telephone-style
- * blip, deliberately distinct from playChatNotificationSound's brighter
- * chime above so a ringing call is never confused for an ordinary new
- * message.
+ * One ring pulse for Video Call Now - a bright, cheerful four-note
+ * ascending arpeggio (not a real recording of anyone else's ringtone -
+ * synthesized fresh via Web Audio, same technique as
+ * playChatNotificationSound above, so there's nothing to host/license),
+ * deliberately distinct in character from that chime so a ringing call is
+ * never confused for an ordinary new message.
  */
 function playRingingTone() {
   try {
@@ -1038,15 +1040,17 @@ function playRingingTone() {
     const now = ctx.currentTime;
 
     [
-      { freq: 480, start: 0, dur: 0.25 },
-      { freq: 480, start: 0.32, dur: 0.25 }
+      { freq: 523.25, start: 0, dur: 0.16 }, // C5
+      { freq: 659.25, start: 0.11, dur: 0.16 }, // E5
+      { freq: 783.99, start: 0.22, dur: 0.16 }, // G5
+      { freq: 1046.5, start: 0.33, dur: 0.28 } // C6
     ].forEach(({ freq, start, dur }) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0, now + start);
-      gain.gain.linearRampToValueAtTime(0.15, now + start + 0.02);
+      gain.gain.linearRampToValueAtTime(0.16, now + start + 0.015);
       gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -1054,7 +1058,7 @@ function playRingingTone() {
       osc.stop(now + start + dur + 0.02);
     });
 
-    setTimeout(() => ctx.close().catch(() => {}), 700);
+    setTimeout(() => ctx.close().catch(() => {}), 900);
   } catch (e) {
     // Web Audio unsupported/blocked - nothing to do.
   }
@@ -1091,6 +1095,190 @@ const RingingLoop = (function () {
     Object.keys(timers).forEach((k) => { if (!keep[k]) stop(k); });
   }
   return { start, stop, stopAll, stopExcept };
+})();
+
+const VIDEO_ICON_SVG =
+  '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>';
+
+/**
+ * Full-screen, incoming-call-style overlay for a live Video Call - one
+ * singleton element shared by the lazy-loaded meetings-ui.js panel and the
+ * always-loaded incoming-call handling in chat-window.js/owner-messages.js,
+ * so both paths get the same full-screen treatment without building this
+ * DOM twice. Built lazily on the first show() and reused after that -
+ * show() again with the same `key` (a meetingId) just updates the existing
+ * overlay's content in place, so calling it on every poll tick/render is
+ * cheap and never flickers.
+ *
+ * state: {
+ *   key: string - the meetingId this call belongs to.
+ *   phase: 'ringing-caller' | 'ringing-recipient' | 'connecting' | 'ready' |
+ *          'failed' | 'missed' | 'declined' | 'cancelled'
+ *   name: string - the other party's name/store name.
+ *   secondsLeft: number|undefined - shown only in 'ringing-caller'.
+ *   meetingUrl: string|undefined - the real Join link, 'ready' only.
+ *   busy: boolean|undefined - disables the action buttons while a request
+ *         for this exact call is already in flight (mirrors the same
+ *         double-tap guard the small card list uses via busyMeetingId).
+ *   onAccept/onDecline/onCancel/onRetry/onEnd/onCallAgain: functions.
+ * }
+ */
+const VideoCallOverlay = (function () {
+  let root = null;
+  let currentKey = null;
+
+  function build() {
+    root = document.createElement('div');
+    root.className = 'video-call-overlay hidden';
+    root.innerHTML =
+      '<div class="video-call-overlay-spacer"></div>' +
+      '<div class="video-call-overlay-avatar-wrap">' +
+        '<div class="video-call-overlay-ring"></div>' +
+        '<div class="video-call-overlay-avatar"></div>' +
+      '</div>' +
+      '<div class="video-call-overlay-name"></div>' +
+      '<div class="video-call-overlay-status"></div>' +
+      '<div class="video-call-overlay-error hidden"></div>' +
+      '<div class="video-call-overlay-actions"></div>';
+    document.body.appendChild(root);
+  }
+
+  function initialsOf(name) {
+    const s = String(name || '').trim();
+    if (!s) return '?';
+    return s.split(/\s+/).slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join('');
+  }
+
+  function dotsEl() {
+    const dots = document.createElement('span');
+    dots.className = 'meeting-calling-dots video-call-overlay-dots';
+    ['1', '2', '3'].forEach((n) => {
+      const d = document.createElement('span');
+      d.className = 'meeting-calling-dot meeting-calling-dot--' + n;
+      dots.appendChild(d);
+    });
+    return dots;
+  }
+
+  function roundBtn(kind, svg, disabled, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'video-call-overlay-round-btn video-call-overlay-round-btn--' + kind;
+    b.innerHTML = svg;
+    if (disabled) b.disabled = true;
+    b.addEventListener('click', onClick || (() => {}));
+    return b;
+  }
+
+  function pillBtn(label, kind, disabled, onClick, href) {
+    const b = document.createElement(href ? 'a' : 'button');
+    b.className = 'video-call-overlay-pill-btn video-call-overlay-pill-btn--' + kind;
+    b.textContent = label;
+    if (href) {
+      b.href = href;
+      b.target = '_blank';
+      b.rel = 'noopener';
+    } else {
+      b.type = 'button';
+    }
+    if (disabled) {
+      b.setAttribute('aria-disabled', 'true');
+      b.classList.add('is-disabled');
+      b.addEventListener('click', (e) => e.preventDefault());
+    } else if (onClick) {
+      b.addEventListener('click', onClick);
+    }
+    return b;
+  }
+
+  function show(state) {
+    if (!root) build();
+    currentKey = state.key;
+    root.classList.remove('hidden');
+
+    root.querySelector('.video-call-overlay-avatar').textContent = initialsOf(state.name);
+    root.querySelector('.video-call-overlay-name').textContent = state.name || 'Video call';
+
+    const statusEl = root.querySelector('.video-call-overlay-status');
+    statusEl.innerHTML = '';
+    const errorEl = root.querySelector('.video-call-overlay-error');
+    errorEl.classList.add('hidden');
+    errorEl.textContent = '';
+    const actions = root.querySelector('.video-call-overlay-actions');
+    actions.innerHTML = '';
+    const ring = root.querySelector('.video-call-overlay-ring');
+    const busy = !!state.busy;
+
+    ring.style.display = (state.phase === 'ringing-caller' || state.phase === 'ringing-recipient') ? '' : 'none';
+
+    switch (state.phase) {
+      case 'ringing-caller':
+        statusEl.appendChild(document.createTextNode('Calling'));
+        statusEl.appendChild(dotsEl());
+        if (state.secondsLeft != null) statusEl.appendChild(document.createTextNode(' (' + state.secondsLeft + 's)'));
+        actions.appendChild(roundBtn('decline', PHONE_ICON_SVG, busy, state.onCancel));
+        break;
+      case 'ringing-recipient':
+        statusEl.textContent = 'Incoming Video Call';
+        actions.appendChild(roundBtn('decline', PHONE_ICON_SVG, busy, state.onDecline));
+        actions.appendChild(roundBtn('accept', VIDEO_ICON_SVG, busy, state.onAccept));
+        break;
+      case 'connecting':
+        statusEl.appendChild(document.createTextNode('Connecting'));
+        statusEl.appendChild(dotsEl());
+        actions.appendChild(pillBtn('Cancel', 'danger', busy, state.onCancel));
+        break;
+      case 'failed':
+        errorEl.textContent = "Couldn't set up the video call.";
+        errorEl.classList.remove('hidden');
+        actions.appendChild(pillBtn('Retry', 'primary', busy, state.onRetry));
+        actions.appendChild(pillBtn('Cancel', 'danger', busy, state.onCancel));
+        break;
+      case 'ready':
+        statusEl.textContent = 'Ready to join';
+        // https:// only, even though the backend only ever fills this from
+        // its own trusted API response - one more guard against a link
+        // this file didn't expect ever being handed to someone as safe.
+        if (state.meetingUrl && /^https:\/\//.test(state.meetingUrl)) {
+          actions.appendChild(pillBtn('Join Video Call', 'primary', busy, null, state.meetingUrl));
+        }
+        actions.appendChild(pillBtn('End Meeting', 'danger', busy, state.onEnd));
+        break;
+      case 'missed':
+        statusEl.textContent = 'No answer.';
+        actions.appendChild(pillBtn('Call Again', 'primary', busy, state.onCallAgain));
+        break;
+      case 'declined':
+        statusEl.textContent = 'Call declined.';
+        break;
+      case 'cancelled':
+        statusEl.textContent = 'Call ended.';
+        break;
+      default:
+        break;
+    }
+
+    // Terminal phases auto-dismiss rather than sitting there waiting to be
+    // closed - a real call app's "missed/declined" screen doesn't either.
+    // The key check guards against a stale timer hiding a DIFFERENT call
+    // that started in the meantime (e.g. "Call Again" from this same
+    // screen).
+    if (state.phase === 'missed' || state.phase === 'declined' || state.phase === 'cancelled') {
+      const key = state.key;
+      setTimeout(() => { if (currentKey === key) hide(); }, 2200);
+    }
+  }
+
+  function isShowing(key) {
+    return !!root && !root.classList.contains('hidden') && currentKey === key;
+  }
+
+  function hide() {
+    if (root) root.classList.add('hidden');
+    currentKey = null;
+  }
+
+  return { show, hide, isShowing };
 })();
 
 const CHAT_TOAST_AUTO_DISMISS_MS = 5000;
