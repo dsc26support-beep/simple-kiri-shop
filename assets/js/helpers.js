@@ -1113,19 +1113,23 @@ const VIDEO_ICON_SVG =
  * state: {
  *   key: string - the meetingId this call belongs to.
  *   phase: 'ringing-caller' | 'ringing-recipient' | 'connecting' | 'ready' |
- *          'failed' | 'missed' | 'declined' | 'cancelled'
+ *          'failed'
  *   name: string - the other party's name/store name.
  *   secondsLeft: number|undefined - shown only in 'ringing-caller'.
  *   meetingUrl: string|undefined - the real Join link, 'ready' only.
  *   busy: boolean|undefined - disables the action buttons while a request
  *         for this exact call is already in flight (mirrors the same
  *         double-tap guard the small card list uses via busyMeetingId).
- *   onAccept/onDecline/onCancel/onRetry/onEnd/onCallAgain: functions.
+ *   onAccept/onDecline/onCancel/onRetry/onEnd: functions.
  * }
+ *
+ * A call that stops being live - missed, declined, cancelled, or ended -
+ * never shows here at all: the caller only ever calls hide() for those
+ * (see meetings-ui.js's reconcileOverlay), and that terminal state lives
+ * only as a card in the small history list, never full-screen.
  */
 const VideoCallOverlay = (function () {
   let root = null;
-  let currentKey = null;
 
   function build() {
     root = document.createElement('div');
@@ -1193,7 +1197,6 @@ const VideoCallOverlay = (function () {
 
   function show(state) {
     if (!root) build();
-    currentKey = state.key;
     root.classList.remove('hidden');
 
     root.querySelector('.video-call-overlay-avatar').textContent = initialsOf(state.name);
@@ -1244,41 +1247,16 @@ const VideoCallOverlay = (function () {
         }
         actions.appendChild(pillBtn('End Meeting', 'danger', busy, state.onEnd));
         break;
-      case 'missed':
-        statusEl.textContent = 'No answer.';
-        actions.appendChild(pillBtn('Call Again', 'primary', busy, state.onCallAgain));
-        break;
-      case 'declined':
-        statusEl.textContent = 'Call declined.';
-        break;
-      case 'cancelled':
-        statusEl.textContent = 'Call ended.';
-        break;
       default:
         break;
     }
-
-    // Terminal phases auto-dismiss rather than sitting there waiting to be
-    // closed - a real call app's "missed/declined" screen doesn't either.
-    // The key check guards against a stale timer hiding a DIFFERENT call
-    // that started in the meantime (e.g. "Call Again" from this same
-    // screen).
-    if (state.phase === 'missed' || state.phase === 'declined' || state.phase === 'cancelled') {
-      const key = state.key;
-      setTimeout(() => { if (currentKey === key) hide(); }, 2200);
-    }
-  }
-
-  function isShowing(key) {
-    return !!root && !root.classList.contains('hidden') && currentKey === key;
   }
 
   function hide() {
     if (root) root.classList.add('hidden');
-    currentKey = null;
   }
 
-  return { show, hide, isShowing };
+  return { show, hide };
 })();
 
 const CHAT_TOAST_AUTO_DISMISS_MS = 5000;

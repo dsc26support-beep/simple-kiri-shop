@@ -406,63 +406,47 @@
     // directly, but only for the lightweight pre-mount incoming-call case;
     // once this panel is mounted, this function is the single source of
     // truth and simply keeps re-showing/updating the same overlay).
-    var lastOverlayMeetingId = null;
+    //
+    // A call that stops being active (answered elsewhere, declined,
+    // cancelled, or timed out to MISSED) closes the overlay immediately,
+    // with no terminal "No answer."/"Call declined." flash - that state
+    // only ever lives as a card in the list below, never full-screen.
     function reconcileOverlay() {
       var active = activeCallMeeting();
-      var name = (typeof ctx.counterpartyName === 'function' && ctx.counterpartyName()) || '';
-      if (active) {
-        lastOverlayMeetingId = active.meetingId;
-        var isRecipient = active.recipientType === ctx.role;
-        var busy = busyMeetingId === active.meetingId;
-        if (active.status === 'RINGING' && isRecipient) {
-          VideoCallOverlay.show({
-            key: active.meetingId, phase: 'ringing-recipient', name: name, busy: busy,
-            onAccept: function () { callAction('respondToMeeting', active.meetingId, { accept: true }); },
-            onDecline: function () { callAction('respondToMeeting', active.meetingId, { accept: false }); }
-          });
-        } else if (active.status === 'RINGING') {
-          VideoCallOverlay.show({
-            key: active.meetingId, phase: 'ringing-caller', name: name, busy: busy, secondsLeft: active.ringingSecondsLeft,
-            onCancel: function () { callAction('cancelMeeting', active.meetingId); }
-          });
-        } else if (active.status === 'ACCEPTED' && active.meetFailed) {
-          VideoCallOverlay.show({
-            key: active.meetingId, phase: 'failed', name: name, busy: busy,
-            onRetry: function () { callAction('retryMeetingSpace', active.meetingId); },
-            onCancel: function () { callAction('cancelMeeting', active.meetingId); }
-          });
-        } else if (active.status === 'ACCEPTED') {
-          VideoCallOverlay.show({
-            key: active.meetingId, phase: 'connecting', name: name, busy: busy,
-            onCancel: function () { callAction('cancelMeeting', active.meetingId); }
-          });
-        } else if (active.status === 'READY') {
-          VideoCallOverlay.show({
-            key: active.meetingId, phase: 'ready', name: name, busy: busy, meetingUrl: active.meetingUrl,
-            onEnd: function () { callAction('endMeeting', active.meetingId); }
-          });
-        }
+      if (!active) {
+        VideoCallOverlay.hide();
         return;
       }
-      // Nothing active any more - if the overlay was showing THIS exact call
-      // when it left the active set, flash why (missed/declined/cancelled)
-      // instead of just yanking the screen away with no explanation. A
-      // meeting this panel never showed as active (e.g. one that arrived
-      // already DECLINED from a stale poll) gets no flash - only a real
-      // transition does.
-      if (lastOverlayMeetingId && VideoCallOverlay.isShowing(lastOverlayMeetingId)) {
-        var id = lastOverlayMeetingId;
-        var ended = meetings.filter(function (m) { return m.meetingId === id; })[0];
-        lastOverlayMeetingId = null;
-        if (ended && ended.status === 'MISSED') {
-          VideoCallOverlay.show({ key: id, phase: 'missed', name: name, busy: callNowPending, onCallAgain: startCallNow });
-        } else if (ended && ended.status === 'DECLINED') {
-          VideoCallOverlay.show({ key: id, phase: 'declined', name: name });
-        } else if (ended && ended.status === 'CANCELLED') {
-          VideoCallOverlay.show({ key: id, phase: 'cancelled', name: name });
-        } else {
-          VideoCallOverlay.hide();
-        }
+      var name = (typeof ctx.counterpartyName === 'function' && ctx.counterpartyName()) || '';
+      var isRecipient = active.recipientType === ctx.role;
+      var busy = busyMeetingId === active.meetingId;
+      if (active.status === 'RINGING' && isRecipient) {
+        VideoCallOverlay.show({
+          key: active.meetingId, phase: 'ringing-recipient', name: name, busy: busy,
+          onAccept: function () { callAction('respondToMeeting', active.meetingId, { accept: true }); },
+          onDecline: function () { callAction('respondToMeeting', active.meetingId, { accept: false }); }
+        });
+      } else if (active.status === 'RINGING') {
+        VideoCallOverlay.show({
+          key: active.meetingId, phase: 'ringing-caller', name: name, busy: busy, secondsLeft: active.ringingSecondsLeft,
+          onCancel: function () { callAction('cancelMeeting', active.meetingId); }
+        });
+      } else if (active.status === 'ACCEPTED' && active.meetFailed) {
+        VideoCallOverlay.show({
+          key: active.meetingId, phase: 'failed', name: name, busy: busy,
+          onRetry: function () { callAction('retryMeetingSpace', active.meetingId); },
+          onCancel: function () { callAction('cancelMeeting', active.meetingId); }
+        });
+      } else if (active.status === 'ACCEPTED') {
+        VideoCallOverlay.show({
+          key: active.meetingId, phase: 'connecting', name: name, busy: busy,
+          onCancel: function () { callAction('cancelMeeting', active.meetingId); }
+        });
+      } else if (active.status === 'READY') {
+        VideoCallOverlay.show({
+          key: active.meetingId, phase: 'ready', name: name, busy: busy, meetingUrl: active.meetingUrl,
+          onEnd: function () { callAction('endMeeting', active.meetingId); }
+        });
       }
     }
 
