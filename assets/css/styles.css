@@ -1916,6 +1916,46 @@ footer.site-footer .copyright {
   }
 }
 
+.meeting-card-hint--calling {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.meeting-calling-dots {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 10px;
+  margin: 0 var(--space-1);
+}
+
+.meeting-calling-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: meeting-calling-dot-bounce 1.1s ease-in-out infinite;
+}
+
+/* Purple, red and gold - the same three brand colors used everywhere else
+   on the site (see --color-purple/--color-red/--color-gold above), not a
+   one-off palette invented just for this animation. */
+.meeting-calling-dot--1 { background: var(--color-purple); animation-delay: 0s; }
+.meeting-calling-dot--2 { background: var(--color-red); animation-delay: 0.15s; }
+.meeting-calling-dot--3 { background: var(--color-gold); animation-delay: 0.3s; }
+
+@keyframes meeting-calling-dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.55; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-calling-dot {
+    animation: none;
+    opacity: 0.9;
+  }
+}
+
 .meeting-card--accepted {
   border-left-color: var(--color-blue-light);
 }

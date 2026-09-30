@@ -457,7 +457,8 @@ function initChatWindow() {
       // customers can still see and respond to a vendor-initiated meeting;
       // they just cannot start one themselves.
       canRequest: () => typeof CustomerAuth !== 'undefined' && CustomerAuth.isLoggedIn(),
-      signInHint: { href: meetingSignInUrl(), label: 'Sign in', after: ' to make a video call.' }
+      signInHint: { href: meetingSignInUrl(), label: 'Sign in', after: ' to make a video call.' },
+      counterpartyName: () => vendorStoreName || ''
     };
   }
 
@@ -497,6 +498,7 @@ function initChatWindow() {
     if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
     activeMeetingsUi = null;
     shownIncomingCallId = null;
+    RingingLoop.stopAll();
   }
 
   if (videoCallBtn) {
@@ -531,6 +533,7 @@ function initChatWindow() {
 
     if (!call) {
       if (shownIncomingCallId) {
+        RingingLoop.stop(shownIncomingCallId);
         shownIncomingCallId = null;
         closeMeetingsPanel();
       }
@@ -539,6 +542,7 @@ function initChatWindow() {
     if (shownIncomingCallId === call.meetingId) return; // already showing this exact call
     shownIncomingCallId = call.meetingId;
     playChatNotificationSound();
+    RingingLoop.start(call.meetingId);
     renderIncomingCallBanner(call);
   }
 
@@ -572,6 +576,7 @@ function initChatWindow() {
     meetingPanelHost.appendChild(card);
 
     function respond(accept) {
+      RingingLoop.stop(call.meetingId); // stop the moment the customer acts, not on the next poll
       acceptBtn.disabled = true;
       declineBtn.disabled = true;
       Api.post('respondToMeeting', Object.assign(meetingsCtx().params(), { meetingId: call.meetingId, accept })).then((res) => {
