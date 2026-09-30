@@ -48,13 +48,41 @@
   function statusLabel(m) {
     switch (m.status) {
       case 'REQUESTED': return 'Requested';
+      case 'RINGING': return 'Ringing…';
       case 'ACCEPTED': return m.meetFailed ? 'Setup failed' : 'Setting up…';
       case 'READY': return 'Ready to join';
       case 'DECLINED': return 'Declined';
       case 'CANCELLED': return 'Cancelled';
       case 'ENDED': return 'Ended';
+      case 'MISSED': return 'No answer';
       default: return m.status;
     }
+  }
+
+  /**
+   * A bare, empty native date/time input is what made the request form read
+   * as "too generic - have to guess the input": nothing on screen suggested
+   * what to type or click. Pre-filling a real, valid, editable default (not
+   * a placeholder, which native date/time inputs barely support anyway)
+   * fixes that directly - tomorrow at the next half-hour from now, in
+   * business hours (9am-6pm), clamped so it never lands overnight.
+   */
+  function defaultMeetingDateTime() {
+    var d = new Date();
+    d.setDate(d.getDate() + 1);
+    var hour = Math.max(9, Math.min(18, new Date().getHours() + 1));
+    d.setHours(hour, 0, 0, 0);
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return {
+      date: d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
+      time: pad(d.getHours()) + ':00'
+    };
+  }
+
+  function todayDateStr() {
+    var d = new Date();
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   }
 
   // Local sanity checks only, so a customer/vendor gets an immediate answer
@@ -92,19 +120,58 @@
     container.appendChild(list);
     container.appendChild(formWrap);
 
+    function hasActiveCall() {
+      return meetings.some(function (m) { return m.status === 'RINGING' || m.status === 'ACCEPTED' || m.status === 'READY'; });
+    }
+
     function renderTrigger() {
       formWrap.innerHTML = '';
-      if (ctx.canRequest()) {
-        var btn = el('button', 'btn btn-small meeting-request-trigger', 'Request Meeting');
-        btn.type = 'button';
-        btn.addEventListener('click', function () {
-          formWrap.innerHTML = '';
-          formWrap.appendChild(renderForm());
-        });
-        formWrap.appendChild(btn);
-      } else if (ctx.signInHint) {
-        formWrap.appendChild(el('p', 'meeting-request-signin-hint', ctx.signInHint));
+      if (!ctx.canRequest()) {
+        if (ctx.signInHint) formWrap.appendChild(el('p', 'meeting-request-signin-hint', ctx.signInHint));
+        return;
       }
+
+      var row = el('div', 'meeting-trigger-row');
+
+      // Hidden rather than disabled while a call is already ringing/connected
+      // on this conversation - the backend refuses a second one outright
+      // (Meetings.gs's actionStartVideoCallNow), so offering a button that
+      // would only ever fail is worse than not offering it.
+      if (!hasActiveCall()) {
+        var callBtn = el('button', 'btn btn-primary', 'Video Call Now');
+        callBtn.type = 'button';
+        callBtn.addEventListener('click', startCallNow);
+        row.appendChild(callBtn);
+      }
+
+      var btn = el('button', 'btn meeting-request-trigger', 'Request Meeting');
+      btn.type = 'button';
+      btn.addEventListener('click', function () {
+        formWrap.innerHTML = '';
+        formWrap.appendChild(renderForm());
+      });
+      row.appendChild(btn);
+
+      formWrap.appendChild(row);
+    }
+
+    /**
+     * "Video Call Now" - starts RINGING immediately, no purpose/date/time.
+     * Also reused as "Call Again" on a MISSED card (same action, fresh call).
+     * The recipient finds out via the incoming-call banner their own chat
+     * window/owner-messages.js already renders from the SAME poll this panel
+     * itself uses (Chat.gs's getConversation), not from anything in this file.
+     */
+    function startCallNow() {
+      return Api.post('startVideoCallNow', ctx.params()).then(function (res) {
+        if (!res.ok) {
+          alert(friendlyError(res));
+          return;
+        }
+        var idx = meetings.findIndex(function (m) { return m.meetingId === res.meeting.meetingId; });
+        if (idx === -1) meetings.push(res.meeting); else meetings[idx] = res.meeting;
+        render();
+      });
     }
 
     function renderForm() {
@@ -124,17 +191,29 @@
       notes.maxLength = 1000;
       form.appendChild(notes);
 
-      form.appendChild(el('label', 'meeting-request-label', 'Date & time'));
       var row = el('div', 'meeting-request-datetime-row');
+      var dateField = el('div', 'meeting-request-datetime-field');
+      dateField.appendChild(el('label', 'meeting-request-label', 'Date'));
       var dateInput = document.createElement('input');
       dateInput.type = 'date';
       dateInput.className = 'meeting-request-input';
+      dateInput.min = todayDateStr(); // can't be picked before it's even rendered - matches the backend's own "not in the past" check
+      dateField.appendChild(dateInput);
+      row.appendChild(dateField);
+
+      var timeField = el('div', 'meeting-request-datetime-field');
+      timeField.appendChild(el('label', 'meeting-request-label', 'Time'));
       var timeInput = document.createElement('input');
       timeInput.type = 'time';
       timeInput.className = 'meeting-request-input';
-      row.appendChild(dateInput);
-      row.appendChild(timeInput);
+      timeInput.step = 1800; // 30-minute increments on the native picker, rather than a fiddly to-the-minute scroll
+      timeField.appendChild(timeInput);
+      row.appendChild(timeField);
       form.appendChild(row);
+
+      var defaults = defaultMeetingDateTime();
+      dateInput.value = defaults.date;
+      timeInput.value = defaults.time;
 
       var err = el('p', 'meeting-request-error hidden');
       form.appendChild(err);
@@ -220,20 +299,30 @@
       top.appendChild(el('span', 'meeting-card-purpose', m.purpose));
       top.appendChild(el('span', 'meeting-card-status', statusLabel(m)));
       card.appendChild(top);
-      card.appendChild(el('p', 'meeting-card-when', fmtWhen(m.requestedDate, m.requestedTime)));
+      // A Video Call Now carries no scheduled date/time (see Meetings.gs's
+      // isNowCall) - nothing to print for it here.
+      if (m.requestedDate) card.appendChild(el('p', 'meeting-card-when', fmtWhen(m.requestedDate, m.requestedTime)));
       if (m.notes) card.appendChild(el('p', 'meeting-card-notes', m.notes));
 
       var isBusy = busyMeetingId === m.meetingId;
       var isRecipient = m.recipientType === ctx.role;
       var actions = el('div', 'meeting-card-actions');
 
-      if (m.status === 'REQUESTED' && isRecipient) {
+      if ((m.status === 'REQUESTED' || m.status === 'RINGING') && isRecipient) {
         actions.appendChild(actionButton('Accept', 'btn-primary', isBusy, function () {
           callAction('respondToMeeting', m.meetingId, { accept: true });
         }));
         actions.appendChild(actionButton('Decline', '', isBusy, function () {
           callAction('respondToMeeting', m.meetingId, { accept: false });
         }));
+      } else if (m.status === 'RINGING') {
+        card.appendChild(el('p', 'meeting-card-hint',
+          'Calling…' + (m.ringingSecondsLeft != null ? ' (' + m.ringingSecondsLeft + 's)' : '')));
+      }
+
+      if (m.status === 'MISSED') {
+        card.appendChild(el('p', 'meeting-card-hint', 'No answer.'));
+        actions.appendChild(actionButton('Call Again', 'btn-primary', isBusy, startCallNow));
       }
 
       if (m.status === 'ACCEPTED' && m.meetFailed) {
@@ -260,7 +349,11 @@
         }));
       }
 
-      if (m.status === 'REQUESTED' || m.status === 'ACCEPTED' || m.status === 'READY') {
+      // A RINGING call already offers Decline to its recipient above - Cancel
+      // alongside it would be a redundant second way to do the same thing, so
+      // only the CALLER gets Cancel (hang up) while it's still ringing.
+      if (m.status === 'REQUESTED' || m.status === 'ACCEPTED' || m.status === 'READY' ||
+          (m.status === 'RINGING' && !isRecipient)) {
         actions.appendChild(actionButton('Cancel Meeting', 'btn-danger', isBusy, function () {
           if (confirm('Cancel this meeting?')) callAction('cancelMeeting', m.meetingId);
         }));
@@ -274,13 +367,41 @@
       list.innerHTML = '';
       if (meetings.length === 0) {
         list.appendChild(el('p', 'meeting-empty-state', 'No meetings yet.'));
-        return;
+      } else {
+        // Oldest requested first at the bottom, most relevant (newest) on top -
+        // the same ordering direction as everywhere else this matters less; a
+        // meeting list is short enough that recency, not history, is what
+        // someone opening this panel wants to see first.
+        meetings.slice().reverse().forEach(function (m) { list.appendChild(renderCard(m)); });
       }
-      // Oldest requested first at the bottom, most relevant (newest) on top -
-      // the same ordering direction as everywhere else this matters less; a
-      // meeting list is short enough that recency, not history, is what
-      // someone opening this panel wants to see first.
-      meetings.slice().reverse().forEach(function (m) { list.appendChild(renderCard(m)); });
+      // A card list re-render must never clobber an in-progress request-form
+      // draft sitting in formWrap - only refresh the trigger area when it's
+      // actually showing the trigger, not the open form.
+      if (!formWrap.querySelector('.meeting-request-form')) renderTrigger();
+      scheduleRingPollIfNeeded();
+    }
+
+    /**
+     * A RINGING call is the one state worth polling faster than the host's
+     * own 5-20s chat cadence for - the caller is actively watching this
+     * panel for pickup, same class of "poll only while doing something that
+     * needs it" as the chat window's own message poll while open. Bounded:
+     * stops the moment nothing is RINGING any more, and stop() (returned
+     * from mount) cancels it outright when the panel closes.
+     */
+    var ringPollTimer = null;
+    function hasPendingRing() {
+      return meetings.some(function (m) { return m.status === 'RINGING'; });
+    }
+    function scheduleRingPollIfNeeded() {
+      if (ringPollTimer || !hasPendingRing()) return;
+      ringPollTimer = setTimeout(function () {
+        ringPollTimer = null;
+        refresh();
+      }, 3000);
+    }
+    function stopRingPolling() {
+      if (ringPollTimer) { clearTimeout(ringPollTimer); ringPollTimer = null; }
     }
 
     function refresh() {
@@ -297,6 +418,8 @@
 
     renderTrigger();
     refresh();
+
+    return { stop: stopRingPolling };
   }
 
   window.MwaketeMeetings = { mount: mount };

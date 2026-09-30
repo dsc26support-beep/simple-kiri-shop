@@ -740,7 +740,11 @@ function actionGetConversation(body) {
     conversation: publicConversationFields(resolved.conversation),
     messages: page.messages.map(publicMessageFields),
     hasMoreBefore: page.hasMoreBefore,
-    otherPartyTyping: otherPartyTyping
+    otherPartyTyping: otherPartyTyping,
+    // Rides this same poll rather than a separate request - see
+    // activeIncomingCall's header comment in Meetings.gs. senderType here is
+    // the CALLER's own side, so this looks for a ring addressed TO them.
+    incomingCall: activeIncomingCall(resolved.conversation.ConversationId, resolved.senderType)
   });
 }
 
@@ -795,7 +799,15 @@ function actionGetVendorConversations(owner, body) {
   var all = listConversationsForOwner(owner.OwnerId).filter(function (c) { return c.Status !== 'deleted'; });
   var limit = clampPageSize(body.limit, DEFAULT_CONVERSATION_PAGE_SIZE, MAX_CONVERSATION_PAGE_SIZE);
   var offset = Math.max(0, Number(body.offset) || 0);
-  var page = all.slice(offset, offset + limit).map(publicConversationFields);
+  // One full scan of Meetings (ringingConversationIdsForVendor), not one per
+  // row - see that function's header comment - so a ring can highlight which
+  // conversation in the list to open even before the vendor has it open.
+  var ringing = ringingConversationIdsForVendor(owner.OwnerId);
+  var page = all.slice(offset, offset + limit).map(function (c) {
+    var fields = publicConversationFields(c);
+    fields.hasIncomingCall = !!ringing[c.ConversationId];
+    return fields;
+  });
   return ok({ conversations: page, total: all.length, hasMore: offset + limit < all.length });
 }
 

@@ -139,15 +139,21 @@ function renderConversationListItem(c) {
   const preview = escapeHtml(c.lastMessagePreview || 'No messages yet');
   const isUnread = !!c.unreadByVendor;
   const isActive = c.conversationId === activeConversationId;
+  // Best-effort only - see ringingConversationIdsForVendor's header comment
+  // in Meetings.gs. The reliable path is the per-conversation banner
+  // (handleIncomingCall) while that thread is actually open; this is a
+  // bonus hint for conversations the vendor hasn't opened yet, on this
+  // list's own slower 8-30s poll, not a guarantee.
+  const isRinging = !!c.hasIncomingCall;
   const archivedTag = c.status === 'archived' ? ' · Archived' : '';
 
   return `
-    <button type="button" class="conversation-list-item${isUnread ? ' is-unread' : ''}${isActive ? ' is-active' : ''}" data-conversation-id="${escapeHtml(c.conversationId)}">
+    <button type="button" class="conversation-list-item${isUnread ? ' is-unread' : ''}${isActive ? ' is-active' : ''}${isRinging ? ' is-ringing' : ''}" data-conversation-id="${escapeHtml(c.conversationId)}">
       <span class="conversation-item-top-row">
         <span class="conversation-item-name">${name}${isUnread ? '<span class="conversation-item-unread-dot" aria-label="Unread"></span>' : ''}</span>
         <span class="conversation-item-time">${time}</span>
       </span>
-      <span class="conversation-item-preview">${preview}${escapeHtml(archivedTag)}</span>
+      <span class="conversation-item-preview">${isRinging ? '<span class="conversation-item-ringing-tag">Incoming Video Call</span> ' : ''}${preview}${escapeHtml(archivedTag)}</span>
     </button>
   `;
 }
@@ -237,6 +243,8 @@ function meetingsCtx() {
   };
 }
 
+let activeMeetingsUi = null; // the { stop } handle mount() returns, so an incoming-ring's fast poll doesn't outlive the panel
+
 async function openMeetingsPanel() {
   const host = document.getElementById('meeting-panel-host');
   host.classList.remove('hidden');
@@ -250,18 +258,106 @@ async function openMeetingsPanel() {
   // server-side-cached read) and guarantees the vendor never sees a stale
   // card, or an abandoned request-form draft, left over from a different
   // conversation.
-  window.MwaketeMeetings.mount(host, meetingsCtx());
+  activeMeetingsUi = window.MwaketeMeetings.mount(host, meetingsCtx());
+  host.classList.add('meeting-panel--mounted');
 }
 
 function closeMeetingsPanel() {
-  document.getElementById('meeting-panel-host').classList.add('hidden');
+  const host = document.getElementById('meeting-panel-host');
+  host.classList.add('hidden');
+  host.classList.remove('meeting-panel--mounted');
+  if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
+  activeMeetingsUi = null;
+  shownIncomingCallId = null;
 }
 
 function onVideoCallClick() {
   if (!activeConversationId) return;
   const host = document.getElementById('meeting-panel-host');
-  if (host.classList.contains('hidden')) openMeetingsPanel();
+  const isMounted = host.classList.contains('meeting-panel--mounted');
+  // Same three-state button as the customer side - see chat-window.js's
+  // identical comment on its own videoCallBtn handler.
+  if (host.classList.contains('hidden') || !isMounted) openMeetingsPanel();
   else closeMeetingsPanel();
+}
+
+/**
+ * Incoming Video Call Now - lightweight, NOT-lazy-loaded (plain DOM + Api),
+ * mirroring chat-window.js's identical banner on the customer side. Rides
+ * the same getConversation poll this file already runs for the OPEN
+ * conversation (loadConversationMessages); a call on a conversation the
+ * vendor hasn't opened surfaces instead through the inbox list's
+ * hasIncomingCall flag (renderConversationListItem/listPollTick) - slower
+ * and best-effort, not this same live path.
+ */
+let shownIncomingCallId = null;
+
+function handleIncomingCall(call) {
+  const host = document.getElementById('meeting-panel-host');
+  if (host.classList.contains('meeting-panel--mounted')) return;
+
+  if (!call) {
+    if (shownIncomingCallId) {
+      shownIncomingCallId = null;
+      closeMeetingsPanel();
+    }
+    return;
+  }
+  if (shownIncomingCallId === call.meetingId) return;
+  shownIncomingCallId = call.meetingId;
+  playChatNotificationSound();
+  renderIncomingCallBanner(call);
+}
+
+function renderIncomingCallBanner(call) {
+  const host = document.getElementById('meeting-panel-host');
+  host.classList.remove('hidden');
+  host.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'meeting-card meeting-card--ringing';
+  const top = document.createElement('div');
+  top.className = 'meeting-card-top';
+  const label = document.createElement('span');
+  label.className = 'meeting-card-purpose';
+  label.textContent = 'Incoming Video Call';
+  top.appendChild(label);
+  card.appendChild(top);
+
+  const actions = document.createElement('div');
+  actions.className = 'meeting-card-actions';
+  const acceptBtn = document.createElement('button');
+  acceptBtn.type = 'button';
+  acceptBtn.className = 'btn btn-primary';
+  acceptBtn.textContent = 'Accept';
+  const declineBtn = document.createElement('button');
+  declineBtn.type = 'button';
+  declineBtn.className = 'btn';
+  declineBtn.textContent = 'Decline';
+  actions.appendChild(acceptBtn);
+  actions.appendChild(declineBtn);
+  card.appendChild(actions);
+  host.appendChild(card);
+
+  function respond(accept) {
+    acceptBtn.disabled = true;
+    declineBtn.disabled = true;
+    Api.post('respondToMeeting', Object.assign(meetingsCtx().params(), { meetingId: call.meetingId, accept })).then((res) => {
+      if (!res.ok) {
+        acceptBtn.disabled = false;
+        declineBtn.disabled = false;
+        alert(res.error || 'Could not respond to this call.');
+        return;
+      }
+      if (accept) {
+        openMeetingsPanel(); // promote to the full panel - Join/End once ready, or Setup failed/Retry
+      } else {
+        closeMeetingsPanel(); // done - no need to pull in the full module for a plain decline
+      }
+    });
+  }
+  acceptBtn.addEventListener('click', () => respond(true));
+  declineBtn.addEventListener('click', () => respond(false));
 }
 
 /**
@@ -317,6 +413,7 @@ async function loadConversationMessages(opts) {
   }
 
   showTyping(!!res.otherPartyTyping);
+  handleIncomingCall(res.incomingCall);
 
   const messages = res.messages || [];
   if (!isPoll) {
@@ -642,6 +739,7 @@ async function listPollTick() {
     // is covered by loadConversationMessages' own notification above -
     // notifying about it again here would double-fire for the same message.
     const previouslyUnreadIds = new Set(ownerConversations.filter((c) => c.unreadByVendor).map((c) => c.conversationId));
+    const previouslyRingingIds = new Set(ownerConversations.filter((c) => c.hasIncomingCall).map((c) => c.conversationId));
     await loadConversations({ isPoll: true });
 
     const newlyUnread = ownerConversations.filter(
@@ -654,6 +752,19 @@ async function listPollTick() {
           ? `New message from ${newlyUnread[0].customerName || 'a customer'}`
           : `${newlyUnread.length} new messages`;
       showChatNotificationToast(text, () => openConversation(newlyUnread[0].conversationId));
+    }
+
+    // Same "not currently open" exclusion as messages above - a call on the
+    // open conversation is already covered live by handleIncomingCall.
+    const newlyRinging = ownerConversations.filter(
+      (c) => c.hasIncomingCall && c.conversationId !== activeConversationId && !previouslyRingingIds.has(c.conversationId)
+    );
+    if (newlyRinging.length > 0) {
+      playChatNotificationSound();
+      const text = newlyRinging.length === 1
+        ? `Incoming video call from ${newlyRinging[0].customerName || 'a customer'}`
+        : `${newlyRinging.length} incoming video calls`;
+      showChatNotificationToast(text, () => openConversation(newlyRinging[0].conversationId));
     }
 
     // A changed count (new conversation arrived, or one dropped out somehow)

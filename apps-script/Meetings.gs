@@ -43,23 +43,102 @@ var MEETING_NOTE_MAX_LEN = 1000;
 // accepted anywhere in this phase.
 var MEETING_PARTY_TYPES = ['customer', 'vendor'];
 
-var VALID_MEETING_STATUSES = ['REQUESTED', 'ACCEPTED', 'DECLINED', 'CANCELLED', 'READY', 'ENDED'];
+// RINGING/MISSED: "Video Call Now" (actionStartVideoCallNow) - an instant
+// call, as opposed to REQUESTED's scheduled-for-later. RINGING behaves like
+// a REQUESTED with a 45-second fuse instead of a chosen date/time; MISSED is
+// its terminal timeout, reached only by settleIfExpired, never by a direct
+// user action - see that function.
+var VALID_MEETING_STATUSES = ['REQUESTED', 'ACCEPTED', 'DECLINED', 'CANCELLED', 'READY', 'ENDED', 'RINGING', 'MISSED'];
 // Mirrors Bookings.gs's BOOKING_TRANSITIONS exactly - same shape, same
 // reasoning: an explicit map of what's legal is what keeps "decline a
 // meeting that's already READY" from ever silently succeeding.
 var MEETING_TRANSITIONS = {
   REQUESTED: ['ACCEPTED', 'DECLINED', 'CANCELLED'],
+  RINGING: ['ACCEPTED', 'DECLINED', 'CANCELLED'],
   // ACCEPTED covers both "about to create the Meet space" and "creation
   // failed, retry available" - see actionRespondToMeeting/
   // actionRetryMeetingSpace. It never lingers user-visibly; a successful
   // create moves it straight to READY inside the same request.
   ACCEPTED: ['READY', 'CANCELLED'],
   READY: ['ENDED', 'CANCELLED']
-  // DECLINED, CANCELLED, ENDED are terminal - no outgoing transitions.
+  // DECLINED, CANCELLED, ENDED, MISSED are terminal - no outgoing transitions.
 };
 
 function meetingCacheKey(conversationId) { return 'v1:meetings:conv:' + conversationId; }
 var MEETINGS_CACHE_TTL_SECONDS = 10; // same order as chat's own message cache - see Chat.gs
+
+/**
+ * How long a "Video Call Now" rings before it settles to MISSED on its own.
+ * There is no server-side timer in Apps Script, so this is enforced lazily:
+ * every read path that touches a RINGING meeting (settleIfExpired) is the
+ * trigger, whichever side happens to poll next past the deadline. That is
+ * self-correcting and never off by more than one poll interval either side.
+ */
+var RINGING_TIMEOUT_MS = 45 * 1000;
+
+/** A "Video Call Now" never carries a scheduled date/time (see actionStartVideoCallNow) - a REQUESTED meeting always does. Used to decide which events are worth an email (see notifyMeetingEvent). */
+function isNowCall(meeting) { return !meeting.RequestedDate; }
+
+function isRingingExpired(meeting) {
+  return meeting.Status === 'RINGING' && (Date.now() - new Date(meeting.CreatedAt).getTime()) > RINGING_TIMEOUT_MS;
+}
+
+/**
+ * Lazily settles a timed-out "Video Call Now" to MISSED. Idempotent and
+ * cheap - only writes when the row actually just crossed the deadline, so
+ * calling this on every read of a RINGING meeting costs nothing extra on the
+ * common case (still within the 45s window). The MISSED email (if any) is
+ * sent from here, once, at the moment it is first observed to have expired -
+ * see notifyMeetingEvent's 'missed' handling.
+ */
+function settleIfExpired(meeting) {
+  if (!isRingingExpired(meeting)) return meeting;
+  updateRowFromObject(getSheet('Meetings'), meeting.__row, { Status: 'MISSED', LastUpdatedAt: nowIso() });
+  touchMeetingCache(meeting.ConversationId);
+  var updated = getMeetingById(meeting.MeetingId);
+  var conversation = getConversationById(meeting.ConversationId);
+  if (conversation) notifyMeetingEvent(conversation, meeting.RequesterType, 'missed', updated);
+  return updated;
+}
+
+/** listMeetingsForConversationRaw, with any timed-out ring settled to MISSED first - the version every action and poll should read from. */
+function listMeetingsForConversationLive(conversationId) {
+  return listMeetingsForConversationRaw(conversationId).map(settleIfExpired);
+}
+
+/**
+ * The live incoming-call view for ONE side of a conversation - folded into
+ * Chat.gs's getConversation poll rather than a separate endpoint, so a ring
+ * costs zero extra requests: it rides whatever interval chat already polls
+ * at (5-20s). Returns null when there is nothing currently ringing for this
+ * recipientType.
+ */
+function activeIncomingCall(conversationId, recipientType) {
+  var ringing = listMeetingsForConversationLive(conversationId).filter(function (m) {
+    return m.Status === 'RINGING' && m.RecipientType === recipientType;
+  });
+  return ringing.length ? publicMeetingFields(ringing[0]) : null;
+}
+
+/**
+ * One full scan of the Meetings sheet, not one per conversation - listing
+ * conversations already costs one full scan of its own sheet
+ * (listConversationsForOwner), so this must not multiply that by the page
+ * size. Read-only (does not settle expiry) - purely advisory for highlighting
+ * which row in the vendor's inbox list to open; the authoritative check runs
+ * when that conversation is actually opened (activeIncomingCall, via
+ * actionGetConversation), so a few seconds of staleness here self-corrects.
+ */
+function ringingConversationIdsForVendor(ownerId) {
+  var now = Date.now();
+  var ids = {};
+  sheetToObjects(getSheet('Meetings')).forEach(function (m) {
+    if (m.Status !== 'RINGING' || m.RecipientType !== 'vendor' || m.RecipientId !== ownerId) return;
+    if (now - new Date(m.CreatedAt).getTime() > RINGING_TIMEOUT_MS) return;
+    ids[m.ConversationId] = true;
+  });
+  return ids;
+}
 
 /* ---------- validation ---------- */
 
@@ -131,6 +210,9 @@ function publicMeetingFields(meeting) {
     status: meeting.Status,
     meetingUrl: meeting.Status === 'READY' ? (meeting.GoogleMeetUrl || '') : '',
     meetFailed: meeting.Status === 'ACCEPTED' && !!meeting.MeetFailureReason,
+    ringingSecondsLeft: meeting.Status === 'RINGING'
+      ? Math.max(0, Math.round((RINGING_TIMEOUT_MS - (Date.now() - new Date(meeting.CreatedAt).getTime())) / 1000))
+      : null,
     createdAt: meeting.CreatedAt,
     acceptedAt: meeting.AcceptedAt || '',
     readyAt: meeting.ReadyAt || '',
@@ -203,6 +285,7 @@ function resolveRequestingActor(body) {
 function resolveActorForMeeting(body) {
   var meeting = getMeetingById(body.meetingId);
   if (!meeting) return { ok: false, error: 'Meeting not found' };
+  meeting = settleIfExpired(meeting); // a RINGING call past its 45s fuse must never look answerable
   var conversation = getConversationById(meeting.ConversationId);
   if (!conversation) return { ok: false, error: 'Meeting not found' };
 
@@ -288,6 +371,74 @@ function actionRequestMeeting(body) {
   touchMeetingCache(conversation.ConversationId);
   notifyMeetingEvent(conversation, actor.actorType, 'requested', meeting);
 
+  return ok({ meeting: publicMeetingFields(meeting) });
+}
+
+/**
+ * Public action. "Video Call Now" - an instant call rather than a scheduled
+ * REQUESTED one: no purpose/date/time, starts straight in RINGING, and rings
+ * for RINGING_TIMEOUT_MS before self-settling to MISSED (see
+ * settleIfExpired). Same identity rules as actionRequestMeeting
+ * (resolveRequestingActor) - either side may start one, a customer side
+ * needs a real signed-in account.
+ *
+ * No email is sent for the ring itself (see notifyMeetingEvent's isNowCall
+ * handling) - it is a live, poll-driven signal only (activeIncomingCall, via
+ * Chat.gs's getConversation), so it can only ever reach someone whose chat
+ * is already open. A MISSED call is the one part of this that IS worth an
+ * email, since by definition nobody was watching live for it.
+ */
+function actionStartVideoCallNow(body) {
+  var actor = resolveRequestingActor(body);
+  if (!actor.ok) return fail(actor.error);
+  var conversation = actor.conversation;
+
+  // One active call per conversation at a time - a second "Now" tap while
+  // one is already ringing or connected must not spin up a second room.
+  var alreadyActive = listMeetingsForConversationLive(conversation.ConversationId).some(function (m) {
+    return m.Status === 'RINGING' || m.Status === 'ACCEPTED' || m.Status === 'READY';
+  });
+  if (alreadyActive) return fail('There is already an active video call on this conversation.');
+
+  var recipientType = actor.actorType === 'vendor' ? 'customer' : 'vendor';
+  var recipientId = recipientType === 'vendor' ? conversation.OwnerId : (conversation.CustomerToken || '');
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  var meeting;
+  try {
+    var meetingId = newId('meet');
+    var now = nowIso();
+    appendRowFromObject(getSheet('Meetings'), {
+      MeetingId: meetingId,
+      RequesterId: actor.actorId,
+      RequesterType: actor.actorType,
+      RecipientId: recipientId,
+      RecipientType: recipientType,
+      ConversationId: conversation.ConversationId,
+      StoreSlug: conversation.StoreSlug,
+      Purpose: 'Video call',
+      Notes: '',
+      RequestedDate: '',
+      RequestedTime: '',
+      Timezone: Session.getScriptTimeZone(),
+      Status: 'RINGING',
+      GoogleMeetSpaceName: '',
+      GoogleMeetUrl: '',
+      MeetFailureReason: '',
+      CreatedAt: now,
+      AcceptedAt: '',
+      ReadyAt: '',
+      CancelledAt: '',
+      EndedAt: '',
+      LastUpdatedAt: now
+    });
+    meeting = getMeetingById(meetingId);
+  } finally {
+    lock.releaseLock();
+  }
+
+  touchMeetingCache(conversation.ConversationId);
   return ok({ meeting: publicMeetingFields(meeting) });
 }
 
@@ -413,7 +564,7 @@ function actionListMeetingsForConversation(body) {
   if (!resolved.ok) return fail(resolved.error);
   if (!resolved.conversation) return ok({ meetings: [] });
 
-  var list = listMeetingsForConversationRaw(resolved.conversation.ConversationId);
+  var list = listMeetingsForConversationLive(resolved.conversation.ConversationId);
   return ok({ meetings: list.map(publicMeetingFields) });
 }
 
@@ -553,9 +704,9 @@ function createGoogleMeetSpace() {
 var MEETING_NOTIFY_COOLDOWN_SECONDS = 60; // short: distinct events (requested/accepted/ready), not a repeat-message flood like chat's
 function meetingNotifyCooldownKey(meetingId, kind) { return 'v1:meetings:notify:' + meetingId + ':' + kind; }
 
-var MEETING_NOTIFY_KINDS = ['requested', 'accepted', 'ready', 'declined', 'cancelled'];
+var MEETING_NOTIFY_KINDS = ['requested', 'accepted', 'ready', 'declined', 'cancelled', 'missed'];
 
-/** requesterLabel is folded in only where the copy actually needs it ('requested'); every other kind ignores it. */
+/** requesterLabel is folded in only where the copy actually needs it ('requested', 'missed'); every other kind ignores it. */
 function meetingEventCopy(kind, requesterLabel) {
   switch (kind) {
     case 'requested': return { subject: 'New meeting request', body: requesterLabel + ' requested a meeting with you on Mwakete.' };
@@ -563,12 +714,19 @@ function meetingEventCopy(kind, requesterLabel) {
     case 'ready': return { subject: 'Your Mwakete video meeting is ready', body: 'Your video meeting is ready. Open Mwakete Messages to join.' };
     case 'declined': return { subject: 'Meeting request declined', body: 'Your meeting request was declined.' };
     case 'cancelled': return { subject: 'Meeting cancelled', body: 'A scheduled meeting was cancelled.' };
+    case 'missed': return { subject: 'Missed video call', body: 'You missed a video call from ' + requesterLabel + ' on Mwakete.' };
     default: return null;
   }
 }
 
 function notifyMeetingEvent(conversation, actorType, kind, meeting) {
   if (MEETING_NOTIFY_KINDS.indexOf(kind) === -1) return;
+
+  // A "Video Call Now"'s accept/decline/ready/cancel all happen live, seconds
+  // apart, on two already-open screens - an email arriving after would only
+  // ever describe something already over. Only the terminal "missed" case is
+  // genuinely worth telling someone about after the fact.
+  if (isNowCall(meeting) && kind !== 'missed') return;
 
   // Vendor is always one of the two parties (Customer<->Vendor is the only
   // pairing this phase supports) and the only one ever reachable by email -

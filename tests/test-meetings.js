@@ -481,6 +481,171 @@ const baseFields = () => ({ purpose: 'Discuss my order', requestedDate: futureDa
   ok_('no meeting URL in the list view before acceptance', asCustomer.meetings[0].meetingUrl === '');
 }
 
+/* ============================================================ */
+/* 13. Video Call Now: creation, both directions, purpose/date-free  */
+/* ============================================================ */
+{
+  const box = makeContext();
+  seedOwnerAndCustomer(box);
+
+  const res = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
+  ok_('customer can start a Video Call Now', res.ok === true, JSON.stringify(res));
+  ok_('status starts RINGING, not REQUESTED', res.ok && res.meeting.status === 'RINGING', res.ok && res.meeting.status);
+  ok_('no purpose or date/time is required', box.__db.Meetings[0].Purpose === 'Video call' && !box.__db.Meetings[0].RequestedDate);
+  ok_('ringingSecondsLeft is close to the full 45s window', res.meeting.ringingSecondsLeft >= 40 && res.meeting.ringingSecondsLeft <= 45, res.meeting.ringingSecondsLeft);
+  ok_('no meeting URL while ringing', res.meeting.meetingUrl === '');
+
+  const noSignIn = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-2' });
+  ok_('an unsigned-in customer cannot start a call, same bar as Request Meeting', noSignIn.ok === false && /sign in/i.test(noSignIn.error), JSON.stringify(noSignIn));
+
+  const conv = box.findOrCreateConversation({ OwnerId: 'own1' }, 'bong', 'anon-vendor-call', 'Cleo');
+  const vendorStarted = box.actionStartVideoCallNow({ token: 'owner-tok-1', conversationId: conv.ConversationId });
+  ok_('a vendor can also start a Video Call Now', vendorStarted.ok === true, JSON.stringify(vendorStarted));
+  ok_('RecipientId is the conversation\'s anonymous identity, same as a scheduled vendor-initiated request',
+    box.__db.Meetings[1].RecipientId === 'anon-vendor-call');
+}
+
+/* ============================================================ */
+/* 14. Video Call Now: one active call per conversation at a time    */
+/* ============================================================ */
+{
+  const box = makeContext();
+  seedOwnerAndCustomer(box);
+  box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
+
+  const secondWhileRinging = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
+  ok_('a second Now-call while one is already RINGING is refused', secondWhileRinging.ok === false, JSON.stringify(secondWhileRinging));
+  ok_('...and no second row was written', box.__db.Meetings.length === 1);
+
+  const meetingId = box.__db.Meetings[0].MeetingId;
+  box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId, accept: true });
+  ok_('the accepted call really did reach READY (sanity check for the next assertion)', box.__db.Meetings[0].Status === 'READY', box.__db.Meetings[0].Status);
+
+  const secondWhileReady = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
+  ok_('a second Now-call while one is READY (connected) is also refused', secondWhileReady.ok === false);
+
+  box.actionEndMeeting({ storeSlug: 'bong', customerToken: 'anon-1', meetingId });
+  const afterEnded = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
+  ok_('a new Now-call is allowed again once the previous one has ENDED', afterEnded.ok === true, JSON.stringify(afterEnded));
+}
+
+/* ============================================================ */
+/* 15. Video Call Now: accept / decline / cancel reuse the same     */
+/*     transition machinery as a scheduled request                  */
+/* ============================================================ */
+{
+  const box = makeContext();
+  seedOwnerAndCustomer(box);
+
+  // Accept -> READY, same Meet-space path as REQUESTED.
+  let m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' }).meeting;
+  let accepted = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
+  ok_('accepting a RINGING call moves it to READY', accepted.ok === true && accepted.meeting.status === 'READY', JSON.stringify(accepted));
+
+  // Decline.
+  m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a2', customerAuthToken: 'cust-tok-1' }).meeting;
+  let declined = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: false });
+  ok_('declining a RINGING call moves it to DECLINED', declined.ok === true && declined.meeting.status === 'DECLINED');
+
+  // The CALLER hangs up before pickup.
+  m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a3', customerAuthToken: 'cust-tok-1' }).meeting;
+  let cancelled = box.actionCancelMeeting({ storeSlug: 'bong', customerToken: 'a3', meetingId: m.meetingId });
+  ok_('the caller can cancel a RINGING call before it is answered', cancelled.ok === true, JSON.stringify(cancelled));
+  ok_('status is CANCELLED', box.__db.Meetings[2].Status === 'CANCELLED');
+}
+
+/* ============================================================ */
+/* 16. Video Call Now: expiry to MISSED, and that it self-corrects   */
+/* ============================================================ */
+{
+  const box = makeContext();
+  seedOwnerAndCustomer(box);
+  const m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' }).meeting;
+
+  // No server-side timer exists - simulate the 45s fuse having burned out by
+  // backdating CreatedAt, the same way a slow-to-poll client would find it.
+  box.__db.Meetings[0].CreatedAt = new Date(Date.now() - 46 * 1000).toISOString();
+
+  const stillTriesToRespond = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
+  ok_('accepting an expired ring is refused, not silently connected', stillTriesToRespond.ok === false, JSON.stringify(stillTriesToRespond));
+  ok_('...because it was lazily settled to MISSED on that same read', box.__db.Meetings[0].Status === 'MISSED', box.__db.Meetings[0].Status);
+  ok_('no Meet API call was made for an expired ring', box.__meetApi.callCount === 0);
+
+  const cancelAfterMissed = box.actionCancelMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: m.meetingId });
+  ok_('a MISSED call is terminal - cannot be cancelled either', cancelAfterMissed.ok === false);
+
+  // A second, independent Now-call is allowed once the first one has settled.
+  const afterMissed = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' });
+  ok_('a new Now-call is allowed once the missed one has settled', afterMissed.ok === true, JSON.stringify(afterMissed));
+}
+
+/* ============================================================ */
+/* 17. Video Call Now: notifications - live events are silent,      */
+/*     only a genuinely missed call is worth an email                */
+/* ============================================================ */
+{
+  const box = makeContext();
+  seedOwnerAndCustomer(box);
+
+  // Customer calls, vendor accepts immediately - both live, neither needs email.
+  let m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' }).meeting;
+  ok_('starting a call sends no email (the ring itself is a live, poll-driven signal only)', box.__sentEmails.length === 0);
+  box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
+  ok_('accepting a Now-call sends no email either - it already happened live', box.__sentEmails.length === 0);
+
+  // Customer calls, vendor never answers -> vendor is reachable, so THEY get told.
+  m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a2', customerAuthToken: 'cust-tok-1' }).meeting;
+  box.__db.Meetings[1].CreatedAt = new Date(Date.now() - 46 * 1000).toISOString();
+  box.actionListMeetingsForConversation({ storeSlug: 'bong', customerToken: 'a2' }); // whichever side polls next settles it
+  ok_('a customer-initiated call the vendor missed emails the vendor', box.__sentEmails.length === 1, JSON.stringify(box.__sentEmails));
+  ok_('...naming the caller', /Alice/.test(box.__sentEmails[0].body) || /customer/i.test(box.__sentEmails[0].body), box.__sentEmails[0].body);
+
+  // Vendor calls, customer never answers -> customer is unreachable, and the
+  // vendor (who placed the call and was watching their own screen) needs no
+  // email about their own unanswered call.
+  const conv = box.findOrCreateConversation({ OwnerId: 'own1' }, 'bong', 'anon-vcall', 'Dot');
+  const vm_ = box.actionStartVideoCallNow({ token: 'owner-tok-1', conversationId: conv.ConversationId }).meeting;
+  const rowIndex = box.__db.Meetings.findIndex((r) => r.MeetingId === vm_.meetingId);
+  box.__db.Meetings[rowIndex].CreatedAt = new Date(Date.now() - 46 * 1000).toISOString();
+  box.actionListMeetingsForConversation({ token: 'owner-tok-1', conversationId: conv.ConversationId });
+  ok_('a vendor-initiated missed call sends no email (vendor already knows, customer unreachable)', box.__sentEmails.length === 1);
+}
+
+/* ============================================================ */
+/* 18. activeIncomingCall / ringingConversationIdsForVendor           */
+/*     - the primitives Chat.gs's polls surface a ring through       */
+/* ============================================================ */
+{
+  const box = makeContext();
+  seedOwnerAndCustomer(box);
+  const m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' }).meeting;
+  const convId = box.__db.Meetings[0].ConversationId;
+
+  const forVendor = box.activeIncomingCall(convId, 'vendor');
+  ok_('the vendor (recipient) sees the incoming call', forVendor && forVendor.meetingId === m.meetingId, JSON.stringify(forVendor));
+  const forCustomer = box.activeIncomingCall(convId, 'customer');
+  ok_('the customer (caller) does NOT see it as an incoming call to themselves', forCustomer === null, JSON.stringify(forCustomer));
+
+  const ringingIds = box.ringingConversationIdsForVendor('own1');
+  ok_('ringingConversationIdsForVendor flags the right conversation', !!ringingIds[convId], JSON.stringify(ringingIds));
+  const ringingIdsOtherOwner = box.ringingConversationIdsForVendor('own2');
+  ok_('...and not some other store\'s owner', Object.keys(ringingIdsOtherOwner).length === 0, JSON.stringify(ringingIdsOtherOwner));
+
+  box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: false });
+  ok_('once declined, it no longer shows as an incoming call', box.activeIncomingCall(convId, 'vendor') === null);
+}
+
+/* ============================================================ */
+/* 19. Chat.gs wiring - static check that the poll responses         */
+/*     actually surface what sections 13-18 proved works             */
+/* ============================================================ */
+{
+  ok_('Chat.gs\'s getConversation surfaces activeIncomingCall in its response',
+    /incomingCall:\s*activeIncomingCall\(/.test(chatSrc));
+  ok_('Chat.gs\'s getVendorConversations surfaces ringingConversationIdsForVendor per row',
+    /ringingConversationIdsForVendor\(/.test(chatSrc) && /hasIncomingCall/.test(chatSrc));
+}
+
 /* ---------- report ---------- */
 const failed = R.filter((r) => r[0] === 'FAIL');
 R.forEach((r) => console.log(r[0] + '  ' + r[1] + (r[2] ? '   -> ' + r[2] : '')));

@@ -413,10 +413,17 @@ controls that mailbox, which is exactly what the email-code flow proves.
 ## Video Call (meeting requests) — one-time setup
 
 Customers and vendors can request a meeting from inside their existing chat
-thread; accepting one sets up a video call automatically. Customer↔Admin and
-Vendor↔Admin meetings are **not** part of this — only Customer↔Vendor, on a
-single existing conversation. See `apps-script/Meetings.gs`'s header comment
-for why.
+thread; accepting one sets up a video call automatically. There is also
+**Video Call Now** — an instant call rather than a scheduled one: it starts
+RINGING immediately, the other side sees a live "Incoming Video Call" banner
+in their chat within roughly 5–20 seconds *if their chat window is already
+open* (it rides the existing chat poll — there is no push-notification
+service on this site, so someone who isn't looking at the page has no way to
+be alerted), and it self-settles to "No answer" after 45 seconds if nobody
+picks up. Both features share the same backend setup below. Customer↔Admin
+and Vendor↔Admin meetings are **not** part of this — only Customer↔Vendor, on
+a single existing conversation. See `apps-script/Meetings.gs`'s header
+comment for why.
 
 **Until the scope below is added, accepting a meeting will fail** (safely —
 the request itself still works, the meeting just sits with a "Setup failed,
