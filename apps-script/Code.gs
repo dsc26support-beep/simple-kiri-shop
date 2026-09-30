@@ -22,7 +22,7 @@ var PUBLIC_POST_ACTIONS = [
   // resolveMeetingActor() in Meetings.gs (which itself composes
   // resolveChatRequest, requireAuth and requireCustomerAuth - see that
   // file's header for the full identity story).
-  'requestMeeting', 'respondToMeeting', 'retryMeetingSpace', 'cancelMeeting',
+  'requestMeeting', 'startVideoCallNow', 'respondToMeeting', 'retryMeetingSpace', 'cancelMeeting',
   'endMeeting', 'listMeetingsForConversation',
   // Customer accounts (passwordless email code) - all public; getProfile/logout
   // validate their own customer token internally via requireCustomerAuth.
@@ -73,7 +73,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'openorders2-2026-09-25';
+var APP_VERSION = 'videocallnow1-2026-09-30';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -388,6 +388,7 @@ function doPost(e) {
         case 'sendChatImage': return jsonOut(actionSendChatImage(body));
         case 'setTyping': return jsonOut(actionSetTyping(body));
         case 'requestMeeting': return jsonOut(actionRequestMeeting(body));
+        case 'startVideoCallNow': return jsonOut(actionStartVideoCallNow(body));
         case 'respondToMeeting': return jsonOut(actionRespondToMeeting(body));
         case 'retryMeetingSpace': return jsonOut(actionRetryMeetingSpace(body));
         case 'cancelMeeting': return jsonOut(actionCancelMeeting(body));

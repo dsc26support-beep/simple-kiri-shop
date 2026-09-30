@@ -336,6 +336,7 @@ function initChatWindow() {
     }
 
     showTyping(!!res.otherPartyTyping);
+    handleIncomingCall(res.incomingCall);
 
     if (!isPoll) {
       stopChatLoadingMessage();
@@ -460,6 +461,8 @@ function initChatWindow() {
     };
   }
 
+  let activeMeetingsUi = null; // the { stop } handle mount() returns, so an incoming-ring's fast poll doesn't outlive the panel
+
   async function openMeetingsPanel() {
     meetingPanelHost.classList.remove('hidden');
     try {
@@ -471,18 +474,112 @@ function initChatWindow() {
     // Re-mounted fresh on every open, not just refreshed - cheap (one small,
     // server-side-cached read) and guarantees no stale card or abandoned
     // request-form draft can ever be left showing from a previous open.
-    window.MwaketeMeetings.mount(meetingPanelHost, meetingsCtx());
+    activeMeetingsUi = window.MwaketeMeetings.mount(meetingPanelHost, meetingsCtx());
+    meetingPanelHost.classList.add('meeting-panel--mounted');
   }
 
   function closeMeetingsPanel() {
     meetingPanelHost.classList.add('hidden');
+    meetingPanelHost.classList.remove('meeting-panel--mounted');
+    if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
+    activeMeetingsUi = null;
+    shownIncomingCallId = null;
   }
 
   if (videoCallBtn) {
     videoCallBtn.addEventListener('click', () => {
-      if (meetingPanelHost.classList.contains('hidden')) openMeetingsPanel();
+      // Hidden -> open. Showing only the lightweight incoming-call banner
+      // below (not yet mounted) -> promote to the full panel. Fully open ->
+      // close. This is the one place all three of that banner's states meet
+      // a single button, so it has to check both, not just "hidden".
+      const isMounted = meetingPanelHost.classList.contains('meeting-panel--mounted');
+      if (meetingPanelHost.classList.contains('hidden') || !isMounted) openMeetingsPanel();
       else closeMeetingsPanel();
     });
+  }
+
+  /**
+   * Incoming Video Call Now - a lightweight, NOT-lazy-loaded banner (plain
+   * DOM + Api, same as the rest of this file), because a ring must reach
+   * someone whose chat is open even if they have never opened the Video
+   * Call panel and so never triggered meetings-ui.js to load. Rides the
+   * SAME getConversation poll this file already runs (see loadConversation)
+   * - see Chat.gs's incomingCall field and Meetings.gs's activeIncomingCall
+   * for where this comes from; costs zero extra requests.
+   *
+   * Once the full panel is mounted, this gets out of the way entirely - the
+   * module's own card list already shows the same RINGING meeting with
+   * Accept/Decline, refreshed by its own bounded fast poll.
+   */
+  let shownIncomingCallId = null;
+
+  function handleIncomingCall(call) {
+    if (meetingPanelHost.classList.contains('meeting-panel--mounted')) return;
+
+    if (!call) {
+      if (shownIncomingCallId) {
+        shownIncomingCallId = null;
+        closeMeetingsPanel();
+      }
+      return;
+    }
+    if (shownIncomingCallId === call.meetingId) return; // already showing this exact call
+    shownIncomingCallId = call.meetingId;
+    playChatNotificationSound();
+    renderIncomingCallBanner(call);
+  }
+
+  function renderIncomingCallBanner(call) {
+    meetingPanelHost.classList.remove('hidden');
+    meetingPanelHost.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'meeting-card meeting-card--ringing';
+    const top = document.createElement('div');
+    top.className = 'meeting-card-top';
+    const label = document.createElement('span');
+    label.className = 'meeting-card-purpose';
+    label.textContent = 'Incoming Video Call';
+    top.appendChild(label);
+    card.appendChild(top);
+
+    const actions = document.createElement('div');
+    actions.className = 'meeting-card-actions';
+    const acceptBtn = document.createElement('button');
+    acceptBtn.type = 'button';
+    acceptBtn.className = 'btn btn-primary';
+    acceptBtn.textContent = 'Accept';
+    const declineBtn = document.createElement('button');
+    declineBtn.type = 'button';
+    declineBtn.className = 'btn';
+    declineBtn.textContent = 'Decline';
+    actions.appendChild(acceptBtn);
+    actions.appendChild(declineBtn);
+    card.appendChild(actions);
+    meetingPanelHost.appendChild(card);
+
+    function respond(accept) {
+      acceptBtn.disabled = true;
+      declineBtn.disabled = true;
+      Api.post('respondToMeeting', Object.assign(meetingsCtx().params(), { meetingId: call.meetingId, accept })).then((res) => {
+        if (!res.ok) {
+          acceptBtn.disabled = false;
+          declineBtn.disabled = false;
+          alert(res.error || 'Something went wrong. Please try again.');
+          return;
+        }
+        if (accept) {
+          // Promote to the full (lazy-loaded) panel - shows Join Video Call
+          // once ready, or Setup failed/Retry if the Meet space couldn't be
+          // created.
+          openMeetingsPanel();
+        } else {
+          closeMeetingsPanel(); // done - no need to pull in the full module for a plain decline
+        }
+      });
+    }
+    acceptBtn.addEventListener('click', () => respond(true));
+    declineBtn.addEventListener('click', () => respond(false));
   }
 
   function scheduleNextPoll() {

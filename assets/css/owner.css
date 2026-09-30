@@ -558,6 +558,24 @@
   vertical-align: middle;
 }
 
+/* Best-effort inbox-list hint for a call ringing on a conversation the
+   vendor hasn't opened yet - see renderConversationListItem's comment. */
+.conversation-list-item.is-ringing {
+  border-left-color: var(--color-purple);
+}
+
+.conversation-item-ringing-tag {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  margin-right: 0.4em;
+  border-radius: 999px;
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .conversation-item-time {
   flex-shrink: 0;
   font-size: 0.75rem;
