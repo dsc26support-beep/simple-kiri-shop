@@ -150,10 +150,11 @@
       var row = el('div', 'meeting-trigger-row');
 
       // Hidden rather than disabled while a call is already ringing/connected
-      // on this conversation - the backend refuses a second one outright
+      // on this conversation, or a startVideoCallNow request is still in
+      // flight (callNowPending) - the backend refuses a second one outright
       // (Meetings.gs's actionStartVideoCallNow), so offering a button that
       // would only ever fail is worse than not offering it.
-      if (!hasActiveCall()) {
+      if (!hasActiveCall() && !callNowPending) {
         var callBtn = el('button', 'btn btn-primary', 'Video Call Now');
         callBtn.type = 'button';
         callBtn.addEventListener('click', startCallNow);
@@ -178,10 +179,22 @@
      * window/owner-messages.js already renders from the SAME poll this panel
      * itself uses (Chat.gs's getConversation), not from anything in this file.
      */
+    // Guards the gap between a tap and the response landing - without it, a
+    // double-tap (easy to trigger on mobile with any network lag) fires two
+    // startVideoCallNow requests; the first creates the RINGING call, the
+    // second hits the backend's own one-call-per-conversation guard and
+    // surfaces as a spurious "already an active video call" alert for what
+    // the customer experienced as a single tap.
+    var callNowPending = false;
     function startCallNow() {
+      if (callNowPending) return;
+      callNowPending = true;
+      renderTrigger();
       return Api.post('startVideoCallNow', ctx.params()).then(function (res) {
+        callNowPending = false;
         if (!res.ok) {
           alert(friendlyError(res));
+          renderTrigger();
           return;
         }
         var idx = meetings.findIndex(function (m) { return m.meetingId === res.meeting.meetingId; });
@@ -346,7 +359,7 @@
 
       if (m.status === 'MISSED') {
         card.appendChild(el('p', 'meeting-card-hint', 'No answer.'));
-        actions.appendChild(actionButton('Call Again', 'btn-primary', isBusy, startCallNow));
+        actions.appendChild(actionButton('Call Again', 'btn-primary', isBusy || callNowPending, startCallNow));
       }
 
       if (m.status === 'ACCEPTED' && m.meetFailed) {
