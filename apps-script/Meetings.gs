@@ -95,7 +95,11 @@ function settleIfExpired(meeting) {
   if (!isRingingExpired(meeting)) return meeting;
   updateRowFromObject(getSheet('Meetings'), meeting.__row, { Status: 'MISSED', LastUpdatedAt: nowIso() });
   touchMeetingCache(meeting.ConversationId);
-  var updated = getMeetingById(meeting.MeetingId);
+  // See reloadMeetingOrFallback's header comment (defined further down, but
+  // hoisted like every top-level function here) - the same "should always
+  // find it, but this function must never hand a caller something it can
+  // crash on" reasoning applies to every reload-after-write in this file.
+  var updated = reloadMeetingOrFallback(meeting.MeetingId, meeting);
   var conversation = getConversationById(meeting.ConversationId);
   if (conversation) notifyMeetingEvent(conversation, meeting.RequesterType, 'missed', updated);
   return updated;
@@ -478,12 +482,28 @@ function actionRespondToMeeting(body) {
     updateRowFromObject(sheet, meeting.__row, { Status: 'DECLINED', LastUpdatedAt: now });
     touchMeetingCache(meeting.ConversationId);
     notifyMeetingEvent(actor.conversation, actor.actorType, 'declined', meeting);
-    return ok({ meeting: publicMeetingFields(getMeetingById(meeting.MeetingId)) });
+    return ok({ meeting: publicMeetingFields(reloadMeetingOrFallback(meeting.MeetingId, meeting)) });
   }
 
   updateRowFromObject(sheet, meeting.__row, { Status: 'ACCEPTED', AcceptedAt: now, LastUpdatedAt: now });
   touchMeetingCache(meeting.ConversationId);
-  var afterAccept = attemptMeetSpaceCreation(getMeetingById(meeting.MeetingId));
+  var reloaded = getMeetingById(meeting.MeetingId);
+  if (!reloaded) {
+    // Should be unreachable - this row was found, authorized against, and
+    // just written to by this same request - but attemptMeetSpaceCreation's
+    // whole contract is "never throws", so a bad reload here must degrade to
+    // a recorded, retryable failure rather than an uncaught crash. Recorded
+    // against meeting.__row (the reference we still hold), not the failed
+    // reload, so a later read shows Setup failed/Retry instead of silently
+    // stuck "Setting up...".
+    Logger.log('actionRespondToMeeting: could not re-read meeting ' + meeting.MeetingId + ' immediately after marking it ACCEPTED');
+    updateRowFromObject(sheet, meeting.__row, {
+      MeetFailureReason: 'Could not confirm the meeting after accepting.', LastUpdatedAt: nowIso()
+    });
+    touchMeetingCache(meeting.ConversationId);
+    return ok({ meeting: publicMeetingFields(getMeetingById(meeting.MeetingId) || meeting) });
+  }
+  var afterAccept = attemptMeetSpaceCreation(reloaded);
   notifyMeetingEvent(actor.conversation, actor.actorType, afterAccept.Status === 'READY' ? 'ready' : 'accepted', afterAccept);
 
   return ok({ meeting: publicMeetingFields(afterAccept) });
@@ -594,11 +614,28 @@ var GOOGLE_MEET_API_URL = 'https://meet.googleapis.com/v2/spaces';
  * MeetFailureReason set on failure - never throws, so a failure here can
  * never break the accept request that called it).
  */
+/**
+ * getMeetingById(meeting.MeetingId) immediately after writing to that exact
+ * row should always find it - but "should always" is not the same guarantee
+ * as attemptMeetSpaceCreation's own documented "never throws", so every
+ * re-fetch in this function goes through here instead of a bare call: on the
+ * rare chance the reload comes back empty, fall back to the last known
+ * in-memory row rather than handing the caller something it can crash on.
+ * The sheet write itself already landed either way - this only affects what
+ * this one response reflects back; the next read picks up the true state.
+ */
+function reloadMeetingOrFallback(meetingId, fallback) {
+  var reloaded = getMeetingById(meetingId);
+  if (reloaded) return reloaded;
+  Logger.log('attemptMeetSpaceCreation: could not re-read meeting ' + meetingId + ' immediately after writing to it');
+  return fallback;
+}
+
 function attemptMeetSpaceCreation(meeting) {
   if (meeting.GoogleMeetSpaceName && meeting.GoogleMeetUrl) {
     if (meeting.Status !== 'READY') {
       updateRowFromObject(getSheet('Meetings'), meeting.__row, { Status: 'READY', ReadyAt: nowIso(), LastUpdatedAt: nowIso() });
-      return getMeetingById(meeting.MeetingId);
+      return reloadMeetingOrFallback(meeting.MeetingId, meeting);
     }
     return meeting;
   }
@@ -618,7 +655,7 @@ function attemptMeetSpaceCreation(meeting) {
       MeetFailureReason: String(result.error || 'unknown error').slice(0, 500),
       LastUpdatedAt: nowIso()
     });
-    return getMeetingById(meeting.MeetingId);
+    return reloadMeetingOrFallback(meeting.MeetingId, meeting);
   }
 
   updateRowFromObject(getSheet('Meetings'), meeting.__row, {
@@ -629,7 +666,7 @@ function attemptMeetSpaceCreation(meeting) {
     ReadyAt: nowIso(),
     LastUpdatedAt: nowIso()
   });
-  return getMeetingById(meeting.MeetingId);
+  return reloadMeetingOrFallback(meeting.MeetingId, meeting);
 }
 
 /**
