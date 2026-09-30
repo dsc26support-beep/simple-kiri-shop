@@ -239,7 +239,11 @@ function meetingsCtx() {
     // a different conversation while this panel is open.
     params: () => ({ token: Auth.getToken(), conversationId: activeConversationId }),
     canRequest: () => true, // a vendor is always a real, authenticated account - no sign-in gate needed
-    signInHint: null
+    signInHint: null,
+    counterpartyName: () => {
+      const conv = ownerConversations.find((c) => c.conversationId === activeConversationId);
+      return (conv && conv.customerName) || '';
+    }
   };
 }
 
@@ -269,6 +273,7 @@ function closeMeetingsPanel() {
   if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
   activeMeetingsUi = null;
   shownIncomingCallId = null;
+  RingingLoop.stopAll();
 }
 
 function onVideoCallClick() {
@@ -298,6 +303,7 @@ function handleIncomingCall(call) {
 
   if (!call) {
     if (shownIncomingCallId) {
+      RingingLoop.stop(shownIncomingCallId);
       shownIncomingCallId = null;
       closeMeetingsPanel();
     }
@@ -306,6 +312,7 @@ function handleIncomingCall(call) {
   if (shownIncomingCallId === call.meetingId) return;
   shownIncomingCallId = call.meetingId;
   playChatNotificationSound();
+  RingingLoop.start(call.meetingId);
   renderIncomingCallBanner(call);
 }
 
@@ -340,6 +347,7 @@ function renderIncomingCallBanner(call) {
   host.appendChild(card);
 
   function respond(accept) {
+    RingingLoop.stop(call.meetingId); // stop the moment the vendor acts, not on the next poll
     acceptBtn.disabled = true;
     declineBtn.disabled = true;
     Api.post('respondToMeeting', Object.assign(meetingsCtx().params(), { meetingId: call.meetingId, accept })).then((res) => {

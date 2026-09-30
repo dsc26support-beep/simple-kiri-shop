@@ -110,6 +110,12 @@
    *             when canRequest() is false, so the customer knows why rather
    *             than seeing nothing: a link (label, pointing at href)
    *             followed by trailing text (after).
+   *   counterpartyName(): string|undefined - optional. The name of the
+   *             OTHER party in this conversation (a store name for a
+   *             customer caller, a customer's name for a vendor caller),
+   *             used only in the caller's own "Calling <name>..." hint
+   *             below. Falls back to a name-less "Calling..." if omitted
+   *             or empty.
    * }
    */
   function mount(container, ctx) {
@@ -326,8 +332,16 @@
           callAction('respondToMeeting', m.meetingId, { accept: false });
         }));
       } else if (m.status === 'RINGING') {
-        card.appendChild(el('p', 'meeting-card-hint',
-          'Calling…' + (m.ringingSecondsLeft != null ? ' (' + m.ringingSecondsLeft + 's)' : '')));
+        var callingHint = el('p', 'meeting-card-hint meeting-card-hint--calling');
+        var counterpartyName = (typeof ctx.counterpartyName === 'function' && ctx.counterpartyName()) || '';
+        callingHint.appendChild(document.createTextNode(counterpartyName ? 'Calling ' + counterpartyName : 'Calling'));
+        var dots = el('span', 'meeting-calling-dots');
+        dots.appendChild(el('span', 'meeting-calling-dot meeting-calling-dot--1'));
+        dots.appendChild(el('span', 'meeting-calling-dot meeting-calling-dot--2'));
+        dots.appendChild(el('span', 'meeting-calling-dot meeting-calling-dot--3'));
+        callingHint.appendChild(dots);
+        if (m.ringingSecondsLeft != null) callingHint.appendChild(document.createTextNode(' (' + m.ringingSecondsLeft + 's)'));
+        card.appendChild(callingHint);
       }
 
       if (m.status === 'MISSED') {
@@ -389,6 +403,21 @@
       // actually showing the trigger, not the open form.
       if (!formWrap.querySelector('.meeting-request-form')) renderTrigger();
       scheduleRingPollIfNeeded();
+      reconcileRingingSound();
+    }
+
+    // Both the caller (this panel) and the recipient hear a repeating ring
+    // while a meeting is RINGING (see the caller's own "Calling..." hint
+    // above) - RingingLoop.start is a no-op if that meetingId is already
+    // looping, so calling it on every render is cheap and idempotent.
+    // stopExcept clears any id that stopped ringing (answered, declined,
+    // cancelled, or timed out to MISSED) without this panel needing to
+    // track "was this one playing" itself.
+    function reconcileRingingSound() {
+      var ringingIds = meetings.filter(function (m) { return m.status === 'RINGING'; })
+        .map(function (m) { return m.meetingId; });
+      ringingIds.forEach(function (id) { RingingLoop.start(id); });
+      RingingLoop.stopExcept(ringingIds);
     }
 
     /**
@@ -412,6 +441,7 @@
     }
     function stopRingPolling() {
       if (ringPollTimer) { clearTimeout(ringPollTimer); ringPollTimer = null; }
+      RingingLoop.stopAll();
     }
 
     function refresh() {

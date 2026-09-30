@@ -1024,6 +1024,75 @@ function playChatNotificationSound() {
   }
 }
 
+/**
+ * One ring pulse for Video Call Now - a lower, two-beat telephone-style
+ * blip, deliberately distinct from playChatNotificationSound's brighter
+ * chime above so a ringing call is never confused for an ordinary new
+ * message.
+ */
+function playRingingTone() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    [
+      { freq: 480, start: 0, dur: 0.25 },
+      { freq: 480, start: 0.32, dur: 0.25 }
+    ].forEach(({ freq, start, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now + start);
+      gain.gain.linearRampToValueAtTime(0.15, now + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + start);
+      osc.stop(now + start + dur + 0.02);
+    });
+
+    setTimeout(() => ctx.close().catch(() => {}), 700);
+  } catch (e) {
+    // Web Audio unsupported/blocked - nothing to do.
+  }
+}
+
+const RINGING_LOOP_INTERVAL_MS = 3000;
+
+/**
+ * Repeats playRingingTone() for as long as a Video Call Now stays RINGING,
+ * keyed by meetingId. Both the caller's "Calling..." card (meetings-ui.js)
+ * and a recipient's incoming-call banner (chat-window.js/owner-messages.js)
+ * call start() on every re-render/poll tick - it's a no-op once that key is
+ * already looping, so nothing here has to track "did I already start this."
+ */
+const RingingLoop = (function () {
+  const timers = {};
+  function start(key) {
+    if (!key || timers[key]) return;
+    playRingingTone();
+    timers[key] = setInterval(playRingingTone, RINGING_LOOP_INTERVAL_MS);
+  }
+  function stop(key) {
+    if (timers[key]) {
+      clearInterval(timers[key]);
+      delete timers[key];
+    }
+  }
+  function stopAll() {
+    Object.keys(timers).forEach(stop);
+  }
+  function stopExcept(keepKeys) {
+    const keep = {};
+    (keepKeys || []).forEach((k) => { keep[k] = true; });
+    Object.keys(timers).forEach((k) => { if (!keep[k]) stop(k); });
+  }
+  return { start, stop, stopAll, stopExcept };
+})();
+
 const CHAT_TOAST_AUTO_DISMISS_MS = 5000;
 
 /**
