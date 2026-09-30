@@ -646,6 +646,44 @@ const baseFields = () => ({ purpose: 'Discuss my order', requestedDate: futureDa
     /ringingConversationIdsForVendor\(/.test(chatSrc) && /hasIncomingCall/.test(chatSrc));
 }
 
+/* ============================================================ */
+/* 20. reloadMeetingOrFallback / actionRespondToMeeting degrade      */
+/*     safely if a reload-right-after-write ever comes back empty,   */
+/*     instead of throwing - "never throws" was already this file's  */
+/*     own documented contract for attemptMeetSpaceCreation, this    */
+/*     just actually holds it everywhere a reload happens            */
+/* ============================================================ */
+{
+  const box = makeContext();
+  seedOwnerAndCustomer(box);
+
+  const fallback = { MeetingId: 'does-not-exist', Status: 'ACCEPTED' };
+  const reloaded = box.reloadMeetingOrFallback('does-not-exist', fallback);
+  ok_('reloadMeetingOrFallback returns the fallback rather than null when nothing matches', reloaded === fallback, JSON.stringify(reloaded));
+
+  const m = box.actionRequestMeeting(Object.assign(baseFields(), {
+    storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1'
+  })).meeting;
+  // Simulate the reload-after-write coming back empty (whatever the real
+  // cause on the deployed backend - this is the "should be unreachable"
+  // branch of actionRespondToMeeting) by deleting the row the instant it
+  // gets patched to ACCEPTED, before the code re-reads it.
+  const realUpdate = box.updateRowFromObject;
+  let patched = false;
+  box.updateRowFromObject = (sheet, rowNumber, patch) => {
+    realUpdate(sheet, rowNumber, patch);
+    if (patch.Status === 'ACCEPTED' && !patched) {
+      patched = true;
+      const idx = box.__db.Meetings.findIndex((r) => r.__row === rowNumber);
+      if (idx !== -1) box.__db.Meetings.splice(idx, 1);
+    }
+  };
+
+  const accepted = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
+  ok_('a failed reload after ACCEPTED never throws - it degrades to a normal ok() response', accepted.ok === true, JSON.stringify(accepted));
+  ok_('...never calls the Meet API on a row it could not confirm', box.__meetApi.callCount === 0, String(box.__meetApi.callCount));
+}
+
 /* ---------- report ---------- */
 const failed = R.filter((r) => r[0] === 'FAIL');
 R.forEach((r) => console.log(r[0] + '  ' + r[1] + (r[2] ? '   -> ' + r[2] : '')));
