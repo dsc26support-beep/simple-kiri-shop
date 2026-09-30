@@ -1025,12 +1025,13 @@ function playChatNotificationSound() {
 }
 
 /**
- * One ring pulse for Video Call Now - a bright, cheerful four-note
- * ascending arpeggio (not a real recording of anyone else's ringtone -
- * synthesized fresh via Web Audio, same technique as
- * playChatNotificationSound above, so there's nothing to host/license),
- * deliberately distinct in character from that chime so a ringing call is
- * never confused for an ordinary new message.
+ * One ring pulse for Video Call Now - "Palm Breeze," a gentle five-note
+ * upward run, airy and unhurried (synthesized fresh via Web Audio, same
+ * technique as playChatNotificationSound above, so there's nothing to
+ * host/license), deliberately distinct in character from that chime so a
+ * ringing call is never confused for an ordinary new message. Picked from
+ * ten original candidates previewed in an artifact - see the "Palm
+ * Breeze" entry there for the full set.
  */
 function playRingingTone() {
   try {
@@ -1040,10 +1041,11 @@ function playRingingTone() {
     const now = ctx.currentTime;
 
     [
-      { freq: 523.25, start: 0, dur: 0.16 }, // C5
-      { freq: 659.25, start: 0.11, dur: 0.16 }, // E5
-      { freq: 783.99, start: 0.22, dur: 0.16 }, // G5
-      { freq: 1046.5, start: 0.33, dur: 0.28 } // C6
+      { freq: 523.25, start: 0, dur: 0.11 }, // C5
+      { freq: 587.33, start: 0.09, dur: 0.11 }, // D5
+      { freq: 698.46, start: 0.18, dur: 0.11 }, // F5
+      { freq: 783.99, start: 0.27, dur: 0.11 }, // G5
+      { freq: 880, start: 0.36, dur: 0.24 } // A5
     ].forEach(({ freq, start, dur }) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
