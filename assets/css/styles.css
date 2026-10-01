@@ -168,6 +168,24 @@ header.site-header .container.header-top-row {
   justify-content: flex-start;
 }
 
+/* A flex item after the logo (flex:1, text-align:center) rather than
+   absolutely centred across the whole row - an absolutely positioned,
+   full-width box would start at the row's own left edge same as the logo
+   does, which fails verify-logo.js's "nothing sits further left than the
+   logo" check. This way the tagline's box always starts right of the logo,
+   and centres itself within whatever space remains alongside it (the header
+   menu button in the top-right corner is positioned outside this flex row,
+   so it doesn't compete for that space). min-width:0 lets the sentence wrap
+   onto a second line on a narrow phone instead of overflowing. */
+.header-tagline {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
 /* header-cart.js injects the cart button into the first container in the
    header - .header-top-row where a page has one, otherwise the plain
    .container that search.html and stores.html use. Either way the row needs
@@ -608,19 +626,15 @@ section {
     row-gap: var(--space-4);
   }
   .home-main > .hero { order: 1; }
-  /* Alibaba-inspired sections, search -> promo -> quick actions -> trust ->
-     categories -> discovery -> product grid. Every new section added here
-     needs its own order, same as the warning above says - .trending-stores
-     moved from 5 to 6 and now sits BEFORE .trending-products (7), doing the
-     job of the discovery carousel with the same component and data it always
-     had. */
-  .home-main > .home-promo { order: 2; }
+  /* Alibaba-inspired sections, search -> tips link -> quick actions -> trust
+     -> discovery -> product grid. Every new section added here needs its own
+     order, same as the warning above says. */
+  .home-main > .home-tips-link { order: 2; }
   .home-main > .home-quick-actions { order: 3; }
   .home-main > .home-trust { order: 4; }
-  .home-main > .categories { order: 5; }
-  .home-main > .trending-stores { order: 6; }
-  .home-main > .trending-products { order: 7; }
-  .home-main > noscript { order: 8; }
+  .home-main > .trending-stores { order: 5; }
+  .home-main > .trending-products { order: 6; }
+  .home-main > noscript { order: 7; }
 }
 
 /* Horizontally scrolling chip strips: the listing-type filter and the popular
@@ -6220,19 +6234,28 @@ html.has-remembered-email .login-remembered {
    dominate the homepage. Purple-on-pale, the same surface pairing the badge
    chips and category strip already use, so it reads as Mwakete rather than as
    an inserted advert. */
-.home-promo {
+.home-tips-link {
   padding-top: 0;
   padding-bottom: var(--space-2);
 }
 
-.home-promo-text {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
+.home-tips-link-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
   background: var(--color-purple-soft);
-  color: var(--color-ink);
-  border-radius: var(--radius);
+  color: var(--color-purple);
+  border-radius: 999px;
   font-size: 0.85rem;
-  text-align: center;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home-tips-link-item:hover,
+.home-tips-link-item:focus-visible {
+  background: var(--color-purple);
+  color: #fff;
 }
 
 .home-quick-actions {

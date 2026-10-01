@@ -827,36 +827,6 @@ function renderCategoryButtons(containerId) {
   ).join('');
 }
 
-/**
- * A horizontally scrolling category strip.
- *
- * Only the popular few by default, with a "View all categories" link at the
- * end - a full-width card per category would eat the whole first screen, and the point
- * of the strip is that a shopper can see products without scrolling past it.
- *
- * `opts.all` renders every active category instead (the browse page's own bar).
- * `opts.activeId` marks one as selected.
- */
-function renderCategoryStrip(containerId, opts) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  const o = opts || {};
-  const list = o.all ? activeCategories() : popularCategories();
-  const activeId = String(o.activeId || '');
-  const hrefFor = (id) => (o.hrefFor ? o.hrefFor(id) : `categories.html?category=${encodeURIComponent(id)}`);
-
-  const items = list.map((c) => {
-    const on = c.id === activeId;
-    return `<a class="chip-strip-item${on ? ' is-active' : ''}" data-category="${escapeHtml(c.id)}"` +
-      ` href="${hrefFor(c.id)}"${on ? ' aria-current="page"' : ''}>${escapeHtml(c.label)}</a>`;
-  });
-
-  if (!o.all) {
-    items.push('<a class="chip-strip-item chip-strip-item--more" href="categories.html">View all categories →</a>');
-  }
-  container.innerHTML = items.join('');
-}
-
 // Kept in sync with apps-script/Products.gs's BOOKING_CATEGORIES - a
 // Rentals/Services listing gets the date-range request flow instead of
 // cart/checkout.

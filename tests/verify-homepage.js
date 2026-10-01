@@ -25,37 +25,37 @@ async function open(browser, path, w, h) {
 const layout = (page) => page.evaluate(() => {
   const r = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; };
   const search = r('.search-box');
-  const promo = r('.home-promo');
+  const tipsLink = r('.home-tips-link');
   const quickActions = r('.home-quick-actions');
   const trust = r('.home-trust');
-  const cats = r('#category-strip');
   const stores = r('#trending-stores-list');
   const trending = r('#trending-products-list');
   const nav = document.querySelector('.bottom-nav');
   const navCs = nav ? getComputedStyle(nav) : null;
-  const strip = document.getElementById('category-strip');
   return {
     searchTop: search ? Math.round(search.top) : null,
     searchWidthPct: search ? Math.round((search.width / window.innerWidth) * 100) : null,
-    promoTop: promo ? Math.round(promo.top) : null,
+    tipsLinkTop: tipsLink ? Math.round(tipsLink.top) : null,
     quickActionsTop: quickActions ? Math.round(quickActions.top) : null,
     trustTop: trust ? Math.round(trust.top) : null,
-    catsTop: cats ? Math.round(cats.top) : null,
     storesTop: stores ? Math.round(stores.top) : null,
     trendingTop: trending ? Math.round(trending.top) : null,
-    // Alibaba-inspired order: brand/search -> promo -> quick actions -> trust
-    // -> categories -> discovery (Popular Stores, moved up) -> product grid.
-    orderOk: !!(search && promo && quickActions && trust && cats && stores && trending &&
-      search.top < promo.top && promo.top <= quickActions.top && quickActions.top <= trust.top &&
-      trust.top <= cats.top && cats.top < stores.top && stores.top < trending.top),
-    stripScrolls: strip ? strip.scrollWidth > strip.clientWidth + 1 : null,
-    stripOneRow: strip ? Math.round(strip.getBoundingClientRect().height) < 70 : null,
-    chipCount: document.querySelectorAll('#category-strip .chip-strip-item').length,
-    chipMinHeight: (() => { const c = document.querySelector('.chip-strip-item');
-      return c ? Math.round(c.getBoundingClientRect().height) : null; })(),
+    // Alibaba-inspired order: brand/search -> tips link -> quick actions ->
+    // trust -> discovery (Popular Stores, moved up) -> product grid. Popular
+    // Categories was removed from the homepage by request.
+    orderOk: !!(search && tipsLink && quickActions && trust && stores && trending &&
+      search.top < tipsLink.top && tipsLink.top <= quickActions.top && quickActions.top <= trust.top &&
+      trust.top < stores.top && stores.top < trending.top),
     quickActionCount: document.querySelectorAll('.quick-action-item').length,
-    quickActionStripScrolls: (() => { const q = document.querySelector('.quick-action-strip');
-      return q ? q.scrollWidth > q.clientWidth + 1 : null; })(),
+    // Count-independent: all tiles share one row rather than wrapping,
+    // regardless of whether that row happens to need horizontal scroll at
+    // this width for however many tiles exist today.
+    quickActionsOneRow: (() => {
+      const items = [...document.querySelectorAll('.quick-action-item')];
+      if (items.length < 2) return null;
+      const tops = items.map((el) => Math.round(el.getBoundingClientRect().top));
+      return tops.every((t) => Math.abs(t - tops[0]) <= 1);
+    })(),
     navDisplay: navCs ? navCs.display : null,
     gridCols: (() => { const g = document.getElementById('trending-products-list');
       return g ? getComputedStyle(g).gridTemplateColumns.split(' ').length : null; })(),
@@ -75,45 +75,36 @@ const layout = (page) => page.evaluate(() => {
     ok('mobile: the search box is prominent (>80% of the width)', m.searchWidthPct >= 80,
       String(m.searchWidthPct) + '%');
     // This threshold moved from 844 (the full first screen) to 1000 with the
-    // restructure: three new sections (promo, quick actions, trust strip) plus
-    // the discovery carousel now sit above the grid ON PURPOSE - that is the
-    // Alibaba-inspired information architecture this task asked for, not a
-    // regression. 1000 keeps this a real guard against the grid drifting
-    // arbitrarily far down, without re-litigating how many sections belong
-    // above it.
+    // restructure: the tips link, quick actions and trust strip sit above the
+    // grid ON PURPOSE - that is the Alibaba-inspired information architecture
+    // this task asked for, not a regression. 1000 keeps this a real guard
+    // against the grid drifting arbitrarily far down, without re-litigating
+    // how many sections belong above it.
     ok('mobile: products are reachable within a short scroll, not buried',
       m.trendingTop < 1000, String(m.trendingTop));
     // Discovery (Popular Stores, moved up) is the thing meant to replace the
     // old "reachable in one screen" promise - it goes first now.
     ok('mobile: the discovery row (Popular Stores) fits within the first screen',
       m.storesTop < 844, String(m.storesTop));
-    ok('mobile: the promo strip is above the categories', m.promoTop < m.catsTop,
-      JSON.stringify({ promoTop: m.promoTop, catsTop: m.catsTop }));
-    ok('mobile: five quick actions are shown', m.quickActionCount === 5, String(m.quickActionCount));
-    ok('mobile: the quick-action strip scrolls sideways rather than wrapping',
-      m.quickActionStripScrolls === true, String(m.quickActionStripScrolls));
+    ok('mobile: the Tips link is above the quick actions', m.tipsLinkTop < m.quickActionsTop,
+      JSON.stringify({ tipsLinkTop: m.tipsLinkTop, quickActionsTop: m.quickActionsTop }));
+    // Tips moved out of this strip and into its own link above it (by
+    // request), so four remain: Categories, Stores, Rentals, Services.
+    ok('mobile: four quick actions are shown', m.quickActionCount === 4, String(m.quickActionCount));
+    ok('mobile: the quick-action tiles stay on one row, not wrapping',
+      m.quickActionsOneRow === true, String(m.quickActionsOneRow));
     ok('mobile: the trust strip is present', m.trustTop !== null, String(m.trustTop));
-    ok('mobile: the category strip scrolls sideways', m.stripScrolls === true, String(m.stripScrolls));
-    ok('mobile: and stays one row tall', m.stripOneRow === true, String(m.stripOneRow));
-    ok('mobile: chips are a comfortable touch target (>=40px)', m.chipMinHeight >= 40, String(m.chipMinHeight));
-    // Counted from the taxonomy rather than written down, so adding a popular
-    // category is not a failing homepage test. What matters here is the two
-    // assertions above - the strip scrolls sideways and stays ONE ROW tall -
-    // which is why the count is free to grow: .chip-strip never wraps, so more
-    // chips cost scroll distance, not page height.
-    {
-      const popular = (require('fs').readFileSync('/home/user/simple-kiri-shop/assets/js/helpers.js', 'utf8')
-        .match(/const CATEGORIES = \[([\s\S]*?)\n\];/)[1].split('\n')
-        .filter((l) => /popular:\s*true/.test(l))).length;
-      ok('mobile: the popular categories plus View all, not every category',
-        m.chipCount === popular + 1, `${m.chipCount} chips for ${popular} popular`);
-    }
     ok('mobile: bottom nav is shown', m.navDisplay === 'grid', String(m.navDisplay));
     ok('mobile: nothing overflows sideways', m.noHorizontalOverflow === true);
 
-    const last = await page.evaluate(() =>
-      document.querySelector('#category-strip .chip-strip-item:last-child').textContent.trim());
-    ok('mobile: the strip ends with View all categories', /View all categories/.test(last), last);
+    const gone = await page.evaluate(() => ({
+      categoriesSection: !!document.querySelector('.categories'),
+      categoryStrip: !!document.getElementById('category-strip'),
+      homePromo: !!document.querySelector('.home-promo')
+    }));
+    ok('mobile: Popular Categories is gone from the homepage', !gone.categoriesSection && !gone.categoryStrip,
+      JSON.stringify(gone));
+    ok('mobile: the old promo strip is gone (replaced by the header tagline)', !gone.homePromo);
     await ctx.close();
   }
 
@@ -124,7 +115,6 @@ const layout = (page) => page.evaluate(() => {
     ok('tablet: same hierarchy, not a stretched phone', t.orderOk === true, JSON.stringify(t));
     ok('tablet: uses the extra width - more product columns than a phone',
       t.gridCols >= 3, String(t.gridCols));
-    ok('tablet: chips grow with the room', t.chipMinHeight >= 44, String(t.chipMinHeight));
     ok('tablet: bottom nav is hidden above 700px', t.navDisplay === 'none', String(t.navDisplay));
     ok('tablet: nothing overflows sideways', t.noHorizontalOverflow === true);
     await ctx.close();
@@ -156,7 +146,12 @@ const layout = (page) => page.evaluate(() => {
       Array.from(document.querySelectorAll('.quick-action-item')).map((a) => a.getAttribute('href')));
     ok('quick actions link to categories.html', hrefs.indexOf('categories.html') !== -1, hrefs.join(', '));
     ok('quick actions link to stores.html', hrefs.indexOf('stores.html') !== -1, hrefs.join(', '));
-    ok('quick actions link to customer-tips.html', hrefs.indexOf('customer-tips.html') !== -1, hrefs.join(', '));
+    const tipsHref = await page.evaluate(() => {
+      const el = document.querySelector('.home-tips-link-item');
+      return el ? el.getAttribute('href') : null;
+    });
+    ok('Tips links to customer-tips.html from its own link, not the quick-action strip',
+      tipsHref === 'customer-tips.html', String(tipsHref));
     ok('quick actions link to a real rentals filter',
       hrefs.indexOf('categories.html?category=rental') !== -1, hrefs.join(', '));
     ok('quick actions link to a real services filter',
@@ -208,14 +203,6 @@ const layout = (page) => page.evaluate(() => {
 
   /* ---------- the strips actually navigate ---------- */
   {
-    const { ctx, page } = await open(browser, '/index.html', 390, 844);
-    await page.click('#category-strip .chip-strip-item[data-category="food"]');
-    await page.waitForTimeout(700);
-    ok('tapping a category lands on a filtered search',
-      /categories\.html\?category=food$/.test(page.url()), page.url());
-    await ctx.close();
-  }
-  {
     // The [All|Products|Rentals|Services] strip was removed from the homepage
     // and the search page. ?type= still FILTERS - smart search builds those
     // links itself - there is simply no visible control for it any more, so
@@ -229,22 +216,6 @@ const layout = (page) => page.evaluate(() => {
     ok('the listing-type strip is gone from the homepage', !gone.strip);
     ok('and so is the section that wrapped it', !gone.section);
     ok('no stray type= links are left behind', !gone.anyTypeLink);
-    await ctx.close();
-  }
-  {
-    const { ctx, page } = await open(browser, '/index.html', 390, 844);
-    await page.click('#category-strip .chip-strip-item--more');
-    await page.waitForTimeout(700);
-    ok('View all categories opens the browse page',
-      /categories\.html$/.test(page.url()), page.url());
-    const n = await page.evaluate(() => document.querySelectorAll('.category-rail-item').length);
-    // Counted from the taxonomy, not written down here: a hardcoded number
-    // turns "we added a category" into a failing homepage test.
-    const expected = (require('fs').readFileSync('/home/user/simple-kiri-shop/assets/js/helpers.js', 'utf8')
-      .match(/const CATEGORIES = \[([\s\S]*?)\n\];/)[1].match(/id: '[a-z]+'/g) || []).length;
-    // +1 for Featured, which heads the rail and is deliberately not a member of
-    // CATEGORIES - see FEATURED_VIEW in helpers.js.
-    ok('and shows Featured plus every category there', n === expected + 1, `${n} of ${expected + 1}`);
     await ctx.close();
   }
 
