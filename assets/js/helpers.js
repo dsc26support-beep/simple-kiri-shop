@@ -467,7 +467,7 @@ function renderStars(rating, count) {
  *
  * READ-ONLY, because the whole card is one <a>: a <button> inside an anchor is
  * invalid HTML and navigates instead of explaining. These are read here, and
- * the page's "What do seller badges mean?" panel covers all of them.
+ * the page's "Badges?" panel covers all of them.
  *
  * Returns '' for a seller with none, so a card without badges is exactly the
  * card that existed before - no empty row, no stray spacing.

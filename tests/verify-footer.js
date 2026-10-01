@@ -106,7 +106,7 @@ const probe = (page) => page.evaluate(() => {
       await page2.waitForTimeout(700);
       const line = (await page2.textContent('.copyright') || '').replace(/\s+/g, ' ').trim();
       ok(`${file}: copyright line reads as asked`,
-        line === '©MainKT Enterprises Terms | Privacy', line);
+        line === '©MainKT Enterprise Terms | Privacy', line);
       const hrefs = await page2.$$eval('.copyright a', (as) => as.map((a) => a.getAttribute('href')));
       ok(`${file}: Terms then Privacy, both linked`,
         hrefs.length === 2 && hrefs[0] === prefix + 'terms.html' && hrefs[1] === prefix + 'privacy.html',
