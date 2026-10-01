@@ -467,7 +467,7 @@ function renderStars(rating, count) {
  *
  * READ-ONLY, because the whole card is one <a>: a <button> inside an anchor is
  * invalid HTML and navigates instead of explaining. These are read here, and
- * the page's "What do seller badges mean?" panel covers all of them.
+ * the page's "Badges?" panel covers all of them.
  *
  * Returns '' for a seller with none, so a card without badges is exactly the
  * card that existed before - no empty row, no stray spacing.
@@ -827,36 +827,6 @@ function renderCategoryButtons(containerId) {
   ).join('');
 }
 
-/**
- * A horizontally scrolling category strip.
- *
- * Only the popular few by default, with a "View all categories" link at the
- * end - a full-width card per category would eat the whole first screen, and the point
- * of the strip is that a shopper can see products without scrolling past it.
- *
- * `opts.all` renders every active category instead (the browse page's own bar).
- * `opts.activeId` marks one as selected.
- */
-function renderCategoryStrip(containerId, opts) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  const o = opts || {};
-  const list = o.all ? activeCategories() : popularCategories();
-  const activeId = String(o.activeId || '');
-  const hrefFor = (id) => (o.hrefFor ? o.hrefFor(id) : `categories.html?category=${encodeURIComponent(id)}`);
-
-  const items = list.map((c) => {
-    const on = c.id === activeId;
-    return `<a class="chip-strip-item${on ? ' is-active' : ''}" data-category="${escapeHtml(c.id)}"` +
-      ` href="${hrefFor(c.id)}"${on ? ' aria-current="page"' : ''}>${escapeHtml(c.label)}</a>`;
-  });
-
-  if (!o.all) {
-    items.push('<a class="chip-strip-item chip-strip-item--more" href="categories.html">View all categories →</a>');
-  }
-  container.innerHTML = items.join('');
-}
-
 // Kept in sync with apps-script/Products.gs's BOOKING_CATEGORIES - a
 // Rentals/Services listing gets the date-range request flow instead of
 // cart/checkout.
@@ -1025,12 +995,13 @@ function playChatNotificationSound() {
 }
 
 /**
- * One ring pulse for Video Call Now - a bright, cheerful four-note
- * ascending arpeggio (not a real recording of anyone else's ringtone -
- * synthesized fresh via Web Audio, same technique as
- * playChatNotificationSound above, so there's nothing to host/license),
- * deliberately distinct in character from that chime so a ringing call is
- * never confused for an ordinary new message.
+ * One ring pulse for Video Call Now - "Palm Breeze," a gentle five-note
+ * upward run, airy and unhurried (synthesized fresh via Web Audio, same
+ * technique as playChatNotificationSound above, so there's nothing to
+ * host/license), deliberately distinct in character from that chime so a
+ * ringing call is never confused for an ordinary new message. Picked from
+ * ten original candidates previewed in an artifact - see the "Palm
+ * Breeze" entry there for the full set.
  */
 function playRingingTone() {
   try {
@@ -1040,10 +1011,11 @@ function playRingingTone() {
     const now = ctx.currentTime;
 
     [
-      { freq: 523.25, start: 0, dur: 0.16 }, // C5
-      { freq: 659.25, start: 0.11, dur: 0.16 }, // E5
-      { freq: 783.99, start: 0.22, dur: 0.16 }, // G5
-      { freq: 1046.5, start: 0.33, dur: 0.28 } // C6
+      { freq: 523.25, start: 0, dur: 0.11 }, // C5
+      { freq: 587.33, start: 0.09, dur: 0.11 }, // D5
+      { freq: 698.46, start: 0.18, dur: 0.11 }, // F5
+      { freq: 783.99, start: 0.27, dur: 0.11 }, // G5
+      { freq: 880, start: 0.36, dur: 0.24 } // A5
     ].forEach(({ freq, start, dur }) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -1113,19 +1085,23 @@ const VIDEO_ICON_SVG =
  * state: {
  *   key: string - the meetingId this call belongs to.
  *   phase: 'ringing-caller' | 'ringing-recipient' | 'connecting' | 'ready' |
- *          'failed' | 'missed' | 'declined' | 'cancelled'
+ *          'failed'
  *   name: string - the other party's name/store name.
  *   secondsLeft: number|undefined - shown only in 'ringing-caller'.
  *   meetingUrl: string|undefined - the real Join link, 'ready' only.
  *   busy: boolean|undefined - disables the action buttons while a request
  *         for this exact call is already in flight (mirrors the same
  *         double-tap guard the small card list uses via busyMeetingId).
- *   onAccept/onDecline/onCancel/onRetry/onEnd/onCallAgain: functions.
+ *   onAccept/onDecline/onCancel/onRetry/onEnd: functions.
  * }
+ *
+ * A call that stops being live - missed, declined, cancelled, or ended -
+ * never shows here at all: the caller only ever calls hide() for those
+ * (see meetings-ui.js's reconcileOverlay), and that terminal state lives
+ * only as a card in the small history list, never full-screen.
  */
 const VideoCallOverlay = (function () {
   let root = null;
-  let currentKey = null;
 
   function build() {
     root = document.createElement('div');
@@ -1193,7 +1169,6 @@ const VideoCallOverlay = (function () {
 
   function show(state) {
     if (!root) build();
-    currentKey = state.key;
     root.classList.remove('hidden');
 
     root.querySelector('.video-call-overlay-avatar').textContent = initialsOf(state.name);
@@ -1244,41 +1219,16 @@ const VideoCallOverlay = (function () {
         }
         actions.appendChild(pillBtn('End Meeting', 'danger', busy, state.onEnd));
         break;
-      case 'missed':
-        statusEl.textContent = 'No answer.';
-        actions.appendChild(pillBtn('Call Again', 'primary', busy, state.onCallAgain));
-        break;
-      case 'declined':
-        statusEl.textContent = 'Call declined.';
-        break;
-      case 'cancelled':
-        statusEl.textContent = 'Call ended.';
-        break;
       default:
         break;
     }
-
-    // Terminal phases auto-dismiss rather than sitting there waiting to be
-    // closed - a real call app's "missed/declined" screen doesn't either.
-    // The key check guards against a stale timer hiding a DIFFERENT call
-    // that started in the meantime (e.g. "Call Again" from this same
-    // screen).
-    if (state.phase === 'missed' || state.phase === 'declined' || state.phase === 'cancelled') {
-      const key = state.key;
-      setTimeout(() => { if (currentKey === key) hide(); }, 2200);
-    }
-  }
-
-  function isShowing(key) {
-    return !!root && !root.classList.contains('hidden') && currentKey === key;
   }
 
   function hide() {
     if (root) root.classList.add('hidden');
-    currentKey = null;
   }
 
-  return { show, hide, isShowing };
+  return { show, hide };
 })();
 
 const CHAT_TOAST_AUTO_DISMISS_MS = 5000;

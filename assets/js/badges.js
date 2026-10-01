@@ -291,9 +291,9 @@ function wireSellerBadges(root) {
 }
 
 /**
- * "What do seller badges mean?" - one collapsed panel per page, for the
- * surfaces whose badges are inside a product card and therefore cannot carry
- * their own popover (see renderSellerBadges).
+ * "Badges?" - one collapsed panel per page, for the surfaces whose badges
+ * are inside a product card and therefore cannot carry their own popover
+ * (see renderSellerBadges).
  *
  * A <details>, so it costs one line until someone wants it: the open/closed
  * state, keyboard operation and screen-reader announcement all come free, and
@@ -309,7 +309,7 @@ function renderBadgeLegendPanel(items) {
     && items.some((it) => it && Array.isArray(it.sellerBadges) && it.sellerBadges.length);
   if (!any) return '';
   return '<details class="badge-legend-panel">'
-    + '<summary>What do seller badges mean?</summary>'
+    + '<summary>Badges?</summary>'
     + renderBadgeLegend()
     + '</details>';
 }

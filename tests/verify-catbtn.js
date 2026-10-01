@@ -1,15 +1,20 @@
-// This suite has been repointed twice, and the history is the point.
+// This suite has been repointed three times, and the history is the point.
 //
 // 1. Originally: the amber/green colour-coding on the homepage's Rentals and
 //    Services CATEGORY buttons.
 // 2. Then those stopped being categories - they became listing types, and a
 //    rental can sit in any category - so it was repointed onto the
 //    [All|Products|Rentals|Services] strip that replaced them.
-// 3. Now that strip is gone from the homepage and search page too.
+// 3. That strip was gone from the homepage and search page too, so this
+//    moved onto the homepage's own Popular Categories strip instead.
+// 4. Popular Categories was removed from the homepage entirely by request -
+//    the only place a category is listed in the UI now is the browse page's
+//    own rail (#category-rail), so that is what this checks today.
 //
-// What survives is the assertion that outlived both rewrites: RENTALS AND
-// SERVICES ARE NOT CATEGORIES. That is a taxonomy decision the category strip
-// could silently undo, and it is worth guarding whatever the UI around it does.
+// What survives, across all four, is the assertion that outlived every
+// rewrite: RENTALS AND SERVICES ARE NOT CATEGORIES. That is a taxonomy
+// decision whatever UI lists categories could silently undo, and it is worth
+// guarding regardless of which UI that is.
 //
 // The rest of the old file tested chips that no longer exist and is gone with
 // them. ?type= still filters - smart search builds those links - there is just
@@ -27,11 +32,11 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
   async function check(pageName, url) {
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: 'load' });
-    await page.waitForSelector('#category-strip .chip-strip-item');
+    await page.waitForSelector('.category-rail-item');
 
     const cats = await page.evaluate(() =>
-      [...document.querySelectorAll('#category-strip .chip-strip-item')].map((a) => a.textContent.trim()));
-    ok(`${pageName}: a category strip is present`, cats.length > 0, JSON.stringify(cats));
+      [...document.querySelectorAll('.category-rail-item')].map((a) => a.textContent.trim()));
+    ok(`${pageName}: the category rail is present`, cats.length > 0, JSON.stringify(cats));
     ok(`${pageName}: rentals are NOT offered as a category`,
       !cats.some((t) => t === 'Rentals'), JSON.stringify(cats));
     // Only Rentals is checked. "Services" IS a real category in the taxonomy -
@@ -45,10 +50,10 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.close();
   }
 
-  // Home only. The search page is gone, and the browse page that absorbed it
-  // has a category RAIL (#category-rail), not the homepage's strip - a
-  // different control, covered by verify-categories.
-  await check('home', BASE + '/index.html');
+  // The browse page's rail is the only place a category is listed in the UI
+  // now - the homepage's Popular Categories strip that used to be checked
+  // here was removed by request (see verify-homepage for that removal).
+  await check('browse', BASE + '/categories.html');
 
   // The filter itself must still work when a link carries it - this is what
   // smart search relies on for "somewhere to stay" to reach rentals rather

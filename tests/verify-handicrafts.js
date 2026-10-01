@@ -116,17 +116,11 @@ async function open(browser, path) {
     await ctx.close();
   }
 
-  // Homepage: NOT popular means it must NOT be on the strip - that was the
-  // explicit choice, so a later `popular: true` slip should fail here.
-  {
-    const { ctx, page, errs } = await open(browser, '/index.html');
-    const onStrip = await page.locator('#category-strip [data-category="handicrafts"]').count();
-    ok('homepage strip does NOT show it', onStrip === 0, String(onStrip));
-    const stripCount = await page.locator('#category-strip .chip-strip-item').count();
-    ok('homepage strip still renders its popular chips', stripCount >= 6, String(stripCount));
-    ok('no page errors on the homepage', errs.length === 0, errs.join(' | '));
-    await ctx.close();
-  }
+  // Popular Categories (and its homepage strip, the one place "NOT popular"
+  // was ever visible to a shopper) was removed from the homepage by
+  // request - handicrafts' `popular: false` flag is still set in the
+  // taxonomy, but nothing in the UI shows that choice any more, so there is
+  // no longer a page to assert it against here.
 
   // Search page: reachable by URL, which is how the browse chip links out.
   {

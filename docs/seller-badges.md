@@ -119,8 +119,8 @@ rather than one merged answer that hides which is which.
 
 **Card badges are read-only on purpose.** Every card is a single `<a>`, and a
 `<button>` inside an anchor is invalid HTML that navigates instead of
-explaining. Those pages carry one **"What do seller badges mean?"** panel
-instead, which renders only when a card on the page actually has a badge.
+explaining. Those pages carry one **"Badges?"** panel instead, which renders
+only when a card on the page actually has a badge.
 
 ### What a shopper reads vs what a screen reader hears
 

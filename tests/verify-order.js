@@ -13,8 +13,8 @@ const BASE = 'http://127.0.0.1:8099';
     return page.evaluate(() => {
       const t = (s) => { const el = document.querySelector(s); return el ? Math.round(el.getBoundingClientRect().top) : null; };
       return {
-        hero: t('.hero'), promo: t('.home-promo'), quickActions: t('.home-quick-actions'),
-        trust: t('.home-trust'), categories: t('.categories'), stores: t('.trending-stores'),
+        hero: t('.hero'), tipsLink: t('.home-tips-link'), quickActions: t('.home-quick-actions'),
+        trust: t('.home-trust'), stores: t('.trending-stores'),
         products: t('.trending-products')
       };
     });
@@ -24,7 +24,7 @@ const BASE = 'http://127.0.0.1:8099';
     const page = await ctx.newPage();
     await page.setViewportSize({ width: w, height: h });
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
-    await page.waitForSelector('#category-strip .chip-strip-item');
+    await page.waitForSelector('.home-tips-link-item');
     const t = await tops(page);
     await page.close();
     return { t, label };
@@ -33,42 +33,42 @@ const BASE = 'http://127.0.0.1:8099';
   const mob = await measure(390, 800, 'mobile');
   // Reversed on purpose: search leads now. Someone who knows what they want
   // should not scroll past two rows of navigation to type it. The full chain,
-  // Alibaba-inspired: search -> promo -> quick actions -> trust -> categories
-  // -> discovery (Popular Stores, moved up) -> product grid.
-  ok('mobile: search above everything else', mob.t.hero < mob.t.categories, JSON.stringify(mob.t));
+  // Alibaba-inspired: search -> tips link -> quick actions -> trust ->
+  // discovery (Popular Stores, moved up) -> product grid. Popular Categories
+  // was removed from the homepage by request.
+  ok('mobile: search above everything else', mob.t.hero < mob.t.stores, JSON.stringify(mob.t));
   ok('mobile: search above products', mob.t.hero < mob.t.products, JSON.stringify(mob.t));
   ok('mobile: full section chain is in order',
-    mob.t.hero < mob.t.promo && mob.t.promo <= mob.t.quickActions &&
-    mob.t.quickActions <= mob.t.trust && mob.t.trust <= mob.t.categories &&
-    mob.t.categories < mob.t.stores && mob.t.stores < mob.t.products,
+    mob.t.hero < mob.t.tipsLink && mob.t.tipsLink <= mob.t.quickActions &&
+    mob.t.quickActions <= mob.t.trust &&
+    mob.t.trust < mob.t.stores && mob.t.stores < mob.t.products,
     JSON.stringify(mob.t));
 
   const tab = await measure(900, 1200, 'tablet');
-  ok('tablet: search above categories', tab.t.hero < tab.t.categories, JSON.stringify(tab.t));
+  ok('tablet: search above discovery', tab.t.hero < tab.t.stores, JSON.stringify(tab.t));
 
   const desk = await measure(1280, 900, 'desktop');
-  ok('desktop: search above categories (original)', desk.t.hero < desk.t.categories, JSON.stringify(desk.t));
-  ok('desktop: categories above discovery above products',
-    desk.t.categories < desk.t.stores && desk.t.stores < desk.t.products, JSON.stringify(desk.t));
+  ok('desktop: search above discovery (original)', desk.t.hero < desk.t.stores, JSON.stringify(desk.t));
+  ok('desktop: discovery above products',
+    desk.t.stores < desk.t.products, JSON.stringify(desk.t));
 
   // Gap check: every adjacent pair in the mobile flow should show the added
-  // row-gap, not just hero->categories as before - there are more neighbours
-  // now that the restructure added sections between them.
+  // row-gap, not just hero->tips as before - there are more neighbours now
+  // that the restructure added sections between them.
   const page = await ctx.newPage();
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto(BASE + '/index.html', { waitUntil: 'load' });
-  await page.waitForSelector('#category-strip .chip-strip-item');
+  await page.waitForSelector('.home-tips-link-item');
   const gaps = await page.evaluate(() => {
     const r = (s) => document.querySelector(s).getBoundingClientRect();
-    const hero = r('.hero'), promo = r('.home-promo'), qa = r('.home-quick-actions'),
-      trust = r('.home-trust'), cat = r('.categories'), stores = r('.trending-stores'),
+    const hero = r('.hero'), tipsLink = r('.home-tips-link'), qa = r('.home-quick-actions'),
+      trust = r('.home-trust'), stores = r('.trending-stores'),
       prod = r('.trending-products');
     return {
-      heroToPromo: Math.round(promo.top - hero.bottom),
-      promoToQa: Math.round(qa.top - promo.bottom),
+      heroToTipsLink: Math.round(tipsLink.top - hero.bottom),
+      tipsLinkToQa: Math.round(qa.top - tipsLink.bottom),
       qaToTrust: Math.round(trust.top - qa.bottom),
-      trustToCat: Math.round(cat.top - trust.bottom),
-      catToStores: Math.round(stores.top - cat.bottom),
+      trustToStores: Math.round(stores.top - trust.bottom),
       storesToProd: Math.round(prod.top - stores.bottom)
     };
   });

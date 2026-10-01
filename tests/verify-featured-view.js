@@ -195,24 +195,11 @@ const tiles = (page) => page.$$eval('#category-list a', (els) => els.map((e) => 
     await ctx.close();
   }
 
-  /* ---- the homepage strip ------------------------------------------------ */
-  {
-    const { ctx, page } = await open(browser, '/index.html');
-    const chips = await page.$$eval('#category-strip .chip-strip-item', (els) => els.map((e) => e.textContent.trim()));
-    ok('the new categories reach the homepage strip',
-      ['Everything Solar', 'Hire', 'Rental'].every((l) => chips.includes(l)), chips.join(' | '));
-    // The reason the count is allowed to grow at all.
-    const strip = await page.evaluate(() => {
-      const el = document.getElementById('category-strip');
-      const r = el.getBoundingClientRect();
-      const items = [...el.children].map((c) => c.getBoundingClientRect().top);
-      return { h: Math.round(r.height), rows: new Set(items.map((t) => Math.round(t))).size };
-    });
-    ok('and the strip is still exactly one row tall', strip.rows === 1, strip.rows + ' rows, ' + strip.h + 'px');
-    ok('Featured is NOT on the homepage strip - it is a browse view, not a category',
-      !chips.includes('Featured'), chips.join(' | '));
-    await ctx.close();
-  }
+  // Popular Categories (and its homepage strip) was removed from the
+  // homepage by request. That strip's own claim that Featured never
+  // appeared on it has no home to test any more; "Featured is never a
+  // storable category a seller can file under" - the actual invariant that
+  // mattered - is still covered below (the seller-flow checks).
 
   /* ---- the seller's category picker, driven in a real browser ------------ */
   //
