@@ -25,11 +25,7 @@
   <a class="skip-link" href="#main">Skip to content</a>
 
   <!-- The logo has to open this row with nothing before it, not even a
-       comment - see verify-logo.js. The tagline is a second flex item after
-       it (flex:1, text-align:center) rather than absolutely centred across
-       the whole row, so its box always starts to the right of the logo - see
-       .header-tagline in styles.css for why that matters for that same
-       test. -->
+       comment - see verify-logo.js. -->
   <header class="site-header">
     <div class="container header-top-row">
       <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
@@ -64,6 +60,20 @@
       </div>
     </section>
 
+    <!-- Alibaba-inspired addition: a trust/value strip, directly beneath the
+         search box by request. Every line describes something Mwakete already
+         does today - no "guaranteed delivery", "buyer protection" or "secure
+         payment" claims, because none of those systems exist yet. -->
+    <section class="home-trust">
+      <div class="container">
+        <ul class="home-trust-list">
+          <li>Local Kiribati sellers</li>
+          <li>Chat directly with the seller</li>
+          <li>Delivery, shipping &amp; pickup options</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- Alibaba-inspired addition: quick actions to places that already exist.
          "Request a Quote" and "Hire" were considered and left out - Mwakete has
          no quote-request feature and no page dedicated to Hire, and this strip
@@ -88,20 +98,6 @@
             <span class="quick-action-label">Services</span>
           </a>
         </nav>
-      </div>
-    </section>
-
-    <!-- Alibaba-inspired addition: a trust/value strip. Every line describes
-         something Mwakete already does today - no "guaranteed delivery",
-         "buyer protection" or "secure payment" claims, because none of those
-         systems exist yet. -->
-    <section class="home-trust">
-      <div class="container">
-        <ul class="home-trust-list">
-          <li>Local Kiribati sellers</li>
-          <li>Chat directly with the seller</li>
-          <li>Delivery, shipping &amp; pickup options</li>
-        </ul>
       </div>
     </section>
 
