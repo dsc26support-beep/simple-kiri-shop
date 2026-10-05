@@ -27,7 +27,6 @@ function init() {
   prefillSignupEmail();
   // wireInfoDot/closeAllInfoPops now live in helpers.js - the seller badges use
   // the same disclosure, and two copies of one accessibility contract drift.
-  wireInfoDot('guest-info-btn', 'guest-info');
   wireInfoDot('shared-info-btn', 'shared-info');
 }
 

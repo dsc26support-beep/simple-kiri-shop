@@ -257,44 +257,20 @@ async function makeContext(browser, opts) {
     await ctx.close();
   }
 
-  // ---- the info popup ----------------------------------------------------
+  // ---- guest has no info dot any more - just the button, plainly ----------
   {
     const { ctx } = await makeContext(browser, { clientId: 'test-client' });
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(1300);
 
-    ok('the explanation starts closed', await page.locator('#guest-info').isHidden());
-    ok('and the dot says so', await page.getAttribute('#guest-info-btn', 'aria-expanded') === 'false');
-
-    const tabsTop = () => page.evaluate(() =>
-      Math.round(document.querySelector('.auth-tabs').getBoundingClientRect().top));
-    const before = await tabsTop();
-    await page.click('#guest-info-btn');
-    await page.waitForTimeout(300);
-    ok('tapping the dot opens it', await page.locator('#guest-info').isVisible());
-    ok('and it still says what the account is for',
-      /don't need an account to shop/i.test(await page.textContent('#guest-info') || ''));
-    ok('aria-expanded follows', await page.getAttribute('#guest-info-btn', 'aria-expanded') === 'true');
-    // Opening a panel that shoved the form down would be a layout shift on
-    // interaction - the same defect as one on load, just later.
-    ok('opening it moves nothing', (await tabsTop()) === before, before + ' -> ' + (await tabsTop()));
-
-    // Every dismissal route someone will actually try.
-    await page.click('#guest-info-btn'); await page.waitForTimeout(250);
-    ok('tapping the dot again closes it', await page.locator('#guest-info').isHidden());
-    await page.click('#guest-info-btn'); await page.waitForTimeout(250);
-    await page.click('h1#auth-title'); await page.waitForTimeout(250);
-    ok('tapping elsewhere closes it', await page.locator('#guest-info').isHidden());
-    await page.click('#guest-info-btn'); await page.waitForTimeout(250);
-    await page.keyboard.press('Escape'); await page.waitForTimeout(250);
-    ok('Escape closes it', await page.locator('#guest-info').isHidden());
-    ok('and focus returns to the dot',
-      await page.evaluate(() => document.activeElement && document.activeElement.id) === 'guest-info-btn');
+    ok('Continue as guest is still there', await page.locator('#guest-continue').isVisible());
+    ok('its info dot and popup are gone, not just hidden',
+      await page.evaluate(() => !document.getElementById('guest-info-btn') && !document.getElementById('guest-info')));
     await ctx.close();
   }
 
-  // ---- the shared-device explanation, same treatment as guest -------------
+  // ---- the shared-device explanation, same treatment as guest used to have ---
   {
     const { ctx } = await makeContext(browser, { clientId: 'test-client' });
     const page = await ctx.newPage();
@@ -316,12 +292,50 @@ async function makeContext(browser, opts) {
     ok('and it still says 60 days',
       /60 days/.test(await page.textContent('#shared-info') || ''));
     ok('opening it moves nothing', (await footerTop()) === before);
+    await ctx.close();
+  }
 
-    // Two panels overlapping on a 390px screen is unreadable.
-    await page.click('#guest-info-btn');
+  // ---- hidden once this device has signed in before ----------------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.waitForTimeout(1300);
+    ok('first visit to this device: the shared-device row shows',
+      await page.locator('.auth-shared-row').isVisible());
+    await ctx.close();
+
+    const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx2.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
+    const page2 = await ctx2.newPage();
+    await page2.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
+    await page2.evaluate(() => { try { localStorage.setItem('skiri_last_email', 'aroita@example.com'); } catch (e) {} });
+    await page2.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page2.waitForTimeout(1300);
+    ok('remembered device: the shared-device row is gone (not asked again)',
+      await page2.locator('.auth-shared-row').isHidden());
+    await ctx2.close();
+  }
+
+  // ---- the static "we'll email a code" line moved to the code step --------
+  {
+    const { ctx } = await makeContext(browser, { clientId: 'test-client' });
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.waitForTimeout(1300);
+
+    ok('the always-visible helper line is gone from the email step',
+      !/We'll email you a 6-digit code/i.test(await page.textContent('#login-form') || ''));
+
+    await page.fill('#login-email', 'aroita@example.com');
+    await page.click('#login-form button[type="submit"]');
     await page.waitForTimeout(300);
-    ok('opening the other one closes this one',
-      await page.locator('#shared-info').isHidden() && await page.locator('#guest-info').isVisible());
+    ok('it reappears as a confirmation on the code step instead',
+      /we emailed a 6-digit code to aroita@example\.com/i.test(await page.textContent('#login-code-hint') || ''),
+      await page.textContent('#login-code-hint'));
     await ctx.close();
   }
 
@@ -337,7 +351,7 @@ async function makeContext(browser, opts) {
     await page.evaluate(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(1300);
-    for (const which of ['shared-info', 'guest-info']) {
+    for (const which of ['shared-info']) {
       await page.locator('#' + which + '-btn').scrollIntoViewIfNeeded();
       await page.waitForTimeout(150);
       await page.click('#' + which + '-btn');

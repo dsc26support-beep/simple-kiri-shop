@@ -522,12 +522,12 @@ const box = (page, sel) => page.evaluate((s) => {
     await page.waitForTimeout(900);
     ok('customer-login still loads with no JS errors after wireInfoDot moved to helpers',
       errs.length === 0, errs.join(' | '));
-    await page.click('#guest-info-btn');
+    await page.click('#shared-info-btn');
     await page.waitForTimeout(200);
-    ok('and its info dot still opens', await page.locator('#guest-info').isVisible());
+    ok('and its info dot still opens', await page.locator('#shared-info').isVisible());
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
-    ok('and still closes on Escape', await page.locator('#guest-info').isHidden());
+    ok('and still closes on Escape', await page.locator('#shared-info').isHidden());
     await ctx.close();
   }
 
