@@ -168,22 +168,58 @@ header.site-header .container.header-top-row {
   justify-content: flex-start;
 }
 
-/* A flex item after the logo (flex:1, text-align:center) rather than
-   absolutely centred across the whole row - an absolutely positioned,
-   full-width box would start at the row's own left edge same as the logo
-   does, which fails verify-logo.js's "nothing sits further left than the
-   logo" check. This way the tagline's box always starts right of the logo,
-   and centres itself within whatever space remains alongside it (the header
-   menu button in the top-right corner is positioned outside this flex row,
-   so it doesn't compete for that space). min-width:0 lets the sentence wrap
-   onto a second line on a narrow phone instead of overflowing. */
-.header-tagline {
-  flex: 1 1 auto;
-  min-width: 0;
+/* A plain strip below the header (not a flex item inside it), so it is free
+   of the header row's logo-clearance rules entirely. Fixed height holds its
+   space from first paint - the three lines fade in/out via CSS animation,
+   never resize the strip, so this never costs CLS the way a late-arriving
+   height would.
+   Three items, one 9s keyframe, delays staggered 3s apart so exactly one is
+   ever visible: each item's own local cycle (0%-33% of 9s = its 3s "on"
+   window) lands at a different point in global time purely from its
+   animation-delay, with no JS and no step/content changes to coordinate. */
+.header-ticker {
+  position: relative;
+  height: 28px;
+  overflow: hidden;
+  background: var(--color-gold);
+}
+
+.header-ticker-item {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0;
+  padding: 0 var(--space-3);
   text-align: center;
   font-size: 0.8rem;
-  line-height: 1.3;
+  font-weight: 600;
+  color: var(--color-purple);
+  opacity: 0;
+  animation: header-ticker-fade 9s infinite;
+}
+
+.header-ticker-item:nth-child(2) { animation-delay: 3s; }
+.header-ticker-item:nth-child(3) { animation-delay: 6s; }
+
+@keyframes header-ticker-fade {
+  0%, 100% { opacity: 0; }
+  4%, 28% { opacity: 1; }
+  33% { opacity: 0; }
+}
+
+/* Reduced motion: the first line is shown, plainly, with no animation at
+   all - same "freeze on the static state" treatment as the cart FAB's
+   flash/blink animations use. */
+@media (prefers-reduced-motion: reduce) {
+  .header-ticker-item {
+    animation: none;
+    opacity: 0;
+  }
+  .header-ticker-item:first-child {
+    opacity: 1;
+  }
 }
 
 /* header-cart.js injects the cart button into the first container in the
@@ -6080,6 +6116,15 @@ body.has-app-update .install-fab {
 
 html.has-remembered-email .login-remembered {
   display: block;
+}
+
+/* Same before-first-paint signal, opposite direction: a device that has
+   already signed in once has already made the shared-device call, so this
+   row only needs to show the first time. No separate CLS note needed - this
+   one starts visible in the markup and DISAPPEARS when remembered, so there
+   is no later un-hide to shift anything. */
+html.has-remembered-email .auth-shared-row {
+  display: none;
 }
 
 /* Both children are block-level so filling the address in changes the WIDTH of

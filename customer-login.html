@@ -67,16 +67,6 @@
 
           <div class="auth-guest-row">
             <a class="btn btn-block btn-outline" id="guest-continue" href="index.html">Continue as guest</a>
-            <button type="button" class="info-dot" id="guest-info-btn"
-                    aria-expanded="false" aria-controls="guest-info"
-                    aria-label="Why sign in?">i</button>
-            <!-- Absolutely positioned, so opening it cannot move anything on
-                 the page. Carries its own text rather than a title attribute,
-                 which phones never show. -->
-            <p class="info-pop" id="guest-info" role="status" hidden>
-              You don't need an account to shop. Signing in only saves your
-              order history and lets you leave reviews.
-            </p>
           </div>
 
           <p class="auth-divider"><span>or</span></p>
@@ -103,7 +93,6 @@
             </div>
             <p id="login-error" class="form-error" role="alert"></p>
             <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
-            <p class="helper-text">We'll email you a 6-digit code to sign in — no password needed.</p>
           </form>
 
           <form id="login-code-form" class="hidden" novalidate>
@@ -150,6 +139,11 @@
           </form>
         </div>
 
+        <!-- Hidden by CSS once this browser has signed in before (same
+             html.has-remembered-email signal as the "Signing in as ..." line
+             above, decided before first paint) - a device that already has a
+             trusted 60-day session has already made this call, so asking
+             again on every visit is just noise. -->
         <div class="auth-shared-row">
           <label class="auth-shared-device" for="shared-device">
             <input type="checkbox" id="shared-device">
