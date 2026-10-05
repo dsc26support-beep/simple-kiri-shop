@@ -252,7 +252,11 @@ function onAddToCart(btn) {
   const qtyInput = document.getElementById(`qty-${product.productId}`);
   const variant = product.variants.find((v) => v.variantId === select.value);
   if (!variant) return;
-  const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+  const requestedQty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+
+  const qty = clampToAvailableStock(slug, variant, requestedQty, product.name);
+  if (qty === null) return;
+  if (qty < requestedQty) window.alert(`Only ${qty} left of ${product.name} (${variant.label}) - added ${qty} to your cart.`);
 
   Cart.addItem(slug, {
     variantId: variant.variantId,

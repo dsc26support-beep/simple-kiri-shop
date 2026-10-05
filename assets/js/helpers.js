@@ -17,6 +17,27 @@ function formatPriceLabel(variants) {
   return min === max ? formatMoney(min) : `${formatMoney(min)}-${Number(max).toFixed(2)}`;
 }
 
+/**
+ * Caps an Add to Cart quantity against a variant's tracked stock (null means
+ * untracked/unlimited, so nothing to cap), accounting for how much of that
+ * variant is already sitting in the cart - Cart.addItem sums into the
+ * existing line rather than replacing it. Returns the quantity to actually
+ * add, or null (after alerting) if none can be added at all. This is a UX
+ * convenience only - the real, authoritative check happens server-side in
+ * actionCreateOrder, which re-reads stock inside the order lock at checkout
+ * time regardless of whatever made it into the cart.
+ */
+function clampToAvailableStock(storeSlug, variant, requestedQty, productName) {
+  if (variant.stockQty == null) return requestedQty;
+  const alreadyInCart = (Cart.getCart(storeSlug).find((l) => l.variantId === variant.variantId) || {}).qty || 0;
+  const available = variant.stockQty - alreadyInCart;
+  if (available <= 0) {
+    window.alert(`Sorry, ${productName} (${variant.label}) is out of stock.`);
+    return null;
+  }
+  return Math.min(requestedQty, available);
+}
+
 // .product-price is `white-space: nowrap`, so a price that's too wide for
 // its column overflows (and gets clipped by the card) instead of wrapping.
 // This shrinks it just enough to fit rather than letting either happen.

@@ -209,7 +209,8 @@ function actionCreateOrder(body) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    var liveVariants = sheetToObjects(getSheet('Variants')).filter(function (v) {
+    var variantsSheet = getSheet('Variants');
+    var liveVariants = sheetToObjects(variantsSheet).filter(function (v) {
       return v.OwnerId === owner.OwnerId && v.Status === 'active';
     });
     var products = sheetToObjects(getSheet('Products'));
@@ -217,18 +218,35 @@ function actionCreateOrder(body) {
     var lineItems = [];
     var summaryParts = [];
     var subtotal = 0;
+    // Only variants with tracked stock need a write-back below - everything
+    // else (StockQty blank) is unlimited and untouched.
+    var stockDecrements = [];
 
     for (var i = 0; i < requestedItems.length; i++) {
       var variant = liveVariants.filter(function (v) { return v.VariantId === requestedItems[i].variantId; })[0];
       if (!variant) return fail('One of the items in your cart is no longer available. Please refresh your cart.');
 
       var qty = Math.max(1, parseInt(requestedItems[i].qty, 10) || 1);
+      var product = products.filter(function (p) { return p.ProductId === variant.ProductId; })[0];
+      var productName = product ? product.Name : 'Item';
+
+      // Checked and decremented inside this same lock, so two customers
+      // racing the same variant can never both succeed past the last unit -
+      // the second one re-reads a StockQty the first has already written down.
+      if (variant.StockQty !== '' && variant.StockQty !== undefined && variant.StockQty !== null) {
+        var available = Number(variant.StockQty);
+        if (qty > available) {
+          var itemLabel = productName + ' - ' + variant.Label;
+          return fail(available <= 0
+            ? itemLabel + ' is out of stock. Please remove it from your cart.'
+            : 'Only ' + available + ' left of ' + itemLabel + '. Please lower the quantity in your cart.');
+        }
+        stockDecrements.push({ row: variant.__row, remaining: available - qty });
+      }
+
       var unitPrice = Number(variant.Price);
       var lineTotal = unitPrice * qty;
       subtotal += lineTotal;
-
-      var product = products.filter(function (p) { return p.ProductId === variant.ProductId; })[0];
-      var productName = product ? product.Name : 'Item';
 
       lineItems.push({
         productId: variant.ProductId,
@@ -284,6 +302,13 @@ function actionCreateOrder(body) {
     });
 
     if (body.customerEmail) markAbandonedCartConverted(slug, body.customerEmail, orderId);
+
+    // Written only after the order row itself is safely appended, so a
+    // failure above never decrements stock for an order that didn't happen.
+    stockDecrements.forEach(function (d) {
+      updateRowFromObject(variantsSheet, d.row, { StockQty: d.remaining });
+    });
+    if (stockDecrements.length) invalidateCache([storeProductsCacheKey(slug)]);
   } finally {
     lock.releaseLock();
   }

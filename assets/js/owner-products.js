@@ -258,7 +258,11 @@ function addVariantRow(variant) {
     </div>
     <div class="field">
       <label for="${rowId}-price">Price</label>
-      <input id="${rowId}-price" class="variant-price" type="number" min="0" step="0.01" value="${variant ? variant.price : ''}" required>
+      <input id="${rowId}-price" class="variant-price" type="number" min="0.01" step="0.01" value="${variant ? variant.price : ''}" required>
+    </div>
+    <div class="field">
+      <label for="${rowId}-stock">Stock (blank = unlimited)</label>
+      <input id="${rowId}-stock" class="variant-stock" type="number" min="0" step="1" placeholder="Unlimited" value="${variant && variant.stockQty !== '' && variant.stockQty != null ? variant.stockQty : ''}">
     </div>
     <button type="button" class="btn btn-small btn-danger remove-variant-btn">Remove</button>
   `;
@@ -355,17 +359,25 @@ async function onSaveProduct(e) {
     return;
   }
 
-  const variants = Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((row) => ({
-    variantId: row.dataset.variantId || undefined,
-    label: row.querySelector('.variant-label').value.trim(),
-    price: parseFloat(row.querySelector('.variant-price').value)
-  }));
+  const variants = Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((row) => {
+    const stockRaw = row.querySelector('.variant-stock').value.trim();
+    return {
+      variantId: row.dataset.variantId || undefined,
+      label: row.querySelector('.variant-label').value.trim(),
+      price: parseFloat(row.querySelector('.variant-price').value),
+      stockQty: stockRaw === '' ? '' : parseInt(stockRaw, 10)
+    };
+  });
 
-  if (variants.some((v) => !v.label || isNaN(v.price) || v.price < 0)) {
+  if (variants.some((v) => !v.label || isNaN(v.price) || v.price <= 0)) {
     // Name the field the way the form now names it - "fill in a label" points
     // at a word that is no longer on screen.
     const noun = varietyRowLabelText(document.getElementById('product-listing-type').value).toLowerCase();
-    errorEl.textContent = `Please fill in a ${noun} and a valid price for every row.`;
+    errorEl.textContent = `Please fill in a ${noun} and a price greater than zero for every row.`;
+    return;
+  }
+  if (variants.some((v) => v.stockQty !== '' && (isNaN(v.stockQty) || v.stockQty < 0))) {
+    errorEl.textContent = 'Stock must be left blank (unlimited) or a whole number of 0 or more.';
     return;
   }
   if (variants.length === 0) {
@@ -403,28 +415,11 @@ async function onSaveProduct(e) {
     return;
   }
 
-  if (selectedImageFile) {
-    setSaveProductBusy(saveBtn, 'Uploading photo 1');
-    try {
-      const { base64, mimeType } = await compressImage(selectedImageFile);
-      const uploadRes = await Api.post('uploadProductImage', {
-        token: Auth.getToken(),
-        productId: res.productId,
-        imageBase64: base64,
-        mimeType,
-        slot: 1
-      });
-      if (!uploadRes.ok) {
-        errorEl.textContent = `Product saved, but photo 1 upload failed: ${uploadRes.error || 'unknown error'}`;
-      }
-    } catch (err) {
-      errorEl.textContent = 'Product saved, but photo 1 could not be processed.';
-    }
-  }
+  // Set as soon as the product itself exists, win or lose on the photo below -
+  // a retry (clicking Save Product again without reopening the form) must go
+  // through updateProduct against this id, never createProduct a second time.
+  document.getElementById('product-id').value = res.productId;
 
-  setSaveProductIdle(saveBtn);
-  UnsavedGuard.markSaved(document.getElementById('product-form'));
-  closeForm();
   // A brand-new product lands past the END of append order (a new Sheet row
   // is always appended, never inserted at the front), at position
   // productsTotal (0-indexed) - the total BEFORE this save. Growing the
@@ -435,5 +430,39 @@ async function onSaveProduct(e) {
   // enough regardless of how much was loaded. An edit doesn't change the
   // total, so it reuses the plain "reload what's currently visible" path
   // (loadProducts() with no opts).
-  await loadProducts(productId ? undefined : { limit: productsTotal + 1 });
+  const reloadOpts = productId ? undefined : { limit: productsTotal + 1 };
+
+  if (selectedImageFile) {
+    setSaveProductBusy(saveBtn, 'Uploading photo 1');
+    let uploadOk = false;
+    try {
+      const { base64, mimeType } = await compressImage(selectedImageFile);
+      const uploadRes = await Api.post('uploadProductImage', {
+        token: Auth.getToken(),
+        productId: res.productId,
+        imageBase64: base64,
+        mimeType,
+        slot: 1
+      });
+      uploadOk = uploadRes.ok;
+      if (!uploadOk) {
+        errorEl.textContent = `Product saved, but photo 1 upload failed: ${uploadRes.error || 'unknown error'}. Click Save Product to try the photo again.`;
+      }
+    } catch (err) {
+      errorEl.textContent = 'Product saved, but photo 1 could not be processed. Click Save Product to try the photo again.';
+    }
+    if (!uploadOk) {
+      // Left open on purpose: closing here would hide #product-form-error,
+      // the very element the message above was just written into, before the
+      // vendor could ever read it.
+      setSaveProductIdle(saveBtn);
+      await loadProducts(reloadOpts);
+      return;
+    }
+  }
+
+  setSaveProductIdle(saveBtn);
+  UnsavedGuard.markSaved(document.getElementById('product-form'));
+  closeForm();
+  await loadProducts(reloadOpts);
 }

@@ -106,6 +106,35 @@ function deliveryCostOf(rawCost) {
   return rawCost === '' || rawCost == null ? null : Number(rawCost);
 }
 
+/**
+ * Shared shape for a variant on every customer-facing listing (trending,
+ * search, store/product page) - stockQty is null when untracked (unlimited)
+ * so the frontend can tell "no limit" apart from "zero left" without
+ * re-deriving it from a blank string on every page.
+ */
+function publicVariantFields(v) {
+  return {
+    variantId: v.VariantId,
+    label: v.Label,
+    price: Number(v.Price),
+    stockQty: v.StockQty === '' || v.StockQty == null ? null : Number(v.StockQty)
+  };
+}
+
+/**
+ * Normalizes a variant's stock input to either '' (not tracked - unlimited)
+ * or a non-negative integer. Anything blank, non-numeric, negative or
+ * fractional collapses to '' rather than being written as-is, since a bad
+ * value here would otherwise either block every order against that variant
+ * (if read as 0 by mistake) or silently disable tracking (if left as NaN).
+ */
+function stockQtyOf(rawStock) {
+  if (rawStock === '' || rawStock === undefined || rawStock === null) return '';
+  var n = Number(rawStock);
+  if (isNaN(n) || n < 0) return '';
+  return Math.floor(n);
+}
+
 function deliveryFlagsOf(owner) {
   return {
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
@@ -296,7 +325,7 @@ function getTopProductsCached() {
         var owner = ownersById[p.OwnerId];
         var productVariants = variants
           .filter(function (v) { return v.ProductId === p.ProductId; })
-          .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
+          .map(publicVariantFields);
         var product = {
           productId: p.ProductId,
           name: p.Name,
@@ -523,7 +552,7 @@ function actionSearchProducts(params) {
         var owner = ownersById[p.OwnerId];
         var productVariants = variants
           .filter(function (v) { return v.ProductId === p.ProductId; })
-          .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
+          .map(publicVariantFields);
         var product = {
           productId: p.ProductId,
           name: p.Name,
@@ -612,7 +641,7 @@ function actionListProducts(params) {
       .map(function (p) {
         var productVariants = variants
           .filter(function (v) { return v.ProductId === p.ProductId; })
-          .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });
+          .map(publicVariantFields);
         var product = {
           productId: p.ProductId,
           name: p.Name,
@@ -778,7 +807,17 @@ function actionCreateOrUpdateProduct(owner, body) {
     incoming.forEach(function (v) {
       var label = String(v.label || '').trim();
       var price = Number(v.price);
-      if (!label || isNaN(price) || price < 0) return;
+      // price <= 0 (not just < 0) - a free/zero-price row is never a deliberate
+      // listing, it is an empty or mistyped field slipping through.
+      if (!label || isNaN(price) || price <= 0) return;
+
+      // Blank/missing means "not tracked" (unlimited) - stockQtyOf below turns
+      // anything else that isn't a non-negative whole number into that same
+      // blank state, rather than writing garbage into the sheet. 0 is a valid,
+      // deliberate "sold out" value, so it must survive this - the previous
+      // `v.stockQty || ''` fallback silently turned a real 0 back into blank
+      // (unlimited) because 0 is falsy in JS.
+      var stockQty = stockQtyOf(v.stockQty);
 
       if (v.variantId) {
         var match = existingVariants.filter(function (e) { return e.VariantId === v.variantId; })[0];
@@ -788,7 +827,7 @@ function actionCreateOrUpdateProduct(owner, body) {
             Label: label,
             Price: price,
             SKU: v.sku || '',
-            StockQty: v.stockQty !== undefined ? v.stockQty : match.StockQty,
+            StockQty: v.stockQty !== undefined ? stockQty : match.StockQty,
             Status: 'active'
           });
         }
@@ -802,7 +841,7 @@ function actionCreateOrUpdateProduct(owner, body) {
           Label: label,
           Price: price,
           SKU: v.sku || '',
-          StockQty: v.stockQty || '',
+          StockQty: stockQty,
           Status: 'active'
         });
       }
