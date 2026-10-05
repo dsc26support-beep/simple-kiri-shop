@@ -25,11 +25,7 @@
   <a class="skip-link" href="#main">Skip to content</a>
 
   <!-- The logo has to open this row with nothing before it, not even a
-       comment - see verify-logo.js. The tagline is a second flex item after
-       it (flex:1, text-align:center) rather than absolutely centred across
-       the whole row, so its box always starts to the right of the logo - see
-       .header-tagline in styles.css for why that matters for that same
-       test. -->
+       comment - see verify-logo.js. -->
   <header class="site-header">
     <div class="container header-top-row">
       <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
@@ -37,6 +33,17 @@
       </a>
     </div>
   </header>
+
+  <!-- Decorative - the three lines are marketing copy already covered
+       elsewhere on the site (store pages, chat, delivery options), not
+       information unique to this strip, so it's hidden from assistive tech
+       rather than read out three times a cycle. Fixed height holds its
+       space before the fade-in animation starts, so it costs no CLS. -->
+  <div class="header-ticker" aria-hidden="true">
+    <div class="header-ticker-item">Local Kiribati sellers</div>
+    <div class="header-ticker-item">Chat directly with the seller</div>
+    <div class="header-ticker-item">Delivery, shipping &amp; pickup options</div>
+  </div>
 
   <main id="main" class="home-main page-products">
     <!-- Search first, because that is how someone who knows what they want
