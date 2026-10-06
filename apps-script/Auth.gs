@@ -115,7 +115,9 @@ function publicOwnerFields(owner) {
     // The settings copy reads this one, so it can never promise a text that
     // will not arrive.
     authChannelEffective: effectiveAuthChannel(owner),
-    isAdmin: isOwnerAdmin(owner)
+    isAdmin: isOwnerAdmin(owner),
+    storeType: storeTypeOf(owner),
+    wholesaleVerified: String(owner.WholesaleVerified) === 'true'
   };
 }
 
@@ -240,6 +242,9 @@ function actionRegisterOwner(body) {
   var email = String(body.email || '').trim();
   var phone = String(body.phone || '').trim();
   var messenger = String(body.messenger || '').trim();
+  // Anything but an explicit 'wholesaler' is a retailer - the default, and
+  // what every store that registered before this choice existed is treated as.
+  var storeType = String(body.storeType || '') === 'wholesaler' ? 'wholesaler' : 'retailer';
 
   if (!storeName || !username || !password || !email || !phone) {
     return fail('Store name, username, password, contact email and contact phone are required');
@@ -288,6 +293,9 @@ function actionRegisterOwner(body) {
 
     var salt = Utilities.getUuid();
     var ownerId = newId('own');
+    // Additive only: one header cell past the end if missing (see ensureColumn).
+    ensureColumn(ownersSheet, 'StoreType');
+    ensureColumn(ownersSheet, 'WholesaleVerified');
 
     appendRowFromObject(ownersSheet, {
       OwnerId: ownerId,
@@ -306,15 +314,19 @@ function actionRegisterOwner(body) {
       Teremo_Number: '',
       PaymentNotes: '',
       Status: 'active',
-      CreatedAt: nowIso()
+      CreatedAt: nowIso(),
+      StoreType: storeType,
+      WholesaleVerified: ''
     });
 
     var token = issueSession(ownerId);
     var owner = findRowById(ownersSheet, 'OwnerId', ownerId);
-    return ok({ token: token, owner: publicOwnerFields(owner) });
   } finally {
     lock.releaseLock();
   }
+  // Outside the lock - an email send is slow and must never hold it.
+  if (storeType === 'wholesaler') notifyAdminsOfWholesaler(owner);
+  return ok({ token: token, owner: publicOwnerFields(owner) });
 }
 
 function actionLoginOwner(body) {

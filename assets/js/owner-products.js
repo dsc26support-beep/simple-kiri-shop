@@ -55,12 +55,18 @@ function onListingTypeChange() {
   updateVarietyLabels();
 }
 
+// Food & Groceries is wholesale-only for new listings (Products.gs enforces the
+// same rule); a listing already filed there keeps it when edited.
+let ownerIsWholesaler = false;
+
 function fillCategoryOptions(listingType, keepId) {
   const select = document.getElementById('product-category');
   const previous = select.value;
-  const list = activeCategories().filter(
-    (c) => (c.id === 'other' ? keepId === 'other' : (!listingType || c.types.indexOf(listingType) !== -1))
-  );
+  const list = activeCategories().filter((c) => {
+    if (c.id === 'other') return keepId === 'other';
+    if (c.id === 'food' && !ownerIsWholesaler && keepId !== 'food') return false;
+    return !listingType || c.types.indexOf(listingType) !== -1;
+  });
   select.innerHTML = '<option value="" disabled' + (previous ? '' : ' selected') + '>Choose a category…</option>' +
     list.map((c) => {
       const label = c.id === 'other' ? c.label + ' (please re-file)' : c.label;
@@ -82,6 +88,8 @@ let variantRowSeq = 0;
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
+  ownerIsWholesaler = owner.storeType === 'wholesaler';
+  document.getElementById('food-wholesale-hint').hidden = ownerIsWholesaler;
   document.getElementById('store-name-label').textContent = owner.storeName;
 
   document.getElementById('add-product-btn').addEventListener('click', () => openForm(null));

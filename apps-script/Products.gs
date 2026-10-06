@@ -751,6 +751,15 @@ function actionCreateOrUpdateProduct(owner, body) {
     listingType = listingTypeOfRow({ ListingType: '', Category: body.category });
   }
 
+  // Food & Groceries is wholesale-only for NEW listings (owner decision). A
+  // listing already filed there is grandfathered - editing it keeps working -
+  // but nothing new can be filed into it by a store that isn't a wholesaler.
+  if (category === 'food' && storeTypeOf(owner) !== 'wholesaler') {
+    var prior = body.productId ? findRowById(getSheet('Products'), 'ProductId', body.productId) : null;
+    var alreadyFood = !!(prior && prior.OwnerId === owner.OwnerId && categoryIdOf(prior.Category) === 'food');
+    if (!alreadyFood) return fail('Food & Groceries is for wholesaler stores only. Please choose another category.');
+  }
+
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
