@@ -1,0 +1,223 @@
+// Paid featuring: choose products + days, then pay by bank transfer and upload
+// the receipt. The checking itself is server-side (apps-script/Featuring.gs);
+// the price shown here is a preview - the server computes the real amount.
+document.addEventListener('DOMContentLoaded', init);
+
+const PRICE_PER_PRODUCT_DAY = 0.05;
+const MAX_DAYS = 60;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+let purchases = [];
+let payment = { accountName: '', accountNumber: '' };
+
+async function init() {
+  const owner = await Auth.guardOwnerAuth();
+  if (!owner) return;
+  document.getElementById('store-name-label').textContent = owner.storeName;
+
+  const statusEl = document.getElementById('feature-status');
+  const stop = startLoadingMessage(statusEl);
+  const res = await Api.post('listMyFeaturePurchases', { token: Auth.getToken() });
+  stop();
+  if (!res.ok) {
+    showLoadFailedMessage(statusEl);
+    return;
+  }
+  purchases = res.purchases || [];
+  payment = res.payment || payment;
+  renderHistory();
+
+  const purchaseId = getQueryParam('purchase');
+  if (purchaseId) {
+    const p = purchases.find((x) => x.purchaseId === purchaseId);
+    if (p) { showPayStep(p); return; }
+    statusEl.textContent = 'That purchase could not be found.';
+  }
+  await showSelectStep();
+}
+
+/* ---------- step 1: choose ---------- */
+
+async function showSelectStep() {
+  const section = document.getElementById('feature-select');
+  const listEl = document.getElementById('feature-product-list');
+  section.classList.remove('hidden');
+  const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit: 100 });
+  const active = res.ok ? (res.products || []).filter((p) => p.status === 'active') : [];
+  if (!res.ok) {
+    listEl.innerHTML = '<p class="helper-text">Could not load your products. Please refresh.</p>';
+  } else if (active.length === 0) {
+    listEl.innerHTML = '<p class="helper-text">You have no active products yet. <a href="products.html">Add one first.</a></p>';
+  } else {
+    listEl.innerHTML = active.map((p) => `
+      <label class="feature-product-option">
+        <input type="checkbox" value="${escapeAttr(p.productId)}">
+        <span>${escapeHtml(p.name)}</span>
+      </label>`).join('');
+  }
+  section.addEventListener('change', updateTotal);
+  document.getElementById('feature-days').addEventListener('input', updateTotal);
+  document.getElementById('feature-continue-btn').addEventListener('click', onContinue);
+  updateTotal();
+}
+
+function selectedProductIds() {
+  return Array.from(document.querySelectorAll('#feature-product-list input:checked')).map((i) => i.value);
+}
+
+function selectedDays() {
+  return parseInt(document.getElementById('feature-days').value, 10);
+}
+
+function updateTotal() {
+  const n = selectedProductIds().length;
+  const days = selectedDays();
+  const out = document.getElementById('feature-total');
+  if (!n || !(days >= 1)) {
+    out.textContent = 'Choose at least one product and a number of days.';
+    return;
+  }
+  const total = Math.round(n * days * PRICE_PER_PRODUCT_DAY * 100) / 100;
+  out.textContent = `${n} product${n === 1 ? '' : 's'} × ${days} day${days === 1 ? '' : 's'} × $0.05 = ${formatMoney(total)}`;
+}
+
+async function onContinue() {
+  const errorEl = document.getElementById('feature-select-error');
+  errorEl.textContent = '';
+  const productIds = selectedProductIds();
+  const days = selectedDays();
+  if (productIds.length === 0) { errorEl.textContent = 'Choose at least one product.'; return; }
+  if (!(days >= 1 && days <= MAX_DAYS)) { errorEl.textContent = `Choose between 1 and ${MAX_DAYS} days.`; return; }
+
+  const btn = document.getElementById('feature-continue-btn');
+  btn.disabled = true;
+  const res = await Api.post('startFeaturePurchase', { token: Auth.getToken(), productIds, days });
+  btn.disabled = false;
+  if (!res.ok) { errorEl.textContent = res.error || 'Could not start this purchase. Please try again.'; return; }
+  // Its own URL, so a refresh or a trip to the bank app and back lands on
+  // the payment step with the same reference - never a second purchase.
+  window.location.href = 'feature.html?purchase=' + encodeURIComponent(res.purchase.purchaseId);
+}
+
+/* ---------- step 2: pay + upload ---------- */
+
+function showPayStep(p) {
+  document.getElementById('feature-pay').classList.remove('hidden');
+  document.getElementById('feature-pay-summary').textContent =
+    `${p.productNames.join(', ')} - ${p.days} day${p.days === 1 ? '' : 's'}.`;
+  document.getElementById('pay-account-name').textContent = payment.accountName;
+  document.getElementById('pay-account-number').textContent = payment.accountNumber;
+  document.getElementById('pay-reference').textContent = p.reference;
+  document.getElementById('pay-amount').textContent = formatMoney(p.amount);
+
+  document.querySelectorAll('[data-copy]').forEach((btn) => {
+    btn.addEventListener('click', () => copyText(document.getElementById(btn.dataset.copy).textContent, btn));
+  });
+  document.getElementById('feature-upload-btn').addEventListener('click', () => onUpload(p));
+
+  if (p.status === 'Approved' || p.status === 'Pending review') {
+    document.getElementById('feature-pay-steps').classList.add('hidden');
+    showPayResult(p.status === 'Approved'
+      ? `Paid - featured until ${fmtDate(p.endsAt)}.`
+      : 'Your payment is waiting for a quick check by Mwakete.', p.status);
+  } else if (p.status === 'Rejected') {
+    document.getElementById('feature-pay-error').textContent =
+      'Your last screenshot could not be confirmed. Check the details above and upload the receipt again.';
+  }
+}
+
+async function copyText(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text.replace(/^\$/, ''));
+    const was = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = was; }, 1500);
+  } catch (e) { /* clipboard blocked - the value is on screen to type */ }
+}
+
+function readAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onUpload(p) {
+  const errorEl = document.getElementById('feature-pay-error');
+  errorEl.textContent = '';
+  const file = document.getElementById('feature-screenshot').files[0];
+  if (!file) { errorEl.textContent = 'Choose the screenshot of your payment receipt first.'; return; }
+  if (file.size > MAX_UPLOAD_BYTES) { errorEl.textContent = 'That image is too large (max 5MB).'; return; }
+
+  const btn = document.getElementById('feature-upload-btn');
+  btn.disabled = true;
+  btn.textContent = 'Checking payment…';
+  let res;
+  try {
+    // Sent as-is, not compressed: OCR needs the receipt's text sharp, and the
+    // duplicate-screenshot check needs the original file.
+    res = await Api.post('submitFeaturePayment', {
+      token: Auth.getToken(), purchaseId: p.purchaseId, imageBase64: await readAsBase64(file), mimeType: file.type
+    });
+  } catch (e) {
+    res = { ok: false, error: 'That file could not be read. Please choose it again.' };
+  }
+  btn.disabled = false;
+  btn.textContent = 'Upload payment screenshot';
+  if (!res.ok) { errorEl.textContent = res.error || 'Upload failed. Please try again.'; return; }
+
+  const updated = res.purchase;
+  const idx = purchases.findIndex((x) => x.purchaseId === updated.purchaseId);
+  if (idx !== -1) purchases[idx] = Object.assign({}, purchases[idx], updated);
+  renderHistory();
+  if (updated.status === 'Rejected') {
+    errorEl.textContent = res.message;
+    return;
+  }
+  document.getElementById('feature-pay-steps').classList.add('hidden');
+  showPayResult(res.message, updated.status);
+}
+
+function showPayResult(text, status) {
+  const el = document.getElementById('feature-pay-result');
+  el.textContent = text;
+  el.className = 'feature-pay-result' + (status === 'Approved' ? ' is-approved' : ' is-pending');
+}
+
+/* ---------- history ---------- */
+
+function fmtDate(iso) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+}
+
+function statusLine(p) {
+  if (p.status === 'Approved') {
+    const live = new Date(p.endsAt).getTime() > Date.now();
+    return live ? `Featured until ${fmtDate(p.endsAt)}` : `Ended ${fmtDate(p.endsAt)}`;
+  }
+  return p.status;
+}
+
+function renderHistory() {
+  const el = document.getElementById('feature-history');
+  if (purchases.length === 0) {
+    el.innerHTML = '<p class="helper-text">Nothing featured yet.</p>';
+    return;
+  }
+  el.innerHTML = purchases.map((p) => {
+    const payable = p.status === 'Awaiting payment' || p.status === 'Rejected';
+    return `
+      <div class="feature-history-row">
+        <div>
+          <strong>${escapeHtml(p.productNames.join(', '))}</strong>
+          <div class="helper-text">${p.days} day${p.days === 1 ? '' : 's'} · ${formatMoney(p.amount)} · ref ${escapeHtml(p.reference)}</div>
+        </div>
+        <div class="feature-history-status">
+          <span>${escapeHtml(statusLine(p))}</span>
+          ${payable ? `<a class="btn btn-small btn-primary" href="feature.html?purchase=${encodeURIComponent(p.purchaseId)}">Pay now</a>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}

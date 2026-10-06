@@ -39,6 +39,7 @@ Raw links for every backend file (open, Ctrl+A, Ctrl+C):
 | `Admin.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Admin.gs |
 | `Images.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Images.gs |
 | `Reminders.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Reminders.gs |
+| `Featuring.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Featuring.gs — **new file**: in the editor click **+ → Script**, name it `Featuring`, paste. Paid featuring's screenshot check also needs **Services → Drive API → Add** (without it, every payment goes to admin review). |
 
 Browse them all: https://github.com/dsc26support-beep/simple-kiri-shop/tree/main/apps-script
 

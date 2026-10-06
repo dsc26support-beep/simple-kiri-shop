@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feature Products — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell owner-feature-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Feature Products</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Feature your products</h1>
+      <p class="helper-text">Featured products are shown to shoppers in Tips and at the top of the Featured list. It costs <strong>5c per product per day</strong>.</p>
+      <p id="feature-status" class="helper-text" role="status"></p>
+
+      <!-- Step 1: choose products and days. -->
+      <section id="feature-select" class="dash-section hidden" aria-labelledby="feature-select-heading">
+        <h2 id="feature-select-heading">1. Choose products and days</h2>
+        <fieldset class="feature-products">
+          <legend>Products</legend>
+          <div id="feature-product-list"></div>
+        </fieldset>
+        <div class="field feature-days-field">
+          <label for="feature-days">Number of days</label>
+          <input id="feature-days" type="number" inputmode="numeric" min="1" max="60" step="1" value="7">
+        </div>
+        <p id="feature-total" class="feature-total" aria-live="polite"></p>
+        <p id="feature-select-error" class="form-error" role="alert"></p>
+        <button type="button" id="feature-continue-btn" class="btn btn-primary">Continue to payment</button>
+      </section>
+
+      <!-- Step 2: pay by bank transfer, then upload the receipt. Reached via ?purchase=. -->
+      <section id="feature-pay" class="dash-section hidden" aria-labelledby="feature-pay-heading">
+        <h2 id="feature-pay-heading">2. Pay and upload your receipt</h2>
+        <p id="feature-pay-summary" class="feature-pay-summary"></p>
+        <div id="feature-pay-steps">
+          <p>Pay this exact amount by bank transfer (e.g. ANZ goMoney), using the reference exactly as shown:</p>
+          <dl class="feature-pay-box">
+            <div><dt>Account name</dt><dd id="pay-account-name"></dd><button type="button" class="btn btn-small" data-copy="pay-account-name">Copy</button></div>
+            <div><dt>Account number</dt><dd id="pay-account-number"></dd><button type="button" class="btn btn-small" data-copy="pay-account-number">Copy</button></div>
+            <div><dt>Reference</dt><dd id="pay-reference" class="feature-pay-strong"></dd><button type="button" class="btn btn-small" data-copy="pay-reference">Copy</button></div>
+            <div><dt>Amount</dt><dd id="pay-amount" class="feature-pay-strong"></dd><button type="button" class="btn btn-small" data-copy="pay-amount">Copy</button></div>
+          </dl>
+          <p>Then take a screenshot of the receipt screen that says the payment was <strong>successful</strong>, and upload it here. Not the screen with the Confirm button - the one after.</p>
+          <div class="field">
+            <label for="feature-screenshot">Payment screenshot</label>
+            <input type="file" id="feature-screenshot" accept="image/png,image/jpeg,image/webp">
+          </div>
+          <p id="feature-pay-error" class="form-error" role="alert"></p>
+          <button type="button" id="feature-upload-btn" class="btn btn-primary">Upload payment screenshot</button>
+        </div>
+        <p id="feature-pay-result" class="feature-pay-result hidden" role="status"></p>
+        <p><a href="feature.html" id="feature-new-link">Feature more products</a></p>
+      </section>
+
+      <section class="dash-section" aria-labelledby="feature-history-heading">
+        <h2 id="feature-history-heading">Your featuring</h2>
+        <div id="feature-history"></div>
+      </section>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/owner-feature.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>

@@ -140,6 +140,11 @@ function buildTips() {
     if (f.Type === 'product') productIds.push(String(f.RefId));
     else if (f.Type === 'store') storeSlugs.push(String(f.RefId));
   });
+  // Paid featuring (Featuring.gs) - after the admin's own picks, never
+  // duplicating one. Expiry rides this function's 5-minute cache.
+  activePaidFeaturedProductIds().forEach(function (id) {
+    if (productIds.indexOf(id) === -1) productIds.push(id);
+  });
 
   var owners = sheetToObjects(getSheet('Owners'));
   var ownersBySlug = {};
