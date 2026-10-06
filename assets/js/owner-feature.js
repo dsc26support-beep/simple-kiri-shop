@@ -33,12 +33,14 @@ async function init() {
     if (p) { showPayStep(p); return; }
     statusEl.textContent = 'That purchase could not be found.';
   }
-  await showSelectStep();
+  // ?renew= comes from the "ends tomorrow" email: same products and days, ready to pay.
+  const renewFrom = purchases.find((x) => x.purchaseId === getQueryParam('renew'));
+  await showSelectStep(renewFrom);
 }
 
 /* ---------- step 1: choose ---------- */
 
-async function showSelectStep() {
+async function showSelectStep(preset) {
   const section = document.getElementById('feature-select');
   const listEl = document.getElementById('feature-product-list');
   section.classList.remove('hidden');
@@ -54,6 +56,19 @@ async function showSelectStep() {
         <input type="checkbox" value="${escapeAttr(p.productId)}">
         <span>${escapeHtml(p.name)}</span>
       </label>`).join('');
+  }
+  if (preset) {
+    const ticked = preset.productIds.filter((id) => {
+      const box = listEl.querySelector(`input[value="${CSS.escape(id)}"]`);
+      if (box) box.checked = true;
+      return !!box;
+    });
+    document.getElementById('feature-days').value = preset.days;
+    if (ticked.length) {
+      document.getElementById('feature-status').textContent = ticked.length < preset.productIds.length
+        ? 'Renewing - some of those products are no longer active, so only the active ones are ticked.'
+        : 'Renewing - the same products and days are ticked. Change them if you like.';
+    }
   }
   section.addEventListener('change', updateTotal);
   document.getElementById('feature-days').addEventListener('input', updateTotal);

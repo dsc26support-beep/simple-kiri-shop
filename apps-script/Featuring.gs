@@ -283,6 +283,87 @@ function activePaidFeaturedProductIds() {
   return ids;
 }
 
+/* ==================== Renewal reminders ==================== */
+
+// One email per purchase, about a day before its featuring ends, with a link
+// that reopens the Feature page with the same products and days ticked.
+// Which purchases were already reminded lives in a Script Property, not a
+// sheet column, so this needs no change to the FeaturePurchases tab.
+var FEATURE_RENEW_NOTICE_MS = 24 * 60 * 60 * 1000;
+var FEATURE_RENEW_SENT_KEY = 'FEATURE_RENEW_SENT';
+
+/**
+ * Pure: which Approved purchases are due a reminder at nowMs. Due = ends within
+ * the next FEATURE_RENEW_NOTICE_MS, not already reminded, and not already
+ * renewed (a later Approved or Pending-review purchase by the same store
+ * covering every one of its products).
+ */
+function featureRenewalsDue(rows, nowMs, sent) {
+  var productsOf = function (r) {
+    try { return JSON.parse(r.ProductIdsJson || '[]').map(String); } catch (e) { return []; }
+  };
+  return rows.filter(function (r) {
+    if (r.Status !== FEATURE_STATUS.APPROVED || !r.EndsAt || sent[r.PurchaseId]) return false;
+    var ends = new Date(r.EndsAt).getTime();
+    if (isNaN(ends) || ends <= nowMs || ends - nowMs > FEATURE_RENEW_NOTICE_MS) return false;
+    var mine = productsOf(r);
+    var renewed = rows.some(function (o) {
+      if (o.PurchaseId === r.PurchaseId || o.OwnerId !== r.OwnerId) return false;
+      if (o.Status !== FEATURE_STATUS.APPROVED && o.Status !== FEATURE_STATUS.PENDING) return false;
+      if (String(o.CreatedAt) <= String(r.CreatedAt)) return false;
+      var theirs = productsOf(o);
+      return mine.every(function (id) { return theirs.indexOf(id) !== -1; });
+    });
+    return !renewed;
+  });
+}
+
+/** Called from runReminderSweep (Reminders.gs) on its hourly trigger. */
+function sendFeatureRenewalReminders() {
+  var sheet = SpreadsheetApp.getActive().getSheetByName('FeaturePurchases');
+  if (!sheet) return 0;
+  var props = PropertiesService.getScriptProperties();
+  var sent = {};
+  try { sent = JSON.parse(props.getProperty(FEATURE_RENEW_SENT_KEY) || '{}'); } catch (e) { sent = {}; }
+  var now = Date.now();
+  // Forget reminders for windows that have ended - keeps the property small.
+  Object.keys(sent).forEach(function (id) { if (new Date(sent[id]).getTime() <= now) delete sent[id]; });
+
+  var rows = sheetToObjects(sheet);
+  var due = featureRenewalsDue(rows, now, sent);
+  if (due.length) {
+    var owners = {};
+    sheetToObjects(getSheet('Owners')).forEach(function (o) { owners[o.OwnerId] = o; });
+    var names = {};
+    sheetToObjects(getSheet('Products')).forEach(function (p) { names[p.ProductId] = p.Name; });
+    due.forEach(function (r) {
+      var owner = owners[r.OwnerId];
+      // Marked as handled even when skipped, so a store without an email
+      // isn't re-checked every hour until the window ends.
+      sent[r.PurchaseId] = r.EndsAt;
+      if (!owner || owner.Status !== 'active' || !owner.Email) return;
+      sendAppEmail(owner.Email, 'Your featured products end tomorrow - renew?', featureRenewalEmailBody(owner, publicFeaturePurchase(r, names)));
+    });
+  }
+  props.setProperty(FEATURE_RENEW_SENT_KEY, JSON.stringify(sent));
+  return due.length;
+}
+
+function featureRenewalEmailBody(owner, p) {
+  var base = siteBaseUrl();
+  var link = base ? base + '/owner/feature.html?renew=' + encodeURIComponent(p.purchaseId) : '';
+  var ends = new Date(p.endsAt);
+  return 'Hi ' + owner.StoreName + ',\n\n' +
+    'Your featured products stop being featured on ' + ends.toDateString() + ':\n\n' +
+    p.productNames.map(function (n) { return '- ' + n; }).join('\n') + '\n\n' +
+    'To keep them at the top of Tips, renew for another ' + p.days + ' day' + (p.days === 1 ? '' : 's') +
+    ' ($' + featureAmountFor(p.productIds.length, p.days).toFixed(2) + ').\n\n' +
+    (link
+      ? 'Renew here - the same products and days are already chosen:\n' + link + '\n'
+      : 'To renew, open Feature products from your store dashboard.\n') +
+    '\nIf you\'d rather let it end, you can ignore this email.';
+}
+
 /* ==================== Screenshot checks (ported from topup) ==================== */
 
 function isValidPaymentImage(bytes, mimeType) {
