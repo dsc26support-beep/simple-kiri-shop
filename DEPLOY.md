@@ -39,9 +39,66 @@ Raw links for every backend file (open, Ctrl+A, Ctrl+C):
 | `Admin.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Admin.gs |
 | `Images.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Images.gs |
 | `Reminders.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Reminders.gs |
-| `Featuring.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Featuring.gs — **new file**: in the editor click **+ → Script**, name it `Featuring`, paste. Paid featuring's screenshot check also needs **Services → Drive API → Add** (without it, every payment goes to admin review). |
+| `Featuring.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Featuring.gs — **new file**: in the editor click **+ → Script**, name it `Featuring`, paste. Paid featuring's screenshot check also needs the Drive API service (**Services → Drive API → Add**, unless it's already listed) and the `documents` scope — see *Manifest* below. Without either, every payment goes to admin review. |
 
 Browse them all: https://github.com/dsc26support-beep/simple-kiri-shop/tree/main/apps-script
+
+### Manifest (`appsscript.json`) — check once, and after any service/scope change
+
+The project lists its permissions explicitly (`oauthScopes`), so a service the
+code uses but the manifest doesn't list fails **silently at runtime**, not at
+save. Paid featuring's receipt check reads the OCR'd text with `DocumentApp`,
+which needs the `documents` scope; without it every payment quietly falls
+back to admin review.
+
+To see it: ⚙️ **Project Settings → Show "appsscript.json" manifest file in
+editor**. It should read:
+
+```json
+{
+  "timeZone": "Pacific/Tarawa",
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS"
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/script.send_mail",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/meetings.space.created"
+  ],
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Drive",
+        "version": "v3",
+        "serviceId": "drive"
+      }
+    ]
+  }
+}
+```
+
+Two traps seen on the featuring deploy:
+
+- **"Found a service identifier used more than once: Drive"** — Drive was
+  already enabled, and adding it again via Services listed it twice. Keep
+  exactly one `drive` entry (remove the other under **Services → ⋮ → Remove**,
+  or delete it from the JSON).
+- **"Unsaved changes" / the manifest won't save** — deleting a block by hand
+  left the JSON broken (a trailing comma, or a missing `]` / `}` at the end).
+  Paste the whole file above instead of patching it.
+
+**After adding a scope, approve it once before deploying:** pick `doGet` in the
+function dropdown and press **Run** — the one exception to "don't press Run"
+below. Google asks you to allow the new permission; click **Allow**. The run
+itself then errors (there is no request to answer) — ignore that; the approval
+was the point, and `doGet` only reads. Skip this and the deployed web app can
+fail on the new permission.
 
 ---
 
