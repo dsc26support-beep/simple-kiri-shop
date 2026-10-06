@@ -44,7 +44,7 @@ var FEATURE_SUBMITS_PER_HOUR = 10;
 
 var FEATURE_PURCHASE_HEADERS = ['PurchaseId', 'OwnerId', 'StoreSlug', 'ProductIdsJson', 'Days', 'Amount',
   'Reference', 'Status', 'ScreenshotUrl', 'ScreenshotHash', 'OcrNotes', 'StartsAt', 'EndsAt',
-  'CreatedAt', 'UpdatedAt'];
+  'CreatedAt', 'UpdatedAt', 'ViewsAtStartJson', 'ViewsAtEndJson'];
 
 var FEATURE_STATUS = {
   AWAITING: 'Awaiting payment',
@@ -56,7 +56,14 @@ var FEATURE_STATUS = {
 function getFeaturePurchasesSheet() {
   var ss = SpreadsheetApp.getActive();
   var sheet = ss.getSheetByName('FeaturePurchases');
-  if (sheet) return sheet;
+  if (sheet) {
+    // Added after the tab went live (owner-approved): each product's Views
+    // count when featuring started and ended, for the seller's results.
+    // Additive - appends header cells, moves nothing.
+    ensureColumn(sheet, 'ViewsAtStartJson');
+    ensureColumn(sheet, 'ViewsAtEndJson');
+    return sheet;
+  }
   sheet = ss.insertSheet('FeaturePurchases');
   sheet.getRange(1, 1, 1, FEATURE_PURCHASE_HEADERS.length).setValues([FEATURE_PURCHASE_HEADERS]);
   return sheet;
@@ -155,13 +162,20 @@ function actionStartFeaturePurchase(owner, body) {
 /** Every purchase this store has made, newest first, plus where to pay. */
 function actionListMyFeaturePurchases(owner) {
   var names = {};
+  var views = {};
   sheetToObjects(getSheet('Products')).forEach(function (p) {
-    if (p.OwnerId === owner.OwnerId) names[p.ProductId] = p.Name;
+    if (p.OwnerId !== owner.OwnerId) return;
+    names[p.ProductId] = p.Name;
+    views[p.ProductId] = Number(p.Views) || 0;
   });
   var rows = sheetToObjects(getFeaturePurchasesSheet())
     .filter(function (r) { return r.OwnerId === owner.OwnerId; })
     .sort(function (a, b) { return String(b.CreatedAt).localeCompare(String(a.CreatedAt)); })
-    .map(function (r) { return publicFeaturePurchase(r, names); });
+    .map(function (r) {
+      var p = publicFeaturePurchase(r, names);
+      p.viewsGained = featureViewsGained(r, views);
+      return p;
+    });
   return ok({ purchases: rows, payment: featurePaymentDetails(), pricePerProductDay: FEATURE_PRICE_PER_PRODUCT_DAY });
 }
 
@@ -205,6 +219,7 @@ function actionSubmitFeaturePayment(owner, body) {
   if (check.status === FEATURE_STATUS.APPROVED) {
     update.StartsAt = now;
     update.EndsAt = new Date(Date.now() + Number(row.Days) * 86400000).toISOString();
+    update.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(row));
   }
   updateRowFromObject(sheet, row.__row, update);
   if (check.status === FEATURE_STATUS.APPROVED) invalidateCache([TIPS_CACHE_KEY]);
@@ -255,10 +270,14 @@ function actionSetFeaturePurchaseStatus(owner, body) {
     update.Status = FEATURE_STATUS.APPROVED;
     update.StartsAt = now;
     update.EndsAt = new Date(Date.now() + Number(row.Days) * 86400000).toISOString();
+    update.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(row));
+    update.ViewsAtEndJson = '';
   } else {
     update.Status = FEATURE_STATUS.REJECTED;
     update.StartsAt = '';
     update.EndsAt = '';
+    update.ViewsAtStartJson = '';
+    update.ViewsAtEndJson = '';
   }
   updateRowFromObject(sheet, row.__row, update);
   invalidateCache([TIPS_CACHE_KEY]);
@@ -281,6 +300,53 @@ function activePaidFeaturedProductIds() {
     list.forEach(function (id) { if (ids.indexOf(String(id)) === -1) ids.push(String(id)); });
   });
   return ids;
+}
+
+/* ==================== Results: views while featured ==================== */
+
+/** { productId: Views } for a purchase's products, read now from the Products tab. */
+function productViewsSnapshot(row) {
+  var ids = [];
+  try { ids = JSON.parse(row.ProductIdsJson || '[]').map(String); } catch (e) { ids = []; }
+  var snap = {};
+  sheetToObjects(getSheet('Products')).forEach(function (p) {
+    if (ids.indexOf(String(p.ProductId)) !== -1) snap[p.ProductId] = Number(p.Views) || 0;
+  });
+  return snap;
+}
+
+/**
+ * Pure: views each product gained while featured - the end snapshot (or the
+ * live count while still running) minus the start snapshot. null when there
+ * is no start snapshot (not approved, or approved before this was added).
+ */
+function featureViewsGained(row, currentViews) {
+  var start, end = null;
+  try { start = JSON.parse(row.ViewsAtStartJson || 'null'); } catch (e) { start = null; }
+  if (!start || typeof start !== 'object') return null;
+  try { end = JSON.parse(row.ViewsAtEndJson || 'null'); } catch (e) { end = null; }
+  var out = {};
+  Object.keys(start).forEach(function (id) {
+    var after = end && end[id] !== undefined ? end[id] : currentViews[id];
+    out[id] = after === undefined ? 0 : Math.max(0, Number(after) - Number(start[id] || 0));
+  });
+  return out;
+}
+
+/** Called from runReminderSweep: freezes the Views count of windows that have ended. */
+function recordFeatureEndViews() {
+  var sheet = SpreadsheetApp.getActive().getSheetByName('FeaturePurchases');
+  if (!sheet) return 0;
+  sheet = getFeaturePurchasesSheet(); // makes sure the two Views columns exist
+  var now = Date.now();
+  var ended = sheetToObjects(sheet).filter(function (r) {
+    return r.Status === FEATURE_STATUS.APPROVED && r.ViewsAtStartJson && !r.ViewsAtEndJson &&
+      r.EndsAt && new Date(r.EndsAt).getTime() <= now;
+  });
+  ended.forEach(function (r) {
+    updateRowFromObject(sheet, r.__row, { ViewsAtEndJson: JSON.stringify(productViewsSnapshot(r)) });
+  });
+  return ended.length;
 }
 
 /* ==================== Renewal reminders ==================== */

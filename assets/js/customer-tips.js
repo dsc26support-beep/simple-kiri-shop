@@ -26,6 +26,9 @@ async function init() {
   if (products.length) {
     document.getElementById('tips-products').innerHTML = products.map((p) => renderBrowseProductCard(p)).join('');
     document.getElementById('tips-products-wrap').classList.remove('hidden');
+    // Counted like any other list a product appears in - paid featuring's
+    // results (owner/feature.html) are mostly views from here.
+    recordProductViewsOnce(products.map((p) => p.productId));
   }
   // Card badges cannot carry their own popover (they sit inside the card's
   // link), so the page explains them once. Renders nothing when nothing on the

@@ -215,6 +215,21 @@ function statusLine(p) {
   return p.status;
 }
 
+// Views each product picked up while featured (Featuring.gs featureViewsGained).
+function resultsHtml(p) {
+  if (p.status !== 'Approved' || !p.viewsGained) return '';
+  const ids = Object.keys(p.viewsGained);
+  if (ids.length === 0) return '';
+  const total = ids.reduce((sum, id) => sum + p.viewsGained[id], 0);
+  const live = new Date(p.endsAt).getTime() > Date.now();
+  const each = ids.map((id) => {
+    const i = p.productIds.indexOf(id);
+    const name = i !== -1 ? p.productNames[i] : id;
+    return `${escapeHtml(name)} +${p.viewsGained[id]}`;
+  }).join(' · ');
+  return `<div class="feature-results"><strong>+${total} view${total === 1 ? '' : 's'}</strong> ${live ? 'so far while featured' : 'while featured'}<span class="helper-text"> (${each})</span></div>`;
+}
+
 function renderHistory() {
   const el = document.getElementById('feature-history');
   if (purchases.length === 0) {
@@ -228,6 +243,7 @@ function renderHistory() {
         <div>
           <strong>${escapeHtml(p.productNames.join(', '))}</strong>
           <div class="helper-text">${p.days} day${p.days === 1 ? '' : 's'} · ${formatMoney(p.amount)} · ref ${escapeHtml(p.reference)}</div>
+          ${resultsHtml(p)}
         </div>
         <div class="feature-history-status">
           <span>${escapeHtml(statusLine(p))}</span>

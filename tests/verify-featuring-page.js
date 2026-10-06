@@ -113,6 +113,20 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   ok('no page errors (renew)', st.errors.length === 0, st.errors.join('; '));
   await ctx.close();
 
+  // ---------- results: views while featured ----------
+  st = { calls: [], purchases: [
+    Object.assign({}, AWAITING, { purchaseId: 'r1', status: 'Approved', endsAt: new Date(Date.now() + 86400000).toISOString(), viewsGained: { p1: 12, p2: 3 } }),
+    Object.assign({}, AWAITING, { purchaseId: 'r2', status: 'Approved', endsAt: new Date(Date.now() - 86400000).toISOString(), viewsGained: { p1: 1, p2: 0 } }),
+    Object.assign({}, AWAITING, { purchaseId: 'r3', status: 'Approved', endsAt: new Date(Date.now() - 86400000).toISOString(), viewsGained: null })] };
+  ({ ctx, page } = await open('/owner/feature.html', st));
+  await page.waitForSelector('.feature-history-row', { timeout: 6000 });
+  const res = await page.$$eval('.feature-history-row', (rows) => rows.map((r) => (r.querySelector('.feature-results') || {}).textContent || ''));
+  ok('live purchase shows "+15 views so far" with a per-product split', /\+15 views so far while featured/.test(res[0]) && /Rice \+12 · Flour \+3/.test(res[0]), res[0]);
+  ok('ended purchase shows "+1 view while featured" (singular)', /\+1 view while featured/.test(res[1]), res[1]);
+  ok('purchase from before results existed shows no results line', res[2] === '', res[2]);
+  ok('no page errors (results)', st.errors.length === 0, st.errors.join('; '));
+  await ctx.close();
+
   // ---------- admin queue ----------
   st = { calls: [], admin: [
     Object.assign({}, AWAITING, { status: 'Pending review', storeName: 'Bong Store', screenshotUrl: 'https://drive.google.com/x', ocrNotes: 'ocr:unavailable' }),
