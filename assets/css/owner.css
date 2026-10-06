@@ -256,6 +256,21 @@
   flex-wrap: wrap;
 }
 
+/* On a phone, Edit / Duplicate / Archive at 44px took most of the row and
+   crushed the name and price into a sliver beside them. Below 600px the
+   buttons get their own full-width line under the photo and details. */
+@media (max-width: 600px) {
+  .owner-product-row {
+    flex-wrap: wrap;
+  }
+  .owner-product-row .row-actions {
+    flex-basis: 100%;
+  }
+  .owner-product-row .row-actions .btn {
+    flex: 1 1 0;
+  }
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.2em 0.6em;
@@ -286,6 +301,53 @@
 .status-badge.status-archived {
   background: #fbe4e2;
   color: var(--color-danger);
+}
+
+/* 44px, not .btn-small's 36px, on this page only: Edit, Archive, Remove and
+   + Add Variety are the most-tapped controls a seller hits on a phone, and the
+   44px input boxes beside them made the gap obvious. .btn-small stays 36px
+   everywhere else (chat, etc.) where it was sized deliberately. */
+.owner-products-page .btn-small {
+  min-height: 44px;
+  padding: 0.55em 1em;
+}
+
+/* Required marker drawn by CSS, not markup: updateVarietyLabels() rewrites the
+   row labels' text on every type change, which would wipe a child span. The
+   "/ ''" alt text keeps screen readers from reading "star" - the controls'
+   own required attribute already announces it. The first declaration is the
+   fallback for browsers that don't parse alt text. */
+label.is-required::after,
+.req-mark {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+label.is-required::after {
+  content: " *";
+  content: " *" / "";
+}
+
+.form-required-note {
+  margin-top: calc(-1 * var(--space-2));
+}
+
+#product-form [aria-invalid="true"] {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 1px var(--color-danger);
+}
+
+.field-error {
+  margin: var(--space-1) 0 0;
+  color: var(--color-danger);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* A variety row is a flex row - give its message the whole width so it sits
+   under the row's fields rather than squeezing in beside them. */
+.variant-row .field-error {
+  flex-basis: 100%;
 }
 
 .variant-row {
@@ -782,4 +844,19 @@
   min-height: 0;
   padding: 0;
   margin: 0;
+}
+
+/* Description length counter - see updateDescriptionCount in owner-products.js. */
+.char-count {
+  text-align: right;
+}
+
+.char-count.is-over {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.duplicate-photo-note {
+  color: var(--color-danger);
+  font-weight: 600;
 }

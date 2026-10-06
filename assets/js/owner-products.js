@@ -86,9 +86,12 @@ async function init() {
 
   document.getElementById('add-product-btn').addEventListener('click', () => openForm(null));
   document.getElementById('cancel-product-btn').addEventListener('click', closeForm);
-  document.getElementById('add-variant-btn').addEventListener('click', () => addVariantRow());
+  document.getElementById('add-variant-btn').addEventListener('click', () => { clearFieldErrors(); addVariantRow(); });
   document.getElementById('product-listing-type').addEventListener('change', onListingTypeChange);
   document.getElementById('product-form').addEventListener('submit', onSaveProduct);
+  document.getElementById('product-form').addEventListener('input', onFieldEdited);
+  document.getElementById('product-description').addEventListener('input', updateDescriptionCount);
+  document.getElementById('product-form').addEventListener('change', onFieldEdited);
   document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
   document.getElementById('remove-photo2-btn').addEventListener('click', onRemovePhoto2);
   document.getElementById('owner-product-list').addEventListener('click', onListClick);
@@ -147,6 +150,7 @@ function renderList() {
           </div>
           <div class="row-actions">
             <button type="button" class="btn btn-small" data-action="edit">Edit</button>
+            <button type="button" class="btn btn-small" data-action="duplicate">Duplicate</button>
             <button type="button" class="btn btn-small btn-danger" data-action="archive">Archive</button>
           </div>
         </div>
@@ -163,6 +167,8 @@ function onListClick(e) {
 
   if (e.target.closest('[data-action="edit"]')) {
     openForm(product);
+  } else if (e.target.closest('[data-action="duplicate"]')) {
+    openForm(product, { duplicate: true });
   } else if (e.target.closest('[data-action="archive"]')) {
     onArchive(product);
   }
@@ -178,7 +184,18 @@ async function onArchive(product) {
   await loadProducts();
 }
 
-function openForm(product) {
+/**
+ * opts.duplicate: start a NEW listing pre-filled from `product` - same text,
+ * type, category, status and varieties (price and stock included), but no
+ * product id and no variant ids, so Save creates rather than edits.
+ *
+ * The photo is deliberately NOT copied. Photos aren't reference-counted:
+ * replacing a product's photo deletes the old file (actionUploadProductImage
+ * in Images.gs), so a copy sharing the original's photo would go blank the
+ * day the original's photo is changed.
+ */
+function openForm(product, opts) {
+  const duplicate = !!(product && opts && opts.duplicate);
   const section = document.getElementById('product-form-section');
   const heading = document.getElementById('product-form-heading');
   section.classList.remove('hidden');
@@ -186,14 +203,17 @@ function openForm(product) {
   clearPhoto2 = false;
   document.getElementById('product-image-input').value = '';
   document.getElementById('product-form-error').textContent = '';
+  clearFieldErrors();
 
   const preview = document.getElementById('image-preview');
   document.getElementById('variant-rows').innerHTML = '';
 
+  document.getElementById('duplicate-photo-note').hidden = !duplicate;
+
   if (product) {
-    heading.textContent = `Edit: ${product.name}`;
-    document.getElementById('product-id').value = product.productId;
-    document.getElementById('product-name').value = product.name;
+    heading.textContent = duplicate ? `Duplicate: ${product.name}` : `Edit: ${product.name}`;
+    document.getElementById('product-id').value = duplicate ? '' : product.productId;
+    document.getElementById('product-name').value = duplicate ? `${product.name} (copy)` : product.name;
     document.getElementById('product-description').value = product.description || '';
     // Type first - it decides which categories are offered - then category.
     // listingTypeOf() recovers the type of a listing saved before the field
@@ -201,10 +221,12 @@ function openForm(product) {
     const type = listingTypeOf(product);
     const existing = categoryIdOf(product.category);
     document.getElementById('product-listing-type').value = type;
-    fillCategoryOptions(type, existing);
+    // A duplicate is a new listing, and new listings never get "Other" - an
+    // old product still filed there makes the seller choose a real one.
+    fillCategoryOptions(type, duplicate ? '' : existing);
     document.getElementById('product-category').value = existing;
     document.getElementById('product-status').value = product.status || 'active';
-    if (product.imageUrl) {
+    if (product.imageUrl && !duplicate) {
       preview.src = optimizedImageUrl(product.imageUrl, IMG_W.card);
       preview.classList.remove('hidden');
     } else {
@@ -212,10 +234,10 @@ function openForm(product) {
     }
     // Shown only for products that already have a second photo - there is no
     // way to add one any more.
-    showPhoto2(product.imageUrl2);
+    showPhoto2(duplicate ? '' : product.imageUrl2);
     const activeVariants = product.variants.filter((v) => v.status === 'active');
     if (activeVariants.length === 0) addVariantRow();
-    else activeVariants.forEach((v) => addVariantRow(v));
+    else activeVariants.forEach((v) => addVariantRow(duplicate ? Object.assign({}, v, { variantId: '' }) : v));
   } else {
     heading.textContent = 'Add Product';
     document.getElementById('product-id').value = '';
@@ -231,6 +253,7 @@ function openForm(product) {
   }
 
   updateVarietyLabels();
+  updateDescriptionCount();
   UnsavedGuard.watch(document.getElementById('product-form'), { skipWhenHidden: true });
   section.scrollIntoView({ behavior: 'smooth' });
 }
@@ -253,11 +276,11 @@ function addVariantRow(variant) {
   const rowPlaceholder = varietyRowPlaceholderText(listingType);
   wrapper.innerHTML = `
     <div class="field">
-      <label for="${rowId}-label">${escapeHtml(rowLabel)}</label>
+      <label for="${rowId}-label" class="is-required">${escapeHtml(rowLabel)}</label>
       <input id="${rowId}-label" class="variant-label" placeholder="${escapeAttr(rowPlaceholder)}" value="${escapeAttr(variant ? variant.label : '')}" required>
     </div>
     <div class="field">
-      <label for="${rowId}-price">Price</label>
+      <label for="${rowId}-price" class="is-required">Price</label>
       <input id="${rowId}-price" class="variant-price" type="number" min="0.01" step="0.01" value="${variant ? variant.price : ''}" required>
     </div>
     <div class="field">
@@ -341,49 +364,146 @@ function setSaveProductIdle(saveBtn) {
   saveBtn.textContent = 'Save Product';
 }
 
+// Must match capLength(..., 2000/150) in Products.gs, which counts the same
+// trimmed .length this form sends.
+const DESCRIPTION_MAX = 2000;
+const DESCRIPTION_WARN_AT = 1800;
+const NAME_MAX = 150;
+
+function updateDescriptionCount() {
+  const n = document.getElementById('product-description').value.trim().length;
+  const out = document.getElementById('description-count');
+  out.hidden = n < DESCRIPTION_WARN_AT;
+  out.classList.toggle('is-over', n > DESCRIPTION_MAX);
+  out.textContent = n > DESCRIPTION_MAX
+    ? `${(n - DESCRIPTION_MAX).toLocaleString()} characters over the ${DESCRIPTION_MAX.toLocaleString()} limit - shorten it to save.`
+    : `${(DESCRIPTION_MAX - n).toLocaleString()} characters left`;
+}
+
+let fieldErrorSeq = 0;
+
+function clearFieldErrors() {
+  const form = document.getElementById('product-form');
+  form.querySelectorAll('.field-error').forEach((el) => el.remove());
+  form.querySelectorAll('[aria-invalid="true"]').forEach((el) => {
+    el.removeAttribute('aria-invalid');
+    el.removeAttribute('aria-describedby');
+  });
+}
+
+/**
+ * The message goes directly under the field it is about, and focus moves there,
+ * instead of into the one alert at the bottom of a long form - on a phone that
+ * alert was a screen away from whatever needed fixing. Only one at a time, the
+ * topmost problem, so fixing them goes in reading order.
+ */
+function showFieldError(control, message, existingMsg) {
+  clearFieldErrors();
+  // existingMsg: a message already on screen that says it (the description
+  // counter), so the error points at that rather than repeating it in red.
+  let msg = existingMsg;
+  if (!msg) {
+    msg = document.createElement('p');
+    msg.className = 'field-error';
+    msg.id = `field-error-${++fieldErrorSeq}`;
+    msg.textContent = message;
+    // In a variety row each field is a narrow flex column; across the whole row
+    // the message reads as one line, and the outline still marks which input.
+    const row = control.closest('.variant-row');
+    if (row) row.appendChild(msg);
+    else control.insertAdjacentElement('afterend', msg);
+  }
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(control.tagName)) {
+    control.setAttribute('aria-invalid', 'true');
+    control.setAttribute('aria-describedby', msg.id);
+  }
+  control.focus({ preventScroll: true });
+  control.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function onFieldEdited(e) {
+  if (e.target.getAttribute && e.target.getAttribute('aria-invalid') === 'true') clearFieldErrors();
+}
+
+/**
+ * Top to bottom, so the first error is also the first thing on the page. The
+ * form is novalidate: native bubbles looked different on every phone and
+ * vanished on scroll, and could only ever cover "empty", not "price of 0".
+ * Returns false (with the error shown) or the variants to send.
+ */
+function validateProductForm() {
+  const name = document.getElementById('product-name');
+  if (!name.value.trim()) {
+    showFieldError(name, 'Please enter a name for this listing.');
+    return false;
+  }
+  if (name.value.trim().length > NAME_MAX) {
+    showFieldError(name, `Keep the name to ${NAME_MAX} characters or fewer.`);
+    return false;
+  }
+  const description = document.getElementById('product-description');
+  if (description.value.trim().length > DESCRIPTION_MAX) {
+    showFieldError(description, null, document.getElementById('description-count'));
+    return false;
+  }
+  const type = document.getElementById('product-listing-type');
+  if (!type.value) {
+    showFieldError(type, 'Please choose what you are offering.');
+    return false;
+  }
+  // A legacy product with no stored category opens on the empty placeholder,
+  // so an edit can reach this with a blank value too.
+  const category = document.getElementById('product-category');
+  if (!category.value) {
+    showFieldError(category, 'Please choose a category.');
+    return false;
+  }
+
+  const rows = Array.from(document.querySelectorAll('#variant-rows .variant-row'));
+  if (rows.length === 0) {
+    showFieldError(document.getElementById('add-variant-btn'), 'Add at least one variety (e.g. a size or pack) with a price.');
+    return false;
+  }
+  // Name the field the way the form now names it - "fill in a label" points
+  // at a word that is no longer on screen.
+  const noun = varietyRowLabelText(type.value).toLowerCase();
+  const variants = [];
+  for (const row of rows) {
+    const labelInput = row.querySelector('.variant-label');
+    const priceInput = row.querySelector('.variant-price');
+    const stockInput = row.querySelector('.variant-stock');
+    const label = labelInput.value.trim();
+    const price = parseFloat(priceInput.value);
+    const stockRaw = stockInput.value.trim();
+    if (!label) {
+      showFieldError(labelInput, `Please fill in a ${noun}.`);
+      return false;
+    }
+    if (isNaN(price) || price <= 0) {
+      showFieldError(priceInput, 'Enter a price greater than zero.');
+      return false;
+    }
+    if (stockRaw !== '' && !/^\d+$/.test(stockRaw)) {
+      showFieldError(stockInput, 'Leave blank for unlimited, or enter a whole number (0 or more).');
+      return false;
+    }
+    variants.push({
+      variantId: row.dataset.variantId || undefined,
+      label,
+      price,
+      stockQty: stockRaw === '' ? '' : parseInt(stockRaw, 10)
+    });
+  }
+  return variants;
+}
+
 async function onSaveProduct(e) {
   e.preventDefault();
   const errorEl = document.getElementById('product-form-error');
   errorEl.textContent = '';
 
-  // Category is required (the <select> has no default). Native validation
-  // normally blocks submit, but guard here too since this handler runs after
-  // preventDefault - and a legacy product with no stored category opens on the
-  // empty placeholder, so an edit could otherwise reach this with a blank value.
-  if (!document.getElementById('product-listing-type').value) {
-    errorEl.textContent = 'Please choose what you are offering.';
-    return;
-  }
-  if (!document.getElementById('product-category').value) {
-    errorEl.textContent = 'Please choose a category.';
-    return;
-  }
-
-  const variants = Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((row) => {
-    const stockRaw = row.querySelector('.variant-stock').value.trim();
-    return {
-      variantId: row.dataset.variantId || undefined,
-      label: row.querySelector('.variant-label').value.trim(),
-      price: parseFloat(row.querySelector('.variant-price').value),
-      stockQty: stockRaw === '' ? '' : parseInt(stockRaw, 10)
-    };
-  });
-
-  if (variants.some((v) => !v.label || isNaN(v.price) || v.price <= 0)) {
-    // Name the field the way the form now names it - "fill in a label" points
-    // at a word that is no longer on screen.
-    const noun = varietyRowLabelText(document.getElementById('product-listing-type').value).toLowerCase();
-    errorEl.textContent = `Please fill in a ${noun} and a price greater than zero for every row.`;
-    return;
-  }
-  if (variants.some((v) => v.stockQty !== '' && (isNaN(v.stockQty) || v.stockQty < 0))) {
-    errorEl.textContent = 'Stock must be left blank (unlimited) or a whole number of 0 or more.';
-    return;
-  }
-  if (variants.length === 0) {
-    errorEl.textContent = 'Add at least one variety (e.g. a size or pack) with a price.';
-    return;
-  }
+  const variants = validateProductForm();
+  if (!variants) return;
 
   const productId = document.getElementById('product-id').value || undefined;
   const payload = {
