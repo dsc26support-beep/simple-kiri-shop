@@ -675,12 +675,10 @@ section {
     row-gap: var(--space-4);
   }
   .home-main > .hero { order: 1; }
-  /* Alibaba-inspired sections, search -> tips link -> quick actions -> trust
-     -> discovery -> product grid. Every new section added here needs its own
-     order, same as the warning above says. */
-  .home-main > .home-tips-link { order: 2; }
+  /* Alibaba-inspired sections, search -> quick actions -> discovery ->
+     product grid. Every new section added here needs its own order, same as
+     the warning above says. */
   .home-main > .home-quick-actions { order: 3; }
-  .home-main > .home-trust { order: 4; }
   .home-main > .trending-stores { order: 5; }
   .home-main > .trending-products { order: 6; }
   .home-main > noscript { order: 7; }
@@ -6288,34 +6286,6 @@ html.has-remembered-email .auth-shared-row {
 /* ---------- Homepage restructure: Alibaba-inspired information architecture,
    Mwakete's own theme ---------------------------------------------------- */
 
-/* Compact, single line, no image - the whole point is that it does not
-   dominate the homepage. Purple-on-pale, the same surface pairing the badge
-   chips and category strip already use, so it reads as Mwakete rather than as
-   an inserted advert. */
-.home-tips-link {
-  padding-top: 0;
-  padding-bottom: var(--space-2);
-}
-
-.home-tips-link-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  background: var(--color-purple-soft);
-  color: var(--color-purple);
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.home-tips-link-item:hover,
-.home-tips-link-item:focus-visible {
-  background: var(--color-purple);
-  color: #fff;
-}
-
 .home-quick-actions {
   padding-top: 0;
   padding-bottom: var(--space-2);
@@ -6381,42 +6351,3 @@ html.has-remembered-email .auth-shared-row {
   text-align: center;
 }
 
-.home-trust {
-  padding-top: 0;
-  padding-bottom: var(--space-3);
-}
-
-/* A row of short facts, not a feature list - each one true of Mwakete today.
-   Wraps rather than scrolling: three short phrases fit on one or two lines at
-   every width this site supports, so there is nothing here worth losing to a
-   sideways swipe. */
-.home-trust-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-1) var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.8rem;
-  color: var(--color-muted);
-}
-
-.home-trust-list li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.home-trust-list li::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-gold);
-  flex: 0 0 auto;
-}
-
-@media (min-width: 700px) {
-  .home-trust-list { font-size: 0.85rem; }
-}
