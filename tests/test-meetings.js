@@ -255,7 +255,7 @@ const baseFields = () => ({ purpose: 'Discuss my order', requestedDate: futureDa
 }
 
 /* ============================================================ */
-/* 3. Accept -> Meet space creation -> READY, both directions      */
+/* 3. Accept -> ACCEPTED, and no video room is ever created       */
 /* ============================================================ */
 {
   const box = makeContext();
@@ -265,17 +265,15 @@ const baseFields = () => ({ purpose: 'Discuss my order', requestedDate: futureDa
   }));
   const meetingId = created.meeting.meetingId;
 
-  // The vendor (recipient) accepts.
   const accepted = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId, accept: true });
   ok_('vendor accept succeeds', accepted.ok === true, JSON.stringify(accepted));
-  ok_('status moves straight to READY on a successful create', accepted.meeting.status === 'READY', accepted.meeting.status);
-  ok_('a real-looking meeting URL is returned to an authorized participant', /^https:\/\/meet\.example\//.test(accepted.meeting.meetingUrl), accepted.meeting.meetingUrl);
-  ok_('exactly one Meet API call was made', box.__meetApi.callCount === 1, String(box.__meetApi.callCount));
-  ok_('AcceptedAt and ReadyAt were both recorded', !!box.__db.Meetings[0].AcceptedAt && !!box.__db.Meetings[0].ReadyAt);
+  ok_('status settles at ACCEPTED - nothing follows it now', accepted.meeting.status === 'ACCEPTED', accepted.meeting.status);
+  ok_('no Meet API call is made (video was removed)', box.__meetApi.callCount === 0, String(box.__meetApi.callCount));
+  ok_('no meeting link of any kind is returned', !('meetingUrl' in accepted.meeting) && !('meetFailed' in accepted.meeting), JSON.stringify(accepted.meeting));
+  ok_('AcceptedAt was recorded', !!box.__db.Meetings[0].AcceptedAt);
 
   const doubleAccept = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId, accept: true });
-  ok_('accepting an already-READY meeting again is rejected', doubleAccept.ok === false);
-  ok_('...and does not call the Meet API again (idempotent)', box.__meetApi.callCount === 1, String(box.__meetApi.callCount));
+  ok_('accepting an already-accepted meeting again is rejected', doubleAccept.ok === false);
 }
 
 /* ============================================================ */
@@ -299,77 +297,46 @@ const baseFields = () => ({ purpose: 'Discuss my order', requestedDate: futureDa
 }
 
 /* ============================================================ */
-/* 5. Meet creation failure, recoverable state, and retry           */
+/* 5. The video actions are gone - both refuse plainly           */
 /* ============================================================ */
 {
   const box = makeContext();
   seedOwnerAndCustomer(box);
-  box.__meetApi.mode = 'fail';
-  const created = box.actionRequestMeeting(Object.assign(baseFields(), {
-    storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1'
-  }));
-  const meetingId = created.meeting.meetingId;
 
-  const accepted = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId, accept: true });
-  ok_('accept still succeeds even when Meet creation fails', accepted.ok === true, JSON.stringify(accepted));
-  ok_('the accepted request itself is preserved, not lost', accepted.meeting.status === 'ACCEPTED', accepted.meeting.status);
-  ok_('meetFailed is surfaced to the client', accepted.meeting.meetFailed === true);
-  ok_('no meeting URL is shown while it failed - never falsely "ready"', accepted.meeting.meetingUrl === '', JSON.stringify(accepted.meeting.meetingUrl));
-  ok_('the real technical failure was logged server-side', box.__db.Meetings[0].MeetFailureReason.length > 0);
-  ok_('...and is not a raw Google error string bubbled to the API response', !/insufficient authentication scope/.test(JSON.stringify(accepted.meeting)));
+  const now = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
+  ok_('startVideoCallNow is refused', now.ok === false && /no longer available/i.test(now.error), JSON.stringify(now));
+  ok_('...and writes no row', box.__db.Meetings.length === 0);
 
-  box.__meetApi.mode = 'success';
-  const retried = box.actionRetryMeetingSpace({ token: 'owner-tok-1', meetingId });
-  ok_('retry succeeds once the underlying problem is gone', retried.ok === true && retried.meeting.status === 'READY', JSON.stringify(retried));
-  ok_('the failure reason is cleared once ready', !box.__db.Meetings[0].MeetFailureReason);
-  ok_('retry made exactly one more API call (the first failed one, plus this one)', box.__meetApi.callCount === 2, String(box.__meetApi.callCount));
-
-  const retryAgain = box.actionRetryMeetingSpace({ token: 'owner-tok-1', meetingId });
-  ok_('retrying an already-ready meeting is rejected, not silently re-created', retryAgain.ok === false);
-  ok_('...and makes no further API call', box.__meetApi.callCount === 2, String(box.__meetApi.callCount));
+  const m = box.actionRequestMeeting(Object.assign(baseFields(), { storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' })).meeting;
+  box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
+  const retry = box.actionRetryMeetingSpace({ token: 'owner-tok-1', meetingId: m.meetingId });
+  ok_('retryMeetingSpace is refused', retry.ok === false && /no longer available/i.test(retry.error), JSON.stringify(retry));
+  ok_('...and never reaches the Meet API', box.__meetApi.callCount === 0);
+  ok_('the accepted meeting is untouched by it', box.__db.Meetings[0].Status === 'ACCEPTED');
 }
 
 /* ============================================================ */
-/* 6. Malformed Meet API response is treated as a failure, not a crash */
-/* ============================================================ */
-{
-  const box = makeContext();
-  seedOwnerAndCustomer(box);
-  box.__meetApi.mode = 'malformed';
-  const created = box.actionRequestMeeting(Object.assign(baseFields(), {
-    storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1'
-  }));
-  const accepted = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: created.meeting.meetingId, accept: true });
-  ok_('a malformed API response does not throw and is treated as a failure', accepted.ok === true && accepted.meeting.meetFailed === true, JSON.stringify(accepted));
-}
-
-/* ============================================================ */
-/* 7. Cancel: which states allow it, which don't                    */
+/* 7. Cancel: which states allow it, which don't                   */
 /* ============================================================ */
 {
   const box = makeContext();
   seedOwnerAndCustomer(box);
 
-  // From REQUESTED.
   let m = box.actionRequestMeeting(Object.assign(baseFields(), { storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' })).meeting;
   let c = box.actionCancelMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: m.meetingId });
   ok_('cancel from REQUESTED succeeds', c.ok === true);
 
-  // From ACCEPTED (Meet failed, still ACCEPTED).
-  box.__meetApi.mode = 'fail';
   m = box.actionRequestMeeting(Object.assign(baseFields(), { storeSlug: 'bong', customerToken: 'a2', customerAuthToken: 'cust-tok-1' })).meeting;
   box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
   c = box.actionCancelMeeting({ token: 'owner-tok-1', meetingId: m.meetingId });
   ok_('cancel from ACCEPTED succeeds', c.ok === true);
 
-  // From READY.
-  box.__meetApi.mode = 'success';
+  // A READY row can only exist from before video was removed.
   m = box.actionRequestMeeting(Object.assign(baseFields(), { storeSlug: 'bong', customerToken: 'a3', customerAuthToken: 'cust-tok-1' })).meeting;
-  const ready = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true }).meeting;
-  c = box.actionCancelMeeting({ storeSlug: 'bong', customerToken: 'a3', meetingId: ready.meetingId });
-  ok_('cancel from READY succeeds', c.ok === true);
+  box.__db.Meetings.find((r) => r.MeetingId === m.meetingId).Status = 'READY';
+  c = box.actionCancelMeeting({ storeSlug: 'bong', customerToken: 'a3', meetingId: m.meetingId });
+  ok_('cancel from a legacy READY row succeeds', c.ok === true);
 
-  // From DECLINED - must fail.
   m = box.actionRequestMeeting(Object.assign(baseFields(), { storeSlug: 'bong', customerToken: 'a4', customerAuthToken: 'cust-tok-1' })).meeting;
   box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: false });
   c = box.actionCancelMeeting({ storeSlug: 'bong', customerToken: 'a4', meetingId: m.meetingId });
@@ -377,23 +344,20 @@ const baseFields = () => ({ purpose: 'Discuss my order', requestedDate: futureDa
 }
 
 /* ============================================================ */
-/* 8. End meeting: only from READY                                  */
+/* 8. End meeting: only a legacy READY row                          */
 /* ============================================================ */
 {
   const box = makeContext();
   seedOwnerAndCustomer(box);
   const m = box.actionRequestMeeting(Object.assign(baseFields(), { storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' })).meeting;
 
-  const endTooEarly = box.actionEndMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: m.meetingId });
-  ok_('cannot end a meeting that was never accepted', endTooEarly.ok === false);
+  ok_('cannot end a meeting that was never accepted', box.actionEndMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: m.meetingId }).ok === false);
+  box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
+  ok_('cannot "end" an ACCEPTED meeting either - there is no call to end', box.actionEndMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: m.meetingId }).ok === false);
 
-  const ready = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true }).meeting;
-  const ended = box.actionEndMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: ready.meetingId });
-  ok_('ending a READY meeting succeeds', ended.ok === true);
+  box.__db.Meetings[0].Status = 'READY';
+  ok_('a legacy READY row can still be closed off', box.actionEndMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: m.meetingId }).ok === true);
   ok_('status is ENDED', box.__db.Meetings[0].Status === 'ENDED');
-
-  const endAgain = box.actionEndMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: ready.meetingId });
-  ok_('ending an already-ENDED meeting is rejected', endAgain.ok === false);
 }
 
 /* ============================================================ */
@@ -469,175 +433,41 @@ const baseFields = () => ({ purpose: 'Discuss my order', requestedDate: futureDa
 }
 
 /* ============================================================ */
-/* 12. Meet URL is never present unless the meeting is READY        */
+/* 12. No meeting link is ever exposed, at any stage                */
 /* ============================================================ */
 {
   const box = makeContext();
   seedOwnerAndCustomer(box);
   const m = box.actionRequestMeeting(Object.assign(baseFields(), { storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' })).meeting;
-  ok_('no meeting URL on a freshly requested meeting', m.meetingUrl === '');
-
+  ok_('no meetingUrl on a freshly requested meeting', !('meetingUrl' in m));
+  box.__db.Meetings[0].Status = 'READY';
+  box.__db.Meetings[0].GoogleMeetUrl = 'https://meet.example/old-room';
   const asCustomer = box.actionListMeetingsForConversation({ storeSlug: 'bong', customerToken: 'a1' });
-  ok_('no meeting URL in the list view before acceptance', asCustomer.meetings[0].meetingUrl === '');
+  ok_('even a legacy READY row with a stored link never hands it out', !/meet\.example/.test(JSON.stringify(asCustomer)), JSON.stringify(asCustomer));
 }
 
 /* ============================================================ */
-/* 13. Video Call Now: creation, both directions, purpose/date-free  */
+/* 13. A legacy RINGING row still settles to MISSED on read        */
 /* ============================================================ */
 {
   const box = makeContext();
   seedOwnerAndCustomer(box);
+  const m = box.actionRequestMeeting(Object.assign(baseFields(), { storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' })).meeting;
+  const row = box.__db.Meetings[0];
+  row.Status = 'RINGING'; row.RequestedDate = ''; row.RequestedTime = '';
+  const convId = row.ConversationId;
+  ok_('while inside its 45s window the vendor poll still sees it (Chat.gs unchanged)', !!box.activeIncomingCall(convId, 'vendor'));
 
-  const res = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
-  ok_('customer can start a Video Call Now', res.ok === true, JSON.stringify(res));
-  ok_('status starts RINGING, not REQUESTED', res.ok && res.meeting.status === 'RINGING', res.ok && res.meeting.status);
-  ok_('no purpose or date/time is required', box.__db.Meetings[0].Purpose === 'Video call' && !box.__db.Meetings[0].RequestedDate);
-  ok_('ringingSecondsLeft is close to the full 45s window', res.meeting.ringingSecondsLeft >= 40 && res.meeting.ringingSecondsLeft <= 45, res.meeting.ringingSecondsLeft);
-  ok_('no meeting URL while ringing', res.meeting.meetingUrl === '');
-
-  const noSignIn = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-2' });
-  ok_('an unsigned-in customer cannot start a call, same bar as Request Meeting', noSignIn.ok === false && /sign in/i.test(noSignIn.error), JSON.stringify(noSignIn));
-
-  const conv = box.findOrCreateConversation({ OwnerId: 'own1' }, 'bong', 'anon-vendor-call', 'Cleo');
-  const vendorStarted = box.actionStartVideoCallNow({ token: 'owner-tok-1', conversationId: conv.ConversationId });
-  ok_('a vendor can also start a Video Call Now', vendorStarted.ok === true, JSON.stringify(vendorStarted));
-  ok_('RecipientId is the conversation\'s anonymous identity, same as a scheduled vendor-initiated request',
-    box.__db.Meetings[1].RecipientId === 'anon-vendor-call');
-}
-
-/* ============================================================ */
-/* 14. Video Call Now: one active call per conversation at a time    */
-/* ============================================================ */
-{
-  const box = makeContext();
-  seedOwnerAndCustomer(box);
-  box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
-
-  const secondWhileRinging = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
-  ok_('a second Now-call while one is already RINGING is refused', secondWhileRinging.ok === false, JSON.stringify(secondWhileRinging));
-  ok_('...and no second row was written', box.__db.Meetings.length === 1);
-
-  const meetingId = box.__db.Meetings[0].MeetingId;
-  box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId, accept: true });
-  ok_('the accepted call really did reach READY (sanity check for the next assertion)', box.__db.Meetings[0].Status === 'READY', box.__db.Meetings[0].Status);
-
-  const secondWhileReady = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
-  ok_('a second Now-call while one is READY (connected) is also refused', secondWhileReady.ok === false);
-
-  box.actionEndMeeting({ storeSlug: 'bong', customerToken: 'anon-1', meetingId });
-  const afterEnded = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'anon-1', customerAuthToken: 'cust-tok-1' });
-  ok_('a new Now-call is allowed again once the previous one has ENDED', afterEnded.ok === true, JSON.stringify(afterEnded));
-}
-
-/* ============================================================ */
-/* 15. Video Call Now: accept / decline / cancel reuse the same     */
-/*     transition machinery as a scheduled request                  */
-/* ============================================================ */
-{
-  const box = makeContext();
-  seedOwnerAndCustomer(box);
-
-  // Accept -> READY, same Meet-space path as REQUESTED.
-  let m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' }).meeting;
-  let accepted = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
-  ok_('accepting a RINGING call moves it to READY', accepted.ok === true && accepted.meeting.status === 'READY', JSON.stringify(accepted));
-
-  // Decline.
-  m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a2', customerAuthToken: 'cust-tok-1' }).meeting;
-  let declined = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: false });
-  ok_('declining a RINGING call moves it to DECLINED', declined.ok === true && declined.meeting.status === 'DECLINED');
-
-  // The CALLER hangs up before pickup.
-  m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a3', customerAuthToken: 'cust-tok-1' }).meeting;
-  let cancelled = box.actionCancelMeeting({ storeSlug: 'bong', customerToken: 'a3', meetingId: m.meetingId });
-  ok_('the caller can cancel a RINGING call before it is answered', cancelled.ok === true, JSON.stringify(cancelled));
-  ok_('status is CANCELLED', box.__db.Meetings[2].Status === 'CANCELLED');
-}
-
-/* ============================================================ */
-/* 16. Video Call Now: expiry to MISSED, and that it self-corrects   */
-/* ============================================================ */
-{
-  const box = makeContext();
-  seedOwnerAndCustomer(box);
-  const m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' }).meeting;
-
-  // No server-side timer exists - simulate the 45s fuse having burned out by
-  // backdating CreatedAt, the same way a slow-to-poll client would find it.
-  box.__db.Meetings[0].CreatedAt = new Date(Date.now() - 46 * 1000).toISOString();
-
-  const stillTriesToRespond = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
-  ok_('accepting an expired ring is refused, not silently connected', stillTriesToRespond.ok === false, JSON.stringify(stillTriesToRespond));
-  ok_('...because it was lazily settled to MISSED on that same read', box.__db.Meetings[0].Status === 'MISSED', box.__db.Meetings[0].Status);
-  ok_('no Meet API call was made for an expired ring', box.__meetApi.callCount === 0);
-
-  const cancelAfterMissed = box.actionCancelMeeting({ storeSlug: 'bong', customerToken: 'a1', meetingId: m.meetingId });
-  ok_('a MISSED call is terminal - cannot be cancelled either', cancelAfterMissed.ok === false);
-
-  // A second, independent Now-call is allowed once the first one has settled.
-  const afterMissed = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' });
-  ok_('a new Now-call is allowed once the missed one has settled', afterMissed.ok === true, JSON.stringify(afterMissed));
-}
-
-/* ============================================================ */
-/* 17. Video Call Now: notifications - live events are silent,      */
-/*     only a genuinely missed call is worth an email                */
-/* ============================================================ */
-{
-  const box = makeContext();
-  seedOwnerAndCustomer(box);
-
-  // Customer calls, vendor accepts immediately - both live, neither needs email.
-  let m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' }).meeting;
-  ok_('starting a call sends no email (the ring itself is a live, poll-driven signal only)', box.__sentEmails.length === 0);
-  box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
-  ok_('accepting a Now-call sends no email either - it already happened live', box.__sentEmails.length === 0);
-
-  // Customer calls, vendor never answers -> vendor is reachable, so THEY get told.
-  m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a2', customerAuthToken: 'cust-tok-1' }).meeting;
-  box.__db.Meetings[1].CreatedAt = new Date(Date.now() - 46 * 1000).toISOString();
-  box.actionListMeetingsForConversation({ storeSlug: 'bong', customerToken: 'a2' }); // whichever side polls next settles it
-  ok_('a customer-initiated call the vendor missed emails the vendor', box.__sentEmails.length === 1, JSON.stringify(box.__sentEmails));
-  ok_('...naming the caller', /Alice/.test(box.__sentEmails[0].body) || /customer/i.test(box.__sentEmails[0].body), box.__sentEmails[0].body);
-
-  // Vendor calls, customer never answers -> customer is unreachable, and the
-  // vendor (who placed the call and was watching their own screen) needs no
-  // email about their own unanswered call.
-  const conv = box.findOrCreateConversation({ OwnerId: 'own1' }, 'bong', 'anon-vcall', 'Dot');
-  const vm_ = box.actionStartVideoCallNow({ token: 'owner-tok-1', conversationId: conv.ConversationId }).meeting;
-  const rowIndex = box.__db.Meetings.findIndex((r) => r.MeetingId === vm_.meetingId);
-  box.__db.Meetings[rowIndex].CreatedAt = new Date(Date.now() - 46 * 1000).toISOString();
-  box.actionListMeetingsForConversation({ token: 'owner-tok-1', conversationId: conv.ConversationId });
-  ok_('a vendor-initiated missed call sends no email (vendor already knows, customer unreachable)', box.__sentEmails.length === 1);
-}
-
-/* ============================================================ */
-/* 18. activeIncomingCall / ringingConversationIdsForVendor           */
-/*     - the primitives Chat.gs's polls surface a ring through       */
-/* ============================================================ */
-{
-  const box = makeContext();
-  seedOwnerAndCustomer(box);
-  const m = box.actionStartVideoCallNow({ storeSlug: 'bong', customerToken: 'a1', customerAuthToken: 'cust-tok-1' }).meeting;
-  const convId = box.__db.Meetings[0].ConversationId;
-
-  const forVendor = box.activeIncomingCall(convId, 'vendor');
-  ok_('the vendor (recipient) sees the incoming call', forVendor && forVendor.meetingId === m.meetingId, JSON.stringify(forVendor));
-  const forCustomer = box.activeIncomingCall(convId, 'customer');
-  ok_('the customer (caller) does NOT see it as an incoming call to themselves', forCustomer === null, JSON.stringify(forCustomer));
-
-  const ringingIds = box.ringingConversationIdsForVendor('own1');
-  ok_('ringingConversationIdsForVendor flags the right conversation', !!ringingIds[convId], JSON.stringify(ringingIds));
-  const ringingIdsOtherOwner = box.ringingConversationIdsForVendor('own2');
-  ok_('...and not some other store\'s owner', Object.keys(ringingIdsOtherOwner).length === 0, JSON.stringify(ringingIdsOtherOwner));
-
-  box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: false });
-  ok_('once declined, it no longer shows as an incoming call', box.activeIncomingCall(convId, 'vendor') === null);
+  row.CreatedAt = new Date(Date.now() - 46 * 1000).toISOString();
+  const late = box.actionRespondToMeeting({ token: 'owner-tok-1', meetingId: m.meetingId, accept: true });
+  ok_('accepting it once expired is refused', late.ok === false, JSON.stringify(late));
+  ok_('...because it was settled to MISSED on that read', row.Status === 'MISSED', row.Status);
+  ok_('and it no longer shows as incoming', box.activeIncomingCall(convId, 'vendor') === null);
 }
 
 /* ============================================================ */
 /* 19. Chat.gs wiring - static check that the poll responses         */
-/*     actually surface what sections 13-18 proved works             */
+/*     still surface activeIncomingCall (now only legacy rows)       */
 /* ============================================================ */
 {
   ok_('Chat.gs\'s getConversation surfaces activeIncomingCall in its response',

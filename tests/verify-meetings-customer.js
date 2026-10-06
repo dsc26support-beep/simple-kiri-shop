@@ -55,8 +55,7 @@ function mockRoute(meetingsState) {
       const m = meetingsState.list.find((x) => x.meetingId === body.meetingId);
       if (m) {
         if (body.accept) {
-          m.status = 'READY';
-          m.meetingUrl = 'https://example-video.test/room/xyz';
+          m.status = 'ACCEPTED';
         } else {
           m.status = 'DECLINED';
         }
@@ -82,11 +81,15 @@ function mockRoute(meetingsState) {
       return J({ ok: true });
     }
 
+    if (action === 'loginCustomer') return J({ ok: true, pendingToken: 'pend' });
+    if (action === 'verifyCustomerLogin') return J({ ok: true, token: 'sess-tok', customer: { customerId: 'cu1', name: 'Aroita', email: 'a@example.com' } });
     if (action === 'getStorePublicInfo') return J({ ok: true, store: { storeName: 'Bong Store', storeSlug: 'bong' } });
     if (action === 'getConversation') return J({ ok: true, conversation: null, messages: [], hasMoreBefore: false });
     if (action === 'searchProducts') return J({ ok: true, products: [] });
 
-    return J({ ok: true, products: [], stores: [] });
+    // listProducts (store.html's own load) carries storeName in the real API;
+    // the chat header and the meeting sign-in note read it from there.
+    return J({ ok: true, products: [], stores: [], storeName: 'Bong Store' });
   };
 }
 
@@ -122,23 +125,51 @@ async function openChat(browser, opts) {
   {
     const { ctx, page, requested } = await openChat(browser, { loggedIn: true });
     ok('meetings-ui is NOT fetched just from opening the chat panel', requested.length === 0, JSON.stringify(requested));
-    ok('the Video Call button exists in the chat header', await page.$('#chat-video-call-btn') !== null);
+    ok('the Meetings button exists in the chat header', await page.$('#chat-video-call-btn') !== null);
+    ok('...labelled Meetings, not Video call', (await page.getAttribute('#chat-video-call-btn', 'aria-label')) === 'Meetings');
     await page.click('#chat-video-call-btn');
     await page.waitForTimeout(400);
-    ok('clicking Video Call fetches meetings-ui exactly once', requested.length === 1, JSON.stringify(requested));
+    ok('clicking Meetings fetches meetings-ui exactly once', requested.length === 1, JSON.stringify(requested));
     ok('the panel is now visible', !(await page.$eval('#meeting-panel-host', (e) => e.classList.contains('hidden'))));
     await ctx.close();
   }
 
-  /* ---- signed out: no form, a sign-in hint instead ---- */
+  /* ---- signed out: Request Meeting sends them to sign-in, which says why ---- */
   {
     const { ctx, page } = await openChat(browser, { loggedIn: false });
     await page.click('#chat-video-call-btn');
-    await page.waitForSelector('#meeting-panel-host .meeting-empty-state, #meeting-panel-host .meeting-request-signin-hint');
-    const hasForm = await page.$('#meeting-panel-host .meeting-request-trigger') !== null;
-    const hint = await page.$eval('#meeting-panel-host', (e) => e.textContent);
-    ok('signed-out customer gets no Request Meeting trigger', !hasForm);
-    ok('...and sees a sign-in explanation instead', /sign in/i.test(hint), hint);
+    await page.waitForSelector('#meeting-panel-host .meeting-request-trigger');
+    await page.waitForTimeout(400); // let the store header resolve, so the name is real
+    await page.click('#meeting-panel-host .meeting-request-trigger');
+    await page.waitForURL(/customer-login\.html/);
+    const u = new URL(page.url());
+    ok('Request Meeting while signed out goes to the sign-in page', u.pathname.endsWith('customer-login.html'), page.url());
+    ok('...flagged as a meeting sign-in', u.searchParams.get('reason') === 'meeting', page.url());
+    ok('...with a way straight back into this chat\'s Meetings panel', /chat=open/.test(u.searchParams.get('next') || '') && /meetings=1/.test(u.searchParams.get('next') || ''), u.searchParams.get('next'));
+    await page.waitForTimeout(300);
+    const note = await page.$eval('#auth-reason', (e) => ({ hidden: e.hidden, text: e.textContent }));
+    ok('the sign-in page explains why they are there', !note.hidden && /request a meeting/i.test(note.text), JSON.stringify(note));
+    ok('...naming the store', /Bong Store/.test(note.text), note.text);
+    ok('the guest route is hidden for this flow - it cannot request a meeting', await page.locator('.auth-guest-row').isHidden());
+    await ctx.close();
+  }
+
+  /* ---- ...and signing in there lands back in this chat's Meetings panel ---- */
+  {
+    const { ctx, page } = await openChat(browser, { loggedIn: false });
+    await page.click('#chat-video-call-btn');
+    await page.waitForSelector('#meeting-panel-host .meeting-request-trigger');
+    await page.click('#meeting-panel-host .meeting-request-trigger');
+    await page.waitForURL(/customer-login\.html/);
+    await page.fill('#login-email', 'a@example.com');
+    await page.click('#login-form button[type="submit"]');
+    await page.fill('#login-code', '123456');
+    await page.click('#login-code-form button[type="submit"]');
+    await page.waitForURL(/store\.html/);
+    await page.waitForSelector('#meeting-panel-host .meeting-request-trigger');
+    ok('after signing in they are back in the chat with Meetings open', /chat=open/.test(page.url()) && /meetings=1/.test(page.url()), page.url());
+    await page.click('#meeting-panel-host .meeting-request-trigger');
+    ok('...and Request Meeting now opens the form instead of sign-in', await page.waitForSelector('.meeting-request-form').then(() => true, () => false));
     await ctx.close();
   }
 
@@ -177,7 +208,7 @@ async function openChat(browser, opts) {
     const state = { list: [{
       meetingId: 'm1', conversationId: 'c1', requesterType: 'vendor', recipientType: 'customer',
       purpose: 'Quick chat about delivery', notes: '', requestedDate: '2027-01-01', requestedTime: '10:00',
-      status: 'REQUESTED', meetingUrl: '', meetFailed: false, createdAt: '2026-01-01T00:00:00Z'
+      status: 'REQUESTED', createdAt: '2026-01-01T00:00:00Z'
     }] };
     const { ctx, page } = await openChat(browser, { loggedIn: true, meetingsState: state });
     await page.click('#chat-video-call-btn');
@@ -186,34 +217,12 @@ async function openChat(browser, opts) {
     ok('a vendor-initiated request offers Accept and Decline', buttons.includes('Accept') && buttons.includes('Decline'), buttons.join(','));
 
     await page.click('.meeting-card-actions button:has-text("Accept")');
-    await page.waitForSelector('a:has-text("Join Video Call")');
-    const join = await page.$eval('a:has-text("Join Video Call")', (a) => ({ href: a.href, target: a.target, rel: a.rel }));
-    ok('accepting shows a Join Video Call link to the real meeting URL', join.href === 'https://example-video.test/room/xyz', JSON.stringify(join));
-    ok('...opened in a new tab, without leaking window.opener', join.target === '_blank' && /noopener/.test(join.rel), JSON.stringify(join));
-
-    const panelText = await page.$eval('#meeting-panel-host', (e) => e.textContent);
-    const overlayText = await page.$eval('.video-call-overlay', (e) => e.textContent);
-    ok('no provider branding is exposed anywhere in the panel', !/google/i.test(panelText + overlayText), panelText + overlayText);
-    await ctx.close();
-  }
-
-  /* ---- a failed Meet setup offers Retry, never a false "ready" ---- */
-  {
-    const state = { list: [{
-      meetingId: 'm2', conversationId: 'c1', requesterType: 'customer', recipientType: 'vendor',
-      purpose: 'Follow-up', notes: '', requestedDate: '2027-01-02', requestedTime: '11:00',
-      status: 'ACCEPTED', meetingUrl: '', meetFailed: true, createdAt: '2026-01-01T00:00:00Z'
-    }] };
-    const { ctx, page } = await openChat(browser, { loggedIn: true, meetingsState: state });
-    await page.click('#chat-video-call-btn');
-    await page.waitForSelector('.video-call-overlay:not(.hidden)');
-    const before = await page.$eval('.video-call-overlay', (e) => e.textContent);
-    ok('a failed setup never shows a Join Video Call button', !/Join Video Call/.test(before), before);
-    ok('...and offers Retry instead', /Retry/.test(before), before);
-
-    await page.click('button:has-text("Retry")');
-    await page.waitForSelector('a:has-text("Join Video Call")');
-    ok('retrying succeeds and reveals Join Video Call', true);
+    await page.waitForSelector('.meeting-card--accepted');
+    const card = await page.$eval('.meeting-card--accepted', (e) => e.textContent);
+    ok('accepting shows the meeting as Accepted', /Accepted/.test(card), card);
+    ok('...to be arranged in chat', /arrange the details in chat/i.test(card), card);
+    ok('no Join Video Call link and no call overlay anywhere', !(await page.$('a:has-text("Join Video Call")')) && !(await page.$('.video-call-overlay')));
+    ok('no Video Call Now button either', !(await page.$('button:has-text("Video Call Now")')));
     await ctx.close();
   }
 
