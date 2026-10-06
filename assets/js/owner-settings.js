@@ -27,6 +27,7 @@ function syncFeeModeVisibility({ id, costId, modeId, modeName }) {
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
+  Auth.showWholesalePendingNotice(owner);
 
   document.getElementById('store-name-label').textContent = owner.storeName;
 

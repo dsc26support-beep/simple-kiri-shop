@@ -17,6 +17,7 @@ async function init() {
   document.getElementById('badge-recompute-btn').addEventListener('click', onRecomputeBadges);
   loadFeatured();
   loadSellerBadges();
+  loadWholesalers();
 }
 
 async function loadStores() {
@@ -332,4 +333,57 @@ async function onRecomputeBadges() {
     return;
   }
   loadSellerBadges();
+}
+
+/* ---------- Wholesaler verification ---------- */
+
+async function loadWholesalers() {
+  const statusEl = document.getElementById('wholesale-status');
+  const listEl = document.getElementById('wholesale-list');
+  const stop = startLoadingMessage(statusEl);
+  const res = await Api.post('listWholesalers', { token: Auth.getToken() });
+  stop();
+  if (!res.ok) {
+    listEl.innerHTML = '';
+    showLoadFailedMessage(statusEl);
+    return;
+  }
+  const list = res.wholesalers || [];
+  statusEl.textContent = list.length ? '' : 'No wholesaler stores yet.';
+  listEl.innerHTML = list.map(wholesalerRowHtml).join('');
+  listEl.querySelectorAll('[data-verify]').forEach((btn) => {
+    btn.addEventListener('click', () => setWholesaleVerified(btn.dataset.ownerId, btn.dataset.verify === 'true', btn));
+  });
+}
+
+function wholesalerRowHtml(w) {
+  const joined = w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '';
+  const phoneHref = String(w.phone || '').replace(/[^0-9+]/g, '');
+  return `
+    <div class="wholesale-row${w.verified ? ' is-verified' : ''}">
+      <div class="wholesale-row-info">
+        <strong>${escapeHtml(w.storeName)}</strong>
+        <span class="status-badge ${w.verified ? 'status-active' : 'status-hidden'}">${w.verified ? 'Verified' : 'Call pending'}</span>
+        <div class="helper-text">
+          ${w.phone ? `<a href="tel:${escapeAttr(phoneHref)}">${escapeHtml(w.phone)}</a> · ` : ''}${escapeHtml(w.email || '')}${joined ? ' · joined ' + escapeHtml(joined) : ''}
+        </div>
+      </div>
+      <button type="button" class="btn btn-small${w.verified ? '' : ' btn-primary'}" data-owner-id="${escapeAttr(w.ownerId)}" data-verify="${w.verified ? 'false' : 'true'}">
+        ${w.verified ? 'Undo verification' : 'Mark Verified'}
+      </button>
+    </div>
+  `;
+}
+
+async function setWholesaleVerified(ownerId, verified, btn) {
+  const errorEl = document.getElementById('wholesale-error');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  const res = await Api.post('setWholesaleVerified', { token: Auth.getToken(), ownerId, verified });
+  if (!res.ok) {
+    btn.disabled = false;
+    errorEl.textContent = res.error || 'Could not update that store.';
+    return;
+  }
+  await loadWholesalers();
 }

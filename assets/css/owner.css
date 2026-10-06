@@ -842,3 +842,70 @@ label.is-required::after {
   color: var(--color-danger);
   font-weight: 600;
 }
+
+/* Store type at registration, and the verification-call notice that
+   follows a wholesaler from sign-up to the dashboard until an admin marks
+   them verified. */
+.store-type-field {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+}
+
+.store-type-field legend {
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.store-type-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.store-type-option input {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+}
+
+.wholesaler-note {
+  margin: var(--space-2) 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 4px solid var(--color-gold);
+  border-radius: var(--radius);
+  background: #fff8d6;
+  color: var(--color-ink);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Admin: wholesaler verification queue. */
+.wholesale-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wholesale-row-info {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.wholesale-row-info strong {
+  margin-right: var(--space-1);
+}
+
+.wholesale-pending-banner {
+  margin-top: var(--space-3);
+}

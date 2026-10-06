@@ -65,5 +65,21 @@ const Auth = (function () {
     return res.owner;
   }
 
-  return { saveSession, getToken, getOwner, clearSession, logout, guardOwnerAuth };
+  /**
+   * Until an admin marks them verified, a wholesaler sees at the top of the
+   * page that a verification call is coming - the same promise sign-up made
+   * when they picked Wholesaler.
+   */
+  function showWholesalePendingNotice(owner) {
+    if (!owner || owner.storeType !== 'wholesaler' || owner.wholesaleVerified) return;
+    const host = document.querySelector('main .container');
+    if (!host || host.querySelector('.wholesale-pending-banner')) return;
+    const note = document.createElement('p');
+    note.className = 'wholesaler-note wholesale-pending-banner';
+    note.setAttribute('role', 'status');
+    note.textContent = 'Wholesale verification pending - Mwakete.com will contact you to schedule a verification call.';
+    host.insertBefore(note, host.firstChild);
+  }
+
+  return { saveSession, getToken, getOwner, clearSession, logout, guardOwnerAuth, showWholesalePendingNotice };
 })();

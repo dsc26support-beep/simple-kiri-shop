@@ -19,6 +19,7 @@ function init() {
 
   document.getElementById('login-form').addEventListener('submit', onLogin);
   document.getElementById('register-form').addEventListener('submit', onRegister);
+  document.querySelectorAll('input[name="storeType"]').forEach((r) => r.addEventListener('change', onStoreTypeChange));
   document.getElementById('twofa-form').addEventListener('submit', onVerifyTwoFA);
   document.getElementById('login-go-register').addEventListener('click', goRegisterFromLogin);
 
@@ -203,6 +204,8 @@ async function onRegister(e) {
   const password = document.getElementById('register-password').value;
   const email = document.getElementById('register-email').value.trim();
   const phone = document.getElementById('register-phone').value.trim();
+  const storeTypeEl = document.querySelector('input[name="storeType"]:checked');
+  const storeType = storeTypeEl ? storeTypeEl.value : 'retailer';
   const messengerEl = document.getElementById('register-messenger');
   // What the vendor typed becomes the link that will be stored, and the field
   // is rewritten so they SEE it before the request goes out - a value that
@@ -233,7 +236,7 @@ async function onRegister(e) {
   const submitBtn = document.getElementById('register-submit-btn');
   setButtonBusy(submitBtn, 'Creating', 'Create Store Account');
 
-  const res = await Api.post('registerOwner', { storeName, username, password, email, phone, messenger });
+  const res = await Api.post('registerOwner', { storeName, username, password, email, phone, messenger, storeType });
 
   if (!res.ok) {
     setButtonIdle(submitBtn);
@@ -248,4 +251,11 @@ async function onRegister(e) {
   // required-field validation walks the new owner through finishing that
   // profile (it redirects on to the dashboard once they save successfully).
   window.location.href = 'settings.html';
+}
+
+// Told the moment they pick it, before they've filled in anything else - a
+// wholesaler should know a call is coming before committing to the choice.
+function onStoreTypeChange() {
+  const picked = document.querySelector('input[name="storeType"]:checked');
+  document.getElementById('wholesaler-note').hidden = !(picked && picked.value === 'wholesaler');
 }

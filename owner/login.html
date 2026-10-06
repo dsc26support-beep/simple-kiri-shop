@@ -85,6 +85,20 @@
             <label for="register-store-name">Store Name</label>
             <input id="register-store-name" name="storeName" type="text" required>
           </div>
+          <fieldset class="field store-type-field">
+            <legend>What kind of store is this?</legend>
+            <label class="store-type-option">
+              <input type="radio" name="storeType" value="retailer" checked>
+              <span><strong>Retailer</strong> - you sell to shoppers</span>
+            </label>
+            <label class="store-type-option">
+              <input type="radio" name="storeType" value="wholesaler">
+              <span><strong>Wholesaler</strong> - you sell in bulk. Only wholesalers can list in Food &amp; Groceries.</span>
+            </label>
+            <p id="wholesaler-note" class="wholesaler-note" role="status" hidden>
+              Mwakete.com will schedule a verification call with you to confirm your wholesale business. We'll reach you on the phone number and email you enter below.
+            </p>
+          </fieldset>
           <div class="field">
             <label for="register-username">Username</label>
             <input id="register-username" name="username" type="text" autocomplete="username" required>

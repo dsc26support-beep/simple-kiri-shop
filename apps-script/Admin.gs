@@ -21,6 +21,32 @@ function isOwnerAdmin(owner) {
   return getAdminEmails().indexOf(normalizeEmail(owner.Email)) !== -1;
 }
 
+/** Blank (every store from before the choice existed) reads as retailer. */
+function storeTypeOf(owner) {
+  return owner && String(owner.StoreType) === 'wholesaler' ? 'wholesaler' : 'retailer';
+}
+
+/**
+ * A new wholesaler means someone at Mwakete has to book a verification call,
+ * so every admin gets the details needed to do it. Best effort - a failed
+ * send never blocks the registration that triggered it.
+ */
+function notifyAdminsOfWholesaler(owner) {
+  if (!owner) return;
+  var admins = getAdminEmails();
+  if (!admins.length) return;
+  var adminUrl = siteBaseUrl() ? siteBaseUrl() + '/owner/admin.html' : '';
+  var body = 'A new store registered as a WHOLESALER and needs a verification call.\n\n' +
+    'Store: ' + owner.StoreName + '\n' +
+    'Phone: ' + owner.Phone + '\n' +
+    'Email: ' + owner.Email + '\n' +
+    'Username: ' + owner.Username + '\n' +
+    (adminUrl ? '\nMark them verified after the call: ' + adminUrl + '\n' : '');
+  admins.forEach(function (to) {
+    try { sendAppEmail(to, 'Wholesaler verification call needed - ' + owner.StoreName, body); } catch (e) { Logger.log('wholesaler notify failed: ' + e); }
+  });
+}
+
 function featuredLabel(type, refId) {
   if (type === 'store') {
     var o = getOwnerBySlug(refId);
@@ -364,4 +390,37 @@ function actionRecomputeBadges(owner) {
   if (!isOwnerAdmin(owner)) return fail('Not authorized');
   var count = recomputeSellerBadges();
   return ok({ sellers: count });
+}
+
+/* ---------- Wholesaler verification (admin) ---------- */
+
+/** Every wholesaler store, unverified first, then newest first - the queue an admin works through. */
+function actionListWholesalers(owner) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var list = sheetToObjects(getSheet('Owners'))
+    .filter(function (o) { return storeTypeOf(o) === 'wholesaler'; })
+    .map(function (o) {
+      return {
+        ownerId: o.OwnerId, storeName: o.StoreName, storeSlug: o.StoreSlug,
+        phone: o.Phone, email: o.Email, createdAt: o.CreatedAt,
+        verified: String(o.WholesaleVerified) === 'true'
+      };
+    })
+    .sort(function (a, b) {
+      if (a.verified !== b.verified) return a.verified ? 1 : -1;
+      return String(b.createdAt).localeCompare(String(a.createdAt));
+    });
+  return ok({ wholesalers: list });
+}
+
+/** body.ownerId, body.verified (boolean). Only a wholesaler store can be marked. */
+function actionSetWholesaleVerified(owner, body) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var sheet = getSheet('Owners');
+  var row = findRowById(sheet, 'OwnerId', String(body.ownerId || ''));
+  if (!row) return fail('Store not found');
+  if (storeTypeOf(row) !== 'wholesaler') return fail('That store is not registered as a wholesaler');
+  ensureColumn(sheet, 'WholesaleVerified');
+  updateRowFromObject(sheet, row.__row, { WholesaleVerified: body.verified ? 'true' : '' });
+  return ok({ ownerId: row.OwnerId, verified: !!body.verified });
 }

@@ -27,6 +27,7 @@ window.addEventListener('pageshow', () => {
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
+  Auth.showWholesalePendingNotice(owner);
 
   document.getElementById('store-name-label').textContent = owner.storeName;
   document.getElementById('welcome-name').textContent = `, ${owner.storeName}`;
