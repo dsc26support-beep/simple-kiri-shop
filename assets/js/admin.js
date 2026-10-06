@@ -19,6 +19,7 @@ async function init() {
   loadSellerBadges();
   loadWholesalers();
   loadFeaturePayments();
+  initAdminSearch();
 }
 
 async function loadStores() {
@@ -448,4 +449,117 @@ async function setFeaturePaymentStatus(purchaseId, approve, btn) {
     return;
   }
   await loadFeaturePayments();
+}
+
+/* ---------- Find a store or product + store analytics ---------- */
+
+let adminSearchTimer = null;
+let adminSearchSeq = 0;
+
+function initAdminSearch() {
+  const input = document.getElementById('admin-search-input');
+  input.addEventListener('input', () => {
+    clearTimeout(adminSearchTimer);
+    adminSearchTimer = setTimeout(() => runAdminSearch(input.value.trim()), 300);
+  });
+  document.getElementById('admin-search-results').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-owner-id]');
+    if (btn) loadStoreAnalytics(btn.dataset.ownerId, btn.dataset.productId || '');
+  });
+}
+
+async function runAdminSearch(q) {
+  const statusEl = document.getElementById('admin-search-status');
+  const listEl = document.getElementById('admin-search-results');
+  const seq = ++adminSearchSeq;
+  if (q.length < 2) {
+    statusEl.textContent = '';
+    listEl.innerHTML = '';
+    return;
+  }
+  statusEl.textContent = 'Searching…';
+  const res = await Api.post('adminSearch', { token: Auth.getToken(), q });
+  if (seq !== adminSearchSeq) return; // a newer search has started - drop this one
+  if (!res.ok) {
+    statusEl.textContent = res.error || 'Search failed. Please try again.';
+    listEl.innerHTML = '';
+    return;
+  }
+  const stores = res.stores || [];
+  const products = res.products || [];
+  statusEl.textContent = stores.length || products.length ? '' : `Nothing matches "${q}".`;
+  listEl.innerHTML =
+    (stores.length ? `<h3>Stores</h3>${stores.map((s) => `
+      <button type="button" class="admin-search-hit" data-owner-id="${escapeAttr(s.ownerId)}">
+        <strong>${escapeHtml(s.storeName)}</strong>
+        <span class="helper-text">${escapeHtml(s.storeSlug)}${s.status !== 'active' ? ' · ' + escapeHtml(s.status) : ''}</span>
+      </button>`).join('')}` : '') +
+    (products.length ? `<h3>Products</h3>${products.map((p) => `
+      <button type="button" class="admin-search-hit" data-owner-id="${escapeAttr(p.ownerId)}" data-product-id="${escapeAttr(p.productId)}">
+        <strong>${escapeHtml(p.name)}</strong>
+        <span class="helper-text">${escapeHtml(p.storeName)}${p.status !== 'active' ? ' · ' + escapeHtml(p.status) : ''}</span>
+      </button>`).join('')}` : '');
+}
+
+async function loadStoreAnalytics(ownerId, productId) {
+  const el = document.getElementById('admin-analytics');
+  el.classList.remove('hidden');
+  el.innerHTML = '<p class="helper-text">Loading store details…</p>';
+  const res = await Api.post('adminStoreAnalytics', { token: Auth.getToken(), ownerId });
+  if (!res.ok) {
+    el.innerHTML = `<p class="form-error">${escapeHtml(res.error || 'Could not load this store.')}</p>`;
+    return;
+  }
+  el.innerHTML = storeAnalyticsHtml(res.analytics, productId);
+  const hit = productId && el.querySelector('.is-picked');
+  (hit || el).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function statusCountsHtml(byStatus) {
+  const keys = Object.keys(byStatus || {});
+  return keys.length ? keys.map((k) => `${escapeHtml(k)} ${byStatus[k]}`).join(' · ') : 'none yet';
+}
+
+function storeAnalyticsHtml(a, pickedProductId) {
+  const s = a.store;
+  const joined = s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '';
+  const phoneHref = String(s.phone || '').replace(/[^0-9+]/g, '');
+  const type = s.storeType === 'wholesaler' ? `Wholesaler${s.wholesaleVerified ? ' (verified)' : ' (call pending)'}` : 'Retailer';
+  const stat = (label, value) => `<div class="admin-stat"><span class="admin-stat-value">${value}</span><span class="admin-stat-label">${label}</span></div>`;
+  const rows = a.products.map((p) => `
+    <tr class="${p.productId === pickedProductId ? 'is-picked' : ''}">
+      <td>${escapeHtml(p.name)}${p.status !== 'active' ? ` <span class="helper-text">(${escapeHtml(p.status)})</span>` : ''}</td>
+      <td>${p.minPrice == null ? '-' : escapeHtml(formatMoney(p.minPrice))}</td>
+      <td>${p.stock == null ? '-' : p.stock}</td>
+      <td>${p.views}</td>
+    </tr>`).join('');
+  const featuring = a.featuring.recent.map((f) => `
+    <li>${escapeHtml(f.reference)} · ${escapeHtml(f.status)} · ${escapeHtml(formatMoney(f.amount))} for ${f.days} day${f.days === 1 ? '' : 's'}${f.endsAt ? ' · ends ' + escapeHtml(new Date(f.endsAt).toLocaleDateString()) : ''}</li>`).join('');
+  return `
+    <div class="admin-analytics-head">
+      <h3>${escapeHtml(s.storeName)}</h3>
+      <a href="../store.html?store=${encodeURIComponent(s.storeSlug)}" target="_blank" rel="noopener">View store</a>
+    </div>
+    <p class="helper-text">
+      ${escapeHtml(type)} · ${escapeHtml(s.status)}${s.adminFeatured ? ' · featured by admin' : ''}${joined ? ' · joined ' + escapeHtml(joined) : ''}<br>
+      ${s.phone ? `<a href="tel:${escapeAttr(phoneHref)}">${escapeHtml(s.phone)}</a> · ` : ''}${s.email ? `<a href="mailto:${escapeAttr(s.email)}">${escapeHtml(s.email)}</a> · ` : ''}${escapeHtml([s.village, s.island].filter(Boolean).join(', '))}
+    </p>
+    <div class="admin-stats">
+      ${stat('store visits', s.visits)}
+      ${stat('product views', a.totals.views)}
+      ${stat('orders', a.orders.count)}
+      ${stat('sales (paid)', escapeHtml(formatMoney(a.orders.sales)))}
+      ${stat('bookings', a.bookings.count)}
+      ${stat('rating', a.reviews.average == null ? '-' : a.reviews.average + ' ★ (' + a.reviews.count + ')')}
+      ${stat('featuring spend', escapeHtml(formatMoney(a.featuring.spent)))}
+    </div>
+    <p class="helper-text"><strong>Orders:</strong> ${statusCountsHtml(a.orders.byStatus)}<br>
+      <strong>Bookings:</strong> ${statusCountsHtml(a.bookings.byStatus)}</p>
+    <h4>Products (${a.totals.activeProducts} active of ${a.totals.products}), most viewed first</h4>
+    ${a.products.length ? `<div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr><th>Product</th><th>From</th><th>Stock</th><th>Views</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` : '<p class="helper-text">No products yet.</p>'}
+    <h4>Paid featuring${a.featuring.activeNow ? ' <span class="status-badge status-active">featured now</span>' : ''}</h4>
+    ${featuring ? `<ul class="admin-featuring-list">${featuring}</ul>` : '<p class="helper-text">No featuring purchases.</p>'}
+  `;
 }

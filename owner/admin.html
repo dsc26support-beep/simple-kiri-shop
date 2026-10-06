@@ -35,6 +35,17 @@
       <p id="admin-denied" class="hidden">You don't have admin access.</p>
 
       <div id="admin-tools" class="hidden">
+        <section class="dash-section" aria-labelledby="admin-search-heading">
+          <h2 id="admin-search-heading">Find a store or product</h2>
+          <div class="field">
+            <label for="admin-search-input">Store name, product, email or phone</label>
+            <input type="search" id="admin-search-input" autocomplete="off" placeholder="e.g. Bong, rice, 7300…">
+          </div>
+          <p id="admin-search-status" class="helper-text" aria-live="polite"></p>
+          <div id="admin-search-results" class="admin-search-results"></div>
+          <div id="admin-analytics" class="admin-analytics hidden" aria-live="polite"></div>
+        </section>
+
         <section class="dash-section">
           <h2>Feature a store</h2>
           <div class="field">
