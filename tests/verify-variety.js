@@ -170,7 +170,7 @@ const OWNER = {
   });
   await page.waitForTimeout(1200);
   ok('saving still sends the variety label the seller typed',
-    saved && JSON.stringify(saved.variants) === JSON.stringify([{ variantId: 'v1', label: 'Per day', price: 120 }]),
+    saved && JSON.stringify(saved.variants) === JSON.stringify([{ variantId: 'v1', label: 'Per day', price: 120, stockQty: '' }]),
     JSON.stringify(saved && saved.variants));
 
   ok('no page errors anywhere in this flow', pageErrors.length === 0, pageErrors.join('; '));

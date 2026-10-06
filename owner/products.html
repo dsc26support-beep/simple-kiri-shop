@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
 </head>
-<body class="owner-shell">
+<body class="owner-shell owner-products-page">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <div class="owner-topbar">
@@ -41,19 +41,23 @@
 
       <section id="product-form-section" class="hidden" aria-labelledby="product-form-heading" style="margin-top:2rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
         <h2 id="product-form-heading">Add Product</h2>
-        <form id="product-form">
+        <p class="helper-text form-required-note"><span class="req-mark" aria-hidden="true">*</span> Required</p>
+        <form id="product-form" novalidate>
           <input type="hidden" id="product-id" value="">
 
           <div class="field">
-            <label for="product-name">Product Name</label>
+            <label for="product-name" class="is-required">Product Name</label>
             <input id="product-name" required>
           </div>
           <div class="field">
             <label for="product-description">Description</label>
             <textarea id="product-description"></textarea>
+            <!-- Appears only near the limit. Not maxlength: that silently cuts a
+                 pasted description short, which is worse than being told. -->
+            <p id="description-count" class="helper-text char-count" hidden></p>
           </div>
           <div class="field">
-            <label for="product-listing-type">What are you offering?</label>
+            <label for="product-listing-type" class="is-required">What are you offering?</label>
             <!-- One word each. The sentence-long options wrapped onto two
                  lines apiece in Android's native picker; what they explained
                  now lives in the helper line below, said once. -->
@@ -69,7 +73,7 @@
             <!-- "Category", not "What type is it?" - the field above now
                  offers the TYPES (Product / Rental / Service), so two fields
                  asking about a "type" was the confusing part. -->
-            <label for="product-category">Category</label>
+            <label for="product-category" class="is-required">Category</label>
             <!-- Filled by owner-products.js from the shared taxonomy, narrowed
                  to the categories that make sense for the chosen listing type,
                  so a seller picks from a handful rather than the whole tree.
@@ -100,6 +104,7 @@
             <label for="product-image-input">Product Photo</label>
             <img id="image-preview" class="image-upload-preview hidden" alt="Selected product photo preview">
             <input type="file" id="product-image-input" accept="image/*">
+            <p id="duplicate-photo-note" class="helper-text duplicate-photo-note" hidden>Photos aren't copied - choose one for this listing.</p>
             <p class="helper-text">Max 5MB. On a phone, this will offer to take a new photo or choose one from your gallery.</p>
           </div>
 
