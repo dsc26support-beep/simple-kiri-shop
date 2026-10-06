@@ -258,6 +258,19 @@ header.site-header > .container:first-of-type {
   display: block;
 }
 
+/* The mark is a stylised "M", so "wakete" right after it reads as Mwakete.
+   Coloured from the mark's own gradient (its lightest stop, #a49bdb) so it
+   reads as part of the logo, not header copy. Scoped under the header to
+   outrank `header.site-header a { color: #fff }`. */
+header.site-header .header-wordmark {
+  margin-left: 1px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: #a49bdb;
+}
+
 header.site-header .container.site-branding {
   display: block;
   text-align: center;
