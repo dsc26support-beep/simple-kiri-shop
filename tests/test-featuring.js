@@ -104,6 +104,19 @@ ok('results: ended window uses the frozen end count, not later views',
 ok('results: a deleted product counts 0, never negative', JSON.stringify(g({ ViewsAtStartJson: '{"p1":10}' }, {})) === '{"p1":0}');
 ok('results: malformed JSON -> null, no crash', g({ ViewsAtStartJson: '{oops' }) === null);
 
+/* ---------- "Featured" badge marker ---------- */
+const cacheStore = {};
+box.CacheService = { getScriptCache: () => ({ get: (k) => cacheStore[k] || null, put: (k, v) => { cacheStore[k] = v; } }) };
+let builds = 0;
+box.activePaidFeaturedProductIds = () => { builds++; return ['p1']; };
+const listRes = { ok: true, products: [{ productId: 'p1' }, { productId: 'p2' }] };
+box.markPaidFeatured(listRes);
+ok('badge: a paid-featured product is marked, others explicitly not', listRes.products[0].featured === true && listRes.products[1].featured === false);
+box.markPaidFeatured({ ok: true, products: [{ productId: 'p1' }] });
+ok('badge: the featured-id list is cached, not rebuilt per request', builds === 1, builds);
+const failRes = { ok: false, error: 'x' };
+ok('badge: errors and non-list responses pass through untouched', box.markPaidFeatured(failRes) === failRes && box.markPaidFeatured({ ok: true, stores: [] }).products === undefined);
+
 let f = 0;
 console.log('\n--- paid featuring: price + payment decision ---');
 for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e !== '' ? '  [' + e + ']' : ''}`); }

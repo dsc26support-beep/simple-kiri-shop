@@ -222,7 +222,7 @@ function actionSubmitFeaturePayment(owner, body) {
     update.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(row));
   }
   updateRowFromObject(sheet, row.__row, update);
-  if (check.status === FEATURE_STATUS.APPROVED) invalidateCache([TIPS_CACHE_KEY]);
+  if (check.status === FEATURE_STATUS.APPROVED) invalidateCache([TIPS_CACHE_KEY, PAID_FEATURED_CACHE_KEY]);
   if (check.status === FEATURE_STATUS.PENDING) notifyAdminsOfFeaturePayment(owner, row, check.notes);
 
   var updated = findRowById(sheet, 'PurchaseId', row.PurchaseId) || row;
@@ -280,7 +280,7 @@ function actionSetFeaturePurchaseStatus(owner, body) {
     update.ViewsAtEndJson = '';
   }
   updateRowFromObject(sheet, row.__row, update);
-  invalidateCache([TIPS_CACHE_KEY]);
+  invalidateCache([TIPS_CACHE_KEY, PAID_FEATURED_CACHE_KEY]);
   return ok({ purchaseId: row.PurchaseId, status: update.Status });
 }
 
@@ -300,6 +300,30 @@ function activePaidFeaturedProductIds() {
     list.forEach(function (id) { if (ids.indexOf(String(id)) === -1) ids.push(String(id)); });
   });
   return ids;
+}
+
+/* ==================== "Featured" badge on product cards ==================== */
+
+// Set outside the product-list caches (applied per response in Code.gs), so a
+// badge appears within this key's 5 minutes of approval or expiry rather than
+// waiting on each list's own cache.
+var PAID_FEATURED_CACHE_KEY = 'v1:paidFeaturedIds';
+
+function paidFeaturedIdsCached() {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get(PAID_FEATURED_CACHE_KEY);
+  if (hit) { try { return JSON.parse(hit); } catch (e) { /* rebuild */ } }
+  var ids = activePaidFeaturedProductIds();
+  try { cache.put(PAID_FEATURED_CACHE_KEY, JSON.stringify(ids), 300); } catch (e) { /* best effort */ }
+  return ids;
+}
+
+/** Marks res.products[i].featured on a public product-list response; passes anything else through. */
+function markPaidFeatured(res) {
+  if (!res || !res.ok || !Array.isArray(res.products) || !res.products.length) return res;
+  var ids = paidFeaturedIdsCached();
+  res.products.forEach(function (p) { if (p) p.featured = ids.indexOf(String(p.productId)) !== -1; });
+  return res;
 }
 
 /* ==================== Results: views while featured ==================== */

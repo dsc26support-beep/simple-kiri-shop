@@ -75,6 +75,7 @@ function renderProductCard(product, opts) {
         ${media}
         ${thumbs}
         <div class="product-card-body">
+          ${featuredBadgeHtml(product)}
           <h3 class="product-name">${nameHtml} ${availabilityBadge}</h3>
           <strong class="product-price">${priceText}</strong>
           ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
@@ -117,6 +118,7 @@ function renderProductCard(product, opts) {
       ${media}
       ${thumbs}
       <div class="product-card-body">
+        ${featuredBadgeHtml(product)}
         <h3 class="product-name">${nameHtml}</h3>
         <strong class="product-price">${priceText}</strong>
         ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
