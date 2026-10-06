@@ -29,6 +29,14 @@
         document.documentElement.classList.add('has-remembered-email');
       }
     } catch (e) { /* private mode - the line just does not show */ }
+    // Sent here from chat's "Request Meeting" while signed out (see
+    // meetingSignInUrl in chat-window.js) - hides the guest route, which
+    // can't request a meeting and would drop them back on the homepage.
+    try {
+      if (new URLSearchParams(location.search).get('reason') === 'meeting') {
+        document.documentElement.classList.add('auth-for-meeting');
+      }
+    } catch (e) { /* the explanation just does not show */ }
   </script>
 </head>
 <body>
@@ -51,6 +59,24 @@
     <section class="container auth-card-wrap">
       <div class="auth-card">
         <h1 id="auth-title">Sign in to Mwakete</h1>
+        <!-- Why they're here, when chat sent them to request a meeting. Filled
+             synchronously right here, before first paint, so it can't shift
+             the form down after load. textContent only - the store name
+             comes from the URL. -->
+        <p id="auth-reason" class="auth-reason-note" role="status" hidden></p>
+        <script>
+          (function () {
+            try {
+              var q = new URLSearchParams(location.search);
+              if (q.get('reason') !== 'meeting') return;
+              var store = (q.get('store') || '').trim().slice(0, 80);
+              var note = document.getElementById('auth-reason');
+              note.textContent = 'Please sign in to request a meeting' + (store ? ' with ' + store : '') +
+                '. You\u2019ll go straight back to your chat afterwards.';
+              note.hidden = false;
+            } catch (e) { /* no explanation, sign-in still works */ }
+          })();
+        </script>
 
         <!-- The two ways in that need no typing, then the divider, then the
              email form. The Google half is hidden until google-signin.js

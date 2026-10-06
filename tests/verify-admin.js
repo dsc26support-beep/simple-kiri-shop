@@ -102,7 +102,7 @@ function mount(ctx, opts, posted) {
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-tips.html', { waitUntil: 'load' });
     await page.waitForFunction(() => document.getElementById('tips-status').textContent.length > 0);
-    ok('tips empty shows "No featured items yet."', /No featured items/.test(await page.textContent('#tips-status')));
+    ok('tips empty shows "Nothing here yet."', /Nothing here yet/.test(await page.textContent('#tips-status')));
     await ctx.close();
   }
   {
