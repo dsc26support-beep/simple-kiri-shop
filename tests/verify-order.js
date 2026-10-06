@@ -14,7 +14,7 @@ const BASE = 'http://127.0.0.1:8099';
       const t = (s) => { const el = document.querySelector(s); return el ? Math.round(el.getBoundingClientRect().top) : null; };
       return {
         hero: t('.hero'), quickActions: t('.home-quick-actions'),
-        trust: t('.home-trust'), stores: t('.trending-stores'),
+        stores: t('.trending-stores'),
         products: t('.trending-products')
       };
     });
@@ -33,15 +33,14 @@ const BASE = 'http://127.0.0.1:8099';
   const mob = await measure(390, 800, 'mobile');
   // Reversed on purpose: search leads now. Someone who knows what they want
   // should not scroll past two rows of navigation to type it. The full chain,
-  // Alibaba-inspired: search -> trust strip (directly beneath search, by
-  // request) -> quick actions -> discovery (Popular Stores, moved up) ->
-  // product grid. Popular Categories and the Tips pill under search were
-  // removed from the homepage by request.
+  // Alibaba-inspired: search -> quick actions -> discovery (Popular Stores,
+  // moved up) -> product grid. Popular Categories, the Tips pill and the
+  // trust strip were removed from the homepage by request (the trust lines
+  // live in the header ticker now).
   ok('mobile: search above everything else', mob.t.hero < mob.t.stores, JSON.stringify(mob.t));
   ok('mobile: search above products', mob.t.hero < mob.t.products, JSON.stringify(mob.t));
   ok('mobile: full section chain is in order',
-    mob.t.hero < mob.t.trust &&
-    mob.t.trust <= mob.t.quickActions &&
+    mob.t.hero < mob.t.quickActions &&
     mob.t.quickActions < mob.t.stores && mob.t.stores < mob.t.products,
     JSON.stringify(mob.t));
 
@@ -50,8 +49,8 @@ const BASE = 'http://127.0.0.1:8099';
 
   const desk = await measure(1280, 900, 'desktop');
   ok('desktop: search above discovery (original)', desk.t.hero < desk.t.stores, JSON.stringify(desk.t));
-  ok('desktop: trust strip directly beneath search, above quick actions',
-    desk.t.hero < desk.t.trust && desk.t.trust < desk.t.quickActions, JSON.stringify(desk.t));
+  ok('desktop: quick actions directly beneath search',
+    desk.t.hero < desk.t.quickActions && desk.t.quickActions < desk.t.stores, JSON.stringify(desk.t));
   ok('desktop: discovery above products',
     desk.t.stores < desk.t.products, JSON.stringify(desk.t));
 
@@ -65,11 +64,10 @@ const BASE = 'http://127.0.0.1:8099';
   const gaps = await page.evaluate(() => {
     const r = (s) => document.querySelector(s).getBoundingClientRect();
     const hero = r('.hero'), qa = r('.home-quick-actions'),
-      trust = r('.home-trust'), stores = r('.trending-stores'),
+      stores = r('.trending-stores'),
       prod = r('.trending-products');
     return {
-      heroToTrust: Math.round(trust.top - hero.bottom),
-      trustToQa: Math.round(qa.top - trust.bottom),
+      heroToQa: Math.round(qa.top - hero.bottom),
       qaToStores: Math.round(stores.top - qa.bottom),
       storesToProd: Math.round(prod.top - stores.bottom)
     };

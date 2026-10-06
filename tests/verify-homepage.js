@@ -26,7 +26,6 @@ const layout = (page) => page.evaluate(() => {
   const r = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; };
   const search = r('.search-box');
   const quickActions = r('.home-quick-actions');
-  const trust = r('.home-trust');
   const stores = r('#trending-stores-list');
   const trending = r('#trending-products-list');
   const nav = document.querySelector('.bottom-nav');
@@ -35,15 +34,14 @@ const layout = (page) => page.evaluate(() => {
     searchTop: search ? Math.round(search.top) : null,
     searchWidthPct: search ? Math.round((search.width / window.innerWidth) * 100) : null,
     quickActionsTop: quickActions ? Math.round(quickActions.top) : null,
-    trustTop: trust ? Math.round(trust.top) : null,
     storesTop: stores ? Math.round(stores.top) : null,
     trendingTop: trending ? Math.round(trending.top) : null,
-    // Alibaba-inspired order: search -> trust strip (directly beneath search,
-    // by request) -> quick actions -> discovery (Popular Stores, moved up) ->
-    // product grid. Popular Categories and the Tips pill under search were
-    // removed from the homepage by request.
-    orderOk: !!(search && quickActions && trust && stores && trending &&
-      search.top < trust.top && trust.top <= quickActions.top &&
+    // Alibaba-inspired order: search -> quick actions -> discovery (Popular
+    // Stores, moved up) -> product grid. Popular Categories, the Tips pill and
+    // the trust strip were removed from the homepage by request - the trust
+    // lines live in the header ticker now.
+    orderOk: !!(search && quickActions && stores && trending &&
+      search.top < quickActions.top &&
       quickActions.top < stores.top && stores.top < trending.top),
     quickActionCount: document.querySelectorAll('.quick-action-item').length,
     // Count-independent: all tiles share one row rather than wrapping,
@@ -58,6 +56,7 @@ const layout = (page) => page.evaluate(() => {
     navDisplay: navCs ? navCs.display : null,
     gridCols: (() => { const g = document.getElementById('trending-products-list');
       return g ? getComputedStyle(g).gridTemplateColumns.split(' ').length : null; })(),
+    trustGone: !document.querySelector('.home-trust'),
     noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth
   };
 });
@@ -74,7 +73,7 @@ const layout = (page) => page.evaluate(() => {
     ok('mobile: the search box is prominent (>80% of the width)', m.searchWidthPct >= 80,
       String(m.searchWidthPct) + '%');
     // This threshold moved from 844 (the full first screen) to 1000 with the
-    // restructure: the trust strip and quick actions sit above the
+    // restructure: the quick actions and Popular Stores sit above the
     // grid ON PURPOSE - that is the Alibaba-inspired information architecture
     // this task asked for, not a regression. 1000 keeps this a real guard
     // against the grid drifting arbitrarily far down, without re-litigating
@@ -90,10 +89,10 @@ const layout = (page) => page.evaluate(() => {
     ok('mobile: four quick actions are shown', m.quickActionCount === 4, String(m.quickActionCount));
     ok('mobile: the quick-action tiles stay on one row, not wrapping',
       m.quickActionsOneRow === true, String(m.quickActionsOneRow));
-    ok('mobile: the trust strip is present', m.trustTop !== null, String(m.trustTop));
-    ok('mobile: the trust strip sits directly beneath search, above the quick actions',
-      m.trustTop > m.searchTop && m.trustTop < m.quickActionsTop,
-      JSON.stringify({ searchTop: m.searchTop, trustTop: m.trustTop, quickActionsTop: m.quickActionsTop }));
+    // The same three lines are in the header ticker (#64); a second copy
+    // under search would show them twice.
+    ok('mobile: no separate trust strip duplicates the header ticker',
+      m.trustGone === true, String(m.trustGone));
     ok('mobile: bottom nav is shown', m.navDisplay === 'grid', String(m.navDisplay));
     ok('mobile: nothing overflows sideways', m.noHorizontalOverflow === true);
 
@@ -198,7 +197,7 @@ const layout = (page) => page.evaluate(() => {
     // recordProductViews already fired here before this task - it is
     // renderTrendingProducts' own view-tracking call, not something the new
     // sections introduced. The new sections themselves (promo, quick actions,
-    // trust strip) are static: nothing else may appear in this list.
+    // header ticker) are static: nothing else may appear in this list.
     ok('and no call for anything else - the new sections stay static',
       seen.every((a) => a === 'getHomePageData' || a === 'recordProductViews'),
       JSON.stringify(seen));
