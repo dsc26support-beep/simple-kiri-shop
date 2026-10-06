@@ -34,6 +34,17 @@
     </div>
   </header>
 
+  <!-- Decorative - the three lines are marketing copy already covered
+       elsewhere on the site (store pages, chat, delivery options), not
+       information unique to this strip, so it's hidden from assistive tech
+       rather than read out three times a cycle. Fixed height holds its
+       space before the fade-in animation starts, so it costs no CLS. -->
+  <div class="header-ticker" aria-hidden="true">
+    <div class="header-ticker-item">Local Kiribati sellers</div>
+    <div class="header-ticker-item">Chat directly with the seller</div>
+    <div class="header-ticker-item">Delivery, shipping &amp; pickup options</div>
+  </div>
+
   <main id="main" class="home-main page-products">
     <!-- Search first, because that is how someone who knows what they want
          gets there fastest. Everything below is for someone who does not. -->

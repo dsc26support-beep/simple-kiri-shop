@@ -321,7 +321,10 @@ function wireProductEvents() {
     const qtyInput = document.getElementById(`qty-${productId}`);
     const variant = product.variants.find((v) => v.variantId === select.value);
     if (!variant) return;
-    const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+    const requestedQty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+
+    const qty = clampToAvailableStock(currentSlug, variant, requestedQty, product.name);
+    if (qty === null) return;
 
     const prevDistinct = Cart.getDistinctProductCount(currentSlug);
     Cart.addItem(currentSlug, {
@@ -336,7 +339,9 @@ function wireProductEvents() {
     updateCartCount();
     animateCartOnAdd(prevDistinct, Cart.getDistinctProductCount(currentSlug));
     const feedback = document.getElementById('cart-feedback');
-    feedback.textContent = `Added ${qty} × ${product.name} (${variant.label}) to your cart.`;
+    feedback.textContent = qty < requestedQty
+      ? `Only ${qty} left of ${product.name} (${variant.label}) - added ${qty} to your cart.`
+      : `Added ${qty} × ${product.name} (${variant.label}) to your cart.`;
     setTimeout(() => {
       feedback.textContent = '';
     }, 4000);
