@@ -14,7 +14,7 @@ async function init() {
   const stores = res.stores || [];
   const products = res.products || [];
   if (stores.length === 0 && products.length === 0) {
-    statusEl.textContent = 'No featured items yet. Check back soon!';
+    statusEl.textContent = 'Nothing here yet. Check back soon!';
     return;
   }
   statusEl.textContent = '';
