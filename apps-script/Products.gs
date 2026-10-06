@@ -117,7 +117,9 @@ function publicVariantFields(v) {
     variantId: v.VariantId,
     label: v.Label,
     price: Number(v.Price),
-    stockQty: v.StockQty === '' || v.StockQty == null ? null : Number(v.StockQty)
+    // What a shopper can still buy: physical minus units held by open orders
+    // (Inventory.gs availableOf). null = not tracked.
+    stockQty: availableOf(v)
   };
 }
 
@@ -765,9 +767,16 @@ function actionCreateOrUpdateProduct(owner, body) {
   try {
     var productsSheet = getSheet('Products');
     var variantsSheet = getSheet('Variants');
+    ensureInventoryColumns(variantsSheet);
     var isUpdate = !!body.productId;
     var now = nowIso();
     var productId;
+
+    // Stock can't be set below what open orders already hold (Inventory.gs).
+    // Checked before anything is written, so a refused save changes nothing.
+    var reservedErr = stockBelowReservedError(owner, body.variants, sheetToObjects(variantsSheet));
+    if (reservedErr) return fail(reservedErr);
+    var stockMoves = [];
 
     if (isUpdate) {
       var existing = findRowById(productsSheet, 'ProductId', body.productId);
@@ -832,13 +841,16 @@ function actionCreateOrUpdateProduct(owner, body) {
         var match = existingVariants.filter(function (e) { return e.VariantId === v.variantId; })[0];
         if (match && match.OwnerId === owner.OwnerId) {
           keptVariantIds[v.variantId] = true;
+          var newStock = v.stockQty !== undefined ? stockQty : match.StockQty;
           updateRowFromObject(variantsSheet, match.__row, {
             Label: label,
             Price: price,
             SKU: v.sku || '',
-            StockQty: v.stockQty !== undefined ? stockQty : match.StockQty,
+            StockQty: newStock,
             Status: 'active'
           });
+          var move = productFormStockMove(match, newStock, owner.OwnerId);
+          if (move) stockMoves.push(move);
         }
       } else {
         var newVariantId = newId('var');
@@ -853,6 +865,11 @@ function actionCreateOrUpdateProduct(owner, body) {
           StockQty: stockQty,
           Status: 'active'
         });
+        if (stockQty !== '') {
+          stockMoves.push({ OwnerId: owner.OwnerId, ProductId: productId, VariantId: newVariantId, Quantity: stockQty,
+            MovementType: 'INITIAL_STOCK', PreviousStock: 0, NewStock: stockQty, PreviousReserved: 0, NewReserved: 0,
+            Source: 'product form', UserId: owner.OwnerId, Notes: 'New variety: ' + label });
+        }
       }
     });
 
@@ -862,6 +879,7 @@ function actionCreateOrUpdateProduct(owner, body) {
       }
     });
 
+    recordStockMovements(stockMoves);
     invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
     return ok({ productId: productId });
   } finally {

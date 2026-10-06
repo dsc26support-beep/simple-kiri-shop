@@ -11,8 +11,12 @@ const fs = require('fs'), vm = require('vm');
 const src = fs.readFileSync('/home/user/simple-kiri-shop/apps-script/Products.gs', 'utf8');
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
+// publicVariantFields now reports AVAILABLE stock via Inventory.gs, so the
+// helpers it calls are taken from there.
+const inv = fs.readFileSync('/home/user/simple-kiri-shop/apps-script/Inventory.gs', 'utf8');
 const grab = (name) => {
-  const m = src.match(new RegExp('function ' + name + '[\\s\\S]*?\\n}'));
+  const re = new RegExp('function ' + name + '[\\s\\S]*?\\n}');
+  const m = src.match(re) || inv.match(re);
   if (!m) throw new Error('could not find ' + name + ' in source');
   return m[0];
 };
@@ -37,7 +41,7 @@ ok('negative -> "" (untracked, not a negative shelf)', stockQtyOf(-3) === '');
 ok('fractional -> floored', stockQtyOf(4.9) === 4);
 ok("garbage -> '' (untracked, not a silent 0 that blocks every order)", stockQtyOf('abc') === '');
 
-const { publicVariantFields } = load(['publicVariantFields']);
+const { publicVariantFields } = load(['publicVariantFields', 'isStockTracked', 'physicalOf', 'reservedOf', 'availableOf']);
 const v = (StockQty) => ({ VariantId: 'v1', Label: 'Small', Price: '10', StockQty });
 
 ok("StockQty '' -> stockQty null (unlimited)", publicVariantFields(v('')).stockQty === null);

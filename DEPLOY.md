@@ -40,6 +40,7 @@ Raw links for every backend file (open, Ctrl+A, Ctrl+C):
 | `Images.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Images.gs |
 | `Reminders.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Reminders.gs |
 | `Featuring.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Featuring.gs — **new file**: in the editor click **+ → Script**, name it `Featuring`, paste. Paid featuring's screenshot check also needs the Drive API service (**Services → Drive API → Add**, unless it's already listed) and the `documents` scope — see *Manifest* below. Without either, every payment goes to admin review. |
+| `Inventory.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Inventory.gs — **new file**: **+ → Script**, name it `Inventory`, paste. Stock reservations, the stock-movement ledger and order stock changes. Adds 7 columns to `Variants` and a `StockMovements` tab on first use (owner-approved, additive). |
 
 Browse them all: https://github.com/dsc26support-beep/simple-kiri-shop/tree/main/apps-script
 

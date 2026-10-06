@@ -25,6 +25,8 @@ const fs = require('fs'), vm = require('vm');
 const REPO = '/home/user/simple-kiri-shop/';
 const products = fs.readFileSync(REPO + 'apps-script/Products.gs', 'utf8');
 const admin = fs.readFileSync(REPO + 'apps-script/Admin.gs', 'utf8');
+const inventory = fs.readFileSync(REPO + 'apps-script/Inventory.gs', 'utf8');
+const featuring = fs.readFileSync(REPO + 'apps-script/Featuring.gs', 'utf8');
 const codeGs = fs.readFileSync(REPO + 'apps-script/Code.gs', 'utf8');
 let pass = 0, fail = 0;
 const ok = (n, c, e) => {
@@ -60,6 +62,8 @@ function ctx(extra) {
   const sandbox = {
     counts, tabs,
     Logger: { log() {} },
+    // No FeaturePurchases tab: buildTips' paid-featuring merge adds nothing.
+    SpreadsheetApp: { getActive: () => ({ getSheetByName: () => null }) },
     ok: (d) => Object.assign({ ok: true }, d),
     fail: (e) => ({ ok: false, error: String(e) }),
     nowIso: () => '2026-09-11T00:00:00.000Z',
@@ -83,6 +87,8 @@ function ctx(extra) {
   vm.createContext(sandbox);
   vm.runInContext(products, sandbox);
   vm.runInContext(admin, sandbox);
+  vm.runInContext(inventory, sandbox); // publicVariantFields -> availableOf
+  vm.runInContext(featuring, sandbox); // buildTips -> activePaidFeaturedProductIds
   return sandbox;
 }
 

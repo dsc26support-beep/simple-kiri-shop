@@ -4,7 +4,7 @@ const AS = '/home/user/simple-kiri-shop/apps-script/';
 const JS = '/home/user/simple-kiri-shop/assets/js/';
 const read = (p) => fs.readFileSync(p, 'utf8');
 const auth = read(AS + 'Auth.gs'), prod = read(AS + 'Products.gs'), orders = read(AS + 'Orders.gs');
-const notify = read(AS + 'Notify.gs');
+const notify = read(AS + 'Notify.gs'), admin = read(AS + 'Admin.gs');
 const grab = (src, name) => src.match(new RegExp('function ' + name + '\\([\\s\\S]*?\\n}'))[0];
 
 // Real source, no reimplementation. isOwnerAdmin is stubbed (Admin.gs reaches
@@ -21,6 +21,7 @@ vm.createContext(sandbox);
 vm.runInContext([
   grab(notify, 'smsSenderConfigured'),
   grab(notify, 'effectiveAuthChannel'),
+  grab(admin, 'storeTypeOf'),
   grab(auth, 'publicOwnerFields'),
   grab(auth, 'publicStoreFields'),
   grab(auth, 'isStoreOpenForBusiness'),
@@ -98,7 +99,10 @@ const OWNER_KEYS = ['ownerId', 'storeName', 'storeSlug', 'email', 'phone', 'mess
   'authChannel', 'authChannelEffective', 'pendingEmail',
   'island', 'village', 'status', 'isOpen', 'deliveryTruck', 'deliveryShip', 'deliveryAirCargo',
   'deliveryPickPay', 'deliveryTruckCost', 'deliveryShipCost', 'deliveryAirCargoCost',
-  'twoFAEnabled', 'isAdmin'];
+  'twoFAEnabled', 'isAdmin',
+  // #70: the owner's own retailer/wholesaler type and verification, shown on
+  // their dashboard - owner-only, never on publicStoreFields.
+  'storeType', 'wholesaleVerified'];
 ok('publicOwnerFields key set unchanged',
   JSON.stringify(Object.keys(owner).sort()) === JSON.stringify(OWNER_KEYS.slice().sort()),
   Object.keys(owner).sort().join(','));
