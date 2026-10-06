@@ -38,7 +38,7 @@ function mockRoute(meetingsByConv) {
       for (const conv in meetingsByConv) {
         const m = meetingsByConv[conv].find((x) => x.meetingId === body.meetingId);
         if (m) {
-          if (body.accept) { m.status = 'READY'; m.meetingUrl = 'https://example-video.test/room/vendor'; }
+          if (body.accept) { m.status = 'ACCEPTED'; }
           else m.status = 'DECLINED';
           return J({ ok: true, meeting: m });
         }
@@ -70,27 +70,27 @@ async function openMessages(browser, meetingsByConv) {
       c1: [{
         meetingId: 'm1', conversationId: 'c1', requesterType: 'customer', recipientType: 'vendor',
         purpose: 'Discuss bulk order', notes: '', requestedDate: '2027-02-01', requestedTime: '15:00',
-        status: 'REQUESTED', meetingUrl: '', meetFailed: false, createdAt: '2026-01-01T00:00:00Z'
+        status: 'REQUESTED', createdAt: '2026-01-01T00:00:00Z'
       }],
       c2: []
     };
     const { ctx, page, requested } = await openMessages(browser, meetingsByConv);
     await page.click('.conversation-list-item[data-conversation-id="c1"]');
     await page.waitForSelector('#conversation-detail:not(.hidden)');
-    ok('the Video Call button exists in the conversation actions', await page.$('#video-call-btn') !== null);
+    ok('the Meetings button exists in the conversation actions', (await page.textContent('#video-call-btn')).trim() === 'Meetings');
     ok('meetings-ui is not fetched just from opening a conversation', requested.length === 0, JSON.stringify(requested));
 
     await page.click('#video-call-btn');
     await page.waitForSelector('.meeting-card');
-    ok('clicking Video Call fetches meetings-ui exactly once', requested.length === 1, JSON.stringify(requested));
+    ok('clicking Meetings fetches meetings-ui exactly once', requested.length === 1, JSON.stringify(requested));
 
     const buttons = await page.$$eval('.meeting-card-actions button', (els) => els.map((e) => e.textContent.trim()));
     ok('a customer-initiated request offers the vendor Accept/Decline', buttons.includes('Accept') && buttons.includes('Decline'), buttons.join(','));
 
     await page.click('.meeting-card-actions button:has-text("Accept")');
-    await page.waitForSelector('a:has-text("Join Video Call")');
-    const href = await page.$eval('a:has-text("Join Video Call")', (a) => a.href);
-    ok('accepting reveals Join Video Call with the real URL', href === 'https://example-video.test/room/vendor', href);
+    await page.waitForSelector('.meeting-card--accepted');
+    ok('accepting marks it Accepted, to arrange in chat', /arrange the details in chat/i.test(await page.textContent('.meeting-card--accepted')));
+    ok('no Join Video Call link, no call overlay, no Video Call Now', !(await page.$('a:has-text("Join Video Call")')) && !(await page.$('.video-call-overlay')) && !(await page.$('button:has-text("Video Call Now")')));
 
     // --- switching conversations must not leave c1's panel showing over c2 ---
     await page.click('.conversation-list-item[data-conversation-id="c2"]');

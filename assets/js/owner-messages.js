@@ -44,7 +44,7 @@ async function init() {
   document.getElementById('conversation-list').addEventListener('click', onConversationClick);
   document.getElementById('conversation-list-load-more').addEventListener('click', onLoadMoreConversations);
   document.getElementById('back-to-list-btn').addEventListener('click', closeConversation);
-  document.getElementById('video-call-btn').addEventListener('click', onVideoCallClick);
+  document.getElementById('video-call-btn').addEventListener('click', onMeetingsClick);
   document.getElementById('archive-btn').addEventListener('click', onArchive);
   document.getElementById('delete-btn').addEventListener('click', onDelete);
   document.getElementById('conversation-load-earlier-btn').addEventListener('click', loadEarlierConversationMessages);
@@ -139,21 +139,15 @@ function renderConversationListItem(c) {
   const preview = escapeHtml(c.lastMessagePreview || 'No messages yet');
   const isUnread = !!c.unreadByVendor;
   const isActive = c.conversationId === activeConversationId;
-  // Best-effort only - see ringingConversationIdsForVendor's header comment
-  // in Meetings.gs. The reliable path is the per-conversation banner
-  // (handleIncomingCall) while that thread is actually open; this is a
-  // bonus hint for conversations the vendor hasn't opened yet, on this
-  // list's own slower 8-30s poll, not a guarantee.
-  const isRinging = !!c.hasIncomingCall;
   const archivedTag = c.status === 'archived' ? ' · Archived' : '';
 
   return `
-    <button type="button" class="conversation-list-item${isUnread ? ' is-unread' : ''}${isActive ? ' is-active' : ''}${isRinging ? ' is-ringing' : ''}" data-conversation-id="${escapeHtml(c.conversationId)}">
+    <button type="button" class="conversation-list-item${isUnread ? ' is-unread' : ''}${isActive ? ' is-active' : ''}" data-conversation-id="${escapeHtml(c.conversationId)}">
       <span class="conversation-item-top-row">
         <span class="conversation-item-name">${name}${isUnread ? '<span class="conversation-item-unread-dot" aria-label="Unread"></span>' : ''}</span>
         <span class="conversation-item-time">${time}</span>
       </span>
-      <span class="conversation-item-preview">${isRinging ? '<span class="conversation-item-ringing-tag">Incoming Video Call</span> ' : ''}${preview}${escapeHtml(archivedTag)}</span>
+      <span class="conversation-item-preview">${preview}${escapeHtml(archivedTag)}</span>
     </button>
   `;
 }
@@ -212,7 +206,7 @@ function closeConversation() {
 }
 
 /**
- * Video Call (meeting requests). assets/js/meetings-ui.js is NOT one of this
+ * Meetings (meeting requests). assets/js/meetings-ui.js is NOT one of this
  * page's <script defer> tags - it is fetched with a plain dynamic <script>
  * element, and only the first time the owner actually opens this panel, so a
  * normal inbox visit never pays for it. See that file's own header comment.
@@ -239,15 +233,11 @@ function meetingsCtx() {
     // a different conversation while this panel is open.
     params: () => ({ token: Auth.getToken(), conversationId: activeConversationId }),
     canRequest: () => true, // a vendor is always a real, authenticated account - no sign-in gate needed
-    signInHint: null,
-    counterpartyName: () => {
-      const conv = ownerConversations.find((c) => c.conversationId === activeConversationId);
-      return (conv && conv.customerName) || '';
-    }
+    signInUrl: null
   };
 }
 
-let activeMeetingsUi = null; // the { stop } handle mount() returns, so an incoming-ring's fast poll doesn't outlive the panel
+let activeMeetingsUi = null; // the { stop } handle mount() returns
 
 async function openMeetingsPanel() {
   const host = document.getElementById('meeting-panel-host');
@@ -255,7 +245,7 @@ async function openMeetingsPanel() {
   try {
     await loadMeetingsUi(); // no-op after the first call - the script itself stays cached
   } catch (e) {
-    host.textContent = "Couldn't load Video Call. Please try again.";
+    host.textContent = "Couldn't load Meetings. Please try again.";
     return;
   }
   // Re-mounted fresh on every open, not just refreshed - cheap (one small,
@@ -272,79 +262,16 @@ function closeMeetingsPanel() {
   host.classList.remove('meeting-panel--mounted');
   if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
   activeMeetingsUi = null;
-  shownIncomingCallId = null;
-  RingingLoop.stopAll();
-  VideoCallOverlay.hide();
 }
 
-function onVideoCallClick() {
+function onMeetingsClick() {
   if (!activeConversationId) return;
   const host = document.getElementById('meeting-panel-host');
   const isMounted = host.classList.contains('meeting-panel--mounted');
   // Not mounted (hidden, or visible only because the lazy load just failed
-  // and left its error text showing) -> open/retry. Mounted -> close. An
-  // incoming call no longer touches this host element at all (it's on
-  // VideoCallOverlay instead) - see chat-window.js's identical comment.
+  // and left its error text showing) -> open/retry. Mounted -> close.
   if (!isMounted) openMeetingsPanel();
   else closeMeetingsPanel();
-}
-
-/**
- * Incoming Video Call Now - shown on the full-screen VideoCallOverlay
- * (helpers.js) straight away, without ever loading meetings-ui.js, mirroring
- * chat-window.js's identical handling on the customer side. Rides the same
- * getConversation poll this file already runs for the OPEN conversation
- * (loadConversationMessages); a call on a conversation the vendor hasn't
- * opened surfaces instead through the inbox list's hasIncomingCall flag
- * (renderConversationListItem/listPollTick) - slower and best-effort, not
- * this same live path.
- */
-let shownIncomingCallId = null;
-
-function handleIncomingCall(call) {
-  const host = document.getElementById('meeting-panel-host');
-  if (host.classList.contains('meeting-panel--mounted')) return;
-
-  if (!call) {
-    if (shownIncomingCallId) {
-      RingingLoop.stop(shownIncomingCallId);
-      VideoCallOverlay.hide();
-      shownIncomingCallId = null;
-    }
-    return;
-  }
-  if (shownIncomingCallId === call.meetingId) return;
-  shownIncomingCallId = call.meetingId;
-  playChatNotificationSound();
-  RingingLoop.start(call.meetingId);
-  showIncomingCallOverlay(call);
-}
-
-function showIncomingCallOverlay(call) {
-  function respond(accept) {
-    RingingLoop.stop(call.meetingId); // stop the moment the vendor acts, not on the next poll
-    VideoCallOverlay.show({ key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(), busy: true });
-    Api.post('respondToMeeting', Object.assign(meetingsCtx().params(), { meetingId: call.meetingId, accept })).then((res) => {
-      if (!res.ok) {
-        alert(res.error || 'Could not respond to this call.');
-        VideoCallOverlay.show({
-          key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(),
-          onAccept: () => respond(true), onDecline: () => respond(false)
-        });
-        return;
-      }
-      if (accept) {
-        openMeetingsPanel(); // promote to the full panel - its own reconcileOverlay() keeps the SAME overlay going, no flicker
-      } else {
-        VideoCallOverlay.hide();
-        closeMeetingsPanel(); // done - no need to pull in the full module for a plain decline
-      }
-    });
-  }
-  VideoCallOverlay.show({
-    key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(),
-    onAccept: () => respond(true), onDecline: () => respond(false)
-  });
 }
 
 /**
@@ -400,7 +327,6 @@ async function loadConversationMessages(opts) {
   }
 
   showTyping(!!res.otherPartyTyping);
-  handleIncomingCall(res.incomingCall);
 
   const messages = res.messages || [];
   if (!isPoll) {
@@ -726,7 +652,6 @@ async function listPollTick() {
     // is covered by loadConversationMessages' own notification above -
     // notifying about it again here would double-fire for the same message.
     const previouslyUnreadIds = new Set(ownerConversations.filter((c) => c.unreadByVendor).map((c) => c.conversationId));
-    const previouslyRingingIds = new Set(ownerConversations.filter((c) => c.hasIncomingCall).map((c) => c.conversationId));
     await loadConversations({ isPoll: true });
 
     const newlyUnread = ownerConversations.filter(
@@ -739,19 +664,6 @@ async function listPollTick() {
           ? `New message from ${newlyUnread[0].customerName || 'a customer'}`
           : `${newlyUnread.length} new messages`;
       showChatNotificationToast(text, () => openConversation(newlyUnread[0].conversationId));
-    }
-
-    // Same "not currently open" exclusion as messages above - a call on the
-    // open conversation is already covered live by handleIncomingCall.
-    const newlyRinging = ownerConversations.filter(
-      (c) => c.hasIncomingCall && c.conversationId !== activeConversationId && !previouslyRingingIds.has(c.conversationId)
-    );
-    if (newlyRinging.length > 0) {
-      playChatNotificationSound();
-      const text = newlyRinging.length === 1
-        ? `Incoming video call from ${newlyRinging[0].customerName || 'a customer'}`
-        : `${newlyRinging.length} incoming video calls`;
-      showChatNotificationToast(text, () => openConversation(newlyRinging[0].conversationId));
     }
 
     // A changed count (new conversation arrived, or one dropped out somehow)

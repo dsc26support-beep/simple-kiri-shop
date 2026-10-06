@@ -40,7 +40,7 @@ function initChatWindow() {
   const form = document.getElementById('chat-window-form');
   const input = document.getElementById('chat-message-input');
   const badge = document.getElementById('chat-unread-badge');
-  const videoCallBtn = document.getElementById('chat-video-call-btn');
+  const meetingsBtn = document.getElementById('chat-video-call-btn');
   const meetingPanelHost = document.getElementById('meeting-panel-host');
   const attachBtn = document.getElementById('chat-attach-btn');
   const imageInput = document.getElementById('chat-image-input');
@@ -336,7 +336,6 @@ function initChatWindow() {
     }
 
     showTyping(!!res.otherPartyTyping);
-    handleIncomingCall(res.incomingCall);
 
     if (!isPoll) {
       stopChatLoadingMessage();
@@ -424,7 +423,7 @@ function initChatWindow() {
   if (loadEarlierBtn) loadEarlierBtn.addEventListener('click', loadEarlierMessages);
 
   /**
-   * Video Call (meeting requests). assets/js/meetings-ui.js is NOT one of
+   * Meetings (meeting requests). assets/js/meetings-ui.js is NOT one of
    * this page's <script defer> tags - it is fetched with a plain dynamic
    * <script> element, and only the first time someone actually opens this
    * panel, so a chat widget that's never used for a meeting costs a normal
@@ -457,32 +456,37 @@ function initChatWindow() {
       // customers can still see and respond to a vendor-initiated meeting;
       // they just cannot start one themselves.
       canRequest: () => typeof CustomerAuth !== 'undefined' && CustomerAuth.isLoggedIn(),
-      signInHint: { href: meetingSignInUrl(), label: 'Sign in', after: ' to make a video call.' },
-      counterpartyName: () => vendorStoreName || ''
+      // A function, read at tap time: the store's name may not have loaded
+      // yet when the panel first opens.
+      signInUrl: meetingSignInUrl
     };
   }
 
   // customer-login.html's own nextDest() only follows same-site relative
-  // ?next= values (open-redirect guard) - chat=open&video=1 replays the
-  // exact deep link below so signing in from the "Sign in to make a video
-  // call" hint lands the customer straight back in this panel, not just on
-  // the storefront.
+  // ?next= values (open-redirect guard) - chat=open&meetings=1 replays the
+  // exact deep link below so signing in lands the customer straight back in
+  // this panel, not just on the storefront. reason=meeting (+ the store's
+  // name) is what makes the sign-in page say why they were sent there; it's
+  // display-only and changes nothing about sign-in itself.
   function meetingSignInUrl() {
     const params = new URLSearchParams(window.location.search);
     params.set('chat', 'open');
-    params.set('video', '1');
+    params.set('meetings', '1');
+    params.delete('video');
     const page = window.location.pathname.split('/').pop() || 'store.html';
-    return 'customer-login.html?next=' + encodeURIComponent(page + '?' + params.toString());
+    const login = new URLSearchParams({ next: page + '?' + params.toString(), reason: 'meeting' });
+    if (vendorStoreName && vendorStoreName !== 'This Store') login.set('store', vendorStoreName);
+    return 'customer-login.html?' + login.toString();
   }
 
-  let activeMeetingsUi = null; // the { stop } handle mount() returns, so an incoming-ring's fast poll doesn't outlive the panel
+  let activeMeetingsUi = null; // the { stop } handle mount() returns
 
   async function openMeetingsPanel() {
     meetingPanelHost.classList.remove('hidden');
     try {
       await loadMeetingsUi(); // no-op after the first call - the script itself stays cached
     } catch (e) {
-      meetingPanelHost.textContent = "Couldn't load Video Call. Please try again.";
+      meetingPanelHost.textContent = "Couldn't load Meetings. Please try again.";
       return;
     }
     // Re-mounted fresh on every open, not just refreshed - cheap (one small,
@@ -497,85 +501,16 @@ function initChatWindow() {
     meetingPanelHost.classList.remove('meeting-panel--mounted');
     if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
     activeMeetingsUi = null;
-    shownIncomingCallId = null;
-    RingingLoop.stopAll();
-    VideoCallOverlay.hide();
   }
 
-  if (videoCallBtn) {
-    videoCallBtn.addEventListener('click', () => {
+  if (meetingsBtn) {
+    meetingsBtn.addEventListener('click', () => {
       // Not mounted (hidden, or visible only because the lazy load just
       // failed and left its error text showing) -> open/retry. Mounted ->
-      // close. An incoming call no longer touches meetingPanelHost at all
-      // (it's on VideoCallOverlay instead), so this button only ever sees
-      // these two states now.
+      // close.
       const isMounted = meetingPanelHost.classList.contains('meeting-panel--mounted');
       if (!isMounted) openMeetingsPanel();
       else closeMeetingsPanel();
-    });
-  }
-
-  /**
-   * Incoming Video Call Now - shown on the full-screen VideoCallOverlay
-   * (helpers.js) straight away, without ever loading meetings-ui.js, because
-   * a ring must reach someone whose chat is open even if they have never
-   * opened the Video Call panel. Rides the SAME getConversation poll this
-   * file already runs (see loadConversation) - see Chat.gs's incomingCall
-   * field and Meetings.gs's activeIncomingCall for where this comes from;
-   * costs zero extra requests.
-   *
-   * Once the full panel is mounted, this gets out of the way entirely - the
-   * module's own reconcileOverlay() takes over the SAME overlay (same key,
-   * so no flicker/rebuild) with its own bounded fast poll.
-   */
-  let shownIncomingCallId = null;
-
-  function handleIncomingCall(call) {
-    if (meetingPanelHost.classList.contains('meeting-panel--mounted')) return;
-
-    if (!call) {
-      if (shownIncomingCallId) {
-        RingingLoop.stop(shownIncomingCallId);
-        VideoCallOverlay.hide();
-        shownIncomingCallId = null;
-      }
-      return;
-    }
-    if (shownIncomingCallId === call.meetingId) return; // already showing this exact call
-    shownIncomingCallId = call.meetingId;
-    playChatNotificationSound();
-    RingingLoop.start(call.meetingId);
-    showIncomingCallOverlay(call);
-  }
-
-  function showIncomingCallOverlay(call) {
-    function respond(accept) {
-      RingingLoop.stop(call.meetingId); // stop the moment the customer acts, not on the next poll
-      VideoCallOverlay.show({ key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(), busy: true });
-      Api.post('respondToMeeting', Object.assign(meetingsCtx().params(), { meetingId: call.meetingId, accept })).then((res) => {
-        if (!res.ok) {
-          alert(res.error || 'Something went wrong. Please try again.');
-          VideoCallOverlay.show({
-            key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(),
-            onAccept: () => respond(true), onDecline: () => respond(false)
-          });
-          return;
-        }
-        if (accept) {
-          // Promote to the full (lazy-loaded) panel - its own
-          // reconcileOverlay() picks up this exact call (same meetingId)
-          // and keeps showing Connecting/Ready to join/Setup failed on the
-          // SAME overlay element, no flicker.
-          openMeetingsPanel();
-        } else {
-          VideoCallOverlay.hide();
-          closeMeetingsPanel(); // done - no need to pull in the full module for a plain decline
-        }
-      });
-    }
-    VideoCallOverlay.show({
-      key: call.meetingId, phase: 'ringing-recipient', name: meetingsCtx().counterpartyName(),
-      onAccept: () => respond(true), onDecline: () => respond(false)
     });
   }
 
@@ -865,12 +800,12 @@ function initChatWindow() {
 
   // Deep-link: store.html?store=<slug>&chat=open jumps straight into the chat -
   // used by the customer Messages inbox to open a tapped conversation, and by
-  // meetingSignInUrl() above (with &video=1 added) so a customer who signed
-  // in from the "Sign in to make a video call" hint lands back in the Video
-  // Call panel instead of just the storefront.
+  // meetingSignInUrl() above (with &meetings=1 added) so a customer sent to
+  // sign in lands back in the Meetings panel. video=1 is the same thing from
+  // links made before video calls were removed.
   if (storeSlug && getQueryParam('chat') === 'open') {
     openWindow();
-    if (getQueryParam('video') === '1') openMeetingsPanel();
+    if (getQueryParam('meetings') === '1' || getQueryParam('video') === '1') openMeetingsPanel();
   }
 
   closeBtn.addEventListener('click', closeWindow);

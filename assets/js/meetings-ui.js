@@ -1,20 +1,19 @@
 /**
- * Video Call - meeting requests + join-when-ready, mounted into an existing
- * chat surface (the customer floating chat widget, or the vendor conversation
+ * Meetings - meeting requests (ask for a date/time, accept or decline,
+ * arrange the rest in chat), mounted into an existing chat surface (the customer floating chat widget, or the vendor conversation
  * detail pane). Talks to Meetings.gs's requestMeeting/respondToMeeting/
  * retryMeetingSpace/cancelMeeting/endMeeting/listMeetingsForConversation.
  *
  * LAZY BY DESIGN: this file is not a static <script> tag on any page. Both
  * hosts (chat-window.js, owner-messages.js) inject it with a dynamic
- * <script> element only the first time someone opens the Video Call panel,
+ * <script> element only the first time someone opens the Meetings panel,
  * so a normal chat page - the overwhelming majority of page loads - never
  * fetches it. See loadMeetingsUi() in each host.
  *
- * BRANDING: every string here is Mwakete's own ("Video Call", "Request
- * Meeting", "Join Video Call", "Cancel Meeting", "Accept", "Decline"). The
- * underlying video provider is never named, logoed, or linked to by name
- * anywhere in this file - see meetingUrl below, which is opened as a plain
- * link with no provider chrome reproduced.
+ * NO VIDEO: video calling was removed (owner decision, Oct 2026). There is
+ * no instant call, no ringing and no join link - an accepted meeting is just
+ * a confirmed date/time the two parties arrange in chat. Meetings.gs answers
+ * the old video actions with a plain failure.
  *
  * AUTHORIZATION NOTE: every button here is a UI convenience only - who is
  * actually allowed to do what is re-checked by the backend on every action
@@ -48,13 +47,12 @@
   function statusLabel(m) {
     switch (m.status) {
       case 'REQUESTED': return 'Requested';
-      case 'RINGING': return 'Ringing…';
-      case 'ACCEPTED': return m.meetFailed ? 'Setup failed' : 'Setting up…';
-      case 'READY': return 'Ready to join';
+      case 'ACCEPTED':
+      case 'READY': return 'Accepted';
       case 'DECLINED': return 'Declined';
       case 'CANCELLED': return 'Cancelled';
       case 'ENDED': return 'Ended';
-      case 'MISSED': return 'No answer';
+      case 'MISSED': return 'Missed call';
       default: return m.status;
     }
   }
@@ -106,16 +104,9 @@
    *             live on every call, not captured once, so a vendor switching
    *             conversations always talks about the one currently open.
    *   canRequest(): boolean - whether to show "Request Meeting" at all.
-   *   signInHint: {href, label, after}|null - shown instead of the trigger
-   *             when canRequest() is false, so the customer knows why rather
-   *             than seeing nothing: a link (label, pointing at href)
-   *             followed by trailing text (after).
-   *   counterpartyName(): string|undefined - optional. The name of the
-   *             OTHER party in this conversation (a store name for a
-   *             customer caller, a customer's name for a vendor caller),
-   *             used only in the caller's own "Calling <name>..." hint
-   *             below. Falls back to a name-less "Calling..." if omitted
-   *             or empty.
+   *   signInUrl: string|function|null - when canRequest() is false, "Request
+   *             Meeting" still shows and sends the customer here (the sign-in
+   *             page, which explains why and brings them straight back).
    * }
    */
   function mount(container, ctx) {
@@ -128,79 +119,26 @@
     container.appendChild(list);
     container.appendChild(formWrap);
 
-    function hasActiveCall() {
-      return meetings.some(function (m) { return m.status === 'RINGING' || m.status === 'ACCEPTED' || m.status === 'READY'; });
-    }
-
     function renderTrigger() {
       formWrap.innerHTML = '';
+      var btn = el('button', 'btn btn-primary meeting-request-trigger', 'Request Meeting');
+      btn.type = 'button';
       if (!ctx.canRequest()) {
-        if (ctx.signInHint) {
-          var hint = el('p', 'meeting-request-signin-hint');
-          var hintLink = document.createElement('a');
-          hintLink.href = ctx.signInHint.href;
-          hintLink.textContent = ctx.signInHint.label;
-          hint.appendChild(hintLink);
-          hint.appendChild(document.createTextNode(ctx.signInHint.after));
-          formWrap.appendChild(hint);
-        }
+        // Signed out: same button, but it goes to sign-in rather than to a
+        // form whose submit the backend would refuse. The sign-in page says
+        // why they're there, and returns them to this panel afterwards.
+        if (!ctx.signInUrl) return;
+        btn.addEventListener('click', function () {
+          window.location.href = typeof ctx.signInUrl === 'function' ? ctx.signInUrl() : ctx.signInUrl;
+        });
+        formWrap.appendChild(btn);
         return;
       }
-
-      var row = el('div', 'meeting-trigger-row');
-
-      // Hidden rather than disabled while a call is already ringing/connected
-      // on this conversation, or a startVideoCallNow request is still in
-      // flight (callNowPending) - the backend refuses a second one outright
-      // (Meetings.gs's actionStartVideoCallNow), so offering a button that
-      // would only ever fail is worse than not offering it.
-      if (!hasActiveCall() && !callNowPending) {
-        var callBtn = el('button', 'btn btn-primary', 'Video Call Now');
-        callBtn.type = 'button';
-        callBtn.addEventListener('click', startCallNow);
-        row.appendChild(callBtn);
-      }
-
-      var btn = el('button', 'btn meeting-request-trigger', 'Request Meeting');
-      btn.type = 'button';
       btn.addEventListener('click', function () {
         formWrap.innerHTML = '';
         formWrap.appendChild(renderForm());
       });
-      row.appendChild(btn);
-
-      formWrap.appendChild(row);
-    }
-
-    /**
-     * "Video Call Now" - starts RINGING immediately, no purpose/date/time.
-     * Also reused as "Call Again" on a MISSED card (same action, fresh call).
-     * The recipient finds out via the incoming-call banner their own chat
-     * window/owner-messages.js already renders from the SAME poll this panel
-     * itself uses (Chat.gs's getConversation), not from anything in this file.
-     */
-    // Guards the gap between a tap and the response landing - without it, a
-    // double-tap (easy to trigger on mobile with any network lag) fires two
-    // startVideoCallNow requests; the first creates the RINGING call, the
-    // second hits the backend's own one-call-per-conversation guard and
-    // surfaces as a spurious "already an active video call" alert for what
-    // the customer experienced as a single tap.
-    var callNowPending = false;
-    function startCallNow() {
-      if (callNowPending) return;
-      callNowPending = true;
-      renderTrigger();
-      return Api.post('startVideoCallNow', ctx.params()).then(function (res) {
-        callNowPending = false;
-        if (!res.ok) {
-          alert(friendlyError(res));
-          renderTrigger();
-          return;
-        }
-        var idx = meetings.findIndex(function (m) { return m.meetingId === res.meeting.meetingId; });
-        if (idx === -1) meetings.push(res.meeting); else meetings[idx] = res.meeting;
-        render();
-      });
+      formWrap.appendChild(btn);
     }
 
     function renderForm() {
@@ -322,19 +260,13 @@
       });
     }
 
-    // RINGING/ACCEPTED/READY never reach this function - render() routes
-    // them to the full-screen VideoCallOverlay instead (see
-    // reconcileOverlay below). This only ever draws a pending REQUESTED
-    // (scheduled, not yet accepted) or a terminal MISSED/DECLINED/
-    // CANCELLED/ENDED history entry.
     function renderCard(m) {
       var card = el('div', 'meeting-card meeting-card--' + m.status.toLowerCase());
       var top = el('div', 'meeting-card-top');
       top.appendChild(el('span', 'meeting-card-purpose', m.purpose));
       top.appendChild(el('span', 'meeting-card-status', statusLabel(m)));
       card.appendChild(top);
-      // A Video Call Now carries no scheduled date/time (see Meetings.gs's
-      // isNowCall) - nothing to print for it here.
+      // Old "Video Call Now" rows carry no date/time - nothing to print.
       if (m.requestedDate) card.appendChild(el('p', 'meeting-card-when', fmtWhen(m.requestedDate, m.requestedTime)));
       if (m.notes) card.appendChild(el('p', 'meeting-card-notes', m.notes));
 
@@ -351,12 +283,11 @@
         }));
       }
 
-      if (m.status === 'MISSED') {
-        card.appendChild(el('p', 'meeting-card-hint', 'No answer.'));
-        actions.appendChild(actionButton('Call Again', 'btn-primary', isBusy || callNowPending, startCallNow));
+      if (m.status === 'ACCEPTED' || m.status === 'READY') {
+        card.appendChild(el('p', 'meeting-card-hint', 'Accepted - arrange the details in chat.'));
       }
 
-      if (m.status === 'REQUESTED') {
+      if (m.status === 'REQUESTED' || m.status === 'ACCEPTED' || m.status === 'READY') {
         actions.appendChild(actionButton('Cancel Meeting', 'btn-danger', isBusy, function () {
           if (confirm('Cancel this meeting?')) callAction('cancelMeeting', m.meetingId);
         }));
@@ -366,127 +297,17 @@
       return card;
     }
 
-    // Any meeting that's actually live - ringing, connecting, or ready to
-    // join - is owned entirely by the full-screen VideoCallOverlay (see
-    // reconcileOverlay below), never the small card list. At most one of
-    // these can exist per conversation (Meetings.gs's own guard), so "the"
-    // active call is unambiguous.
-    function activeCallMeeting() {
-      return meetings.filter(function (m) {
-        return m.status === 'RINGING' || m.status === 'ACCEPTED' || m.status === 'READY';
-      })[0];
-    }
-
     function render() {
       list.innerHTML = '';
-      var listedMeetings = meetings.filter(function (m) {
-        return m.status !== 'RINGING' && m.status !== 'ACCEPTED' && m.status !== 'READY';
-      });
-      if (listedMeetings.length === 0 && !activeCallMeeting()) {
+      if (meetings.length === 0) {
         list.appendChild(el('p', 'meeting-empty-state', 'No meetings yet.'));
       } else {
-        // Oldest requested first at the bottom, most relevant (newest) on top -
-        // the same ordering direction as everywhere else this matters less; a
-        // meeting list is short enough that recency, not history, is what
-        // someone opening this panel wants to see first.
-        listedMeetings.slice().reverse().forEach(function (m) { list.appendChild(renderCard(m)); });
+        // Newest on top - a meeting list is short, and recency is what
+        // someone opening this panel wants first.
+        meetings.slice().reverse().forEach(function (m) { list.appendChild(renderCard(m)); });
       }
-      // A card list re-render must never clobber an in-progress request-form
-      // draft sitting in formWrap - only refresh the trigger area when it's
-      // actually showing the trigger, not the open form.
+      // Never clobber an in-progress request-form draft sitting in formWrap.
       if (!formWrap.querySelector('.meeting-request-form')) renderTrigger();
-      scheduleRingPollIfNeeded();
-      reconcileRingingSound();
-      reconcileOverlay();
-    }
-
-    // Drives the full-screen VideoCallOverlay off the same meetings array -
-    // one call site here instead of duplicating the phase logic in both
-    // hosts (chat-window.js/owner-messages.js also call VideoCallOverlay
-    // directly, but only for the lightweight pre-mount incoming-call case;
-    // once this panel is mounted, this function is the single source of
-    // truth and simply keeps re-showing/updating the same overlay).
-    //
-    // A call that stops being active (answered elsewhere, declined,
-    // cancelled, or timed out to MISSED) closes the overlay immediately,
-    // with no terminal "No answer."/"Call declined." flash - that state
-    // only ever lives as a card in the list below, never full-screen.
-    function reconcileOverlay() {
-      var active = activeCallMeeting();
-      if (!active) {
-        VideoCallOverlay.hide();
-        return;
-      }
-      var name = (typeof ctx.counterpartyName === 'function' && ctx.counterpartyName()) || '';
-      var isRecipient = active.recipientType === ctx.role;
-      var busy = busyMeetingId === active.meetingId;
-      if (active.status === 'RINGING' && isRecipient) {
-        VideoCallOverlay.show({
-          key: active.meetingId, phase: 'ringing-recipient', name: name, busy: busy,
-          onAccept: function () { callAction('respondToMeeting', active.meetingId, { accept: true }); },
-          onDecline: function () { callAction('respondToMeeting', active.meetingId, { accept: false }); }
-        });
-      } else if (active.status === 'RINGING') {
-        VideoCallOverlay.show({
-          key: active.meetingId, phase: 'ringing-caller', name: name, busy: busy, secondsLeft: active.ringingSecondsLeft,
-          onCancel: function () { callAction('cancelMeeting', active.meetingId); }
-        });
-      } else if (active.status === 'ACCEPTED' && active.meetFailed) {
-        VideoCallOverlay.show({
-          key: active.meetingId, phase: 'failed', name: name, busy: busy,
-          onRetry: function () { callAction('retryMeetingSpace', active.meetingId); },
-          onCancel: function () { callAction('cancelMeeting', active.meetingId); }
-        });
-      } else if (active.status === 'ACCEPTED') {
-        VideoCallOverlay.show({
-          key: active.meetingId, phase: 'connecting', name: name, busy: busy,
-          onCancel: function () { callAction('cancelMeeting', active.meetingId); }
-        });
-      } else if (active.status === 'READY') {
-        VideoCallOverlay.show({
-          key: active.meetingId, phase: 'ready', name: name, busy: busy, meetingUrl: active.meetingUrl,
-          onEnd: function () { callAction('endMeeting', active.meetingId); }
-        });
-      }
-    }
-
-    // Both the caller (this panel) and the recipient hear a repeating ring
-    // while a meeting is RINGING (see the caller's own "Calling..." hint
-    // above) - RingingLoop.start is a no-op if that meetingId is already
-    // looping, so calling it on every render is cheap and idempotent.
-    // stopExcept clears any id that stopped ringing (answered, declined,
-    // cancelled, or timed out to MISSED) without this panel needing to
-    // track "was this one playing" itself.
-    function reconcileRingingSound() {
-      var ringingIds = meetings.filter(function (m) { return m.status === 'RINGING'; })
-        .map(function (m) { return m.meetingId; });
-      ringingIds.forEach(function (id) { RingingLoop.start(id); });
-      RingingLoop.stopExcept(ringingIds);
-    }
-
-    /**
-     * A RINGING call is the one state worth polling faster than the host's
-     * own 5-20s chat cadence for - the caller is actively watching this
-     * panel for pickup, same class of "poll only while doing something that
-     * needs it" as the chat window's own message poll while open. Bounded:
-     * stops the moment nothing is RINGING any more, and stop() (returned
-     * from mount) cancels it outright when the panel closes.
-     */
-    var ringPollTimer = null;
-    function hasPendingRing() {
-      return meetings.some(function (m) { return m.status === 'RINGING'; });
-    }
-    function scheduleRingPollIfNeeded() {
-      if (ringPollTimer || !hasPendingRing()) return;
-      ringPollTimer = setTimeout(function () {
-        ringPollTimer = null;
-        refresh();
-      }, 3000);
-    }
-    function stopRingPolling() {
-      if (ringPollTimer) { clearTimeout(ringPollTimer); ringPollTimer = null; }
-      RingingLoop.stopAll();
-      VideoCallOverlay.hide();
     }
 
     function refresh() {
@@ -504,7 +325,7 @@
     renderTrigger();
     refresh();
 
-    return { stop: stopRingPolling };
+    return { stop: function () {} };
   }
 
   window.MwaketeMeetings = { mount: mount };

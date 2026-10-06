@@ -1,6 +1,13 @@
 /**
- * Meeting requests + Google Meet video calls, integrated into the existing
- * Customer <-> Vendor chat. Scope for this phase, approved explicitly:
+ * Meeting requests, integrated into the existing Customer <-> Vendor chat.
+ *
+ * VIDEO REMOVED (owner decision, Oct 2026): meetings are now requests only -
+ * one side asks for a date/time, the other accepts or declines, and they
+ * arrange the rest in chat. No video room is created on accept any more, and
+ * "Video Call Now" / retryMeetingSpace answer with a plain failure. Rows
+ * already READY/RINGING from before keep their status for the record; old
+ * RINGING ones still settle to MISSED via settleIfExpired.
+ * Scope for this phase, approved explicitly:
  * Customer<->Vendor only. Admin pairings (Customer<->Admin, Vendor<->Admin)
  * are NOT implemented - there is no existing admin conversation surface to
  * attach them to (Admin.gs's isOwnerAdmin is a flag on a vendor account,
@@ -55,11 +62,9 @@ var VALID_MEETING_STATUSES = ['REQUESTED', 'ACCEPTED', 'DECLINED', 'CANCELLED', 
 var MEETING_TRANSITIONS = {
   REQUESTED: ['ACCEPTED', 'DECLINED', 'CANCELLED'],
   RINGING: ['ACCEPTED', 'DECLINED', 'CANCELLED'],
-  // ACCEPTED covers both "about to create the Meet space" and "creation
-  // failed, retry available" - see actionRespondToMeeting/
-  // actionRetryMeetingSpace. It never lingers user-visibly; a successful
-  // create moves it straight to READY inside the same request.
-  ACCEPTED: ['READY', 'CANCELLED'],
+  // ACCEPTED is the settled "yes" now that no video room follows it. READY
+  // only exists on rows from before video was removed.
+  ACCEPTED: ['CANCELLED'],
   READY: ['ENDED', 'CANCELLED']
   // DECLINED, CANCELLED, ENDED, MISSED are terminal - no outgoing transitions.
 };
@@ -212,11 +217,6 @@ function publicMeetingFields(meeting) {
     requestedTime: meeting.RequestedTime,
     timezone: meeting.Timezone,
     status: meeting.Status,
-    meetingUrl: meeting.Status === 'READY' ? (meeting.GoogleMeetUrl || '') : '',
-    meetFailed: meeting.Status === 'ACCEPTED' && !!meeting.MeetFailureReason,
-    ringingSecondsLeft: meeting.Status === 'RINGING'
-      ? Math.max(0, Math.round((RINGING_TIMEOUT_MS - (Date.now() - new Date(meeting.CreatedAt).getTime())) / 1000))
-      : null,
     createdAt: meeting.CreatedAt,
     acceptedAt: meeting.AcceptedAt || '',
     readyAt: meeting.ReadyAt || '',
@@ -378,80 +378,15 @@ function actionRequestMeeting(body) {
   return ok({ meeting: publicMeetingFields(meeting) });
 }
 
-/**
- * Public action. "Video Call Now" - an instant call rather than a scheduled
- * REQUESTED one: no purpose/date/time, starts straight in RINGING, and rings
- * for RINGING_TIMEOUT_MS before self-settling to MISSED (see
- * settleIfExpired). Same identity rules as actionRequestMeeting
- * (resolveRequestingActor) - either side may start one, a customer side
- * needs a real signed-in account.
- *
- * No email is sent for the ring itself (see notifyMeetingEvent's isNowCall
- * handling) - it is a live, poll-driven signal only (activeIncomingCall, via
- * Chat.gs's getConversation), so it can only ever reach someone whose chat
- * is already open. A MISSED call is the one part of this that IS worth an
- * email, since by definition nobody was watching live for it.
- */
+/** Public action, kept only so an old cached page gets a clear answer - video calls were removed (see the file header). */
 function actionStartVideoCallNow(body) {
-  var actor = resolveRequestingActor(body);
-  if (!actor.ok) return fail(actor.error);
-  var conversation = actor.conversation;
-
-  // One active call per conversation at a time - a second "Now" tap while
-  // one is already ringing or connected must not spin up a second room.
-  var alreadyActive = listMeetingsForConversationLive(conversation.ConversationId).some(function (m) {
-    return m.Status === 'RINGING' || m.Status === 'ACCEPTED' || m.Status === 'READY';
-  });
-  if (alreadyActive) return fail('There is already an active video call on this conversation.');
-
-  var recipientType = actor.actorType === 'vendor' ? 'customer' : 'vendor';
-  var recipientId = recipientType === 'vendor' ? conversation.OwnerId : (conversation.CustomerToken || '');
-
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  var meeting;
-  try {
-    var meetingId = newId('meet');
-    var now = nowIso();
-    appendRowFromObject(getSheet('Meetings'), {
-      MeetingId: meetingId,
-      RequesterId: actor.actorId,
-      RequesterType: actor.actorType,
-      RecipientId: recipientId,
-      RecipientType: recipientType,
-      ConversationId: conversation.ConversationId,
-      StoreSlug: conversation.StoreSlug,
-      Purpose: 'Video call',
-      Notes: '',
-      RequestedDate: '',
-      RequestedTime: '',
-      Timezone: Session.getScriptTimeZone(),
-      Status: 'RINGING',
-      GoogleMeetSpaceName: '',
-      GoogleMeetUrl: '',
-      MeetFailureReason: '',
-      CreatedAt: now,
-      AcceptedAt: '',
-      ReadyAt: '',
-      CancelledAt: '',
-      EndedAt: '',
-      LastUpdatedAt: now
-    });
-    meeting = getMeetingById(meetingId);
-  } finally {
-    lock.releaseLock();
-  }
-
-  touchMeetingCache(conversation.ConversationId);
-  return ok({ meeting: publicMeetingFields(meeting) });
+  return fail('Video calls are no longer available on Mwakete. Please request a meeting instead.');
 }
 
 /**
  * Public action. The RECIPIENT accepts or declines. body.accept: boolean.
- * On accept, attempts Google Meet space creation synchronously in the same
- * request - see createGoogleMeetSpace(). A creation failure leaves the row
- * ACCEPTED with MeetFailureReason set (never silently shown as ready);
- * actionRetryMeetingSpace re-attempts from there.
+ * Accepting just records ACCEPTED - the two parties arrange the details in
+ * chat; no video room is created (see the file header).
  */
 function actionRespondToMeeting(body) {
   var actor = resolveActorForMeeting(body);
@@ -487,44 +422,14 @@ function actionRespondToMeeting(body) {
 
   updateRowFromObject(sheet, meeting.__row, { Status: 'ACCEPTED', AcceptedAt: now, LastUpdatedAt: now });
   touchMeetingCache(meeting.ConversationId);
-  var reloaded = getMeetingById(meeting.MeetingId);
-  if (!reloaded) {
-    // Should be unreachable - this row was found, authorized against, and
-    // just written to by this same request - but attemptMeetSpaceCreation's
-    // whole contract is "never throws", so a bad reload here must degrade to
-    // a recorded, retryable failure rather than an uncaught crash. Recorded
-    // against meeting.__row (the reference we still hold), not the failed
-    // reload, so a later read shows Setup failed/Retry instead of silently
-    // stuck "Setting up...".
-    Logger.log('actionRespondToMeeting: could not re-read meeting ' + meeting.MeetingId + ' immediately after marking it ACCEPTED');
-    updateRowFromObject(sheet, meeting.__row, {
-      MeetFailureReason: 'Could not confirm the meeting after accepting.', LastUpdatedAt: nowIso()
-    });
-    touchMeetingCache(meeting.ConversationId);
-    return ok({ meeting: publicMeetingFields(getMeetingById(meeting.MeetingId) || meeting) });
-  }
-  var afterAccept = attemptMeetSpaceCreation(reloaded);
-  notifyMeetingEvent(actor.conversation, actor.actorType, afterAccept.Status === 'READY' ? 'ready' : 'accepted', afterAccept);
-
-  return ok({ meeting: publicMeetingFields(afterAccept) });
+  var accepted = reloadMeetingOrFallback(meeting.MeetingId, meeting);
+  notifyMeetingEvent(actor.conversation, actor.actorType, 'accepted', accepted);
+  return ok({ meeting: publicMeetingFields(accepted) });
 }
 
-/**
- * Public action. Re-attempts Meet space creation for a meeting stuck in
- * ACCEPTED with a recorded failure - the recoverable state §18 of the spec
- * calls for. Either participant may retry.
- */
+/** Public action, kept only so an old cached page gets a clear answer - there is no video room to retry any more. */
 function actionRetryMeetingSpace(body) {
-  var actor = resolveActorForMeeting(body);
-  if (!actor.ok) return fail(actor.error);
-  if (actor.meeting.Status !== 'ACCEPTED') return fail('This meeting is not waiting on a retry');
-
-  var updated = attemptMeetSpaceCreation(actor.meeting);
-  touchMeetingCache(actor.meeting.ConversationId);
-  if (updated.Status === 'READY') {
-    notifyMeetingEvent(actor.conversation, actor.actorType, 'ready', updated);
-  }
-  return ok({ meeting: publicMeetingFields(updated) });
+  return fail('Video calls are no longer available on Mwakete.');
 }
 
 /**
@@ -588,141 +493,17 @@ function actionListMeetingsForConversation(body) {
   return ok({ meetings: list.map(publicMeetingFields) });
 }
 
-/* ---------- Google Meet space creation ----------
- *
- * Isolated in this one function on purpose - see the Stage 1 report: this
- * is the one piece built on training-knowledge understanding of the
- * current Meet REST API rather than a live documentation check, and it
- * must be swappable without touching any caller.
- *
- * Authenticates as the Apps Script project's OWN identity
- * (ScriptApp.getOAuthToken(), scope meetings.space.created) - every space
- * in the whole marketplace is created by that one application-level
- * account, never by impersonating a customer or vendor. Requires the
- * Apps Script manifest to declare that scope and the project to be
- * re-authorized - see README.md for the equivalent step already documented
- * for 2FA/email.
- */
-var GOOGLE_MEET_API_URL = 'https://meet.googleapis.com/v2/spaces';
-
 /**
- * One attempt at creating (or confirming) a Meet space for an ACCEPTED
- * meeting, idempotent: if GoogleMeetSpaceName is already set, this reuses
- * it and moves straight to READY rather than calling the API again - the
- * duplicate-prevention guarantee §17 of the spec asks for. Returns the
- * updated meeting row either way (READY on success, still ACCEPTED with
- * MeetFailureReason set on failure - never throws, so a failure here can
- * never break the accept request that called it).
- */
-/**
- * getMeetingById(meeting.MeetingId) immediately after writing to that exact
- * row should always find it - but "should always" is not the same guarantee
- * as attemptMeetSpaceCreation's own documented "never throws", so every
- * re-fetch in this function goes through here instead of a bare call: on the
- * rare chance the reload comes back empty, fall back to the last known
- * in-memory row rather than handing the caller something it can crash on.
- * The sheet write itself already landed either way - this only affects what
- * this one response reflects back; the next read picks up the true state.
+ * getMeetingById(meetingId) right after writing to that exact row should
+ * always find it - but on the rare chance the reload comes back empty, fall
+ * back to the last known in-memory row rather than handing the caller
+ * something it can crash on. The sheet write already landed either way.
  */
 function reloadMeetingOrFallback(meetingId, fallback) {
   var reloaded = getMeetingById(meetingId);
   if (reloaded) return reloaded;
-  Logger.log('attemptMeetSpaceCreation: could not re-read meeting ' + meetingId + ' immediately after writing to it');
+  Logger.log('reloadMeetingOrFallback: could not re-read meeting ' + meetingId + ' immediately after writing to it');
   return fallback;
-}
-
-function attemptMeetSpaceCreation(meeting) {
-  if (meeting.GoogleMeetSpaceName && meeting.GoogleMeetUrl) {
-    if (meeting.Status !== 'READY') {
-      updateRowFromObject(getSheet('Meetings'), meeting.__row, { Status: 'READY', ReadyAt: nowIso(), LastUpdatedAt: nowIso() });
-      return reloadMeetingOrFallback(meeting.MeetingId, meeting);
-    }
-    return meeting;
-  }
-
-  var result;
-  try {
-    result = createGoogleMeetSpace();
-  } catch (e) {
-    result = { ok: false, error: e.message || String(e) };
-  }
-
-  if (!result.ok) {
-    // Logged server-side with the real detail; never surfaced to the user
-    // as-is - see notifyMeetingEvent/the frontend's error copy.
-    Logger.log('Meet space creation failed for ' + meeting.MeetingId + ': ' + result.error);
-    updateRowFromObject(getSheet('Meetings'), meeting.__row, {
-      MeetFailureReason: String(result.error || 'unknown error').slice(0, 500),
-      LastUpdatedAt: nowIso()
-    });
-    return reloadMeetingOrFallback(meeting.MeetingId, meeting);
-  }
-
-  updateRowFromObject(getSheet('Meetings'), meeting.__row, {
-    Status: 'READY',
-    GoogleMeetSpaceName: result.spaceName,
-    GoogleMeetUrl: result.meetingUri,
-    MeetFailureReason: '',
-    ReadyAt: nowIso(),
-    LastUpdatedAt: nowIso()
-  });
-  return reloadMeetingOrFallback(meeting.MeetingId, meeting);
-}
-
-/**
- * The one Meet API call in this file. Returns { ok:true, spaceName,
- * meetingUri } or { ok:false, error }. NEVER throws - every caller treats
- * failure as an ordinary, recoverable result, not an exception.
- *
- * TRAINING-KNOWLEDGE IMPLEMENTATION, NOT LIVE-DOCS-VERIFIED - see the file
- * header and the Stage 1 report. Verify the request/response shape against
- * https://developers.google.com/workspace/meet/api/reference/rest/v2/spaces/create
- * before relying on this in production; the request body and response
- * field names below are my best current understanding of the v2 API and
- * may need adjusting.
- */
-function createGoogleMeetSpace() {
-  var token;
-  try {
-    token = ScriptApp.getOAuthToken();
-  } catch (e) {
-    return { ok: false, error: 'Could not obtain a Google authorization token: ' + (e.message || e) };
-  }
-
-  var response;
-  try {
-    response = UrlFetchApp.fetch(GOOGLE_MEET_API_URL, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { Authorization: 'Bearer ' + token },
-      // An empty config accepts the API's defaults for access type - left
-      // unset deliberately rather than guessed, since the exact default and
-      // the options for restricting join access are exactly the kind of
-      // detail that needs the live-docs check called out above.
-      payload: JSON.stringify({}),
-      muteHttpExceptions: true
-    });
-  } catch (e) {
-    return { ok: false, error: 'Could not reach the Google Meet API: ' + (e.message || e) };
-  }
-
-  var code = response.getResponseCode();
-  if (code < 200 || code >= 300) {
-    return { ok: false, error: 'Google Meet API returned ' + code + ': ' + response.getContentText().slice(0, 300) };
-  }
-
-  var data;
-  try {
-    data = JSON.parse(response.getContentText());
-  } catch (e) {
-    return { ok: false, error: 'Google Meet API returned an unreadable response' };
-  }
-
-  if (!data.name || !data.meetingUri) {
-    return { ok: false, error: 'Google Meet API response was missing expected fields' };
-  }
-
-  return { ok: true, spaceName: data.name, meetingUri: data.meetingUri };
 }
 
 /* ---------- notifications ----------
@@ -738,17 +519,16 @@ function createGoogleMeetSpace() {
  * same one-directional limitation chat's own new-message email already
  * has today, not a new gap this feature introduces.
  */
-var MEETING_NOTIFY_COOLDOWN_SECONDS = 60; // short: distinct events (requested/accepted/ready), not a repeat-message flood like chat's
+var MEETING_NOTIFY_COOLDOWN_SECONDS = 60; // short: distinct events (requested/accepted/declined), not a repeat-message flood like chat's
 function meetingNotifyCooldownKey(meetingId, kind) { return 'v1:meetings:notify:' + meetingId + ':' + kind; }
 
-var MEETING_NOTIFY_KINDS = ['requested', 'accepted', 'ready', 'declined', 'cancelled', 'missed'];
+var MEETING_NOTIFY_KINDS = ['requested', 'accepted', 'declined', 'cancelled', 'missed'];
 
 /** requesterLabel is folded in only where the copy actually needs it ('requested', 'missed'); every other kind ignores it. */
 function meetingEventCopy(kind, requesterLabel) {
   switch (kind) {
     case 'requested': return { subject: 'New meeting request', body: requesterLabel + ' requested a meeting with you on Mwakete.' };
-    case 'accepted': return { subject: 'Meeting request accepted', body: 'Your meeting request was accepted - setting up the video call now.' };
-    case 'ready': return { subject: 'Your Mwakete video meeting is ready', body: 'Your video meeting is ready. Open Mwakete Messages to join.' };
+    case 'accepted': return { subject: 'Meeting request accepted', body: 'Your meeting request was accepted. Use Mwakete Messages to arrange the details.' };
     case 'declined': return { subject: 'Meeting request declined', body: 'Your meeting request was declined.' };
     case 'cancelled': return { subject: 'Meeting cancelled', body: 'A scheduled meeting was cancelled.' };
     case 'missed': return { subject: 'Missed video call', body: 'You missed a video call from ' + requesterLabel + ' on Mwakete.' };
