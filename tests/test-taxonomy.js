@@ -109,7 +109,8 @@ ok('Other is still active, so a shopper can still browse what is in it',
 ok('the seller form no longer force-includes Other',
   !/c\.id === 'other' \|\|/.test(ownerProducts), 'the old force-include is still there');
 ok('the seller form offers Other back only to a listing already filed in it',
-  /c\.id === 'other' \? keepId === 'other'/.test(ownerProducts));
+  // Either spelling of the same rule: a ternary, or `if (c.id === 'other') return keepId === 'other';`
+  /c\.id === 'other'(?: \? |\) return )keepId === 'other'/.test(ownerProducts));
 ok('every category carries the fields the spec asks for',
   fe.CATEGORIES.every((c) => c.id && c.label && typeof c.order === 'number' &&
     typeof c.active === 'boolean' && Array.isArray(c.types)),
