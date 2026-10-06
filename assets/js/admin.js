@@ -18,6 +18,7 @@ async function init() {
   loadFeatured();
   loadSellerBadges();
   loadWholesalers();
+  loadFeaturePayments();
 }
 
 async function loadStores() {
@@ -386,4 +387,65 @@ async function setWholesaleVerified(ownerId, verified, btn) {
     return;
   }
   await loadWholesalers();
+}
+
+/* ---------- Featuring payments (Featuring.gs) ---------- */
+
+async function loadFeaturePayments() {
+  const statusEl = document.getElementById('feature-payments-status');
+  const listEl = document.getElementById('feature-payments-list');
+  const stop = startLoadingMessage(statusEl);
+  const res = await Api.post('listFeaturePurchases', { token: Auth.getToken() });
+  stop();
+  if (!res.ok) {
+    listEl.innerHTML = '';
+    showLoadFailedMessage(statusEl);
+    return;
+  }
+  const list = res.purchases || [];
+  statusEl.textContent = list.length ? '' : 'No featuring payments yet.';
+  listEl.innerHTML = list.map(featurePaymentRowHtml).join('');
+  listEl.querySelectorAll('[data-approve]').forEach((btn) => {
+    btn.addEventListener('click', () => setFeaturePaymentStatus(btn.dataset.purchaseId, btn.dataset.approve === 'true', btn));
+  });
+}
+
+const FEATURE_STATUS_BADGE = { 'Approved': 'status-active', 'Pending review': 'status-pending', 'Rejected': 'status-declined' };
+
+function featurePaymentRowHtml(p) {
+  const when = p.endsAt && p.status === 'Approved' ? ' · until ' + new Date(p.endsAt).toLocaleDateString() : '';
+  const canApprove = p.status === 'Pending review' || p.status === 'Rejected';
+  const canReject = p.status === 'Pending review' || p.status === 'Approved';
+  return `
+    <div class="wholesale-row feature-payment-row">
+      <div class="wholesale-row-info">
+        <strong>${escapeHtml(p.storeName || '')}</strong>
+        <span class="status-badge ${FEATURE_STATUS_BADGE[p.status] || 'status-hidden'}">${escapeHtml(p.status)}</span>
+        <div class="helper-text">
+          ${escapeHtml(formatMoney(p.amount))} · ref ${escapeHtml(p.reference)} · ${p.days} day${p.days === 1 ? '' : 's'}${escapeHtml(when)}
+        </div>
+        <div class="helper-text">${escapeHtml((p.productNames || []).join(', '))}</div>
+        ${p.ocrNotes ? `<div class="helper-text feature-payment-notes">${escapeHtml(p.ocrNotes)}</div>` : ''}
+        ${p.screenshotUrl ? `<a href="${escapeAttr(p.screenshotUrl)}" target="_blank" rel="noopener">View screenshot</a>` : ''}
+      </div>
+      <div class="feature-payment-actions">
+        ${canApprove ? `<button type="button" class="btn btn-small btn-primary" data-purchase-id="${escapeAttr(p.purchaseId)}" data-approve="true">Approve</button>` : ''}
+        ${canReject ? `<button type="button" class="btn btn-small" data-purchase-id="${escapeAttr(p.purchaseId)}" data-approve="false">Reject</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function setFeaturePaymentStatus(purchaseId, approve, btn) {
+  const errorEl = document.getElementById('feature-payments-error');
+  errorEl.textContent = '';
+  if (!approve && !window.confirm('Reject this payment? If it was approved, the products stop being featured now.')) return;
+  btn.disabled = true;
+  const res = await Api.post('setFeaturePurchaseStatus', { token: Auth.getToken(), purchaseId, approve });
+  if (!res.ok) {
+    btn.disabled = false;
+    errorEl.textContent = res.error || 'Could not update that payment.';
+    return;
+  }
+  await loadFeaturePayments();
 }

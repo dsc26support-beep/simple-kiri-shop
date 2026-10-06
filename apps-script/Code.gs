@@ -54,7 +54,9 @@ var PROTECTED_POST_ACTIONS = [
   'getVendorConversations', 'deleteConversation', 'archiveConversation', 'getUnreadCount',
   'listFeatured', 'addFeatured', 'removeFeatured',
   'listSellerBadges', 'setSellerBadgeOverride', 'setBadgeConfig', 'recomputeBadges',
-  'listWholesalers', 'setWholesaleVerified'
+  'listWholesalers', 'setWholesaleVerified',
+  'startFeaturePurchase', 'listMyFeaturePurchases', 'submitFeaturePayment',
+  'listFeaturePurchases', 'setFeaturePurchaseStatus'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -74,7 +76,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'wholesale1-2026-10-06';
+var APP_VERSION = 'featuring1-2026-10-06';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -456,6 +458,11 @@ function doPost(e) {
         case 'setSellerBadgeOverride': return jsonOut(actionSetSellerBadgeOverride(owner, body));
         case 'listWholesalers': return jsonOut(actionListWholesalers(owner));
         case 'setWholesaleVerified': return jsonOut(actionSetWholesaleVerified(owner, body));
+        case 'startFeaturePurchase': return jsonOut(actionStartFeaturePurchase(owner, body));
+        case 'listMyFeaturePurchases': return jsonOut(actionListMyFeaturePurchases(owner));
+        case 'submitFeaturePayment': return jsonOut(actionSubmitFeaturePayment(owner, body));
+        case 'listFeaturePurchases': return jsonOut(actionListFeaturePurchases(owner));
+        case 'setFeaturePurchaseStatus': return jsonOut(actionSetFeaturePurchaseStatus(owner, body));
         case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
         case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }
