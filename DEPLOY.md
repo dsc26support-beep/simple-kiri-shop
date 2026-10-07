@@ -45,6 +45,12 @@ Raw links for every backend file (open, Ctrl+A, Ctrl+C):
 
 Browse them all: https://github.com/dsc26support-beep/simple-kiri-shop/tree/main/apps-script
 
+**Inventory - Google Sheets linking (one-time):** in Apps Script → ⚙️ Project Settings → **Script properties**, add
+`MWAKETE_SHARE_EMAIL` = the Google account this script runs as (the one sellers will share their sheets with).
+Until it is set, sellers see Google Sheets as "Not connected yet". Automatic hourly syncs ride the existing
+hourly `runReminderSweep` trigger - nothing new to add.
+
+
 ### Manifest (`appsscript.json`) — check once, and after any service/scope change
 
 The project lists its permissions explicitly (`oauthScopes`), so a service the

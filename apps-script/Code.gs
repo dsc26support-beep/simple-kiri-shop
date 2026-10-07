@@ -59,7 +59,8 @@ var PROTECTED_POST_ACTIONS = [
   'listFeaturePurchases', 'setFeaturePurchaseStatus', 'adminSearch', 'adminStoreAnalytics',
   'getInventory', 'receiveStock', 'adjustStock', 'updateStockSettings', 'listStockMovements',
   'listInventoryConnections', 'saveInventoryConnection', 'deleteInventoryConnection', 'previewInventoryImport',
-  'applyInventoryImport', 'listSyncJobs', 'exportInventoryRows'
+  'applyInventoryImport', 'listSyncJobs', 'exportInventoryRows',
+  'testSheetConnection', 'syncNow', 'listSyncConflicts', 'resolveSyncConflict'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -79,7 +80,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'inventory3-2026-10-07';
+var APP_VERSION = 'inventory4-2026-10-07';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -480,6 +481,10 @@ function doPost(e) {
         case 'applyInventoryImport': return jsonOut(actionApplyInventoryImport(owner, body));
         case 'listSyncJobs': return jsonOut(actionListSyncJobs(owner, body));
         case 'exportInventoryRows': return jsonOut(actionExportInventoryRows(owner));
+        case 'testSheetConnection': return jsonOut(actionTestSheetConnection(owner, body));
+        case 'syncNow': return jsonOut(actionSyncNow(owner, body));
+        case 'listSyncConflicts': return jsonOut(actionListSyncConflicts(owner));
+        case 'resolveSyncConflict': return jsonOut(actionResolveSyncConflict(owner, body));
         case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
         case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }

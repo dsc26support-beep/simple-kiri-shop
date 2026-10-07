@@ -273,6 +273,7 @@ function runReminderSweep() {
   // can't stop the cleanup below.
   try { sendFeatureRenewalReminders(); } catch (e) { Logger.log('feature renewals failed: ' + e); }
   try { recordFeatureEndViews(); } catch (e) { Logger.log('feature end views failed: ' + e); }
+  try { runScheduledInventorySyncs(); } catch (e) { Logger.log('inventory syncs failed: ' + e); }
 
   // Runs after the reminder logic above so a cart/order gets its chance to
   // be reminded in this same run before either cleanup step touches it -
