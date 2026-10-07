@@ -138,7 +138,7 @@ function actionRemoveFeatured(owner, body) {
 // addFeatured/removeFeatured drop the key, so an admin's change is visible
 // immediately rather than up to five minutes later.
 var TIPS_CACHE_TTL_SECONDS = 300;
-var TIPS_CACHE_KEY = 'v2:tips';   // v1 -> v2: the payload now carries sellerBadges
+var TIPS_CACHE_KEY = 'v3:tips';   // v1 -> v2: the payload now carries sellerBadges; v3: admin stores hidden
 
 function actionGetTips(params) {
   return getCached(TIPS_CACHE_KEY, TIPS_CACHE_TTL_SECONDS, function () {

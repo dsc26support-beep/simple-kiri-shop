@@ -11,6 +11,7 @@ vm.runInContext(admin.match(/function getAdminEmails[\s\S]*?\n}/)[0] + '\n' +
                 admin.match(/function isOwnerAdmin[\s\S]*?\n}/)[0] + '\n' +
                 customers.match(/function normalizeEmail[\s\S]*?\n}/)[0] + '\n' +
                 auth.match(/function isStoreBrowsable[\s\S]*?\n}/)[0] + '\n' +
+                auth.match(/function isAdminNamedStore[\s\S]*?\n}/)[0] + '\n' +
                 auth.match(/function isStoreOpenForBusiness[\s\S]*?\n}/)[0], sandbox);
 const { isStoreBrowsable, isStoreOpenForBusiness } = sandbox;
 
@@ -24,6 +25,9 @@ for (const [status, browsable, open] of [
 }
 ok('null owner is neither', !isStoreBrowsable(null) && !isStoreOpenForBusiness(null));
 ok('an admin account is never shown to customers', !isStoreBrowsable({ Status: 'active', Email: 'ADMIN@mwakete.com' }));
+ok('a store named ADMIN is hidden whatever its email', !isStoreBrowsable({ Status: 'active', StoreName: ' ADMIN ', StoreSlug: 'x', Email: 'other@gmail.com' }));
+ok('so is the admin slug, or admin-2', !isStoreBrowsable({ Status: 'active', StoreName: 'X', StoreSlug: 'admin' }) && !isStoreBrowsable({ Status: 'active', StoreName: 'X', StoreSlug: 'admin-2' }));
+ok('a store merely containing admin is still shown', isStoreBrowsable({ Status: 'active', StoreName: 'Admin Supplies', StoreSlug: 'admin-supplies' }));
 ok('a normal store with an email is still shown', isStoreBrowsable({ Status: 'active', Email: 'shop@x.com' }));
 ok('unknown status is neither', !isStoreBrowsable({ Status: 'wat' }) && !isStoreOpenForBusiness({ Status: 'wat' }));
 

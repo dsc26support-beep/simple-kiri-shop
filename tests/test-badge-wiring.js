@@ -251,13 +251,13 @@ function byIdOf(r) {
 {
   // A warm cache holding the old shape is the quiet way a shipped feature does
   // not appear. Every builder that gained a field must have a new key.
-  ok('listStores cache bumped', /storeListCacheKey\(\) \{ return 'v2:listStores'/.test(products));
-  ok('topProducts cache bumped', /topProductsCacheKey\(\) \{ return 'v2:topProducts'/.test(products));
-  ok('topStores cache bumped', /topStoresCacheKey\(\) \{ return 'v2:topStores'/.test(products));
-  ok('storeInfo cache bumped', /storeInfoCacheKey\(slug\) \{ return 'v3:storeInfo:'/.test(products));
-  ok('listProducts cache bumped', /storeProductsCacheKey\(slug\) \{ return 'v2:listProducts:'/.test(products));
-  ok('search cache bumped', /v3:search/.test(products) && !/'v2:search/.test(products));
-  ok('tips cache bumped', /v2:tips/.test(admin) && !/'v1:tips'/.test(admin));
+  ok('listStores cache bumped', /storeListCacheKey\(\) \{ return 'v3:listStores'/.test(products));
+  ok('topProducts cache bumped', /topProductsCacheKey\(\) \{ return 'v3:topProducts'/.test(products));
+  ok('topStores cache bumped', /topStoresCacheKey\(\) \{ return 'v3:topStores'/.test(products));
+  ok('storeInfo cache bumped', /storeInfoCacheKey\(slug\) \{ return 'v4:storeInfo:'/.test(products));
+  ok('listProducts cache bumped', /storeProductsCacheKey\(slug\) \{ return 'v3:listProducts:'/.test(products));
+  ok('search cache bumped', /v4:search/.test(products) && !/'v3:search/.test(products));
+  ok('tips cache bumped', /v3:tips/.test(admin) && !/'v2:tips/.test(admin));
 
   /*
    * THE REGRESSION THIS EXISTS TO STOP.

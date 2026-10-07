@@ -195,7 +195,18 @@ function ownerCanLogIn(owner) {
  * still logs in as before (ownerCanLogIn is unaffected).
  */
 function isStoreBrowsable(owner) {
-  return !!owner && (owner.Status === 'active' || owner.Status === 'standby') && !isOwnerAdmin(owner);
+  return !!owner && (owner.Status === 'active' || owner.Status === 'standby') &&
+    !isOwnerAdmin(owner) && !isAdminNamedStore(owner);
+}
+
+/**
+ * A store called "Admin" (slug admin, admin-2, ...) is the admin's account
+ * even when its email is not the one in ADMIN_EMAILS - hidden all the same.
+ */
+function isAdminNamedStore(owner) {
+  var name = String(owner.StoreName || '').trim().toLowerCase();
+  var slug = String(owner.StoreSlug || '').trim().toLowerCase();
+  return name === 'admin' || /^admin(-\d+)?$/.test(slug);
 }
 
 function isStoreOpenForBusiness(owner) {
