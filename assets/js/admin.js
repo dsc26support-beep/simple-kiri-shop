@@ -20,6 +20,7 @@ async function init() {
   loadWholesalers();
   loadFeaturePayments();
   initAdminSearch();
+  loadInventoryOverview();
 }
 
 async function loadStores() {
@@ -564,4 +565,40 @@ function storeAnalyticsHtml(a, pickedProductId) {
     <h4>Paid featuring${a.featuring.activeNow ? ' <span class="status-badge status-active">featured now</span>' : ''}</h4>
     ${featuring ? `<ul class="admin-featuring-list">${featuring}</ul>` : '<p class="helper-text">No featuring purchases.</p>'}
   `;
+}
+
+/* ---------- Inventory & sync monitoring ---------- */
+
+const SYNC_SOURCE_LABELS = { csv: 'CSV (saved matching)', googleSheets: 'Google Sheets', microsoftExcel: 'Excel / OneDrive', customApi: 'Other system' };
+
+async function loadInventoryOverview() {
+  const statusEl = document.getElementById('inv-admin-status');
+  const el = document.getElementById('inv-admin');
+  const stop = startLoadingMessage(statusEl);
+  const res = await Api.post('adminInventoryOverview', { token: Auth.getToken() });
+  stop();
+  if (!res.ok || !res.overview) { showLoadFailedMessage(statusEl); return; }
+  statusEl.textContent = '';
+  const o = res.overview;
+  const stat = (value, label) => `<div class="admin-stat"><span class="admin-stat-value">${value}</span><span class="admin-stat-label">${label}</span></div>`;
+  const when = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'never');
+  const byType = Object.keys(o.connections.byType).map((k) => `${escapeHtml(SYNC_SOURCE_LABELS[k] || k)} ${o.connections.byType[k]}`).join(' · ') || 'none yet';
+  el.innerHTML = `
+    <div class="admin-stats">
+      ${stat(o.businessTypes.retailer, 'retailers')}
+      ${stat(o.businessTypes.wholesaler, 'wholesalers')}
+      ${stat(o.businessTypes.distributor, 'distributors')}
+      ${stat(o.trackingStock, 'stores tracking stock')}
+      ${stat(o.connectedBusinesses, 'stores with a connection')}
+      ${stat(o.connections.total, 'active connections')}
+      ${stat(o.connections.failing, 'failing connections')}
+      ${stat(o.openConflicts, 'open conflicts')}
+      ${stat(o.productsSynced, 'items synced')}
+      ${stat(o.syncsLast7Days, 'syncs, last 7 days')}
+    </div>
+    <p class="helper-text"><strong>Connections:</strong> ${byType}<br><strong>Last successful sync:</strong> ${escapeHtml(when(o.lastSuccessfulSync))}</p>
+    <h3>Failing connections</h3>
+    ${o.failingConnections.length ? `<ul class="admin-featuring-list">${o.failingConnections.map((c) => `<li><strong>${escapeHtml(c.store)}</strong> - ${escapeHtml(c.name)} (${escapeHtml(SYNC_SOURCE_LABELS[c.type] || c.type)}), since ${escapeHtml(when(c.since))}: ${escapeHtml(c.error)}</li>`).join('')}</ul>` : '<p class="helper-text">None.</p>'}
+    <h3>Recent sync failures</h3>
+    ${o.recentFailures.length ? `<ul class="admin-featuring-list">${o.recentFailures.map((f) => `<li>${escapeHtml(when(f.at))} · <strong>${escapeHtml(f.store)}</strong> (${escapeHtml(SYNC_SOURCE_LABELS[f.type] || f.type)}): ${escapeHtml(f.error)}</li>`).join('')}</ul>` : '<p class="helper-text">None.</p>'}`;
 }
