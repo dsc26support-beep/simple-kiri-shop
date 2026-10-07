@@ -3,9 +3,14 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
 const auth = fs.readFileSync('/home/user/simple-kiri-shop/apps-script/Auth.gs', 'utf8');
 
 // Pull the two helpers out of Auth.gs and exercise the real source.
-const sandbox = {};
+const admin = fs.readFileSync('/home/user/simple-kiri-shop/apps-script/Admin.gs', 'utf8');
+const customers = fs.readFileSync('/home/user/simple-kiri-shop/apps-script/Customers.gs', 'utf8');
+const sandbox = { PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k === 'ADMIN_EMAILS' ? 'admin@mwakete.com' : null) }) } };
 vm.createContext(sandbox);
-vm.runInContext(auth.match(/function isStoreBrowsable[\s\S]*?\n}/)[0] + '\n' +
+vm.runInContext(admin.match(/function getAdminEmails[\s\S]*?\n}/)[0] + '\n' +
+                admin.match(/function isOwnerAdmin[\s\S]*?\n}/)[0] + '\n' +
+                customers.match(/function normalizeEmail[\s\S]*?\n}/)[0] + '\n' +
+                auth.match(/function isStoreBrowsable[\s\S]*?\n}/)[0] + '\n' +
                 auth.match(/function isStoreOpenForBusiness[\s\S]*?\n}/)[0], sandbox);
 const { isStoreBrowsable, isStoreOpenForBusiness } = sandbox;
 
@@ -18,6 +23,8 @@ for (const [status, browsable, open] of [
   ok(`${status}: openForBusiness=${open}`, isStoreOpenForBusiness({ Status: status }) === open);
 }
 ok('null owner is neither', !isStoreBrowsable(null) && !isStoreOpenForBusiness(null));
+ok('an admin account is never shown to customers', !isStoreBrowsable({ Status: 'active', Email: 'ADMIN@mwakete.com' }));
+ok('a normal store with an email is still shown', isStoreBrowsable({ Status: 'active', Email: 'shop@x.com' }));
 ok('unknown status is neither', !isStoreBrowsable({ Status: 'wat' }) && !isStoreOpenForBusiness({ Status: 'wat' }));
 
 // A standby (closed) store still takes orders/bookings - same as chat, they

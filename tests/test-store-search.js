@@ -21,6 +21,8 @@ const REPO = '/home/user/simple-kiri-shop/';
 const productsSrc = fs.readFileSync(REPO + 'apps-script/Products.gs', 'utf8');
 const utilsSrc = fs.readFileSync(REPO + 'apps-script/Utils.gs', 'utf8');
 const authSrc = fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8');
+const adminSrc = fs.readFileSync(REPO + 'apps-script/Admin.gs', 'utf8');
+const customersSrc = fs.readFileSync(REPO + 'apps-script/Customers.gs', 'utf8');
 
 const grab = (src, name) => {
   const m = src.match(new RegExp('function ' + name + '\\b[\\s\\S]*?\\n}'));
@@ -46,7 +48,9 @@ const OWNERS = [
   { OwnerId: 'o7', StoreSlug: 'big-onion',    StoreName: 'Big Elephant Tiny Onion', Phone: '+68673000007', Island: 'Teraina', Village: 'Tabwakea', LogoUrl: 'o.png', Status: 'active', Email: 'o@example.com', PasswordHash: 'nope' },
   { OwnerId: 'o8', StoreSlug: 'resting',      StoreName: 'Resting Store',      Phone: '+68673000008', Island: 'Tabuaeran',    Village: 'Napari',   LogoUrl: 'r.png', Status: 'standby', Email: 'r@example.com', PasswordHash: 'nope' },
   { OwnerId: 'o9', StoreSlug: 'gone-store',   StoreName: 'Gone Store',         Phone: '+68673000009', Island: 'Makin',        Village: 'Makin',    LogoUrl: 'g.png', Status: 'suspended', Email: 'g@example.com', PasswordHash: 'nope' },
-  { OwnerId: 'o10', StoreSlug: 'long-name',   StoreName: 'a'.repeat(200) + ' Shop', Phone: '+68673000010', Island: 'Banaba',  Village: 'Antereen', LogoUrl: 'l.png', Status: 'active', Email: 'l@example.com', PasswordHash: 'nope' }
+  { OwnerId: 'o10', StoreSlug: 'long-name',   StoreName: 'a'.repeat(200) + ' Shop', Phone: '+68673000010', Island: 'Banaba',  Village: 'Antereen', LogoUrl: 'l.png', Status: 'active', Email: 'l@example.com', PasswordHash: 'nope' },
+  // The admin's own login row (ADMIN_EMAILS) - an active owner, but not a shop.
+  { OwnerId: 'o11', StoreSlug: 'admin',       StoreName: 'ADMIN',              Phone: '+68673000011', Island: 'South Tarawa', Village: 'Bairiki',  LogoUrl: '',      Status: 'active', Email: 'Admin@Mwakete.com', PasswordHash: 'nope' }
 ];
 
 /* ---------- build a context holding the real code -------------------------- */
@@ -72,11 +76,15 @@ function makeContext() {
       return value;
     },
     ok: function (data) { return Object.assign({ ok: true }, data); },
+    PropertiesService: { getScriptProperties: function () { return { getProperty: function (k) { return k === 'ADMIN_EMAILS' ? 'boss@mwakete.com, admin@mwakete.com' : null; } }; } },
     Object: Object, Math: Math, String: String, Number: Number, JSON: JSON
   };
   vm.createContext(box);
   vm.runInContext([
     grab(authSrc, 'isStoreBrowsable'),
+    grab(adminSrc, 'getAdminEmails'),
+    grab(adminSrc, 'isOwnerAdmin'),
+    grab(customersSrc, 'normalizeEmail'),
     grab(utilsSrc, 'clampPageSize'),
     grabVar(utilsSrc, 'DEFAULT_LIST_PAGE_SIZE'),
     grabVar(utilsSrc, 'MAX_LIST_PAGE_SIZE'),
@@ -215,6 +223,8 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   ok('a suspended store is never returned', names(all).indexOf('Gone Store') === -1);
   ok('a suspended store is not findable by name either', list({ q: 'Gone Store' }).stores.length === 0);
+  ok('the admin account is not in the directory', names(all).indexOf('ADMIN') === -1);
+  ok('nor findable by name', list({ q: 'admin' }).stores.length === 0);
   ok('a standby store IS returned', names(all).indexOf('Resting Store') !== -1);
   ok('a standby store is findable by name', names(list({ q: 'Resting' })).indexOf('Resting Store') === 0);
 
@@ -239,7 +249,7 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 {
   const misses = [];
   let checked = 0;
-  OWNERS.filter(function (o) { return o.Status === 'active' || o.Status === 'standby'; })
+  OWNERS.filter(function (o) { return (o.Status === 'active' || o.Status === 'standby') && o.StoreName !== 'ADMIN'; })
     .forEach(function (o) {
       const hay = (o.StoreName + ' ' + o.Island + ' ' + o.Village).toLowerCase();
       for (let start = 0; start < hay.length; start += 3) {

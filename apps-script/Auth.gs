@@ -188,9 +188,14 @@ function ownerCanLogIn(owner) {
  *
  * 'closed' is neither. That is the soft delete from Settings, and it stays
  * hidden from customers and locked out for the owner.
+ *
+ * An admin's account (ADMIN_EMAILS, Admin.gs) is an owner row only so the
+ * admin can log in - it is not a shop, so it never shows to customers: not in
+ * the directory, search, home page, Tips, or at its own store link. The admin
+ * still logs in as before (ownerCanLogIn is unaffected).
  */
 function isStoreBrowsable(owner) {
-  return !!owner && (owner.Status === 'active' || owner.Status === 'standby');
+  return !!owner && (owner.Status === 'active' || owner.Status === 'standby') && !isOwnerAdmin(owner);
 }
 
 function isStoreOpenForBusiness(owner) {
