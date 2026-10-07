@@ -1497,6 +1497,12 @@ footer.site-footer .copyright {
   display: none;
 }
 
+/* Meetings open: the name prompt steps aside so Request Meeting is never
+   below the fold (chat-window.js openMeetingsPanel). */
+.chat-window-body--meetings .chat-name-gate {
+  display: none;
+}
+
 .chat-name-gate-prompt {
   margin: 0;
   font-weight: 600;

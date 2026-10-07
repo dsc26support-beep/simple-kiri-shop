@@ -483,6 +483,10 @@ function initChatWindow() {
 
   async function openMeetingsPanel() {
     meetingPanelHost.classList.remove('hidden');
+    // While Meetings is open it has the chat to itself: the "What's your
+    // name?" prompt is flex: 1 and would otherwise push Request Meeting below
+    // the bottom of a phone screen. Closing the panel brings the prompt back.
+    body.classList.add('chat-window-body--meetings');
     try {
       await loadMeetingsUi(); // no-op after the first call - the script itself stays cached
     } catch (e) {
@@ -498,6 +502,7 @@ function initChatWindow() {
 
   function closeMeetingsPanel() {
     meetingPanelHost.classList.add('hidden');
+    body.classList.remove('chat-window-body--meetings');
     meetingPanelHost.classList.remove('meeting-panel--mounted');
     if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
     activeMeetingsUi = null;
