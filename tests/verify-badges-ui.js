@@ -177,25 +177,28 @@ const box = (page, sel) => page.evaluate((s) => {
     await render(page, ALL, { size: size, interactive: false });
     const texts = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.seller-badge-label')).map((e) => e.textContent.trim()));
-    // Only Verified shows a word (owner decision); every other badge is
-    // icon-only (iconOnly in badges.js) and renders no .seller-badge-label.
-    ok(size + ': only Verified shows its word',
-      texts.length === 1 && texts[0] === 'Verified', texts.join(' | '));
-    ok(size + ': every other badge shows its icon and no word',
-      await page.evaluate(() => ['recommended', 'top', 'responsive', 'delivery', 'favourite', 'popular', 'new'].every((id) => {
-        const el = document.querySelector('.seller-badge--' + id);
-        return !!el && !el.querySelector('.seller-badge-label')
-          && !!el.querySelector('svg, .seller-badge-emoji')
+    // Seven, not eight. New is deliberately icon-only (iconOnly in badges.js),
+    // so it renders no .seller-badge-label at all - asserted just below rather
+    // than allowed to slip through as a shorter list.
+    // > 0, not > 3: "Top" is exactly three characters.
+    ok(size + ': the seven worded labels are present as visible text',
+      texts.length === 7 && texts.every((t) => t.length > 0), texts.join(' | '));
+    ok(size + ': New shows its icon and no word',
+      await page.evaluate(() => {
+        const el = document.querySelector('.seller-badge--new');
+        if (!el) return false;
+        return !el.querySelector('.seller-badge-label')
+          && !!el.querySelector('svg')
           && el.classList.contains('seller-badge--iconic');
-      })));
+      }));
     // The word is gone from the screen, NOT from the accessible name. Someone
     // listening to a list of products hears exactly what they heard before.
-    ok(size + ': icon-only badges are still announced by full name',
-      await page.evaluate(() => [['new', 'New Seller'], ['top', 'Top Seller'], ['recommended', 'Mwakete Recommended']].every(([id, name]) => {
-        const el = document.querySelector('.seller-badge--' + id);
+    ok(size + ': New is still announced "New Seller"',
+      await page.evaluate(() => {
+        const el = document.querySelector('.seller-badge--new');
         const sr = el && el.querySelector('.sr-only');
-        return !!sr && sr.textContent.trim() === name;
-      })));
+        return !!sr && sr.textContent.trim() === 'New Seller';
+      }));
     const visible = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.seller-badge-label'))
         .every((e) => e.getBoundingClientRect().width > 10));
@@ -231,13 +234,13 @@ const box = (page, sel) => page.evaluate((s) => {
         hears: exposed(e)
       }));
     });
-    // `reads` is null for every badge but Verified: they have no visible word. What it is announced as
+    // `reads` is null for New: it has no visible word. What it is announced as
     // is unchanged, which is the half that matters.
     const want = [
-      [null, 'Mwakete Recommended'], [null, 'Top Seller'],
-      ['Verified', 'Verified Seller'], [null, 'Responsive Seller'],
-      [null, 'Reliable Delivery'], [null, 'Customer Favourite'],
-      [null, 'Popular Seller'], [null, 'New Seller']
+      ['Recommended', 'Mwakete Recommended'], ['Top', 'Top Seller'],
+      ['Verified', 'Verified Seller'], ['Responsive', 'Responsive Seller'],
+      ['Delivery', 'Reliable Delivery'], ['Favourite', 'Customer Favourite'],
+      ['Popular', 'Popular Seller'], [null, 'New Seller']
     ];
     want.forEach(([reads, hears], i) => {
       const label = reads === null ? 'nothing (icon only)' : '"' + reads + '"';
@@ -338,14 +341,14 @@ const box = (page, sel) => page.evaluate((s) => {
     const { ctx, page } = await open(browser);
     await render(page, ALL, { size: 'chip', max: 2, interactive: false });
     const r = await page.evaluate(() => ({
-      shown: Array.from(document.querySelectorAll('.seller-badge:not(.seller-badge--more) .sr-only'))
+      shown: Array.from(document.querySelectorAll('.seller-badge:not(.seller-badge--more) .seller-badge-label'))
         .map((e) => e.textContent.trim()),
       more: (document.querySelector('.seller-badge--more') || {}).textContent,
       moreAria: (document.querySelector('.seller-badge--more') || {}).getAttribute
         ? document.querySelector('.seller-badge--more').getAttribute('aria-label') : null
     }));
     ok('a capped row shows the two HIGHEST-priority badges, not the first two given',
-      r.shown.join(' | ') === 'Mwakete Recommended | Top Seller', r.shown.join(' | '));
+      r.shown.join(' | ') === 'Recommended | Top', r.shown.join(' | '));
     ok('the rest collapse into one counter', (r.more || '').trim() === '+6', r.more);
     ok('and a screen reader hears what is behind it, not just "+6"',
       /6 more seller badges: Verified Seller, Responsive Seller/.test(r.moreAria || ''), r.moreAria);
