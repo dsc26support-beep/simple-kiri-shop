@@ -1321,3 +1321,111 @@ label.is-required::after {
 .inv-move-qty {
   font-weight: 700;
 }
+
+/* Import & Sync (owner/inventory-sync.html). */
+.sync-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.sync-source {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--color-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sync-source.is-off {
+  background: var(--color-bg-alt);
+  cursor: default;
+}
+
+.sync-source-state {
+  margin-top: auto;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+
+.sync-source-state.is-ready {
+  color: var(--color-purple);
+}
+
+.sync-source-state.is-off {
+  color: var(--color-muted);
+}
+
+.sync-mapping {
+  margin: var(--space-3) 0;
+}
+
+.sync-map-head,
+.sync-map-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sync-map-head {
+  font-size: 0.8em;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.sync-map-row label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sync-map-row select {
+  min-height: 44px;
+  width: 100%;
+}
+
+.sync-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+
+.sync-check input {
+  width: 20px;
+  height: 20px;
+}
+
+.sync-details {
+  margin: var(--space-2) 0;
+}
+
+.sync-details summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sync-details ul {
+  padding-left: 1.2em;
+  overflow-wrap: anywhere;
+}
+
+.sync-confirm-q {
+  margin-top: var(--space-3);
+}

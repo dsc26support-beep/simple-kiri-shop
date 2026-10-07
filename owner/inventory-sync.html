@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Import &amp; Sync — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell owner-inventory-page owner-sync-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Import &amp; Sync</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="inventory.html">Inventory</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Connect your stock</h1>
+      <p class="helper-text">Keep using the spreadsheet or system you already have. Mwakete reads it, shows you every change first, and only updates your store when you say so.</p>
+      <p id="sync-status" class="helper-text" role="status"></p>
+
+      <!-- Step 1: where is your stock kept? -->
+      <section id="sync-step-source" class="dash-section" aria-labelledby="sync-source-heading">
+        <h2 id="sync-source-heading">1. Where do you keep your stock now?</h2>
+        <div id="sync-sources" class="sync-sources"></div>
+        <p class="helper-text">No system yet? <a href="inventory.html">Use Mwakete Inventory</a> - it's already on.</p>
+      </section>
+
+      <!-- Step 2-3: CSV upload + match columns -->
+      <section id="sync-step-map" class="dash-section hidden" aria-labelledby="sync-map-heading">
+        <h2 id="sync-map-heading">2. Choose your file and match the columns</h2>
+        <div class="field">
+          <label for="sync-file">CSV file (from Excel, Google Sheets, your till or system: File &gt; Save as / Download as CSV)</label>
+          <input type="file" id="sync-file" accept=".csv,text/csv">
+        </div>
+        <p id="sync-file-info" class="helper-text"></p>
+        <div id="sync-mapping" class="sync-mapping hidden"></div>
+        <div id="sync-options" class="sync-options hidden">
+          <label class="sync-check"><input type="checkbox" id="sync-create-new"> Add items that aren't on Mwakete yet as new products</label>
+          <div class="field hidden" id="sync-category-field">
+            <label for="sync-category">Category for the new products</label>
+            <select id="sync-category"></select>
+          </div>
+          <div class="field">
+            <label for="sync-save-name">Remember this column matching as (optional)</label>
+            <input type="text" id="sync-save-name" maxlength="80" placeholder="e.g. My till export">
+          </div>
+        </div>
+        <p id="sync-map-error" class="form-error" role="alert"></p>
+        <button type="button" id="sync-preview-btn" class="btn btn-primary hidden">Preview changes</button>
+      </section>
+
+      <!-- Step 4: preview, then confirm -->
+      <section id="sync-step-preview" class="dash-section hidden" aria-labelledby="sync-preview-heading" aria-live="polite">
+        <h2 id="sync-preview-heading">3. Check the changes</h2>
+        <p class="helper-text">Nothing has changed yet.</p>
+        <div id="sync-preview"></div>
+        <p id="sync-apply-error" class="form-error" role="alert"></p>
+        <p class="sync-confirm-q"><strong>Apply these changes?</strong></p>
+        <div class="inv-panel-buttons">
+          <button type="button" id="sync-cancel-btn" class="btn">Cancel</button>
+          <button type="button" id="sync-apply-btn" class="btn btn-primary">Apply changes</button>
+        </div>
+      </section>
+
+      <section id="sync-step-done" class="dash-section hidden" aria-live="polite">
+        <h2>Done</h2>
+        <p id="sync-done-text" class="inv-saved"></p>
+        <p><a href="inventory.html" class="btn btn-primary">See my stock</a> <button type="button" id="sync-again-btn" class="btn">Import another file</button></p>
+      </section>
+
+      <section class="dash-section" aria-labelledby="sync-export-heading">
+        <h2 id="sync-export-heading">Download your stock</h2>
+        <p class="helper-text">A CSV of everything on Mwakete, with held and available stock. Edit it and import it back - it matches by Mwakete ID.</p>
+        <button type="button" id="sync-export-btn" class="btn btn-light-purple">Download CSV</button>
+        <p id="sync-export-error" class="form-error" role="alert"></p>
+      </section>
+
+      <section class="dash-section" aria-labelledby="sync-history-heading">
+        <h2 id="sync-history-heading">Sync history</h2>
+        <div id="sync-history"></div>
+      </section>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/owner-inventory-sync.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>
