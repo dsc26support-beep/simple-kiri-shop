@@ -365,6 +365,7 @@ function wholesalerRowHtml(w) {
     <div class="wholesale-row${w.verified ? ' is-verified' : ''}">
       <div class="wholesale-row-info">
         <strong>${escapeHtml(w.storeName)}</strong>
+        ${w.storeType === 'distributor' ? '<span class="helper-text">Distributor</span>' : ''}
         <span class="status-badge ${w.verified ? 'status-active' : 'status-hidden'}">${w.verified ? 'Verified' : 'Call pending'}</span>
         <div class="helper-text">
           ${w.phone ? `<a href="tel:${escapeAttr(phoneHref)}">${escapeHtml(w.phone)}</a> · ` : ''}${escapeHtml(w.email || '')}${joined ? ' · joined ' + escapeHtml(joined) : ''}
@@ -524,7 +525,8 @@ function storeAnalyticsHtml(a, pickedProductId) {
   const s = a.store;
   const joined = s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '';
   const phoneHref = String(s.phone || '').replace(/[^0-9+]/g, '');
-  const type = s.storeType === 'wholesaler' ? `Wholesaler${s.wholesaleVerified ? ' (verified)' : ' (call pending)'}` : 'Retailer';
+  const type = s.storeType === 'retailer' ? 'Retailer'
+    : `${s.storeType === 'distributor' ? 'Distributor' : 'Wholesaler'}${s.wholesaleVerified ? ' (verified)' : ' (call pending)'}`;
   const stat = (label, value) => `<div class="admin-stat"><span class="admin-stat-value">${value}</span><span class="admin-stat-label">${label}</span></div>`;
   const rows = a.products.map((p) => `
     <tr class="${p.productId === pickedProductId ? 'is-picked' : ''}">

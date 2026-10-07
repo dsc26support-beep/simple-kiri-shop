@@ -71,13 +71,13 @@ const Auth = (function () {
    * when they picked Wholesaler.
    */
   function showWholesalePendingNotice(owner) {
-    if (!owner || owner.storeType !== 'wholesaler' || owner.wholesaleVerified) return;
+    if (!owner || (owner.storeType !== 'wholesaler' && owner.storeType !== 'distributor') || owner.wholesaleVerified) return;
     const host = document.querySelector('main .container');
     if (!host || host.querySelector('.wholesale-pending-banner')) return;
     const note = document.createElement('p');
     note.className = 'wholesaler-note wholesale-pending-banner';
     note.setAttribute('role', 'status');
-    note.textContent = 'Wholesale verification pending - Mwakete.com will contact you to schedule a verification call.';
+    note.textContent = (owner.storeType === 'distributor' ? 'Distributor' : 'Wholesale') + ' verification pending - Mwakete.com will contact you to schedule a verification call.';
     host.insertBefore(note, host.firstChild);
   }
 

@@ -21,9 +21,27 @@ function isOwnerAdmin(owner) {
   return getAdminEmails().indexOf(normalizeEmail(owner.Email)) !== -1;
 }
 
-/** Blank (every store from before the choice existed) reads as retailer. */
+/**
+ * 'retailer' | 'wholesaler' | 'distributor' (distributor = multi-location:
+ * branches, warehouses). Blank - every store from before the choice existed -
+ * and anything unknown reads as retailer.
+ */
 function storeTypeOf(owner) {
-  return owner && String(owner.StoreType) === 'wholesaler' ? 'wholesaler' : 'retailer';
+  var t = owner ? String(owner.StoreType) : '';
+  return t === 'wholesaler' || t === 'distributor' ? t : 'retailer';
+}
+
+/**
+ * Wholesalers and distributors are treated alike for the verification call
+ * and Food & Groceries (owner decision: "like wholesaler").
+ */
+function isBulkSeller(owner) {
+  return storeTypeOf(owner) !== 'retailer';
+}
+
+/** Food & Groceries listing permission - one place, so business types can grow. */
+function canListFood(owner) {
+  return isBulkSeller(owner);
 }
 
 /**
@@ -36,7 +54,7 @@ function notifyAdminsOfWholesaler(owner) {
   var admins = getAdminEmails();
   if (!admins.length) return;
   var adminUrl = siteBaseUrl() ? siteBaseUrl() + '/owner/admin.html' : '';
-  var body = 'A new store registered as a WHOLESALER and needs a verification call.\n\n' +
+  var body = 'A new store registered as a ' + storeTypeOf(owner).toUpperCase() + ' and needs a verification call.\n\n' +
     'Store: ' + owner.StoreName + '\n' +
     'Phone: ' + owner.Phone + '\n' +
     'Email: ' + owner.Email + '\n' +
@@ -403,10 +421,10 @@ function actionRecomputeBadges(owner) {
 function actionListWholesalers(owner) {
   if (!isOwnerAdmin(owner)) return fail('Not authorized');
   var list = sheetToObjects(getSheet('Owners'))
-    .filter(function (o) { return storeTypeOf(o) === 'wholesaler'; })
+    .filter(function (o) { return isBulkSeller(o); })
     .map(function (o) {
       return {
-        ownerId: o.OwnerId, storeName: o.StoreName, storeSlug: o.StoreSlug,
+        ownerId: o.OwnerId, storeName: o.StoreName, storeSlug: o.StoreSlug, storeType: storeTypeOf(o),
         phone: o.Phone, email: o.Email, createdAt: o.CreatedAt,
         verified: String(o.WholesaleVerified) === 'true'
       };
@@ -424,7 +442,7 @@ function actionSetWholesaleVerified(owner, body) {
   var sheet = getSheet('Owners');
   var row = findRowById(sheet, 'OwnerId', String(body.ownerId || ''));
   if (!row) return fail('Store not found');
-  if (storeTypeOf(row) !== 'wholesaler') return fail('That store is not registered as a wholesaler');
+  if (!isBulkSeller(row)) return fail('That store is not registered as a wholesaler or distributor');
   ensureColumn(sheet, 'WholesaleVerified');
   updateRowFromObject(sheet, row.__row, { WholesaleVerified: body.verified ? 'true' : '' });
   return ok({ ownerId: row.OwnerId, verified: !!body.verified });

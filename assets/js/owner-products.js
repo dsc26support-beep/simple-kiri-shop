@@ -88,7 +88,8 @@ let variantRowSeq = 0;
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
-  ownerIsWholesaler = owner.storeType === 'wholesaler';
+  // Wholesalers and distributors alike (Admin.gs canListFood).
+  ownerIsWholesaler = owner.storeType === 'wholesaler' || owner.storeType === 'distributor';
   document.getElementById('food-wholesale-hint').hidden = ownerIsWholesaler;
   document.getElementById('store-name-label').textContent = owner.storeName;
 
