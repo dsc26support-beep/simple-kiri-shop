@@ -257,5 +257,5 @@ async function onRegister(e) {
 // wholesaler should know a call is coming before committing to the choice.
 function onStoreTypeChange() {
   const picked = document.querySelector('input[name="storeType"]:checked');
-  document.getElementById('wholesaler-note').hidden = !(picked && picked.value === 'wholesaler');
+  document.getElementById('wholesaler-note').hidden = !(picked && (picked.value === 'wholesaler' || picked.value === 'distributor'));
 }

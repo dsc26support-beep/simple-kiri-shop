@@ -60,7 +60,8 @@ var PROTECTED_POST_ACTIONS = [
   'getInventory', 'receiveStock', 'adjustStock', 'updateStockSettings', 'listStockMovements',
   'listInventoryConnections', 'saveInventoryConnection', 'deleteInventoryConnection', 'previewInventoryImport',
   'applyInventoryImport', 'listSyncJobs', 'exportInventoryRows',
-  'testSheetConnection', 'syncNow', 'listSyncConflicts', 'resolveSyncConflict'
+  'testSheetConnection', 'syncNow', 'listSyncConflicts', 'resolveSyncConflict',
+  'listLocations', 'saveLocation', 'archiveLocation', 'transferStock', 'listSuppliers', 'saveSupplier', 'archiveSupplier', 'inventoryReport'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -80,7 +81,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'inventory4-2026-10-07';
+var APP_VERSION = 'inventory5-2026-10-07';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -485,6 +486,14 @@ function doPost(e) {
         case 'syncNow': return jsonOut(actionSyncNow(owner, body));
         case 'listSyncConflicts': return jsonOut(actionListSyncConflicts(owner));
         case 'resolveSyncConflict': return jsonOut(actionResolveSyncConflict(owner, body));
+        case 'listLocations': return jsonOut(actionListLocations(owner));
+        case 'saveLocation': return jsonOut(actionSaveLocation(owner, body));
+        case 'archiveLocation': return jsonOut(actionArchiveLocation(owner, body));
+        case 'transferStock': return jsonOut(actionTransferStock(owner, body));
+        case 'listSuppliers': return jsonOut(actionListSuppliers(owner));
+        case 'saveSupplier': return jsonOut(actionSaveSupplier(owner, body));
+        case 'archiveSupplier': return jsonOut(actionArchiveSupplier(owner, body));
+        case 'inventoryReport': return jsonOut(actionInventoryReport(owner, body));
         case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
         case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }

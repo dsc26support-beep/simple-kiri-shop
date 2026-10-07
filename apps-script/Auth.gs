@@ -242,9 +242,9 @@ function actionRegisterOwner(body) {
   var email = String(body.email || '').trim();
   var phone = String(body.phone || '').trim();
   var messenger = String(body.messenger || '').trim();
-  // Anything but an explicit 'wholesaler' is a retailer - the default, and
-  // what every store that registered before this choice existed is treated as.
-  var storeType = String(body.storeType || '') === 'wholesaler' ? 'wholesaler' : 'retailer';
+  // Anything but an explicit 'wholesaler' or 'distributor' is a retailer - the
+  // default, and what every store that registered before this choice existed is.
+  var storeType = storeTypeOf({ StoreType: body.storeType });
 
   if (!storeName || !username || !password || !email || !phone) {
     return fail('Store name, username, password, contact email and contact phone are required');
@@ -325,7 +325,7 @@ function actionRegisterOwner(body) {
     lock.releaseLock();
   }
   // Outside the lock - an email send is slow and must never hold it.
-  if (storeType === 'wholesaler') notifyAdminsOfWholesaler(owner);
+  if (storeType !== 'retailer') notifyAdminsOfWholesaler(owner);
   return ok({ token: token, owner: publicOwnerFields(owner) });
 }
 

@@ -30,7 +30,7 @@ const i1 = res.items.find((i) => i.variantId === 'v1');
 ok('item numbers: 10 in stock, 2 held, 8 available', i1.physical === 10 && i1.reserved === 2 && i1.available === 8);
 ok('summary counts tracked items and held units', res.summary.tracked === 1 && res.summary.reservedUnits === 2, JSON.stringify(res.summary));
 ok('retailer gets the simple capability set', res.capabilities.suppliers === false && res.capabilities.locations === false);
-ok('wholesaler gets suppliers / purchase orders', box.actionGetInventory(B).capabilities.suppliers === true);
+ok('wholesaler gets suppliers and locations', box.actionGetInventory(B).capabilities.suppliers === true && box.actionGetInventory(B).capabilities.locations === true);
 
 /* ---------- receive ---------- */
 res = box.actionReceiveStock(A, { variantId: 'v1', quantity: '5', supplier: 'ABC Trading', invoice: 'INV-1045', unitCost: '1.20', requestId: 'r1' });

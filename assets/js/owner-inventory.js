@@ -20,6 +20,9 @@ let filter = 'all';
 let historyOffset = 0;
 let historyVariant = '';
 let saving = false;
+let caps = {};
+let locations = [];   // [{locationId, name, type, isMain, units, ...}] for wholesalers / distributors
+let suppliers = [];
 
 async function init() {
   const owner = await Auth.guardOwnerAuth();
@@ -44,9 +47,12 @@ async function loadInventory() {
   }
   statusEl.textContent = '';
   items = res.items || [];
+  caps = res.capabilities || {};
   renderSummary(res.summary);
-  renderMore(res.capabilities || {});
+  renderMore(caps);
   renderList();
+  if (caps.locations) loadLocations(false);
+  if (caps.suppliers) loadSuppliers(false);
 }
 
 function renderSummary(s) {
@@ -66,12 +72,28 @@ function renderSummary(s) {
 
 // Progressive: retailers see only the basics; wholesalers and distributors
 // get links to the extra tools as those screens exist.
-function renderMore(caps) {
+function renderMore(c) {
   const links = [];
-  if (caps.sync) links.push('<a class="btn btn-light-purple btn-small" href="inventory-sync.html">Import / Sync</a>');
+  if (c.sync) links.push('<a class="btn btn-light-purple btn-small" href="inventory-sync.html">Import / Sync</a>');
+  if (c.locations) links.push('<button type="button" class="btn btn-light-purple btn-small" data-tool="locations">Locations</button>');
+  if (c.suppliers) links.push('<button type="button" class="btn btn-light-purple btn-small" data-tool="suppliers">Suppliers</button>');
+  if (c.reports) links.push('<button type="button" class="btn btn-light-purple btn-small" data-tool="reports">Reports</button>');
   const el = document.getElementById('inv-more');
   el.innerHTML = links.join(' ');
   el.classList.toggle('hidden', links.length === 0);
+  el.querySelectorAll('[data-tool]').forEach((b) => b.addEventListener('click', () => openTool(b.dataset.tool)));
+}
+
+function openTool(name) {
+  const section = document.getElementById('inv-tool-' + name);
+  const opening = section.classList.contains('hidden');
+  document.querySelectorAll('.inv-tool').forEach((t) => t.classList.add('hidden'));
+  if (!opening) return;
+  section.classList.remove('hidden');
+  if (name === 'locations') loadLocations(true);
+  if (name === 'suppliers') loadSuppliers(true);
+  if (name === 'reports') loadReport();
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function setFilter(f) {
@@ -113,11 +135,13 @@ function renderList() {
           <strong>${escapeHtml(i.productName)}</strong> <span class="helper-text">${escapeHtml(i.label)}</span>
           <div class="inv-row-numbers">${numbers}</div>
           ${i.sku || i.barcode ? `<div class="helper-text">${i.sku ? 'SKU ' + escapeHtml(i.sku) : ''}${i.sku && i.barcode ? ' · ' : ''}${i.barcode ? 'Barcode ' + escapeHtml(i.barcode) : ''}</div>` : ''}
+          ${i.locations ? `<div class="inv-split helper-text">${i.locations.map((l) => `${escapeHtml(l.name)} <strong>${l.qty}</strong>`).join(' · ')}</div>` : ''}
           ${i.health === 'low' ? `<div class="inv-hint">Low: at or below your level of ${i.reorderLevel}.${i.reorderQty ? ' You usually reorder ' + i.reorderQty + '.' : ''}</div>` : ''}
         </div>
         <div class="inv-row-actions">
           <button type="button" class="btn btn-small btn-primary" data-act="receive">Receive</button>
           <button type="button" class="btn btn-small" data-act="adjust">Adjust</button>
+          ${caps.transfers && i.tracked ? '<button type="button" class="btn btn-small" data-act="transfer">Transfer</button>' : ''}
           <button type="button" class="btn btn-small" data-act="settings">Settings</button>
           <button type="button" class="btn btn-small" data-act="history">History</button>
         </div>
@@ -151,7 +175,7 @@ function openPanel(kind, item) {
   document.getElementById('inv-panel-error').textContent = '';
   document.getElementById('inv-panel-saved').classList.add('hidden');
   document.getElementById('inv-panel-title').textContent =
-    { receive: 'Receive stock', adjust: 'Adjust stock', settings: 'Stock settings' }[kind] + ': ' + item.productName + ' - ' + item.label;
+    { receive: 'Receive stock', adjust: 'Adjust stock', settings: 'Stock settings', transfer: 'Move stock' }[kind] + ': ' + item.productName + ' - ' + item.label;
   document.getElementById('inv-panel-sub').textContent = item.tracked
     ? `Now: ${item.physical} in stock, ${item.reserved} held by orders, ${item.available} available.`
     : 'Stock is not tracked yet - receiving or counting stock turns tracking on.';
@@ -164,12 +188,15 @@ function openPanel(kind, item) {
   if (kind === 'receive') {
     form.innerHTML = `
       ${field('inv-qty', 'Units received', `<input id="inv-qty" type="number" inputmode="numeric" min="1" step="1" required>`)}
-      ${field('inv-supplier', 'Supplier (optional)', `<input id="inv-supplier" type="text" maxlength="100" autocomplete="organization">`)}
+      ${locationField('inv-loc', 'Received at', item)}
+      ${field('inv-supplier', 'Supplier (optional)', `<input id="inv-supplier" type="text" maxlength="100" autocomplete="organization" list="inv-supplier-list">
+        <datalist id="inv-supplier-list">${suppliers.map((x) => `<option value="${escapeAttr(x.name)}">`).join('')}</datalist>`)}
       ${field('inv-invoice', 'Invoice / reference (optional)', `<input id="inv-invoice" type="text" maxlength="60">`)}
       ${field('inv-cost', 'Cost per unit (optional)', `<input id="inv-cost" type="number" inputmode="decimal" min="0" step="0.01" value="${item.costPrice == null ? '' : item.costPrice}">`)}
       ${buttons('Add to stock')}`;
   } else if (kind === 'adjust') {
     form.innerHTML = `
+      ${locationField('inv-loc', 'Where?', item)}
       ${field('inv-reason', 'What happened?', `<select id="inv-reason">
         <option value="count">I counted it - set the exact number</option>
         <option value="damaged">Damaged - remove units</option>
@@ -184,6 +211,16 @@ function openPanel(kind, item) {
       form.querySelector('.inv-count-field').classList.toggle('hidden', !count);
       form.querySelector('.inv-qty-field').classList.toggle('hidden', count);
     });
+  } else if (kind === 'transfer') {
+    const opts = (item.locations || []).map((l) => `<option value="${escapeAttr(l.locationId)}">${escapeHtml(l.name)} (${l.qty})</option>`).join('');
+    form.innerHTML = `
+      ${field('inv-from', 'From', `<select id="inv-from">${opts}</select>`)}
+      ${field('inv-to', 'To', `<select id="inv-to">${opts}</select>`)}
+      ${field('inv-qty', 'How many units', `<input id="inv-qty" type="number" inputmode="numeric" min="1" step="1">`)}
+      ${field('inv-notes', 'Note (optional)', `<input id="inv-notes" type="text" maxlength="200">`)}
+      ${buttons('Move stock')}`;
+    const to = form.querySelector('#inv-to');
+    if (to.options.length > 1) to.selectedIndex = 1;
   } else {
     form.innerHTML = `
       ${field('inv-level', 'Warn me when available stock is at or below', `<input id="inv-level" type="number" inputmode="numeric" min="0" step="1" value="${item.reorderLevel == null ? '' : item.reorderLevel}">`)}
@@ -199,6 +236,12 @@ function openPanel(kind, item) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const first = form.querySelector('input, select');
   if (first) first.focus({ preventScroll: true });
+}
+
+// Only shown when the store has more than one place.
+function locationField(id, label, item) {
+  if (!item.locations || item.locations.length < 2) return '';
+  return field(id, label, `<select id="${id}">${item.locations.map((l) => `<option value="${escapeAttr(l.locationId)}">${escapeHtml(l.name)} (now ${l.qty})</option>`).join('')}</select>`);
 }
 
 function field(id, label, control, cls) {
@@ -227,11 +270,15 @@ async function submitPanel() {
   if (kind === 'receive') {
     if (!(Number(val('inv-qty')) > 0)) { errEl.textContent = 'Enter how many units arrived.'; return; }
     action = 'receiveStock';
-    payload = { quantity: val('inv-qty'), supplier: val('inv-supplier'), invoice: val('inv-invoice'), unitCost: val('inv-cost') };
+    payload = { quantity: val('inv-qty'), supplier: val('inv-supplier'), invoice: val('inv-invoice'), unitCost: val('inv-cost'), locationId: val('inv-loc') };
   } else if (kind === 'adjust') {
     const reason = val('inv-reason');
     action = 'adjustStock';
-    payload = { reason, newCount: val('inv-count'), quantity: val('inv-qty'), notes: val('inv-notes') };
+    payload = { reason, newCount: val('inv-count'), quantity: val('inv-qty'), notes: val('inv-notes'), locationId: val('inv-loc') };
+  } else if (kind === 'transfer') {
+    if (!(Number(val('inv-qty')) > 0)) { errEl.textContent = 'Enter how many units to move.'; return; }
+    action = 'transferStock';
+    payload = { fromLocationId: val('inv-from'), toLocationId: val('inv-to'), quantity: val('inv-qty'), notes: val('inv-notes') };
   } else {
     action = 'updateStockSettings';
     payload = { reorderLevel: val('inv-level'), reorderQty: val('inv-reorder'), sku: val('inv-sku'), barcode: val('inv-barcode'), costPrice: val('inv-costp') };
@@ -262,10 +309,16 @@ async function submitPanel() {
       : res.error;
     return;
   }
-  const idx = items.findIndex((i) => i.variantId === res.item.variantId);
-  if (idx !== -1) items[idx] = res.item;
+  if (res.item) {
+    const idx = items.findIndex((i) => i.variantId === res.item.variantId);
+    // Keep the location split until the list reloads below.
+    if (idx !== -1) items[idx] = Object.assign({}, res.item, items[idx].locations ? { locations: items[idx].locations } : {});
+  }
+  if (caps.locations && items.some((i) => i.locations)) await reloadItemsQuietly();
   renderList();
-  savedEl.textContent = 'Saved. ' + (res.item.tracked ? `${res.item.physical} in stock, ${res.item.available} available.` : '');
+  savedEl.textContent = kind === 'transfer'
+    ? 'Moved. ' + (res.locations || []).map((l) => `${l.name} ${l.qty}`).join(' · ')
+    : 'Saved. ' + (res.item && res.item.tracked ? `${res.item.physical} in stock, ${res.item.available} available.` : '');
   savedEl.classList.remove('hidden');
   form.dataset.requestId = newRequestId();
   if (kind !== 'settings') loadHistory(true);
@@ -326,6 +379,144 @@ function historyRowHtml(m) {
     <div class="inv-move">
       <div><strong>${escapeHtml(MOVEMENT_LABELS[m.type] || m.type)}</strong> <span class="inv-move-qty">${sign}${m.quantity}</span>
         <span class="helper-text">${escapeHtml(m.productName)} - ${escapeHtml(m.label)}</span></div>
-      <div class="helper-text">${escapeHtml(when)}${stock ? ' · stock ' + escapeHtml(stock) : ''}${held}${m.referenceId ? ' · ' + escapeHtml(m.referenceId) : ''}${m.notes ? ' · ' + escapeHtml(m.notes) : ''}</div>
+      <div class="helper-text">${escapeHtml(when)}${stock ? (m.type === 'STOCK_TRANSFER' ? ' · at that location ' : ' · stock ') + escapeHtml(stock) : ''}${held}${m.referenceId ? ' · ' + escapeHtml(m.referenceId) : ''}${m.notes ? ' · ' + escapeHtml(m.notes) : ''}</div>
     </div>`;
+}
+
+// After a change at one location, the split for every place comes from the server.
+async function reloadItemsQuietly() {
+  const res = await Api.post('getInventory', { token: Auth.getToken() });
+  if (res.ok) { items = res.items || []; caps = res.capabilities || caps; }
+}
+
+/* ---------- locations ---------- */
+
+async function loadLocations(render) {
+  const res = await Api.post('listLocations', { token: Auth.getToken() });
+  if (!res.ok) return;
+  locations = res.locations || [];
+  if (render !== false) renderLocations();
+}
+
+function renderLocations() {
+  const el = document.getElementById('inv-locations');
+  const form = document.getElementById('inv-location-form');
+  if (!form.dataset.bound) {
+    form.dataset.bound = '1';
+    form.addEventListener('submit', (e) => { e.preventDefault(); saveLocation({ name: document.getElementById('inv-loc-name').value, type: document.getElementById('inv-loc-type').value }); });
+    el.addEventListener('click', onLocationClick);
+  }
+  el.innerHTML = locations.map((l) => `
+    <div class="inv-move" data-loc="${escapeAttr(l.locationId)}">
+      <strong>${escapeHtml(l.name)}</strong> <span class="helper-text">${l.isMain ? 'Main location' : escapeHtml(l.type)}</span>
+      <div class="helper-text">${l.units} unit${l.units === 1 ? '' : 's'} across ${l.items} item${l.items === 1 ? '' : 's'}${l.value ? ' · ' + formatMoney(l.value) + ' at cost' : ''}</div>
+      <div class="inv-row-actions">
+        <button type="button" class="btn btn-small" data-loc-act="rename">Rename</button>
+        ${l.isMain ? '' : '<button type="button" class="btn btn-small" data-loc-act="close">Close</button>'}
+      </div>
+    </div>`).join('');
+}
+
+async function saveLocation(body) {
+  const errEl = document.getElementById('inv-locations-error');
+  errEl.textContent = '';
+  const res = await Api.post('saveLocation', Object.assign({ token: Auth.getToken() }, body));
+  if (!res.ok) { errEl.textContent = res.error || 'Could not save the location.'; return; }
+  document.getElementById('inv-loc-name').value = '';
+  await loadLocations(true);
+  await loadInventory();
+}
+
+async function onLocationClick(e) {
+  const btn = e.target.closest('[data-loc-act]');
+  if (!btn) return;
+  const loc = locations.find((l) => l.locationId === btn.closest('[data-loc]').dataset.loc);
+  const errEl = document.getElementById('inv-locations-error');
+  errEl.textContent = '';
+  if (btn.dataset.locAct === 'rename') {
+    const name = window.prompt('New name for ' + loc.name, loc.name);
+    if (name && name.trim() !== loc.name) saveLocation({ locationId: loc.locationId, name: name.trim(), type: loc.type });
+    return;
+  }
+  if (!window.confirm('Close ' + loc.name + '? It must be empty first.')) return;
+  const res = await Api.post('archiveLocation', { token: Auth.getToken(), locationId: loc.locationId });
+  if (!res.ok) { errEl.textContent = res.error; return; }
+  await loadLocations(true);
+  await loadInventory();
+}
+
+/* ---------- suppliers ---------- */
+
+async function loadSuppliers(render) {
+  const res = await Api.post('listSuppliers', { token: Auth.getToken() });
+  if (!res.ok) return;
+  suppliers = res.suppliers || [];
+  if (render !== false) renderSuppliers();
+}
+
+function renderSuppliers() {
+  const el = document.getElementById('inv-suppliers');
+  const form = document.getElementById('inv-supplier-form');
+  if (!form.dataset.bound) {
+    form.dataset.bound = '1';
+    form.addEventListener('submit', (e) => { e.preventDefault(); saveSupplier(); });
+    el.addEventListener('click', onSupplierClick);
+  }
+  el.innerHTML = suppliers.length ? suppliers.map((x) => `
+    <div class="inv-move" data-sup="${escapeAttr(x.supplierId)}">
+      <strong>${escapeHtml(x.name)}</strong>
+      <div class="helper-text">${[x.phone, x.email].filter(Boolean).map(escapeHtml).join(' · ') || 'No contact details'}</div>
+      <div class="inv-row-actions">
+        <button type="button" class="btn btn-small" data-sup-act="edit">Edit</button>
+        <button type="button" class="btn btn-small" data-sup-act="remove">Remove</button>
+      </div>
+    </div>`).join('') : '<p class="helper-text">No suppliers yet. Add the businesses you buy stock from - they appear when you receive stock.</p>';
+}
+
+async function saveSupplier() {
+  const errEl = document.getElementById('inv-suppliers-error');
+  errEl.textContent = '';
+  const g = (id) => document.getElementById(id).value.trim();
+  const res = await Api.post('saveSupplier', { token: Auth.getToken(), supplierId: g('inv-sup-id'), name: g('inv-sup-name'), phone: g('inv-sup-phone'), email: g('inv-sup-email') });
+  if (!res.ok) { errEl.textContent = res.error || 'Could not save the supplier.'; return; }
+  ['inv-sup-id', 'inv-sup-name', 'inv-sup-phone', 'inv-sup-email'].forEach((id) => { document.getElementById(id).value = ''; });
+  document.getElementById('inv-sup-save').textContent = 'Add supplier';
+  await loadSuppliers(true);
+}
+
+async function onSupplierClick(e) {
+  const btn = e.target.closest('[data-sup-act]');
+  if (!btn) return;
+  const sup = suppliers.find((x) => x.supplierId === btn.closest('[data-sup]').dataset.sup);
+  if (btn.dataset.supAct === 'edit') {
+    document.getElementById('inv-sup-id').value = sup.supplierId;
+    document.getElementById('inv-sup-name').value = sup.name;
+    document.getElementById('inv-sup-phone').value = sup.phone;
+    document.getElementById('inv-sup-email').value = sup.email;
+    document.getElementById('inv-sup-save').textContent = 'Save supplier';
+    document.getElementById('inv-sup-name').focus();
+    return;
+  }
+  if (!window.confirm('Remove ' + sup.name + '? Past stock received from them keeps their name.')) return;
+  const res = await Api.post('archiveSupplier', { token: Auth.getToken(), supplierId: sup.supplierId });
+  if (!res.ok) { document.getElementById('inv-suppliers-error').textContent = res.error; return; }
+  await loadSuppliers(true);
+}
+
+/* ---------- reports ---------- */
+
+async function loadReport() {
+  const el = document.getElementById('inv-report');
+  const sel = document.getElementById('inv-report-days');
+  if (!sel.dataset.bound) { sel.dataset.bound = '1'; sel.addEventListener('change', loadReport); }
+  el.innerHTML = '<p class="helper-text">Loading…</p>';
+  const res = await Api.post('inventoryReport', { token: Auth.getToken(), days: sel.value });
+  if (!res.ok) { el.innerHTML = '<p class="helper-text">Could not load the report.</p>'; return; }
+  const r = res.report;
+  const tile = (n, label) => `<div class="inv-tile"><span class="inv-tile-value">${n}</span><span class="inv-tile-label">${label}</span></div>`;
+  const list = (title, rows) => rows.length ? `<h3>${title}</h3><ul class="inv-report-list">${rows.join('')}</ul>` : '';
+  el.innerHTML = `<div class="inv-summary">${tile(r.received, 'units received')}${tile(r.sold, 'units sold')}${tile(r.damaged, 'damaged / expired')}${tile(r.returned, 'returned')}</div>` +
+    list('Best sellers', r.topSellers.map((t) => `<li>${escapeHtml(t.name)} <strong>${t.units}</strong></li>`)) +
+    list('Received by supplier', r.bySupplier.map((x) => `<li>${escapeHtml(x.supplier)} <strong>${x.units}</strong></li>`)) +
+    list('Stock by location', (r.byLocation || []).map((l) => `<li>${escapeHtml(l.name)} <strong>${l.units}</strong>${l.value ? ' · ' + formatMoney(l.value) : ''}</li>`));
 }

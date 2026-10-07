@@ -116,9 +116,10 @@ async function page(browser, path, opts) {
   /* ---- backend: the Food rule in actionCreateOrUpdateProduct ---- */
   {
     const src = fs.readFileSync(REPO + 'apps-script/Products.gs', 'utf8');
-    const guard = src.match(/  if \(category === 'food' && storeTypeOf\(owner\) !== 'wholesaler'\) \{[\s\S]*?\n  \}\n/)[0];
+    const guard = src.match(/  if \(category === 'food' && !canListFood\(owner\)\) \{[\s\S]*?\n  \}\n/)[0];
     const admin = fs.readFileSync(REPO + 'apps-script/Admin.gs', 'utf8');
-    const storeTypeOf = admin.match(/function storeTypeOf[\s\S]*?\n}/)[0];
+    // storeTypeOf + isBulkSeller + canListFood: the one shared Food rule.
+    const storeTypeOf = ['storeTypeOf', 'isBulkSeller', 'canListFood'].map((n) => admin.match(new RegExp('function ' + n + '[\\s\\S]*?\\n}'))[0]).join('\n');
     const run = (owner, body, priorRow) => {
       const box = { owner, body, category: 'food', fail: (m) => ({ ok: false, error: m }),
         getSheet: () => ({}), findRowById: () => priorRow || null, categoryIdOf: (c) => c, result: null };
@@ -131,6 +132,8 @@ async function page(browser, path, opts) {
     ok('server: but can keep editing a listing already in Food', run({ OwnerId: 'o', StoreType: '' }, { productId: 'p' }, { OwnerId: 'o', Category: 'food' }).ok === true);
     ok('server: someone else\'s Food listing id does not grandfather anything', run({ OwnerId: 'o', StoreType: '' }, { productId: 'p' }, { OwnerId: 'other', Category: 'food' }).ok === false);
     ok('server: a wholesaler (verified or not) can list in Food', run({ OwnerId: 'o', StoreType: 'wholesaler' }, {}).ok === true);
+    ok('server: so can a distributor (owner decision: like wholesaler)', run({ OwnerId: 'o', StoreType: 'distributor' }, {}).ok === true);
+    ok('server: an unknown type is a retailer', run({ OwnerId: 'o', StoreType: 'boss' }, {}).ok === false);
   }
 
   let f = 0; for (const [s, n, x] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${x !== '' ? '  [' + x + ']' : ''}`); }
