@@ -23,6 +23,7 @@ async function init() {
     showLoadFailedMessage(statusEl);
     return;
   }
+  statusEl.textContent = ''; // the loading text stays until replaced
   purchases = res.purchases || [];
   payment = res.payment || payment;
   renderHistory();

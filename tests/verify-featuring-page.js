@@ -43,6 +43,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   let st = { calls: [], purchases: [] };
   let { ctx, page } = await open('/owner/feature.html', st);
   await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
+  ok('loading text is cleared once loaded', (await page.textContent('#feature-status')).trim() === '');
   ok('only active products are offered', (await page.$$('#feature-product-list input')).length === 2);
   ok('history says nothing featured yet', /Nothing featured yet/.test(await page.textContent('#feature-history')));
   await page.check('#feature-product-list input[value="p1"]');
