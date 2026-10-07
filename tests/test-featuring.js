@@ -70,6 +70,31 @@ ok('a JPEG passes even as signed bytes', box.isValidPaymentImage(jpg, 'image/jpe
 ok('a PDF claiming to be an image fails', !box.isValidPaymentImage([0x25, 0x50, 0x44, 0x46, 0, 0, 0, 0, 0, 0, 0, 0], 'image/png'));
 ok('EXIF is detected (camera photo)', box.imageHasExif([0, 0, 0x45, 0x78, 0x69, 0x66, 0]) && !box.imageHasExif(png));
 
+/* ---------- renewal reminders ---------- */
+const H = 3600 * 1000, now = Date.now();
+const row = (o) => Object.assign({ PurchaseId: 'a', OwnerId: 'o1', Status: 'Approved', ProductIdsJson: '["p1","p2"]',
+  Days: 7, CreatedAt: '2026-10-01T00:00:00Z', EndsAt: new Date(now + 20 * H).toISOString() }, o);
+const due = (rows, sent) => box.featureRenewalsDue(rows, now, sent || {}).map((r) => r.PurchaseId);
+ok('renewal: ends in 20h -> due', due([row()]).join() === 'a');
+ok('renewal: ends in 30h -> not yet', due([row({ EndsAt: new Date(now + 30 * H).toISOString() })]).length === 0);
+ok('renewal: already ended -> never', due([row({ EndsAt: new Date(now - H).toISOString() })]).length === 0);
+ok('renewal: already reminded -> not again', due([row()], { a: 'x' }).length === 0);
+ok('renewal: pending/rejected purchases are never reminded', due([row({ Status: 'Pending review' }), row({ PurchaseId: 'b', Status: 'Rejected' })]).length === 0);
+ok('renewal: already renewed (later purchase covering the same products) -> skipped',
+  due([row(), row({ PurchaseId: 'b', Status: 'Pending review', CreatedAt: '2026-10-05T00:00:00Z', ProductIdsJson: '["p2","p1","p9"]' })]).length === 0);
+ok('renewal: a later purchase covering only SOME products still reminds',
+  due([row(), row({ PurchaseId: 'b', CreatedAt: '2026-10-05T00:00:00Z', ProductIdsJson: '["p1"]', EndsAt: new Date(now + 99 * H).toISOString() })]).join() === 'a');
+ok('renewal: another store renewing the same ids does not count',
+  due([row(), row({ PurchaseId: 'b', OwnerId: 'o2', CreatedAt: '2026-10-05T00:00:00Z', EndsAt: new Date(now + 99 * H).toISOString() })]).join() === 'a');
+box.siteBaseUrl = () => 'https://mwakete.com';
+const mail = box.featureRenewalEmailBody({ StoreName: 'Bong' }, { purchaseId: 'fp 1', productIds: ['p1', 'p2'], productNames: ['Rice', 'Flour'],
+  days: 7, endsAt: new Date(now + 20 * H).toISOString() });
+ok('renewal email links to the renew page with the purchase id', mail.includes('https://mwakete.com/owner/feature.html?renew=fp%201'), mail);
+ok('renewal email names the products and the renewal price', /- Rice\n- Flour/.test(mail) && mail.includes('$0.70'));
+box.siteBaseUrl = () => '';
+ok('renewal email without SITE_BASE_URL says where to go instead of a broken link',
+  /open Feature products from your store dashboard/.test(box.featureRenewalEmailBody({ StoreName: 'B' }, { purchaseId: 'x', productIds: ['p1'], productNames: ['R'], days: 1, endsAt: new Date().toISOString() })));
+
 let f = 0;
 console.log('\n--- paid featuring: price + payment decision ---');
 for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e !== '' ? '  [' + e + ']' : ''}`); }

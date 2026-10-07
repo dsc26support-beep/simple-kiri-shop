@@ -269,6 +269,10 @@ function runReminderSweep() {
   // every authenticated request scans the whole table via requireAuth.
   pruneExpiredSessions();
 
+  // Paid featuring renewal emails (Featuring.gs). Isolated so a problem there
+  // can't stop the cleanup below.
+  try { sendFeatureRenewalReminders(); } catch (e) { Logger.log('feature renewals failed: ' + e); }
+
   // Runs after the reminder logic above so a cart/order gets its chance to
   // be reminded in this same run before either cleanup step touches it -
   // no real overlap at ~12 months vs. hours, but keeps the ordering

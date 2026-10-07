@@ -96,6 +96,23 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   ok('no "Pay now" on a pending purchase', !(await page.$('#feature-history a.btn')));
   await ctx.close();
 
+  // ---------- renew link from the "ends tomorrow" email ----------
+  st = { calls: [], purchases: [Object.assign({}, AWAITING, { purchaseId: 'old1', status: 'Approved', days: 5, productIds: ['p1', 'p3'],
+    endsAt: new Date(Date.now() + 20 * 3600 * 1000).toISOString() })] };
+  ({ ctx, page } = await open('/owner/feature.html?renew=old1', st));
+  await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
+  const renew = await page.evaluate(() => ({
+    checked: [...document.querySelectorAll('#feature-product-list input:checked')].map((i) => i.value),
+    days: document.getElementById('feature-days').value,
+    total: document.getElementById('feature-total').textContent,
+    note: document.getElementById('feature-status').textContent
+  }));
+  ok('?renew= ticks the same products (only the still-active ones)', JSON.stringify(renew.checked) === '["p1"]', JSON.stringify(renew));
+  ok('?renew= sets the same number of days, and the total follows', renew.days === '5' && /1 product × 5 days/.test(renew.total), JSON.stringify(renew));
+  ok('?renew= says it is a renewal and why a product is missing', /no longer active/.test(renew.note), renew.note);
+  ok('no page errors (renew)', st.errors.length === 0, st.errors.join('; '));
+  await ctx.close();
+
   // ---------- admin queue ----------
   st = { calls: [], admin: [
     Object.assign({}, AWAITING, { status: 'Pending review', storeName: 'Bong Store', screenshotUrl: 'https://drive.google.com/x', ocrNotes: 'ocr:unavailable' }),
