@@ -57,7 +57,9 @@ var PROTECTED_POST_ACTIONS = [
   'listWholesalers', 'setWholesaleVerified',
   'startFeaturePurchase', 'listMyFeaturePurchases', 'submitFeaturePayment',
   'listFeaturePurchases', 'setFeaturePurchaseStatus', 'adminSearch', 'adminStoreAnalytics',
-  'getInventory', 'receiveStock', 'adjustStock', 'updateStockSettings', 'listStockMovements'
+  'getInventory', 'receiveStock', 'adjustStock', 'updateStockSettings', 'listStockMovements',
+  'listInventoryConnections', 'saveInventoryConnection', 'deleteInventoryConnection', 'previewInventoryImport',
+  'applyInventoryImport', 'listSyncJobs', 'exportInventoryRows'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -77,7 +79,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'inventory2-2026-10-07';
+var APP_VERSION = 'inventory3-2026-10-07';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -471,6 +473,13 @@ function doPost(e) {
         case 'adjustStock': return jsonOut(actionAdjustStock(owner, body));
         case 'updateStockSettings': return jsonOut(actionUpdateStockSettings(owner, body));
         case 'listStockMovements': return jsonOut(actionListStockMovements(owner, body));
+        case 'listInventoryConnections': return jsonOut(actionListInventoryConnections(owner));
+        case 'saveInventoryConnection': return jsonOut(actionSaveInventoryConnection(owner, body));
+        case 'deleteInventoryConnection': return jsonOut(actionDeleteInventoryConnection(owner, body));
+        case 'previewInventoryImport': return jsonOut(actionPreviewInventoryImport(owner, body));
+        case 'applyInventoryImport': return jsonOut(actionApplyInventoryImport(owner, body));
+        case 'listSyncJobs': return jsonOut(actionListSyncJobs(owner, body));
+        case 'exportInventoryRows': return jsonOut(actionExportInventoryRows(owner));
         case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
         case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }

@@ -302,7 +302,7 @@ function actionGetInventory(owner) {
 function inventoryCapabilities(owner) {
   var type = storeTypeOf(owner);
   var advanced = type === 'wholesaler' || type === 'distributor';
-  return { locations: type === 'distributor', suppliers: advanced, transfers: type === 'distributor', purchaseOrders: advanced, sync: false };
+  return { locations: type === 'distributor', suppliers: advanced, transfers: type === 'distributor', purchaseOrders: advanced, sync: true };
 }
 
 /** Loads one of this seller's active, tracked-or-trackable varieties for a stock action. */
