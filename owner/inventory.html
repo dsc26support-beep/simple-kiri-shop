@@ -40,6 +40,40 @@
       <div id="inv-summary" class="inv-summary hidden" aria-label="Stock summary"></div>
       <nav id="inv-more" class="inv-more hidden" aria-label="More inventory tools"></nav>
 
+      <!-- Wholesaler / distributor tools, opened from the buttons above. -->
+      <section id="inv-tool-locations" class="dash-section inv-tool hidden" aria-labelledby="inv-locations-heading">
+        <h2 id="inv-locations-heading">Locations</h2>
+        <p class="helper-text">Your shops, branches and warehouses. The main location holds whatever isn't at the others; shoppers buy from your total.</p>
+        <div id="inv-locations"></div>
+        <form id="inv-location-form" class="inv-inline-form" novalidate>
+          <div class="field"><label for="inv-loc-name">New location</label><input id="inv-loc-name" type="text" maxlength="60" placeholder="e.g. Bairiki warehouse"></div>
+          <div class="field"><label for="inv-loc-type">Type</label>
+            <select id="inv-loc-type"><option value="warehouse">Warehouse</option><option value="store">Shop</option><option value="branch">Branch</option></select></div>
+          <button type="submit" class="btn btn-primary">Add location</button>
+        </form>
+        <p id="inv-locations-error" class="form-error" role="alert"></p>
+      </section>
+
+      <section id="inv-tool-suppliers" class="dash-section inv-tool hidden" aria-labelledby="inv-suppliers-heading">
+        <h2 id="inv-suppliers-heading">Suppliers</h2>
+        <div id="inv-suppliers"></div>
+        <form id="inv-supplier-form" class="inv-inline-form" novalidate>
+          <input type="hidden" id="inv-sup-id">
+          <div class="field"><label for="inv-sup-name">Supplier name</label><input id="inv-sup-name" type="text" maxlength="100"></div>
+          <div class="field"><label for="inv-sup-phone">Phone</label><input id="inv-sup-phone" type="tel" maxlength="40"></div>
+          <div class="field"><label for="inv-sup-email">Email</label><input id="inv-sup-email" type="email" maxlength="120"></div>
+          <button type="submit" class="btn btn-primary" id="inv-sup-save">Add supplier</button>
+        </form>
+        <p id="inv-suppliers-error" class="form-error" role="alert"></p>
+      </section>
+
+      <section id="inv-tool-reports" class="dash-section inv-tool hidden" aria-labelledby="inv-reports-heading">
+        <h2 id="inv-reports-heading">Reports</h2>
+        <div class="field inv-report-days"><label for="inv-report-days">Period</label>
+          <select id="inv-report-days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></div>
+        <div id="inv-report"></div>
+      </section>
+
       <section class="dash-section" aria-labelledby="inv-list-heading">
         <h2 id="inv-list-heading">Stock</h2>
         <div class="inv-filters">
