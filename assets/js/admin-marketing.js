@@ -41,15 +41,19 @@ const mktDate = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { day: '
 
 async function loadMarketing() {
   const res = await mktPost('getMarketingOverview');
-  if (!res.ok) {
-    document.getElementById('mkt-status').textContent = res.error || 'Could not load marketing.';
+  // The website updates on merge; the backend only when Apps Script is
+  // redeployed. Until then this answers without the overview - say so rather
+  // than break the rest of the admin page.
+  if (!res || !res.ok || !res.settings || !res.totals) {
+    document.getElementById('mkt-status').textContent = (res && res.error && res.ok === false && !/Unknown action/i.test(res.error))
+      ? res.error : 'Marketing needs the latest backend: redeploy Apps Script (see DEPLOY.md), then reload this page.';
     return;
   }
   renderMktStatus(res.settings);
   renderMktTotals(res.totals);
   renderMktCampaigns(res.campaigns || []);
   const stats = await mktPost('getMarketingStats');
-  if (stats.ok) renderMktStats(stats.stats || []);
+  if (stats && stats.ok && Array.isArray(stats.stats)) renderMktStats(stats.stats);
 }
 
 function renderMktStatus(s) {

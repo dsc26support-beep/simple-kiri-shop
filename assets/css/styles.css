@@ -7022,12 +7022,6 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 }
 
 /* Promotional email consent on the customer account page. */
-.marketing-optin {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
-}
-
 .marketing-optin[hidden] {
   display: none;
 }

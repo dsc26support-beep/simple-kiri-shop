@@ -80,13 +80,6 @@
           <button type="submit" class="btn btn-primary btn-save">Save</button>
           <button type="button" id="profile-cancel" class="btn">Cancel</button>
         </form>
-        <!-- Promotional email consent (Marketing.gs). Off until the customer
-             ticks it; order and sign-in emails are not affected either way. -->
-        <div class="marketing-optin" id="marketing-optin" hidden>
-          <label class="marketing-optin-label"><input type="checkbox" id="marketing-optin-box"> <span>Email me new products and news from Mwakete</span></label>
-          <p class="helper-text">At most 2 emails a week. Untick any time, or use the link in any of those emails. Order and sign-in emails always arrive.</p>
-          <p id="marketing-optin-status" class="helper-text" role="status" aria-live="polite"></p>
-        </div>
       </section>
 
       <section class="dash-section dash-section--orders">
@@ -105,6 +98,16 @@
         <div class="dash-filters" id="bookings-filters" role="group" aria-label="Filter bookings"></div>
         <p id="bookings-status" class="helper-text" aria-live="polite"></p>
         <div id="bookings-list"></div>
+      </section>
+
+      <!-- Promotional email consent (Marketing.gs). Its own section at the
+           END of the page: it appears only after a request, and anything
+           revealed late higher up would push the orders down under a thumb. -->
+      <section class="dash-section marketing-optin" id="marketing-optin" aria-labelledby="marketing-optin-h" hidden>
+        <h2 id="marketing-optin-h">Emails from Mwakete</h2>
+        <label class="marketing-optin-label"><input type="checkbox" id="marketing-optin-box"> <span>Email me new products and news from Mwakete</span></label>
+        <p class="helper-text">At most 2 emails a week. Untick any time, or use the link in any of those emails. Order and sign-in emails always arrive.</p>
+        <p id="marketing-optin-status" class="helper-text" role="status" aria-live="polite"></p>
       </section>
 
       <!-- Filled by customer-dashboard.js from the SERVICE WORKER's own cache
