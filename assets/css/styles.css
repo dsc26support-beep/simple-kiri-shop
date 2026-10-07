@@ -912,6 +912,16 @@ footer.site-footer .copyright {
   font-size: 0.75rem;
 }
 
+/* Phones and tablets: no footer (owner request) - the bottom nav and the
+   header menu are the way around there. The seller sign-in pages keep theirs
+   (site-footer--keep): its Enquiry link is the one way back for a seller
+   whose store was deleted, and their messages point at it. */
+@media (max-width: 1024px) {
+  footer.site-footer:not(.site-footer--keep) {
+    display: none;
+  }
+}
+
 .floating-action-btn {
   position: fixed;
   bottom: var(--space-3);
