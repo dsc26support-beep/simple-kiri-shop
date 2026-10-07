@@ -37,6 +37,13 @@
       <p class="helper-text">Keep using the spreadsheet or system you already have. Mwakete reads it, shows you every change first, and only updates your store when you say so.</p>
       <p id="sync-status" class="helper-text" role="status"></p>
 
+      <!-- Sync Center: connected sources and anything waiting for a decision. -->
+      <section id="sync-center" class="dash-section hidden" aria-labelledby="sync-center-heading">
+        <h2 id="sync-center-heading">Your connected stock</h2>
+        <div id="sync-conflicts" class="sync-conflicts hidden" aria-live="polite"></div>
+        <div id="sync-connections"></div>
+      </section>
+
       <!-- Step 1: where is your stock kept? -->
       <section id="sync-step-source" class="dash-section" aria-labelledby="sync-source-heading">
         <h2 id="sync-source-heading">1. Where do you keep your stock now?</h2>
@@ -44,17 +51,52 @@
         <p class="helper-text">No system yet? <a href="inventory.html">Use Mwakete Inventory</a> - it's already on.</p>
       </section>
 
+      <!-- Google Sheets: share, paste the link, pick the tab. -->
+      <section id="sync-step-sheet" class="dash-section hidden" aria-labelledby="sync-sheet-heading">
+        <h2 id="sync-sheet-heading">2. Link your Google Sheet</h2>
+        <ol class="sync-steps">
+          <li>Open your stock sheet and press <strong>Share</strong>.</li>
+          <li>Add <strong id="sync-share-email"></strong> <button type="button" class="btn btn-small" id="sync-copy-email">Copy</button>
+            as <strong>Editor</strong> (so Mwakete can write sales back) or <strong>Viewer</strong> (read only).</li>
+          <li>Copy the sheet's address from your browser and paste it here.</li>
+        </ol>
+        <div class="field">
+          <label for="sync-sheet-url">Google Sheet link</label>
+          <input type="url" id="sync-sheet-url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/d/…">
+        </div>
+        <div class="sync-sheet-pick hidden" id="sync-sheet-pick">
+          <div class="field">
+            <label for="sync-sheet-tab">Tab with your stock</label>
+            <select id="sync-sheet-tab"></select>
+          </div>
+          <div class="field">
+            <label for="sync-header-row">Row with the column names</label>
+            <input type="number" id="sync-header-row" inputmode="numeric" min="1" max="50" value="1">
+          </div>
+        </div>
+        <p id="sync-sheet-info" class="helper-text"></p>
+        <p id="sync-sheet-error" class="form-error" role="alert"></p>
+        <button type="button" id="sync-sheet-check" class="btn btn-primary">Check the sheet</button>
+      </section>
+
       <!-- Step 2-3: CSV upload + match columns -->
       <section id="sync-step-map" class="dash-section hidden" aria-labelledby="sync-map-heading">
         <h2 id="sync-map-heading">2. Choose your file and match the columns</h2>
-        <div class="field">
+        <div class="field" id="sync-file-field">
           <label for="sync-file">CSV file (from Excel, Google Sheets, your till or system: File &gt; Save as / Download as CSV)</label>
           <input type="file" id="sync-file" accept=".csv,text/csv">
         </div>
         <p id="sync-file-info" class="helper-text"></p>
         <div id="sync-mapping" class="sync-mapping hidden"></div>
         <div id="sync-options" class="sync-options hidden">
-          <label class="sync-check"><input type="checkbox" id="sync-create-new"> Add items that aren't on Mwakete yet as new products</label>
+          <fieldset id="sync-mode-field" class="sync-mode hidden">
+            <legend>Which side is in charge?</legend>
+            <label class="sync-check"><input type="radio" name="sync-mode" value="import" checked> <span><strong>My sheet → Mwakete</strong><br><span class="helper-text">Your sheet is the master. Best if you already keep it up to date.</span></span></label>
+            <label class="sync-check"><input type="radio" name="sync-mode" value="export"> <span><strong>Mwakete → my sheet</strong><br><span class="helper-text">Mwakete is the master; it writes stock into your sheet.</span></span></label>
+            <label class="sync-check"><input type="radio" name="sync-mode" value="twoWay"> <span><strong>Both ways</strong><br><span class="helper-text">Changes either side are copied across. If the same item changes in both, we ask you.</span></span></label>
+            <label class="sync-check"><input type="checkbox" id="sync-auto"> Keep in step automatically (every hour)</label>
+          </fieldset>
+          <label class="sync-check" id="sync-create-new-row"><input type="checkbox" id="sync-create-new"> Add items that aren't on Mwakete yet as new products</label>
           <div class="field hidden" id="sync-category-field">
             <label for="sync-category">Category for the new products</label>
             <select id="sync-category"></select>
@@ -84,7 +126,7 @@
       <section id="sync-step-done" class="dash-section hidden" aria-live="polite">
         <h2>Done</h2>
         <p id="sync-done-text" class="inv-saved"></p>
-        <p><a href="inventory.html" class="btn btn-primary">See my stock</a> <button type="button" id="sync-again-btn" class="btn">Import another file</button></p>
+        <p><a href="inventory.html" class="btn btn-primary">See my stock</a> <button type="button" id="sync-again-btn" class="btn">Import something else</button></p>
       </section>
 
       <section class="dash-section" aria-labelledby="sync-export-heading">

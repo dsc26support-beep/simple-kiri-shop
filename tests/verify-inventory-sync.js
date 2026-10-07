@@ -69,7 +69,7 @@ const CSV = '﻿Item Code;Description;Stock Balance;Selling Price;Minimum Stock;
 
   await page.click('#sync-apply-btn');
   await page.waitForSelector('#sync-step-done:not(.hidden)', { timeout: 5000 });
-  ok('apply reports what happened', /Updated 1 item\. Some rows were skipped/.test(await page.textContent('#sync-done-text')), await page.textContent('#sync-done-text'));
+  ok('apply reports what happened', /Updated 1 item on Mwakete\. Some rows were skipped/.test(await page.textContent('#sync-done-text')), await page.textContent('#sync-done-text'));
   const v1 = box.__sheets.Variants.objects()[0];
   ok('backend really updated: stock 12, price 2.5, low level 5', Number(v1.StockQty) === 12 && Number(v1.Price) === 2.5 && Number(v1.ReorderLevel) === 5);
   ok('ledger has the EXTERNAL_SYNC row', box.__sheets.StockMovements.objects().some((m) => m.MovementType === 'EXTERNAL_SYNC' && m.VariantId === 'v1'));
