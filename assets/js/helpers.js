@@ -613,6 +613,23 @@ function recordProductViewsOnce(productIds) {
 }
 
 // Same idea as recordProductViewsOnce, for a single store visit.
+/**
+ * A promotional email's links carry ?mc=<campaign>&me=<event>. Reported once
+ * per event so the admin can see which campaigns people actually open; the
+ * backend counts it only for a real, sent email (actionRecordMarketingClick).
+ * Pages without those parameters do nothing - no request, no cost.
+ */
+function recordMarketingClickFromUrl() {
+  const mc = getQueryParam('mc');
+  const me = getQueryParam('me');
+  if (!mc || !me || !/^cmp_[a-z0-9]{16}$/.test(mc) || !/^mev_[a-z0-9]{16}$/.test(me)) return;
+  const seen = getLocalIdSet('skiri_mkt_clicks');
+  if (seen.has(me)) return;
+  seen.add(me);
+  saveLocalIdSet('skiri_mkt_clicks', seen);
+  whenIdle(() => Api.post('recordMarketingClick', { mc, me }).catch(() => {}));
+}
+
 function recordStoreVisitOnce(storeSlug) {
   if (!storeSlug) return;
   const seen = getLocalIdSet('skiri_visited_stores');

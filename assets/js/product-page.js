@@ -94,6 +94,7 @@ async function init() {
   // Recent Views (recent.html). Guarded: a page without recent-views.js loaded
   // simply keeps no history.
   if (typeof recordRecentProduct === 'function') recordRecentProduct(product, slug, res);
+  recordMarketingClickFromUrl();
   wireActions();
   wireGallery();
   if (!window.__storeOpen) {

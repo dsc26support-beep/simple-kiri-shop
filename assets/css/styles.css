@@ -7020,3 +7020,29 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Promotional email consent on the customer account page. */
+.marketing-optin {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.marketing-optin[hidden] {
+  display: none;
+}
+
+.marketing-optin-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.marketing-optin-label input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}

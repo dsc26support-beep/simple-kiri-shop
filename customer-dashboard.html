@@ -80,6 +80,13 @@
           <button type="submit" class="btn btn-primary btn-save">Save</button>
           <button type="button" id="profile-cancel" class="btn">Cancel</button>
         </form>
+        <!-- Promotional email consent (Marketing.gs). Off until the customer
+             ticks it; order and sign-in emails are not affected either way. -->
+        <div class="marketing-optin" id="marketing-optin" hidden>
+          <label class="marketing-optin-label"><input type="checkbox" id="marketing-optin-box"> <span>Email me new products and news from Mwakete</span></label>
+          <p class="helper-text">At most 2 emails a week. Untick any time, or use the link in any of those emails. Order and sign-in emails always arrive.</p>
+          <p id="marketing-optin-status" class="helper-text" role="status" aria-live="polite"></p>
+        </div>
       </section>
 
       <section class="dash-section dash-section--orders">

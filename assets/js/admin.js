@@ -21,6 +21,7 @@ async function init() {
   loadFeaturePayments();
   initAdminSearch();
   loadInventoryOverview();
+  if (typeof initMarketingAdmin === 'function') initMarketingAdmin();   // admin-marketing.js
 }
 
 async function loadStores() {

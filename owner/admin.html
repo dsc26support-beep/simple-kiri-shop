@@ -87,6 +87,60 @@
           <div id="inv-admin"></div>
         </section>
 
+        <!-- Marketing engine (admin-marketing.js; backend Marketing.gs). Only on
+             this page - no public page loads any of it. -->
+        <section class="dash-section" aria-labelledby="mkt-heading" id="marketing">
+          <h2 id="mkt-heading">Marketing</h2>
+          <p class="helper-text">Emails only customers who opted in. Automatic campaigns wait here as drafts until you approve them. Nobody's email address is shown.</p>
+          <div id="mkt-status" class="mkt-status" aria-live="polite"></div>
+          <div class="admin-stats" id="mkt-totals"></div>
+          <p class="mkt-actions">
+            <button type="button" class="btn btn-small" id="mkt-pause-btn" hidden></button>
+            <button type="button" class="btn btn-small" id="mkt-generate-btn">Check for opportunities now</button>
+          </p>
+          <p id="mkt-msg" class="helper-text" role="status" aria-live="polite"></p>
+
+          <h3>Campaigns</h3>
+          <div class="admin-table-wrap"><table class="admin-table" id="mkt-campaigns">
+            <thead><tr><th scope="col">Campaign</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Audience</th><th scope="col">Scheduled</th><th scope="col">Sent</th><th scope="col">Actions</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <div id="mkt-preview" class="admin-analytics" hidden tabindex="-1"></div>
+
+          <h3>Results</h3>
+          <div class="admin-table-wrap"><table class="admin-table" id="mkt-stats">
+            <thead><tr><th scope="col">Campaign</th><th scope="col">Sent</th><th scope="col">Failed</th><th scope="col">Skipped</th><th scope="col">Dry run</th><th scope="col">Clicks</th><th scope="col">Orders within 7 days</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+
+          <details class="mkt-create">
+            <summary>Create a campaign</summary>
+            <form id="mkt-form" novalidate>
+              <div class="field"><label for="mkt-name">Campaign name</label><input id="mkt-name" maxlength="120" required></div>
+              <div class="field"><label for="mkt-type">Type</label>
+                <select id="mkt-type"><option value="SELLER_PROMOTION">Seller promotion (one store)</option><option value="SEASONAL">Seasonal / event</option></select></div>
+              <div class="field"><label for="mkt-audience">Audience</label>
+                <select id="mkt-audience">
+                  <option value="STORE_CUSTOMERS">Customers of the store below</option>
+                  <option value="ALL_OPTED_IN">Everyone who opted in</option>
+                  <option value="CATEGORY_INTEREST">Customers who ordered in a category</option>
+                </select></div>
+              <div class="field"><label for="mkt-store">Store</label><select id="mkt-store"></select></div>
+              <fieldset class="field" id="mkt-products-field" hidden><legend>Products to show (up to 4)</legend><div id="mkt-products"></div></fieldset>
+              <div class="field" id="mkt-category-field" hidden><label for="mkt-category">Category</label><select id="mkt-category"></select></div>
+              <div class="field"><label for="mkt-subject">Subject</label><input id="mkt-subject" maxlength="120" required></div>
+              <div class="field"><label for="mkt-message">Message</label>
+                <textarea id="mkt-message" rows="5" maxlength="2000" required aria-describedby="mkt-message-help"></textarea>
+                <p class="helper-text" id="mkt-message-help">Plain text. You can use {{customerName}}, {{storeName}}, {{productName}}. Only state prices, discounts or stock you have confirmed with the seller - the engine never adds any.</p></div>
+              <div class="field"><label for="mkt-start">Start</label><input id="mkt-start" type="datetime-local"></div>
+              <div class="field"><label for="mkt-end">End</label><input id="mkt-end" type="datetime-local"></div>
+              <div class="field"><label for="mkt-max">Most recipients (blank = no limit)</label><input id="mkt-max" type="number" min="1" max="5000" inputmode="numeric"></div>
+              <p id="mkt-form-error" class="form-error" role="alert"></p>
+              <button type="submit" class="btn btn-primary">Save as draft</button>
+            </form>
+          </details>
+        </section>
+
         <section class="dash-section" aria-labelledby="feature-payments-heading">
           <h2 id="feature-payments-heading">Featuring payments</h2>
           <p class="helper-text">
@@ -146,6 +200,7 @@
   <script defer src="../assets/js/badges.min.js"></script>
   <script defer src="../assets/js/cookie-consent.min.js"></script>
   <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/admin-marketing.min.js"></script>
   <script defer src="../assets/js/admin.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

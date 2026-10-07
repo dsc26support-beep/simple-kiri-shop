@@ -34,6 +34,10 @@ var PUBLIC_POST_ACTIONS = [
   'googleSignIn',
   'listCustomerOrders', 'listCustomerBookings', 'updateCustomerProfile',
   'getCustomerInbox',
+  // Marketing (Marketing.gs): the customer's own opt-in (customer token
+  // checked inside), the one-tap unsubscribe (random per-customer token), and
+  // an email-link click (counted only for a real, sent email).
+  'getMarketingPreference', 'setMarketingPreference', 'unsubscribeMarketing', 'recordMarketingClick',
   // Customer-managed orders/bookings. Public in the same sense as the rest of
   // this block: each one calls requireCustomerAuth on body.token internally
   // (via findOwnRow in Customers.gs) and refuses any row that is not the
@@ -62,7 +66,10 @@ var PROTECTED_POST_ACTIONS = [
   'applyInventoryImport', 'listSyncJobs', 'exportInventoryRows',
   'testSheetConnection', 'syncNow', 'listSyncConflicts', 'resolveSyncConflict',
   'listLocations', 'saveLocation', 'archiveLocation', 'transferStock', 'listSuppliers', 'saveSupplier', 'archiveSupplier', 'inventoryReport',
-  'adminInventoryOverview'
+  'adminInventoryOverview',
+  // Marketing engine - every one checks isOwnerAdmin inside (Marketing.gs).
+  'getMarketingOverview', 'createMarketingCampaign', 'setMarketingCampaignStatus', 'setMarketingPaused',
+  'previewMarketingCampaign', 'getMarketingStats', 'runMarketingGeneration'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -82,7 +89,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'hideadmin2-2026-10-07';
+var APP_VERSION = 'marketing1-2026-10-07';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -155,7 +162,19 @@ var REQUIRED_TABS = {
   Meetings: ['MeetingId', 'RequesterId', 'RequesterType', 'RecipientId', 'RecipientType',
              'ConversationId', 'StoreSlug', 'Purpose', 'Notes', 'RequestedDate', 'RequestedTime',
              'Timezone', 'Status', 'GoogleMeetSpaceName', 'GoogleMeetUrl', 'MeetFailureReason',
-             'CreatedAt', 'AcceptedAt', 'ReadyAt', 'CancelledAt', 'EndedAt', 'LastUpdatedAt']
+             'CreatedAt', 'AcceptedAt', 'ReadyAt', 'CancelledAt', 'EndedAt', 'LastUpdatedAt'],
+  // Marketing engine (Marketing.gs, MarketingEngine.gs). New tabs only -
+  // nothing existing changes. SourceKey makes automatic campaigns one per
+  // period; Attempts drives the retry limit; UnsubscribeToken is the one-tap
+  // unsubscribe; OptInAt records when consent was given.
+  Campaigns: ['CampaignId', 'Name', 'Type', 'Status', 'Objective', 'AudienceType', 'AudienceFilterJson',
+              'ProductIdsJson', 'StoreSlugsJson', 'Subject', 'PreviewText', 'BodyHtml', 'BodyText', 'CTAUrl',
+              'CTAType', 'StartAt', 'EndAt', 'CreatedAt', 'UpdatedAt', 'CreatedBy', 'MaxRecipients',
+              'SentCount', 'FailedCount', 'LastRunAt', 'SourceKey'],
+  CampaignEvents: ['EventId', 'CampaignId', 'CustomerId', 'Email', 'EventType', 'Status', 'CreatedAt',
+                   'SentAt', 'FailureReason', 'MetadataJson', 'Attempts'],
+  MarketingPreferences: ['CustomerId', 'Email', 'PromotionalEmailOptIn', 'FrequencyLimit',
+                         'LastPromotionalEmailAt', 'UpdatedAt', 'OptInAt', 'UnsubscribeToken']
 };
 
 /**
@@ -419,6 +438,10 @@ function doPost(e) {
         case 'listCustomerBookings': return jsonOut(actionListCustomerBookings(body));
         case 'updateCustomerProfile': return jsonOut(actionUpdateCustomerProfile(body));
         case 'getCustomerInbox': return jsonOut(actionGetCustomerInbox(body));
+        case 'getMarketingPreference': return jsonOut(actionGetMarketingPreference(body));
+        case 'setMarketingPreference': return jsonOut(actionSetMarketingPreference(body));
+        case 'unsubscribeMarketing': return jsonOut(actionUnsubscribeMarketing(body));
+        case 'recordMarketingClick': return jsonOut(actionRecordMarketingClick(body));
         case 'submitReview': return jsonOut(actionSubmitReview(body));
       }
     }
@@ -496,6 +519,13 @@ function doPost(e) {
         case 'archiveSupplier': return jsonOut(actionArchiveSupplier(owner, body));
         case 'inventoryReport': return jsonOut(actionInventoryReport(owner, body));
         case 'adminInventoryOverview': return jsonOut(actionAdminInventoryOverview(owner));
+        case 'getMarketingOverview': return jsonOut(actionGetMarketingOverview(owner));
+        case 'createMarketingCampaign': return jsonOut(actionCreateMarketingCampaign(owner, body));
+        case 'setMarketingCampaignStatus': return jsonOut(actionSetMarketingCampaignStatus(owner, body));
+        case 'setMarketingPaused': return jsonOut(actionSetMarketingPaused(owner, body));
+        case 'previewMarketingCampaign': return jsonOut(actionPreviewMarketingCampaign(owner, body));
+        case 'getMarketingStats': return jsonOut(actionGetMarketingStats(owner));
+        case 'runMarketingGeneration': return jsonOut(actionRunMarketingGeneration(owner));
         case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
         case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }
