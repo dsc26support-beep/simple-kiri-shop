@@ -557,3 +557,64 @@ function buildStoreAnalytics(store, d) {
     }
   };
 }
+
+/* ---------- Inventory & Sync monitoring (admin) ---------- */
+
+/**
+ * Platform-wide view of inventory sync for the admin dashboard. Counts and
+ * recent problems only - never a seller's sheet ID, link or anything that
+ * could open their data (none is stored that could, but it isn't shown either).
+ */
+function actionAdminInventoryOverview(owner) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var rows = function (name) {
+    var sheet = SpreadsheetApp.getActive().getSheetByName(name);
+    return sheet ? sheetToObjects(sheet) : [];
+  };
+  return ok({ overview: buildInventoryOverview({
+    owners: rows('Owners'), variants: rows('Variants'), connections: rows('InventoryConnections'),
+    jobs: rows('SyncJobs'), conflicts: rows('SyncConflicts')
+  }) });
+}
+
+/** Pure: the overview numbers (tested in tests/test-admin-inventory.js). */
+function buildInventoryOverview(d) {
+  var names = {};
+  var types = { retailer: 0, wholesaler: 0, distributor: 0 };
+  d.owners.forEach(function (o) {
+    names[o.OwnerId] = o.StoreName;
+    if (o.Status !== 'closed') types[storeTypeOf(o)]++;
+  });
+  var tracking = {};
+  var synced = 0;
+  d.variants.forEach(function (v) {
+    if (v.Status !== 'active') return;
+    if (v.StockQty !== '' && v.StockQty != null) tracking[v.OwnerId] = true;
+    if (v.LastSyncedAt) synced++;
+  });
+  var live = d.connections.filter(function (c) { return c.Status !== 'disconnected'; });
+  var byType = {};
+  live.forEach(function (c) { byType[c.Type] = (byType[c.Type] || 0) + 1; });
+  var failing = live.filter(function (c) { return c.LastSyncStatus === 'FAILED'; });
+  var jobs = d.jobs.slice().sort(function (a, b) { return String(b.CompletedAt).localeCompare(String(a.CompletedAt)); });
+  var lastOk = jobs.filter(function (j) { return j.Status === 'SUCCESS' || j.Status === 'PARTIAL_SUCCESS'; })[0];
+  var summaryError = function (j) {
+    try { var s = JSON.parse(j.SummaryJson || '{}'); return s.writeError || ((s.errors || [])[0] || {}).message || ''; } catch (e) { return ''; }
+  };
+  return {
+    businessTypes: types,
+    trackingStock: Object.keys(tracking).length,
+    connectedBusinesses: Object.keys(live.reduce(function (m, c) { m[c.OwnerId] = true; return m; }, {})).length,
+    connections: { total: live.length, byType: byType, failing: failing.length },
+    productsSynced: synced,
+    openConflicts: d.conflicts.filter(function (x) { return x.Status === 'open'; }).length,
+    lastSuccessfulSync: lastOk ? lastOk.CompletedAt : '',
+    syncsLast7Days: jobs.filter(function (j) { return new Date(j.CompletedAt).getTime() > Date.now() - 7 * 86400000; }).length,
+    failingConnections: failing.slice(0, 20).map(function (c) {
+      return { store: names[c.OwnerId] || c.OwnerId, name: c.Name, type: c.Type, since: c.LastSyncAt || '', error: String(c.LastError || '').slice(0, 200) };
+    }),
+    recentFailures: jobs.filter(function (j) { return j.Status === 'FAILED'; }).slice(0, 20).map(function (j) {
+      return { store: names[j.OwnerId] || j.OwnerId, type: j.ConnectorType, at: j.CompletedAt, error: summaryError(j).slice(0, 200) };
+    })
+  };
+}
