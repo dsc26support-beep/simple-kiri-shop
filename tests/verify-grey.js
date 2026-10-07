@@ -15,7 +15,9 @@ const rgb = s => s.replace(/\s+/g,'');
     const page=await ctx.newPage();
     await page.setViewportSize({width:390,height:800});
     await page.goto(BASE+'/'+p,{waitUntil:'load'});
-    await page.waitForSelector('.search-box button[type="submit"]');
+    // Attached, not visible: at rest the button is hidden until something is
+    // typed (below), so waiting for it to be visible was a timing race.
+    await page.waitForSelector('.search-box button[type="submit"]', { state: 'attached' });
     // The grey ::after chevron this suite was written for is gone. What it was
     // really guarding - that the phone treatment is scoped to .search-box and
     // never leaks to desktop - is kept, repointed at the disc that replaced it.
