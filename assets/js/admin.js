@@ -165,7 +165,7 @@ async function loadSellerBadges() {
  */
 function sellerBadgeRowHtml(s) {
   const chip = (ids) => (typeof renderSellerBadges === 'function'
-    ? renderSellerBadges(ids, { size: 'chip', interactive: false }) : '');
+    ? renderSellerBadges(ids, { size: 'chip', interactive: false, labels: true }) : '');
 
   const shown = s.badges.length
     ? s.badges.map((id) => `

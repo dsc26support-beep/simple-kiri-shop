@@ -125,19 +125,23 @@ const snap = (page) => page.evaluate(() => ({
     const { ctx, page } = await open(browser, '/index.html');
     const cards = await page.evaluate(() =>
       Array.from(document.querySelectorAll('#trending-products-list .product-card')).map((c) => ({
-        labels: Array.from(c.querySelectorAll('.seller-badge-label')).map((e) => e.textContent.trim()),
+        // Badges are icon-only except Verified, so read each one's id off its
+        // class; the "+N" counter keeps its visible text.
+        labels: Array.from(c.querySelectorAll('.seller-badge')).map((e) => (e.classList.contains('seller-badge--more')
+          ? e.textContent.trim() : (Array.from(e.classList).find((k) => /^seller-badge--(recommended|top|verified|responsive|delivery|favourite|popular|new)$/.test(k)) || '').slice(14))),
         more: (c.querySelector('.seller-badge--more') || {}).getAttribute
           ? c.querySelector('.seller-badge--more').getAttribute('aria-label') : null
       })));
     ok('a card shows the HIGHEST-priority badges first, not the first ones sent',
-      cards[0].labels[0] === 'Recommended' && cards[0].labels[1] === 'Verified',
+      cards[0].labels[0] === 'recommended' && cards[0].labels[1] === 'verified',
       cards[0].labels.join(' | '));
     ok('and caps a dense card at two plus a counter',
       cards[0].labels.length === 3 && cards[0].labels[2] === '+2', cards[0].labels.join(' | '));
     ok('the counter names what is behind it for a screen reader',
       /2 more seller badges: Reliable Delivery, New Seller/.test(cards[0].more || ''), cards[0].more);
     ok('a seller with exactly two shows both and no counter',
-      cards[1].labels.join(',') === 'Top,Responsive', cards[1].labels.join(','));
+      cards[1].labels.join(',') === 'top,responsive', cards[1].labels.join(','));
+    ok('only Verified shows a word on a card', (await page.evaluate(() => Array.from(document.querySelectorAll('#trending-products-list .seller-badge:not(.seller-badge--more) .seller-badge-label')).map((e) => e.textContent.trim()))).every((t) => t === 'Verified'));
     ok('and a seller with none shows nothing', cards[2].labels.length === 0, cards[2].labels.join(','));
     await ctx.close();
   }
