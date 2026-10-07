@@ -95,6 +95,15 @@ box.siteBaseUrl = () => '';
 ok('renewal email without SITE_BASE_URL says where to go instead of a broken link',
   /open Feature products from your store dashboard/.test(box.featureRenewalEmailBody({ StoreName: 'B' }, { purchaseId: 'x', productIds: ['p1'], productNames: ['R'], days: 1, endsAt: new Date().toISOString() })));
 
+/* ---------- results: views while featured ---------- */
+const g = (r, cur) => box.featureViewsGained(r, cur || {});
+ok('results: no start snapshot -> null (shown as nothing)', g({}) === null);
+ok('results: live window uses the current count', JSON.stringify(g({ ViewsAtStartJson: '{"p1":10,"p2":0}' }, { p1: 25, p2: 3 })) === '{"p1":15,"p2":3}');
+ok('results: ended window uses the frozen end count, not later views',
+  JSON.stringify(g({ ViewsAtStartJson: '{"p1":10}', ViewsAtEndJson: '{"p1":14}' }, { p1: 99 })) === '{"p1":4}');
+ok('results: a deleted product counts 0, never negative', JSON.stringify(g({ ViewsAtStartJson: '{"p1":10}' }, {})) === '{"p1":0}');
+ok('results: malformed JSON -> null, no crash', g({ ViewsAtStartJson: '{oops' }) === null);
+
 let f = 0;
 console.log('\n--- paid featuring: price + payment decision ---');
 for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e !== '' ? '  [' + e + ']' : ''}`); }
