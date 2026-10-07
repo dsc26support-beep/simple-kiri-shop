@@ -5391,7 +5391,7 @@ button.seller-badge {
   color: var(--color-success);
 }
 
-/* A badge with no visible word (New). The label's side padding would leave it
+/* A badge with no visible word (all but Verified). The label's side padding would leave it
    lopsided, so the padding is squared up and the icon given a little more room
    - it is carrying the whole badge on its own now. */
 .seller-badge--iconic {
