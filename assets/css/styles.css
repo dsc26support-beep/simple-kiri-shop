@@ -222,6 +222,33 @@ header.site-header .container.header-top-row {
   }
 }
 
+/* Tablet and desktop: the three lines move up INTO the red header, centred
+   between the logo and the cart/menu, and the yellow strip goes away. Taken
+   out of the flow from the first paint (pure CSS), so nothing below moves.
+   The header's red band is 56px (60px with its 4px gold border) at every
+   width from 601px up; the lines sit inside that band, and never
+   take a tap meant for the logo or the icons. Phones keep the yellow strip. */
+@media (min-width: 601px) {
+  .header-ticker {
+    position: absolute;
+    /* Centred on the logo's own line (the row has 16px above the logo and
+       4px below), not on the red band, so the words and the logo line up. */
+    top: 12px;
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: transparent;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .header-ticker-item {
+    color: #fff;
+    font-size: 0.9rem;
+    letter-spacing: 0.01em;
+  }
+}
+
 /* header-cart.js injects the cart button into the first container in the
    header - .header-top-row where a page has one, otherwise the plain
    .container that search.html and stores.html use. Either way the row needs
@@ -7045,4 +7072,37 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   width: 22px;
   height: 22px;
   flex: none;
+}
+
+
+/* ==========================================================================
+   Desktop home page: everything centred (owner request). Desktop only -
+   tablets and phones keep their left-aligned, thumb-friendly layout.
+   ========================================================================== */
+@media (min-width: 1025px) {
+  .home-main .trending-stores h2,
+  .home-main .trending-products h2,
+  .home-main #trending-stores-status,
+  .home-main #trending-products-status {
+    text-align: center;
+  }
+
+  .home-main .quick-action-strip,
+  .home-main .logo-carousel {
+    justify-content: center;
+  }
+
+  /* Wrapping rows of card-width items, each row centred - so a short last
+     row (fewer products than fit across) sits in the middle too. 200px is
+     the grid's own minimum card width, so five still fit across 1100px. */
+  .home-main #trending-products-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .home-main #trending-products-list > * {
+    flex: 0 0 200px;
+    min-width: 0;
+  }
 }
