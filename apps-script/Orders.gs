@@ -210,6 +210,7 @@ function actionCreateOrder(body) {
   lock.waitLock(30000);
   try {
     var variantsSheet = getSheet('Variants');
+    ensureInventoryColumns(variantsSheet);
     var liveVariants = sheetToObjects(variantsSheet).filter(function (v) {
       return v.OwnerId === owner.OwnerId && v.Status === 'active';
     });
@@ -230,18 +231,22 @@ function actionCreateOrder(body) {
       var product = products.filter(function (p) { return p.ProductId === variant.ProductId; })[0];
       var productName = product ? product.Name : 'Item';
 
-      // Checked and decremented inside this same lock, so two customers
-      // racing the same variant can never both succeed past the last unit -
-      // the second one re-reads a StockQty the first has already written down.
-      if (variant.StockQty !== '' && variant.StockQty !== undefined && variant.StockQty !== null) {
-        var available = Number(variant.StockQty);
+      // Checked and reserved inside this same lock, so two customers racing
+      // the same variant can never both succeed past the last unit - the
+      // second one re-reads a ReservedQty the first has already written.
+      // Reserved, not deducted (Inventory.gs): physical stock only goes down
+      // when the seller marks the order Fulfilled.
+      if (isStockTracked(variant)) {
+        var reservedSoFar = stockDecrements.filter(function (d) { return d.variant === variant; })
+          .reduce(function (sum, d) { return sum + d.qty; }, 0);
+        var available = Math.max(0, (availableOf(variant) || 0) - reservedSoFar);
         if (qty > available) {
           var itemLabel = productName + ' - ' + variant.Label;
           return fail(available <= 0
             ? itemLabel + ' is out of stock. Please remove it from your cart.'
             : 'Only ' + available + ' left of ' + itemLabel + '. Please lower the quantity in your cart.');
         }
-        stockDecrements.push({ row: variant.__row, remaining: available - qty });
+        stockDecrements.push({ variant: variant, qty: qty, label: productName + ' - ' + variant.Label });
       }
 
       var unitPrice = Number(variant.Price);
@@ -304,11 +309,18 @@ function actionCreateOrder(body) {
     if (body.customerEmail) markAbandonedCartConverted(slug, body.customerEmail, orderId);
 
     // Written only after the order row itself is safely appended, so a
-    // failure above never decrements stock for an order that didn't happen.
-    stockDecrements.forEach(function (d) {
-      updateRowFromObject(variantsSheet, d.row, { StockQty: d.remaining });
-    });
-    if (stockDecrements.length) invalidateCache([storeProductsCacheKey(slug)]);
+    // failure above never reserves stock for an order that didn't happen.
+    if (stockDecrements.length) {
+      var plan = planOrderStockChange('released', 'reserved',
+        stockDecrements.map(function (d) { return { variantId: d.variant.VariantId, qty: d.qty, label: d.label }; }),
+        (function () { var m = {}; stockDecrements.forEach(function (d) { m[d.variant.VariantId] = d.variant; }); return m; })(),
+        { orderId: orderId, userId: 'customer', source: 'checkout', notes: 'Order placed' });
+      (plan.updates || []).forEach(function (u) {
+        updateRowFromObject(variantsSheet, u.variant.__row, { ReservedQty: u.ReservedQty });
+      });
+      recordStockMovements(plan.movements || []);
+      invalidateCache([storeProductsCacheKey(slug)]);
+    }
   } finally {
     lock.releaseLock();
   }
@@ -384,9 +396,22 @@ function actionListOwnerOrders(owner, body) {
 
 function actionUpdateOrderStatus(owner, body) {
   if (VALID_ORDER_STATUSES.indexOf(body.status) === -1) return fail('Invalid status');
-  var sheet = getSheet('Orders');
-  var existing = findRowById(sheet, 'OrderId', body.orderId);
-  if (!existing || existing.OwnerId !== owner.OwnerId) return fail('Order not found');
-  updateRowFromObject(sheet, existing.__row, { Status: body.status, UpdatedAt: nowIso() });
-  return ok({});
+  // Locked like checkout: the stock move (Inventory.gs) and the status must
+  // land together, and must not interleave with a customer reserving the same
+  // variety.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var sheet = getSheet('Orders');
+    var existing = findRowById(sheet, 'OrderId', body.orderId);
+    if (!existing || existing.OwnerId !== owner.OwnerId) return fail('Order not found');
+    if (existing.Status !== body.status) {
+      var stock = applyOrderStatusStock(owner, existing, body.status);
+      if (!stock.ok) return stock; // stock unchanged, status unchanged
+    }
+    updateRowFromObject(sheet, existing.__row, { Status: body.status, UpdatedAt: nowIso() });
+    return ok({});
+  } finally {
+    lock.releaseLock();
+  }
 }
