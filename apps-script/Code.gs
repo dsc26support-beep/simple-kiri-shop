@@ -56,7 +56,7 @@ var PROTECTED_POST_ACTIONS = [
   'listSellerBadges', 'setSellerBadgeOverride', 'setBadgeConfig', 'recomputeBadges',
   'listWholesalers', 'setWholesaleVerified',
   'startFeaturePurchase', 'listMyFeaturePurchases', 'submitFeaturePayment',
-  'listFeaturePurchases', 'setFeaturePurchaseStatus'
+  'listFeaturePurchases', 'setFeaturePurchaseStatus', 'adminSearch', 'adminStoreAnalytics'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -76,7 +76,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'featresults1-2026-10-06';
+var APP_VERSION = 'adminsearch1-2026-10-06';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -463,6 +463,8 @@ function doPost(e) {
         case 'submitFeaturePayment': return jsonOut(actionSubmitFeaturePayment(owner, body));
         case 'listFeaturePurchases': return jsonOut(actionListFeaturePurchases(owner));
         case 'setFeaturePurchaseStatus': return jsonOut(actionSetFeaturePurchaseStatus(owner, body));
+        case 'adminSearch': return jsonOut(actionAdminSearch(owner, body));
+        case 'adminStoreAnalytics': return jsonOut(actionAdminStoreAnalytics(owner, body));
         case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
         case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }

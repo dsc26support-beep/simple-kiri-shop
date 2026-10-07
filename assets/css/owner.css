@@ -1035,3 +1035,100 @@ label.is-required::after {
   margin-top: var(--space-1);
   color: var(--color-success);
 }
+
+/* Admin: find a store or product + store analytics. */
+.admin-search-results h3 {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: 0.95em;
+}
+
+.admin-search-hit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2);
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-search-hit:hover,
+.admin-search-hit:focus-visible {
+  background: var(--color-bg-alt);
+}
+
+.admin-analytics {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.admin-analytics-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.admin-analytics-head h3 {
+  margin: 0;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.admin-stat {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2);
+  background: var(--color-bg-alt);
+  border-radius: var(--radius);
+}
+
+.admin-stat-value {
+  font-size: 1.2em;
+  font-weight: 700;
+}
+
+.admin-stat-label {
+  font-size: 0.8em;
+  color: var(--color-muted);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.admin-table tr.is-picked td {
+  background: var(--color-gold-soft);
+  font-weight: 600;
+}
+
+.admin-featuring-list {
+  padding-left: 1.2em;
+}

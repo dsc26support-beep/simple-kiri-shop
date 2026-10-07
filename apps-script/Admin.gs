@@ -429,3 +429,113 @@ function actionSetWholesaleVerified(owner, body) {
   updateRowFromObject(sheet, row.__row, { WholesaleVerified: body.verified ? 'true' : '' });
   return ok({ ownerId: row.OwnerId, verified: !!body.verified });
 }
+
+/* ---------- Admin search + store analytics ---------- */
+
+/**
+ * body.q: at least 2 characters. Matches stores by name, slug, email or phone
+ * and products by name - every status, closed included, since this is the
+ * admin's lookup. At most 20 of each.
+ */
+function actionAdminSearch(owner, body) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var q = String(body.q || '').trim().toLowerCase();
+  if (q.length < 2) return ok({ stores: [], products: [] });
+  var has = function (v) { return String(v || '').toLowerCase().indexOf(q) !== -1; };
+  var owners = sheetToObjects(getSheet('Owners'));
+  var storeNames = {};
+  owners.forEach(function (o) { storeNames[o.OwnerId] = o.StoreName; });
+  var stores = owners
+    .filter(function (o) { return has(o.StoreName) || has(o.StoreSlug) || has(o.Email) || has(o.Phone); })
+    .slice(0, 20)
+    .map(function (o) { return { ownerId: o.OwnerId, storeName: o.StoreName, storeSlug: o.StoreSlug, status: o.Status }; });
+  var products = sheetToObjects(getSheet('Products'))
+    .filter(function (p) { return has(p.Name); })
+    .slice(0, 20)
+    .map(function (p) {
+      return { productId: p.ProductId, name: p.Name, status: p.Status, ownerId: p.OwnerId, storeName: storeNames[p.OwnerId] || '' };
+    });
+  return ok({ stores: stores, products: products });
+}
+
+/** body.ownerId. Everything the admin dashboard shows about one store. */
+function actionAdminStoreAnalytics(owner, body) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var ownerId = String(body.ownerId || '');
+  var store = findRowById(getSheet('Owners'), 'OwnerId', ownerId);
+  if (!store) return fail('Store not found.');
+  var mine = function (r) { return r.OwnerId === ownerId; };
+  var optional = function (name) {
+    var sheet = SpreadsheetApp.getActive().getSheetByName(name);
+    return sheet ? sheetToObjects(sheet).filter(mine) : [];
+  };
+  return ok({ analytics: buildStoreAnalytics(store, {
+    products: sheetToObjects(getSheet('Products')).filter(mine),
+    variants: sheetToObjects(getSheet('Variants')).filter(mine),
+    orders: sheetToObjects(getSheet('Orders')).filter(mine),
+    bookings: optional('Bookings'),
+    reviews: optional('Reviews'),
+    featurePurchases: optional('FeaturePurchases'),
+    adminFeatured: sheetToObjects(getSheet('Featured')).some(function (f) {
+      return f.Type === 'store' && f.RefId === store.StoreSlug;
+    })
+  }) });
+}
+
+/** Pure: the analytics panel's numbers from one store's rows (tested in tests/test-admin-analytics.js). */
+function buildStoreAnalytics(store, d) {
+  var count = function (rows) {
+    var by = {};
+    rows.forEach(function (r) { by[r.Status || 'Unknown'] = (by[r.Status || 'Unknown'] || 0) + 1; });
+    return by;
+  };
+  var cents = function (n) { return Math.round(n * 100) / 100; };
+
+  var products = d.products.map(function (p) {
+    var vs = d.variants.filter(function (v) { return v.ProductId === p.ProductId && v.Status !== 'archived'; });
+    var prices = vs.map(function (v) { return Number(v.Price); }).filter(function (n) { return !isNaN(n); });
+    var tracked = vs.filter(function (v) { return v.StockQty !== '' && v.StockQty != null; });
+    return {
+      productId: p.ProductId, name: p.Name, status: p.Status, category: p.Category || '',
+      views: Number(p.Views) || 0,
+      minPrice: prices.length ? Math.min.apply(null, prices) : null,
+      stock: tracked.length ? tracked.reduce(function (s, v) { return s + (Number(v.StockQty) || 0); }, 0) : null
+    };
+  }).sort(function (a, b) { return b.views - a.views; });
+
+  var sold = d.orders.filter(function (o) { return o.Status === 'Paid' || o.Status === 'Fulfilled'; });
+  var published = d.reviews.filter(function (r) { return r.Status === 'published'; });
+  var ratingSum = published.reduce(function (s, r) { return s + (Number(r.Rating) || 0); }, 0);
+  var now = Date.now();
+  var paidFeaturing = d.featurePurchases.filter(function (f) { return f.Status === 'Approved'; });
+
+  return {
+    store: {
+      ownerId: store.OwnerId, storeName: store.StoreName, storeSlug: store.StoreSlug,
+      email: store.Email || '', phone: store.Phone || '', island: store.Island || '', village: store.Village || '',
+      status: store.Status, storeType: storeTypeOf(store),
+      wholesaleVerified: String(store.WholesaleVerified).toUpperCase() === 'TRUE',
+      createdAt: store.CreatedAt || '', visits: Number(store.Visits) || 0, adminFeatured: !!d.adminFeatured
+    },
+    products: products,
+    totals: {
+      products: products.length,
+      activeProducts: products.filter(function (p) { return p.status === 'active'; }).length,
+      views: products.reduce(function (s, p) { return s + p.views; }, 0)
+    },
+    orders: { count: d.orders.length, byStatus: count(d.orders), sales: cents(sold.reduce(function (s, o) { return s + (Number(o.Total) || 0); }, 0)) },
+    bookings: { count: d.bookings.length, byStatus: count(d.bookings) },
+    reviews: { count: published.length, average: published.length ? Math.round(ratingSum / published.length * 10) / 10 : null },
+    featuring: {
+      purchases: d.featurePurchases.length,
+      spent: cents(paidFeaturing.reduce(function (s, f) { return s + (Number(f.Amount) || 0); }, 0)),
+      activeNow: paidFeaturing.some(function (f) {
+        return f.StartsAt && f.EndsAt && new Date(f.StartsAt).getTime() <= now && new Date(f.EndsAt).getTime() > now;
+      }),
+      recent: d.featurePurchases.slice().sort(function (a, b) { return String(b.CreatedAt).localeCompare(String(a.CreatedAt)); })
+        .slice(0, 5).map(function (f) {
+          return { reference: f.Reference, status: f.Status, amount: Number(f.Amount) || 0, days: Number(f.Days) || 0, endsAt: f.EndsAt || '' };
+        })
+    }
+  };
+}
