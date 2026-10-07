@@ -25,6 +25,7 @@ class FakeSheet {
         return out;
       },
       getValue() { return cell(row, col); },
+      getDisplayValues() { return this.getValues().map((line) => line.map((v) => (v === null || v === undefined ? '' : String(v)))); },
       setValues(vals) {
         vals.forEach((line, r) => {
           while (sheet.grid.length < row + r) sheet.grid.push([]);
@@ -45,20 +46,37 @@ class FakeSheet {
   }
 }
 
-function makeBox(tabs) {
-  const sheets = {};
-  Object.keys(tabs || {}).forEach((name) => { sheets[name] = new FakeSheet(name, tabs[name]); });
-  const ss = {
+function fakeSpreadsheet(sheets, name) {
+  return {
+    getName: () => name || 'Mwakete',
     getSheetByName: (n) => sheets[n] || null,
     insertSheet: (n) => (sheets[n] = new FakeSheet(n)),
     getSheets: () => Object.values(sheets)
   };
+}
+
+/**
+ * tabs: the bound Mwakete spreadsheet. opts.external: other spreadsheets a
+ * seller has "shared" with Mwakete, { id: { title, tabs: { name: rows } } } -
+ * openById opens those and throws (as Google does) for anything else.
+ */
+function makeBox(tabs, opts) {
+  const sheets = {};
+  Object.keys(tabs || {}).forEach((name) => { sheets[name] = new FakeSheet(name, tabs[name]); });
+  const ss = fakeSpreadsheet(sheets);
+  const external = {};
+  Object.entries((opts && opts.external) || {}).forEach(([id, def]) => {
+    const t = {};
+    Object.keys(def.tabs).forEach((n) => { t[n] = new FakeSheet(n, def.tabs[n]); });
+    external[id] = fakeSpreadsheet(t, def.title);
+  });
   const cache = {};
   const props = {};
   const mail = [];
   const box = {
     console, JSON, Math, Date, Number, String, Object, Array, Boolean, RegExp, Error, parseInt, parseFloat, isNaN, encodeURIComponent, decodeURIComponent,
-    SpreadsheetApp: { getActive: () => ss, getActiveSpreadsheet: () => ss, openById: () => { throw new Error('openById not stubbed'); } },
+    SpreadsheetApp: { getActive: () => ss, getActiveSpreadsheet: () => ss,
+      openById: (id) => { if (external[id]) return external[id]; throw new Error('You do not have permission to access the requested document.'); } },
     CacheService: { getScriptCache: () => ({
       get: (k) => (k in cache ? cache[k] : null), put: (k, v) => { cache[k] = v; },
       remove: (k) => { delete cache[k]; }, removeAll: (ks) => ks.forEach((k) => delete cache[k]),
@@ -79,7 +97,7 @@ function makeBox(tabs) {
     Logger: { log() {} },
     Session: { getActiveUser: () => ({ getEmail: () => 'admin@x.com' }), getScriptTimeZone: () => 'Pacific/Tarawa' },
     UrlFetchApp: { fetch: () => { throw new Error('UrlFetchApp not stubbed'); } },
-    __sheets: sheets, __props: props, __mail: mail, __cache: cache
+    __sheets: sheets, __props: props, __mail: mail, __cache: cache, __external: external
   };
   vm.createContext(box);
   fs.readdirSync(DIR).filter((f) => f.endsWith('.gs')).sort().forEach((f) => {

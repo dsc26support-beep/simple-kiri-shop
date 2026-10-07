@@ -16,7 +16,11 @@
  */
 
 var INVENTORY_CONNECTION_HEADERS = ['ConnectionId', 'OwnerId', 'Type', 'Name', 'SettingsJson', 'MappingJson', 'Mode',
-  'Status', 'LastSyncAt', 'LastSyncStatus', 'LastError', 'CreatedAt', 'UpdatedAt'];
+  'Status', 'LastSyncAt', 'LastSyncStatus', 'LastError', 'CreatedAt', 'UpdatedAt', 'SnapshotJson'];
+// SnapshotJson: { variantId: stock both sides agreed on at the last sync } -
+// how two-way sync tells "changed on Mwakete" from "changed in the sheet".
+var SYNC_CONFLICT_HEADERS = ['ConflictId', 'OwnerId', 'ConnectionId', 'SyncId', 'VariantId', 'Field', 'ExternalValue', 'MwaketeValue',
+  'Line', 'Status', 'CreatedAt', 'ResolvedAt'];
 var SYNC_JOB_HEADERS = ['SyncId', 'OwnerId', 'ConnectionId', 'ConnectorType', 'Direction', 'StartedAt', 'CompletedAt',
   'RecordsRead', 'RecordsCreated', 'RecordsUpdated', 'RecordsSkipped', 'RecordsFailed', 'Conflicts', 'Status', 'ErrorCount', 'SummaryJson'];
 var SYNC_STATUS = { PENDING: 'PENDING', RUNNING: 'RUNNING', SUCCESS: 'SUCCESS', PARTIAL: 'PARTIAL_SUCCESS', FAILED: 'FAILED', CONFLICT: 'CONFLICT' };
@@ -61,6 +65,38 @@ var INVENTORY_CONNECTORS = {
       return { headers: headers, rows: rows };
     }
   },
+  googleSheets: {
+    label: 'Google Sheets',
+    // The seller shares their sheet with Mwakete's Google account (owner
+    // decision) - no passwords or keys are stored, only the sheet's ID.
+    // MWAKETE_SHARE_EMAIL (Script Property) is that account's address, shown
+    // to sellers; until it is set this connector is not offered.
+    configured: function () { return !!mwaketeShareEmail(); },
+    canWrite: true,
+    readRows: function (conn, input) {
+      var opened = openSellerSheet(conn && conn.settings ? conn.settings : (input && input.settings) || {});
+      if (opened.error) return opened;
+      var tab = opened.tab;
+      var headerRow = opened.headerRow;
+      var lastRow = tab.getLastRow();
+      var lastCol = tab.getLastColumn();
+      if (lastRow < headerRow || lastCol === 0) return { error: 'The tab "' + tab.getName() + '" is empty. Put your column names in row ' + headerRow + '.' };
+      if (lastRow - headerRow > IMPORT_MAX_ROWS) return { error: 'That tab has ' + (lastRow - headerRow) + ' rows. At most ' + IMPORT_MAX_ROWS + ' can be synced.' };
+      // Display values: what the seller sees, the same as a CSV of the sheet.
+      var grid = tab.getRange(headerRow, 1, lastRow - headerRow + 1, lastCol).getDisplayValues();
+      return { headers: grid[0].map(function (h) { return String(h).trim(); }), rows: grid.slice(1), firstLine: headerRow + 1 };
+    },
+    // writes: [{ line, value }] into the column mapped to stock on hand.
+    writeStock: function (conn, writes, stockHeader) {
+      var opened = openSellerSheet(conn.settings || {});
+      if (opened.error) return opened;
+      var headers = opened.tab.getRange(opened.headerRow, 1, 1, opened.tab.getLastColumn()).getDisplayValues()[0].map(function (h) { return String(h).trim(); });
+      var col = headers.indexOf(stockHeader) + 1;
+      if (!col) return { error: 'The column "' + stockHeader + '" is no longer in your sheet, so stock could not be written back.' };
+      writes.forEach(function (w) { opened.tab.getRange(w.line, col).setValue(w.value); });
+      return { written: writes.length };
+    }
+  },
   microsoftExcel: {
     label: 'Excel / OneDrive',
     // Needs a Microsoft Entra (Azure) app registration and OAuth - see
@@ -84,6 +120,35 @@ function connectorFor(type) {
   return Object.prototype.hasOwnProperty.call(INVENTORY_CONNECTORS, type) ? INVENTORY_CONNECTORS[type] : null;
 }
 
+function mwaketeShareEmail() {
+  return String(PropertiesService.getScriptProperties().getProperty('MWAKETE_SHARE_EMAIL') || '').trim();
+}
+
+/** Pure: the spreadsheet ID out of a pasted link (or an ID pasted on its own). */
+function spreadsheetIdFrom(raw) {
+  var s = String(raw || '').trim();
+  var m = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/);
+  if (m) return m[1];
+  return /^[a-zA-Z0-9_-]{20,}$/.test(s) ? s : '';
+}
+
+/** Opens a seller's sheet + tab, turning Google's errors into ones a seller can act on. */
+function openSellerSheet(settings) {
+  var id = spreadsheetIdFrom(settings.spreadsheetId || settings.url);
+  if (!id) return { error: 'That doesn\'t look like a Google Sheets link. Open your sheet and copy the address from the browser.' };
+  var ss;
+  try {
+    ss = SpreadsheetApp.openById(id);
+  } catch (e) {
+    return { error: 'Mwakete can\'t open that sheet yet. In the sheet, press Share and add ' + mwaketeShareEmail() +
+      ' (Editor if Mwakete should write stock back, Viewer to only read). Your Mwakete stock has not been changed.' };
+  }
+  var tab = settings.sheetName ? ss.getSheetByName(String(settings.sheetName)) : ss.getSheets()[0];
+  if (!tab) return { error: 'There is no tab called "' + settings.sheetName + '" in that sheet any more. Choose the tab again.' };
+  var headerRow = Math.max(1, Math.min(50, parseInt(settings.headerRow, 10) || 1));
+  return { ss: ss, tab: tab, headerRow: headerRow, id: id };
+}
+
 /* ==================== Sheets ==================== */
 
 function getSheetCreating(name, headers) {
@@ -97,6 +162,7 @@ function getSheetCreating(name, headers) {
 
 function getInventoryConnectionsSheet() { return getSheetCreating('InventoryConnections', INVENTORY_CONNECTION_HEADERS); }
 function getSyncJobsSheet() { return getSheetCreating('SyncJobs', SYNC_JOB_HEADERS); }
+function getSyncConflictsSheet() { return getSheetCreating('SyncConflicts', SYNC_CONFLICT_HEADERS); }
 
 /* ==================== Engine (pure) ==================== */
 
@@ -139,10 +205,11 @@ function parseFieldValue(kind, raw) {
  * Pure: rows -> records. Each record: { line, fields:{...}, errors:[...] }.
  * line is the spreadsheet row number (header = 1) so errors point at it.
  */
-function normalizeImportRows(headers, rows, mapping) {
+function normalizeImportRows(headers, rows, mapping, firstLine) {
   var cols = headers.map(function (h) { return mapping[h] || ''; });
+  var start = firstLine || 2;
   return rows.map(function (row, i) {
-    var rec = { line: i + 2, fields: {}, errors: [] };
+    var rec = { line: i + start, fields: {}, errors: [] };
     cols.forEach(function (field, c) {
       if (!field) return;
       var parsed = parseFieldValue(INVENTORY_FIELDS[field].kind, Array.isArray(row) ? row[c] : row[headers[c]]);
@@ -188,8 +255,12 @@ function buildVariantIndex(variants) {
 function buildImportPlan(records, variants, products, opts) {
   opts = opts || {};
   var index = buildVariantIndex(variants);
-  var plan = { updates: [], newItems: [], unmatched: [], errors: [], conflicts: [], unchanged: 0,
-    counts: { read: records.length, existing: 0, stockChanges: 0, priceChanges: 0, otherChanges: 0, newProducts: 0, unmatched: 0, errors: 0, conflicts: 0 } };
+  // mode: 'import' (their system is master), 'export' (Mwakete is master),
+  // 'twoWay' (stock both ways; a change on both sides is a conflict to decide).
+  var mode = opts.mode || 'import';
+  var snapshot = opts.snapshot || {};
+  var plan = { mode: mode, updates: [], newItems: [], unmatched: [], errors: [], conflicts: [], writes: [], syncConflicts: [], agreed: {}, unchanged: 0,
+    counts: { read: records.length, existing: 0, stockChanges: 0, priceChanges: 0, otherChanges: 0, newProducts: 0, unmatched: 0, errors: 0, conflicts: 0, writes: 0, syncConflicts: 0 } };
   var seen = {};
 
   records.forEach(function (rec) {
@@ -215,16 +286,45 @@ function buildImportPlan(records, variants, products, opts) {
 
     var f = rec.fields;
     var change = { line: rec.line, variantId: v.VariantId, productId: v.ProductId, name: nameOf(v), matchedBy: m.matchedBy, set: {}, before: {} };
-    if (f.physicalStock !== undefined) {
-      var was = isStockTracked(v) ? physicalOf(v) : null;
-      if (was !== f.physicalStock) {
-        if (f.physicalStock < reservedOf(v)) {
-          plan.conflicts.push({ line: rec.line, variantId: v.VariantId, name: nameOf(v),
-            message: 'File says ' + f.physicalStock + ' but ' + reservedOf(v) + ' are held by open orders on Mwakete. Stock left at ' + (was === null ? 'not tracked' : was) + '.' });
+    var importStock = function (value, was) {
+      if (value < reservedOf(v)) {
+        plan.conflicts.push({ line: rec.line, variantId: v.VariantId, name: nameOf(v),
+          message: 'File says ' + value + ' but ' + reservedOf(v) + ' are held by open orders on Mwakete. Stock left at ' + (was === null ? 'not tracked' : was) + '.' });
+        return false;
+      }
+      change.set.StockQty = value; change.before.StockQty = was;
+      return true;
+    };
+    var mine = isStockTracked(v) ? physicalOf(v) : null;
+    var theirs = f.physicalStock;
+    if (theirs !== undefined) {
+      if (mode === 'import') {
+        if (mine !== theirs && importStock(theirs, mine)) plan.agreed[v.VariantId] = theirs;
+        else if (mine === theirs) plan.agreed[v.VariantId] = mine;
+      } else if (mode === 'export') {
+        if (mine !== null && mine !== theirs) plan.writes.push({ line: rec.line, variantId: v.VariantId, name: nameOf(v), value: mine, before: theirs });
+        if (mine !== null) plan.agreed[v.VariantId] = mine;
+      } else {
+        var base = snapshot[v.VariantId];
+        if (mine === theirs) plan.agreed[v.VariantId] = mine;
+        else if (mine === null) { if (importStock(theirs, mine)) plan.agreed[v.VariantId] = theirs; }
+        else if (base !== undefined && mine === base) { if (importStock(theirs, mine)) plan.agreed[v.VariantId] = theirs; }
+        else if (base !== undefined && theirs === base) {
+          plan.writes.push({ line: rec.line, variantId: v.VariantId, name: nameOf(v), value: mine, before: theirs });
+          plan.agreed[v.VariantId] = mine;
         } else {
-          change.set.StockQty = f.physicalStock; change.before.StockQty = was;
+          plan.syncConflicts.push({ line: rec.line, variantId: v.VariantId, name: nameOf(v), external: theirs, mwakete: mine,
+            message: base === undefined
+              ? 'First sync: your sheet says ' + theirs + ', Mwakete says ' + mine + '. Choose which is right.'
+              : 'Changed in both places since the last sync: sheet ' + base + ' → ' + theirs + ', Mwakete ' + base + ' → ' + mine + '.' });
         }
       }
+    }
+    // Mwakete is master in 'export': nothing else comes in from their side.
+    if (mode === 'export') {
+      var wrote = plan.writes.length && plan.writes[plan.writes.length - 1].variantId === v.VariantId;
+      if (!wrote) plan.unchanged++;
+      return;
     }
     var simple = [['price', 'Price'], ['costPrice', 'CostPrice'], ['reorderLevel', 'ReorderLevel'], ['reorderQty', 'ReorderQty']];
     simple.forEach(function (pair) {
@@ -264,6 +364,8 @@ function buildImportPlan(records, variants, products, opts) {
   plan.counts.unmatched = plan.unmatched.length;
   plan.counts.errors = plan.errors.length;
   plan.counts.conflicts = plan.conflicts.length;
+  plan.counts.writes = plan.writes.length;
+  plan.counts.syncConflicts = plan.syncConflicts.length;
   plan.counts.unchanged = plan.unchanged;
   return plan;
 }
@@ -272,6 +374,8 @@ function buildImportPlan(records, variants, products, opts) {
 function importPlanToken(plan) {
   var basis = JSON.stringify({
     u: plan.updates.map(function (c) { return [c.variantId, c.set]; }),
+    w: plan.writes.map(function (w) { return [w.variantId, w.line, w.value]; }),
+    c: plan.syncConflicts.map(function (x) { return [x.variantId, x.external, x.mwakete]; }),
     n: plan.newProducts.map(function (p) { return [p.name, p.category, p.items.map(function (i) { return i.fields; })]; })
   });
   var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, basis, Utilities.Charset.UTF_8);
@@ -293,27 +397,56 @@ function sellerImportContext(owner) {
   return { variantsSheet: variantsSheet, variants: variants, products: products };
 }
 
-/** Reads + plans from a request body: { type, headers, rows, mapping, createNew, category }. */
+/** Loads one of this seller's saved connections (parsed), or null. */
+function loadOwnConnection(owner, connectionId) {
+  if (!connectionId) return null;
+  var sheet = SpreadsheetApp.getActive().getSheetByName('InventoryConnections');
+  var row = sheet ? findRowById(sheet, 'ConnectionId', String(connectionId)) : null;
+  if (!row || row.OwnerId !== owner.OwnerId || row.Status === 'disconnected') return null;
+  var parse = function (t, d) { try { return JSON.parse(t || '') || d; } catch (e) { return d; } };
+  return { row: row, sheet: sheet, id: row.ConnectionId, type: row.Type, settings: parse(row.SettingsJson, {}), mapping: parse(row.MappingJson, {}),
+    mode: row.Mode || 'import', snapshot: parse(row.SnapshotJson, {}), lastSyncAt: row.LastSyncAt || '' };
+}
+
+/**
+ * Reads + plans. body: { type, headers, rows (CSV), settings (Sheets), mapping,
+ * mode, createNew, category } or { connectionId } to use a saved source as-is.
+ */
 function planFromRequest(owner, body) {
-  var type = String(body.type || 'csv');
+  var conn = null;
+  if (body.connectionId) {
+    conn = loadOwnConnection(owner, body.connectionId);
+    if (!conn) return { error: 'That saved source was not found.' };
+  }
+  var type = conn ? conn.type : String(body.type || 'csv');
   var connector = connectorFor(type);
   if (!connector) return { error: 'Unknown source.' };
   if (!connector.configured()) return { error: connector.label + ' is not connected to Mwakete yet.' };
-  var data = connector.readRows(body.connection || null, body);
+  var connArg = conn || (body.settings ? { settings: body.settings } : null);
+  var data = connector.readRows(connArg, body);
   if (data.error) return { error: data.error };
   if (data.rows.length > IMPORT_MAX_ROWS) return { error: 'That file has ' + data.rows.length + ' rows. At most ' + IMPORT_MAX_ROWS + ' per import - split it into smaller files.' };
-  var mapping = body.mapping || {};
+  // A saved source keeps its matching unless the request brings a new one.
+  var mapping = body.mapping && Object.keys(body.mapping).length ? body.mapping : (conn ? conn.mapping : {});
   var mErr = mappingError(mapping, data.headers);
   if (mErr) return { error: mErr };
+  var mode = ['import', 'export', 'twoWay'].indexOf(body.mode) !== -1 ? body.mode : (conn ? conn.mode : 'import');
+  if (mode !== 'import' && !connector.canWrite) return { error: connector.label + ' can only be read from, so it can only bring stock into Mwakete.' };
+  if (mode !== 'import' && !Object.keys(mapping).some(function (h) { return mapping[h] === 'physicalStock'; })) {
+    return { error: 'To send stock back, match the column that holds your stock on hand.' };
+  }
   var category = categoryIdOf(body.category);
   if (body.createNew) {
     if (!body.category || CATEGORY_IDS.indexOf(String(body.category)) === -1) return { error: 'Choose a category for the new products.' };
     if (category === 'food' && !canListFood(owner)) return { error: 'Food & Groceries is for wholesaler stores only. Choose another category for the new products.' };
   }
   var ctx = sellerImportContext(owner);
-  var records = normalizeImportRows(data.headers, data.rows, mapping);
-  var plan = buildImportPlan(records, ctx.variants, ctx.products, { createNew: !!body.createNew, category: category });
-  return { plan: plan, ctx: ctx, type: type, mapping: mapping };
+  var records = normalizeImportRows(data.headers, data.rows, mapping, data.firstLine);
+  var plan = buildImportPlan(records, ctx.variants, ctx.products,
+    { createNew: !!body.createNew && mode !== 'export', category: category, mode: mode, snapshot: conn ? conn.snapshot : {} });
+  var stockHeader = Object.keys(mapping).filter(function (h) { return mapping[h] === 'physicalStock'; })[0] || '';
+  return { plan: plan, ctx: ctx, type: type, mapping: mapping, mode: mode, conn: conn, connector: connector, stockHeader: stockHeader,
+    settings: conn ? conn.settings : (body.settings || {}) };
 }
 
 /** Food & Groceries listing permission - one place, so business types can grow. */
@@ -329,7 +462,10 @@ function planPreviewShape(plan) {
     newProducts: cap(plan.newProducts, 50).map(function (p) { return { name: p.name, category: p.category, varieties: p.items.length }; }),
     unmatched: cap(plan.unmatched, 50),
     errors: cap(plan.errors, 50),
-    conflicts: cap(plan.conflicts, 50)
+    conflicts: cap(plan.conflicts, 50),
+    writes: cap(plan.writes, 50),
+    syncConflicts: cap(plan.syncConflicts, 50),
+    mode: plan.mode
   };
 }
 
@@ -342,7 +478,7 @@ function actionListInventoryConnections(owner) {
   });
   var sheet = SpreadsheetApp.getActive().getSheetByName('InventoryConnections');
   var mine = sheet ? sheetToObjects(sheet).filter(function (c) { return c.OwnerId === owner.OwnerId && c.Status !== 'disconnected'; }) : [];
-  return ok({ connectors: available, connections: mine.map(publicConnection) });
+  return ok({ connectors: available, connections: mine.map(publicConnection), shareEmail: mwaketeShareEmail() });
 }
 
 function publicConnection(c) {
@@ -350,7 +486,8 @@ function publicConnection(c) {
   try { mapping = JSON.parse(c.MappingJson || '{}'); } catch (e) { mapping = {}; }
   try { settings = JSON.parse(c.SettingsJson || '{}'); } catch (e) { settings = {}; }
   return { connectionId: c.ConnectionId, type: c.Type, name: c.Name, mapping: mapping, settings: settings, mode: c.Mode,
-    status: c.Status, lastSyncAt: c.LastSyncAt || '', lastSyncStatus: c.LastSyncStatus || '', lastError: c.LastError || '' };
+    status: c.Status, lastSyncAt: c.LastSyncAt || '', lastSyncStatus: c.LastSyncStatus || '', lastError: c.LastError || '',
+    nextSyncAt: settings.autoSync && c.LastSyncAt && c.Type === 'googleSheets' ? new Date(new Date(c.LastSyncAt).getTime() + 3600000).toISOString() : '' };
 }
 
 /** body: { connectionId? , type, name, mapping, settings, mode }. Saves a reusable source + mapping. */
@@ -363,6 +500,13 @@ function actionSaveInventoryConnection(owner, body) {
   if (mErr) return fail(mErr);
   var mode = ['import', 'export', 'twoWay'].indexOf(body.mode) !== -1 ? body.mode : 'import';
   var settings = body.settings && typeof body.settings === 'object' ? body.settings : {};
+  if (type === 'googleSheets') {
+    settings = cleanSheetSettings(settings);
+    var opened = openSellerSheet(settings);
+    if (opened.error) return fail(opened.error);
+    settings.sheetName = opened.tab.getName();
+  }
+  if (mode !== 'import' && !connectorFor(type).canWrite) return fail(connectorFor(type).label + ' can only bring stock into Mwakete.');
   var sheet = getInventoryConnectionsSheet();
   var now = nowIso();
   if (body.connectionId) {
@@ -397,11 +541,10 @@ function actionPreviewInventoryImport(owner, body) {
 
 /**
  * Applies exactly what was previewed. body = the preview request + planToken
- * (+ connectionId to record against). Re-plans under the lock; if anything
- * moved in between (an order, another edit), refuses and asks for a new preview.
+ * (+ connectionId). Re-plans under the lock; if anything moved in between (an
+ * order, another edit), refuses and asks for a new preview.
  */
 function actionApplyInventoryImport(owner, body) {
-  var started = nowIso();
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -410,21 +553,86 @@ function actionApplyInventoryImport(owner, body) {
     if (!body.planToken || importPlanToken(r.plan) !== body.planToken) {
       return fail('Your stock changed since the preview (for example a new order). Nothing was changed - please preview again.');
     }
-    var syncId = newId('sync');
-    var result = applyImportPlan(owner, r.plan, r.ctx, { syncId: syncId, source: r.type });
-    var status = r.plan.counts.errors || r.plan.counts.conflicts || r.plan.counts.unmatched ? SYNC_STATUS.PARTIAL : SYNC_STATUS.SUCCESS;
-    recordSyncJob(owner, {
-      SyncId: syncId, ConnectionId: body.connectionId || '', ConnectorType: r.type, Direction: 'import', StartedAt: started,
-      RecordsRead: r.plan.counts.read, RecordsCreated: result.created, RecordsUpdated: result.updated,
-      RecordsSkipped: r.plan.counts.unchanged + r.plan.counts.unmatched, RecordsFailed: r.plan.counts.errors,
-      Conflicts: r.plan.counts.conflicts, Status: status, ErrorCount: r.plan.counts.errors,
-      SummaryJson: JSON.stringify({ errors: r.plan.errors.slice(0, 20), conflicts: r.plan.conflicts.slice(0, 20), unmatched: r.plan.unmatched.slice(0, 20) })
-    });
-    markConnectionSynced(owner, body.connectionId, status, '');
-    return ok({ syncId: syncId, status: status, created: result.created, updated: result.updated, counts: r.plan.counts });
+    var out = runSyncPlan(owner, r, { trigger: 'manual' });
+    return ok(out);
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Carries out a plan for one source: Mwakete-side changes (ledger-backed),
+ * stock written back to their sheet, two-way conflicts recorded for the
+ * seller to decide, the agreed snapshot, the history row. Caller holds the lock.
+ */
+function runSyncPlan(owner, r, meta) {
+  var started = nowIso();
+  var syncId = newId('sync');
+  var plan = r.plan;
+  var result = applyImportPlan(owner, plan, r.ctx, { syncId: syncId, source: r.type });
+
+  var writeError = '';
+  var written = 0;
+  if (plan.writes.length) {
+    var w = r.connector.writeStock ? r.connector.writeStock(r.conn || { settings: r.settings }, plan.writes, r.stockHeader) : { error: 'This source can\'t be written to.' };
+    if (w.error) {
+      writeError = w.error;
+      // Not written, so these were not agreed - they'll be retried next sync.
+      plan.writes.forEach(function (x) { delete plan.agreed[x.variantId]; });
+    } else {
+      written = w.written;
+    }
+  }
+
+  var newConflicts = recordSyncConflicts(owner, r.conn, syncId, plan.syncConflicts);
+
+  if (r.conn) {
+    var snap = r.conn.snapshot || {};
+    Object.keys(plan.agreed).forEach(function (id) { snap[id] = plan.agreed[id]; });
+    var snapText = JSON.stringify(snap);
+    if (snapText.length > 45000) snapText = '{}'; // past a sheet cell's limit: start fresh rather than corrupt it
+    ensureColumn(r.conn.sheet, 'SnapshotJson');
+    updateRowFromObject(r.conn.sheet, r.conn.row.__row, { SnapshotJson: snapText });
+  }
+
+  var c = plan.counts;
+  var status = writeError && !result.updated && !written ? SYNC_STATUS.FAILED
+    : c.syncConflicts ? SYNC_STATUS.CONFLICT
+    : (writeError || c.errors || c.conflicts || c.unmatched) ? SYNC_STATUS.PARTIAL : SYNC_STATUS.SUCCESS;
+  recordSyncJob(owner, {
+    SyncId: syncId, ConnectionId: r.conn ? r.conn.id : '', ConnectorType: r.type, Direction: r.mode, StartedAt: started,
+    RecordsRead: c.read, RecordsCreated: result.created, RecordsUpdated: result.updated + written,
+    RecordsSkipped: c.unchanged + c.unmatched, RecordsFailed: c.errors + (writeError ? plan.writes.length : 0),
+    Conflicts: c.conflicts + c.syncConflicts, Status: status, ErrorCount: c.errors + (writeError ? 1 : 0),
+    SummaryJson: JSON.stringify({ trigger: meta.trigger, writeError: writeError, written: written,
+      errors: plan.errors.slice(0, 20), conflicts: plan.conflicts.slice(0, 20).concat(plan.syncConflicts.slice(0, 20)), unmatched: plan.unmatched.slice(0, 20) })
+  });
+  if (r.conn) markConnectionSynced(owner, r.conn.id, status, writeError);
+  return { syncId: syncId, status: status, created: result.created, updated: result.updated, written: written,
+    writeError: writeError, newConflicts: newConflicts, counts: c };
+}
+
+/** Opens a conflict row per item, unless the same disagreement is already open or was set aside. */
+function recordSyncConflicts(owner, conn, syncId, list) {
+  if (!list.length) return 0;
+  var sheet = getSyncConflictsSheet();
+  var existing = sheetToObjects(sheet).filter(function (x) { return x.OwnerId === owner.OwnerId && x.ConnectionId === (conn ? conn.id : ''); });
+  var added = 0;
+  list.forEach(function (k) {
+    var same = existing.filter(function (x) {
+      return x.VariantId === k.variantId && (x.Status === 'open' || x.Status === 'kept') &&
+        Number(x.ExternalValue) === k.external && Number(x.MwaketeValue) === k.mwakete;
+    })[0];
+    if (same) return;
+    // An older open conflict for the item is replaced by the current numbers.
+    existing.filter(function (x) { return x.VariantId === k.variantId && x.Status === 'open'; }).forEach(function (x) {
+      updateRowFromObject(sheet, x.__row, { Status: 'superseded', ResolvedAt: nowIso() });
+    });
+    appendRowFromObject(sheet, { ConflictId: newId('cfl'), OwnerId: owner.OwnerId, ConnectionId: conn ? conn.id : '', SyncId: syncId,
+      VariantId: k.variantId, Field: 'stock', ExternalValue: k.external, MwaketeValue: k.mwakete, Line: k.line, Status: 'open', CreatedAt: nowIso() });
+    added++;
+  });
+  return added;
 }
 
 /** Writes a plan: variety updates (stock via the ledger), then new products. Caller holds the lock. */
@@ -503,7 +711,7 @@ function actionListSyncJobs(owner, body) {
   return ok({ jobs: rows.slice(0, limit).map(function (j) {
     var summary = {};
     try { summary = JSON.parse(j.SummaryJson || '{}'); } catch (e) { summary = {}; }
-    return { syncId: j.SyncId, connectorType: j.ConnectorType, direction: j.Direction, startedAt: j.StartedAt, completedAt: j.CompletedAt,
+    return { syncId: j.SyncId, connectionId: j.ConnectionId, connectorType: j.ConnectorType, direction: j.Direction, startedAt: j.StartedAt, completedAt: j.CompletedAt,
       read: Number(j.RecordsRead) || 0, created: Number(j.RecordsCreated) || 0, updated: Number(j.RecordsUpdated) || 0,
       skipped: Number(j.RecordsSkipped) || 0, failed: Number(j.RecordsFailed) || 0, conflicts: Number(j.Conflicts) || 0,
       status: j.Status, summary: summary };
@@ -531,4 +739,146 @@ function actionExportInventoryRows(owner) {
     mapping: { 'Mwakete ID': 'mwaketeId', 'SKU': 'sku', 'Barcode': 'barcode', 'External ID': 'externalId', 'Product': 'productName',
       'Variety': 'variantLabel', 'Stock on hand': 'physicalStock', 'Selling price': 'price', 'Cost price': 'costPrice',
       'Low-stock level': 'reorderLevel', 'Reorder quantity': 'reorderQty' } });
+}
+
+/* ==================== Google Sheets: setup, Sync now, conflicts, schedule ==================== */
+
+/** body.settings { url|spreadsheetId, sheetName, headerRow }. Opens the sheet; returns its tabs, columns and a few rows. */
+function actionTestSheetConnection(owner, body) {
+  if (!INVENTORY_CONNECTORS.googleSheets.configured()) return fail('Google Sheets is not connected to Mwakete yet.');
+  var settings = body.settings || {};
+  var opened = openSellerSheet(settings);
+  if (opened.error) return ok({ connected: false, shareEmail: mwaketeShareEmail(), error: opened.error });
+  var data = INVENTORY_CONNECTORS.googleSheets.readRows({ settings: { spreadsheetId: opened.id, sheetName: opened.tab.getName(), headerRow: opened.headerRow } }, {});
+  return ok({
+    connected: true, shareEmail: mwaketeShareEmail(), spreadsheetId: opened.id, title: opened.ss.getName(),
+    tabs: opened.ss.getSheets().map(function (t) { return t.getName(); }), sheetName: opened.tab.getName(), headerRow: opened.headerRow,
+    headers: data.error ? [] : data.headers, sample: data.error ? [] : data.rows.slice(0, 3), rowCount: data.error ? 0 : data.rows.length,
+    error: data.error || ''
+  });
+}
+
+function cleanSheetSettings(settings) {
+  settings = settings || {};
+  return {
+    spreadsheetId: spreadsheetIdFrom(settings.spreadsheetId || settings.url),
+    sheetName: String(settings.sheetName || '').slice(0, 100),
+    headerRow: Math.max(1, Math.min(50, parseInt(settings.headerRow, 10) || 1)),
+    autoSync: !!settings.autoSync
+  };
+}
+
+/** body.connectionId. Runs a saved source now. The very first run must go through Preview. */
+function actionSyncNow(owner, body) {
+  var conn = loadOwnConnection(owner, body.connectionId);
+  if (!conn) return fail('That saved source was not found.');
+  if (!conn.lastSyncAt) return fail('Preview this source once and apply it before syncing - so you see the first changes before they happen.');
+  if (conn.type === 'csv') return fail('A CSV is a one-off file. Choose the new file and preview it.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var r = planFromRequest(owner, { connectionId: conn.id });
+    if (r.error) {
+      recordSyncFailure(owner, conn, r.error, 'manual');
+      return fail(r.error);
+    }
+    return ok(runSyncPlan(owner, r, { trigger: 'syncNow' }));
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function recordSyncFailure(owner, conn, message, trigger) {
+  recordSyncJob(owner, { SyncId: newId('sync'), ConnectionId: conn.id, ConnectorType: conn.type, Direction: conn.mode, StartedAt: nowIso(),
+    RecordsRead: 0, RecordsCreated: 0, RecordsUpdated: 0, RecordsSkipped: 0, RecordsFailed: 0, Conflicts: 0, Status: SYNC_STATUS.FAILED, ErrorCount: 1,
+    SummaryJson: JSON.stringify({ trigger: trigger, writeError: message, errors: [{ line: 0, message: message }] }) });
+  markConnectionSynced(owner, conn.id, SYNC_STATUS.FAILED, message);
+}
+
+/** The seller's open stock conflicts, with item names. */
+function actionListSyncConflicts(owner) {
+  var sheet = SpreadsheetApp.getActive().getSheetByName('SyncConflicts');
+  var rows = sheet ? sheetToObjects(sheet).filter(function (x) { return x.OwnerId === owner.OwnerId && x.Status === 'open'; }) : [];
+  if (!rows.length) return ok({ conflicts: [] });
+  var ctx = sellerImportContext(owner);
+  var byId = {};
+  ctx.variants.forEach(function (v) { byId[v.VariantId] = v; });
+  return ok({ conflicts: rows.map(function (x) {
+    var v = byId[x.VariantId];
+    var p = v ? ctx.products[v.ProductId] : null;
+    return { conflictId: x.ConflictId, connectionId: x.ConnectionId, variantId: x.VariantId, name: (p ? p.Name : '') + (v ? ' - ' + v.Label : ''),
+      external: Number(x.ExternalValue), mwakete: Number(x.MwaketeValue), line: x.Line, createdAt: x.CreatedAt,
+      reservedNow: v ? reservedOf(v) : 0 };
+  }) });
+}
+
+/**
+ * body.conflictId, body.choice: 'external' | 'mwakete' | 'keep'.
+ * Choosing a side moves the agreed snapshot so that side counts as the
+ * change, then syncs straight away - the same safe path as every sync, so a
+ * value that moved again since is caught rather than overwritten.
+ */
+function actionResolveSyncConflict(owner, body) {
+  var choice = String(body.choice || '');
+  if (['external', 'mwakete', 'keep'].indexOf(choice) === -1) return fail('Choose which number to keep.');
+  var sheet = SpreadsheetApp.getActive().getSheetByName('SyncConflicts');
+  var row = sheet ? findRowById(sheet, 'ConflictId', String(body.conflictId || '')) : null;
+  if (!row || row.OwnerId !== owner.OwnerId || row.Status !== 'open') return fail('That conflict was not found or is already settled.');
+  if (choice === 'keep') {
+    updateRowFromObject(sheet, row.__row, { Status: 'kept', ResolvedAt: nowIso() });
+    return ok({ status: 'kept' });
+  }
+  var conn = loadOwnConnection(owner, row.ConnectionId);
+  if (!conn) return fail('The source for this conflict is no longer connected.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    // Snapshot = the side that loses, so the chosen side reads as "the one that changed".
+    conn.snapshot[row.VariantId] = choice === 'external' ? Number(row.MwaketeValue) : Number(row.ExternalValue);
+    ensureColumn(conn.sheet, 'SnapshotJson');
+    updateRowFromObject(conn.sheet, conn.row.__row, { SnapshotJson: JSON.stringify(conn.snapshot) });
+    updateRowFromObject(sheet, row.__row, { Status: choice === 'external' ? 'resolvedExternal' : 'resolvedMwakete', ResolvedAt: nowIso() });
+    var r = planFromRequest(owner, { connectionId: conn.id });
+    if (r.error) return fail(r.error + ' Your choice is saved and will apply on the next sync.');
+    return ok(runSyncPlan(owner, r, { trigger: 'conflict' }));
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Hourly, from runReminderSweep: every Google Sheets source with automatic
+ * sync on, that has had its first (previewed) sync. Stops before Apps
+ * Script's 6-minute limit; whatever is left runs next hour.
+ */
+function runScheduledInventorySyncs() {
+  var sheet = SpreadsheetApp.getActive().getSheetByName('InventoryConnections');
+  if (!sheet || !INVENTORY_CONNECTORS.googleSheets.configured()) return 0;
+  var startedMs = Date.now();
+  var owners = {};
+  sheetToObjects(getSheet('Owners')).forEach(function (o) { owners[o.OwnerId] = o; });
+  var due = sheetToObjects(sheet).filter(function (c) {
+    var settings = {};
+    try { settings = JSON.parse(c.SettingsJson || '{}'); } catch (e) { settings = {}; }
+    return c.Type === 'googleSheets' && c.Status === 'connected' && settings.autoSync && c.LastSyncAt;
+  }).sort(function (a, b) { return String(a.LastSyncAt).localeCompare(String(b.LastSyncAt)); });
+  var ran = 0;
+  for (var i = 0; i < due.length; i++) {
+    if (Date.now() - startedMs > 4 * 60 * 1000) break;
+    var owner = owners[due[i].OwnerId];
+    if (!owner || owner.Status === 'closed') continue;
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    try {
+      var r = planFromRequest(owner, { connectionId: due[i].ConnectionId });
+      if (r.error) recordSyncFailure(owner, loadOwnConnection(owner, due[i].ConnectionId), r.error, 'schedule');
+      else runSyncPlan(owner, r, { trigger: 'schedule' });
+      ran++;
+    } catch (e) {
+      Logger.log('scheduled sync failed for ' + due[i].ConnectionId + ': ' + e);
+    } finally {
+      lock.releaseLock();
+    }
+  }
+  return ran;
 }
