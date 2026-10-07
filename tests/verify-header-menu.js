@@ -156,8 +156,7 @@ async function measureCLS(browser, path, opts) {
     ok('Stores -> stores.html', hrefs[0] === 'stores.html');
     ok('Categories -> categories.html', hrefs[1] === 'categories.html');
     ok('Create Store -> owner register', hrefs[2] === 'owner/login.html?tab=register');
-    ok('Help & Support is the existing enquiry mailto',
-      hrefs[3] === 'mailto:admin@mwakete.com?subject=Mwakete%20Enquiry', hrefs[3]);
+    ok('Help & Support -> the Help Centre', hrefs[3] === 'help.html', hrefs[3]);
     ok('Tips -> customer-tips.html', hrefs[4] === 'customer-tips.html');
     ok('signed-out My Account -> login', hrefs[5] === 'customer-login.html');
 
@@ -170,9 +169,10 @@ async function measureCLS(browser, path, opts) {
     ));
     ok('icon never stands alone', iconed);
 
-    // The mailto must be exactly the link index.html already carried.
-    const footer = await page.$eval('a[href^="mailto:admin@mwakete.com"]', (a) => a.getAttribute('href')).catch(() => null);
-    ok('mailto matches the existing Enquiry link', footer === 'mailto:admin@mwakete.com?subject=Mwakete%20Enquiry', String(footer));
+    // The Help Centre ends in the same support address the menu used to open.
+    const contact = require('fs').readFileSync(require('path').join(__dirname, '..', 'help.html'), 'utf8')
+      .match(/href="(mailto:admin@mwakete\.com[^"]*)" data-help-contact/);
+    ok('Help Centre contact button is the support mailto', !!contact, String(contact && contact[1]));
     await ctx.close();
   }
 

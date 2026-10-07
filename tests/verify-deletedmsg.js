@@ -126,16 +126,16 @@ const WANT = 'This store has been deleted. Contact now via the Enquiry link belo
 
   // ---------- nothing anywhere still hands out the raw address in a message ----------
   {
-    // The address may appear ONLY as the Enquiry link's own mailto: target
-    // (header-menu.js HEADER_MENU_ENQUIRY) - that link is where the messages
-    // send people. Anywhere else it would be spelled out to the user.
+    // The address may appear ONLY as a mailto: target - in the Help Centre
+    // content (help-content.js), whose support answers name it on purpose -
+    // never spelled out inside a status or error message.
     const hits = require('child_process')
       .execSync("grep -rno \"[^\\n]\\{0,8\\}admin@mwakete.com\" /home/user/simple-kiri-shop/assets/js /home/user/simple-kiri-shop/apps-script || true",
         { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
-    const stray = hits.filter((h) => !/mailto:admin@mwakete\.com$/.test(h));
+    const stray = hits.filter((h) => !/mailto:admin@mwakete\.com$/.test(h) && !/\/help-content(\.min)?\.js:/.test(h));
     ok('the admin email appears only as the Enquiry link target, never in message text',
       stray.length === 0, stray.join(' | '));
-    ok('...and the Enquiry link itself still points at it', hits.some((h) => /header-menu\.js:.*mailto:admin@mwakete\.com$/.test(h)), hits.join(' | '));
+    ok('...and the Help Centre contact link still points at it', hits.some((h) => /help-content\.js:.*mailto:admin@mwakete\.com$/.test(h)), hits.join(' | '));
   }
 
   await browser.close();

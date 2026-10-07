@@ -6182,3 +6182,703 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 .category-tile .featured-badge {
   margin-top: var(--space-1);
 }
+
+/* ==========================================================================
+   Help Centre (help.html)
+
+   Built from the site's own tokens - purple for interaction, the flag's gold
+   as the one accent - so it reads as part of Mwakete rather than a bolted-on
+   FAQ template. Mobile first: everything is one column until 720px.
+   ========================================================================== */
+
+.help-main {
+  padding-bottom: var(--space-5);
+}
+
+.mw-icon {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ---- hero ---- */
+.help-hero {
+  background: var(--color-purple-soft);
+  padding: var(--space-3) 0 var(--space-4);
+  text-align: center;
+}
+
+.help-breadcrumbs ol {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.help-breadcrumbs li + li::before {
+  content: "›";
+  margin-right: var(--space-2);
+  color: var(--color-muted);
+}
+
+.help-breadcrumbs a {
+  color: var(--color-purple);
+}
+
+.help-hero-title {
+  margin: 0;
+  color: var(--color-purple);
+  font-size: 1.75rem;
+}
+
+.help-hero-text {
+  margin: var(--space-2) auto 0;
+  max-width: 34em;
+  color: var(--color-muted);
+}
+
+/* ---- search bar: sticks to the top while the page scrolls ---- */
+.help-searchbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-bg);
+  padding: var(--space-2) 0;
+  box-shadow: 0 1px 0 var(--color-border);
+}
+
+.help-chips {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.help-search {
+  position: relative;
+  max-width: 40em;
+  margin: 0 auto;
+}
+
+.help-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-purple);
+  display: flex;
+  pointer-events: none;
+}
+
+.help-search input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 50px;
+  padding: 0 46px 0 44px;
+  font-size: 1rem;              /* 16px: iOS does not zoom the page on focus */
+  border: 2px solid var(--color-purple);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-ink);
+}
+
+.help-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.help-search input:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.help-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.help-search-clear[hidden] {
+  display: none;
+}
+
+.help-search-clear:focus-visible {
+  outline: 3px solid var(--color-focus);
+}
+
+.help-popular {
+  max-width: 40em;
+  margin: var(--space-2) auto 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.help-popular-label {
+  flex: none;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+/* Chip rows scroll sideways on a phone rather than wrapping into a wall of
+   buttons above the content. */
+.help-chip-row {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+  padding: 2px;                 /* room for the focus ring */
+}
+
+.help-chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.help-chip {
+  flex: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.help-chip[aria-pressed="true"] {
+  background: var(--color-purple);
+  border-color: var(--color-purple);
+  color: #fff;
+  font-weight: 600;
+}
+
+.help-chip:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.help-filters {
+  max-width: 40em;
+  margin: var(--space-2) auto 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.help-filters[hidden] {
+  display: none;
+}
+
+/* ---- sections ---- */
+.help-body {
+  padding-top: var(--space-4);
+}
+
+.help-section {
+  margin-bottom: var(--space-5);
+  scroll-margin-top: 84px;     /* clear the sticky search bar */
+}
+
+.help-section h2,
+.help-results-heading {
+  color: var(--color-purple);
+  font-size: 1.3rem;
+  margin: 0 0 var(--space-3);
+}
+
+/* ---- topic cards ---- */
+.help-cat-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.help-cat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.help-cat.is-active {
+  border-color: var(--color-purple);
+  box-shadow: inset 0 0 0 1px var(--color-purple);
+  background: var(--color-purple-soft);
+}
+
+.help-cat:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.help-cat-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+}
+
+.help-cat-title {
+  display: block;
+  font-weight: 700;
+  color: var(--color-purple);
+  line-height: 1.25;
+}
+
+.help-cat-blurb {
+  display: none;                /* phones: the title alone keeps cards compact */
+  margin-top: 2px;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+@media (hover: hover) {
+  .help-cat:hover {
+    border-color: var(--color-purple-light);
+  }
+}
+
+/* ---- FAQ groups + accordion ---- */
+.help-faq-group {
+  margin-bottom: var(--space-4);
+  scroll-margin-top: 84px;
+}
+
+.help-group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1.05rem;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-2);
+}
+
+.help-group-title .mw-icon {
+  color: var(--color-purple);
+}
+
+.help-acc {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  margin-bottom: var(--space-2);
+  scroll-margin-top: 84px;
+}
+
+.help-acc.is-open {
+  border-color: var(--color-purple-pale);
+}
+
+.help-acc-heading {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* The whole row is the button: a big target for a thumb. */
+.help-acc-btn {
+  width: 100%;
+  min-height: 56px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.help-acc-btn:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: -3px;
+}
+
+.help-acc-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.help-acc-title {
+  display: block;
+  font-weight: 700;
+  color: var(--color-ink);
+  line-height: 1.3;
+}
+
+/* Stays visible when the answer is closed - it is half of the question. */
+.help-acc-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--color-muted);
+  line-height: 1.35;
+}
+
+/* Plus that becomes a minus: drawn in CSS so open/closed is a SHAPE, not
+   only a colour. */
+.help-acc-sign {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-purple-soft);
+}
+
+.help-acc-sign::before,
+.help-acc-sign::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 2px;
+  margin: -1px 0 0 -6px;
+  border-radius: 1px;
+  background: var(--color-purple);
+  transition: transform 0.2s ease;
+}
+
+.help-acc-sign::after {
+  transform: rotate(90deg);
+}
+
+.help-acc.is-open .help-acc-sign::after {
+  transform: rotate(0deg);
+}
+
+.help-acc-go {
+  color: var(--color-purple);
+}
+
+/* Open/close by animating the grid row from 0fr to 1fr: smooth, no height
+   measuring in JS, nothing below jumps. visibility removes a closed answer
+   from the tab order and from screen readers, after the closing animation. */
+.help-acc-panel {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.js-help .help-acc-panel {
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.22s ease, visibility 0s linear 0.22s;
+}
+
+.js-help .help-acc.is-open .help-acc-panel {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.22s ease, visibility 0s;
+}
+
+.help-acc-inner {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 var(--space-3);
+}
+
+.help-acc-inner > :first-child {
+  margin-top: 0;
+}
+
+.help-acc-inner > :last-child {
+  margin-bottom: var(--space-3);
+}
+
+.help-acc-inner p {
+  margin: 0 0 var(--space-2);
+  line-height: 1.55;
+}
+
+.help-meta {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.help-steps {
+  margin: 0 0 var(--space-3);
+  padding-left: 1.4em;
+}
+
+.help-steps li {
+  margin-bottom: var(--space-2);
+  line-height: 1.5;
+}
+
+.help-action {
+  margin: var(--space-3) 0;
+}
+
+.help-related {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.help-related-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-1);
+}
+
+.help-related ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.help-related a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  color: var(--color-purple);
+  text-decoration: none;
+}
+
+.help-related a span {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---- search results ---- */
+.help-results {
+  margin-bottom: var(--space-5);
+}
+
+.help-result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.help-result {
+  display: block;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.help-result:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .help-result:hover {
+    border-color: var(--color-purple-light);
+  }
+}
+
+/* The type is a WORD on a tinted tag - never colour alone. */
+.help-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+}
+
+.help-type-badge--guide {
+  background: var(--color-gold-soft);
+  color: #6b5400;
+}
+
+.help-type-badge--blog {
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.help-result-title {
+  display: block;
+  margin-top: var(--space-2);
+  font-weight: 700;
+  color: var(--color-purple);
+  line-height: 1.3;
+}
+
+.help-result-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+}
+
+.help-result-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: var(--space-1);
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.help-result-meta {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.help-noresults-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 0 0 var(--space-2);
+}
+
+.help-noresults-try {
+  margin: var(--space-3) 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+/* ---- still need help ---- */
+.help-still {
+  text-align: center;
+  padding: var(--space-4) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-purple-soft);
+  border-top: 4px solid var(--color-gold);
+}
+
+.help-still-icon {
+  display: inline-flex;
+  color: var(--color-purple);
+}
+
+.help-still h2 {
+  color: var(--color-purple);
+  font-size: 1.25rem;
+  margin: var(--space-2) 0;
+}
+
+.help-still p {
+  margin: 0 0 var(--space-3);
+}
+
+.help-still .helper-text {
+  margin: 0;
+}
+
+/* ---- wider screens ---- */
+@media (min-width: 720px) {
+  .help-hero {
+    padding: var(--space-4) 0 var(--space-5);
+  }
+
+  .help-hero-title {
+    font-size: 2.25rem;
+  }
+
+  .help-cat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .help-cat {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .help-cat-blurb {
+    display: block;
+  }
+
+  .help-filters {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: var(--space-3);
+  }
+
+  .help-result-desc {
+    -webkit-line-clamp: 3;
+  }
+}
+
+@media (min-width: 1024px) {
+  .help-cat-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .help-cat {
+    flex-direction: column;
+  }
+
+  /* Questions sit two to a row inside each topic: the width is used, and a
+     question is never a 1000px-wide line. A grid, not CSS columns, so opening
+     an answer only lengthens its own row - nothing hops between columns. */
+  .help-faq-group,
+  .help-guide-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-3);
+    align-items: start;
+  }
+
+  .help-group-title {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js-help .help-acc-panel,
+  .js-help .help-acc.is-open .help-acc-panel,
+  .help-acc-sign::before,
+  .help-acc-sign::after {
+    transition: none;
+  }
+}

@@ -1,0 +1,598 @@
+/**
+ * Help Centre content: the ONE source of every FAQ, guide and category.
+ *
+ * Kept apart from the page code (help.js) so it can be edited, searched,
+ * translated and checked on its own:
+ *
+ *   - tools/build-help.js renders the FAQ and guide markup AND the FAQPage
+ *     structured data into help.html from this file, so the page and the
+ *     JSON-LD can never say different things (tests/test-help.js re-runs the
+ *     build in --check mode and fails if help.html is stale).
+ *   - help-search.js searches a normalized list built from this file.
+ *
+ * WRITING RULES (the Terms of Service is the source of truth):
+ *   - Mwakete never takes payment, holds money or issues refunds. A sale is
+ *     between the shopper and the seller.
+ *   - Delivery, prices, timing and costs are the SELLER's - never promise them.
+ *   - Do not describe a feature the site does not have. If unsure, say
+ *     "contact the seller" or "contact Mwakete".
+ *   tests/test-help.js rejects "guarantee", "refund guaranteed" and friends.
+ *
+ * Text is PLAIN TEXT, never HTML: it is escaped wherever it is shown. A blank
+ * line in `description` starts a new paragraph. Links are internal only and
+ * live in `action` ({ label, href }) or `related` (ids of other entries).
+ *
+ * TRANSLATION: every visible string is either here or in HELP_STRINGS, keyed
+ * by language. Only 'en' exists. A Kiribati version should be written and
+ * approved by a person, not machine translated - add HELP_STRINGS.gil and a
+ * `gil` copy of the content when one exists.
+ */
+
+const HELP_CONTACT_EMAIL = 'admin@mwakete.com';
+const HELP_CONTACT_HREF = 'mailto:admin@mwakete.com?subject=Mwakete%20Help';
+
+const HELP_STRINGS = {
+  en: {
+    heroTitle: 'How can we help?',
+    heroText: 'Find answers, guides, tips and useful information about Mwakete.',
+    searchLabel: 'Search the Help Centre',
+    searchPlaceholder: 'Search FAQs, guides and more...',
+    searchClear: 'Clear search',
+    popularSearches: 'Popular searches',
+    filterType: 'Show',
+    filterTopic: 'Topic',
+    typeAll: 'All',
+    typeFaq: 'FAQs',
+    typeGuide: 'Guides',
+    typeBlog: 'Blog',
+    topicAll: 'All topics',
+    badgeFaq: 'FAQ',
+    badgeGuide: 'Guide',
+    badgeBlog: 'Blog',
+    resultsOne: '1 result',
+    resultsMany: '{n} results',
+    resultsFor: 'for “{q}”',
+    noMatchTitle: 'We couldn’t find an exact match.',
+    noMatchTry: 'Try:',
+    noMatchPopular: 'Popular questions',
+    searchFailed: 'Search is temporarily unavailable. Please try again.',
+    categoriesTitle: 'Browse by topic',
+    faqTitle: 'Frequently asked questions',
+    guidesTitle: 'Guides',
+    relatedTitle: 'Related',
+    readGuide: 'Read the guide',
+    minRead: '{n} min read',
+    steps: 'Steps',
+    stillTitle: 'Can’t find what you’re looking for?',
+    stillText: 'Our support team can help. Email us and we will reply as soon as we can.',
+    stillButton: 'Contact Mwakete Support',
+    backToTop: 'Back to top',
+    breadcrumbHome: 'Home',
+    breadcrumbHelp: 'Help Centre'
+  }
+};
+
+/**
+ * Topics. `filter: false` keeps a category in the grid but out of the topic
+ * chips (there is nothing to filter "Support" by that the grid does not do).
+ */
+const HELP_CATEGORIES = [
+  { id: 'general',  icon: 'islands',  title: 'Getting started',      blurb: 'What Mwakete is and who it is for.', filter: false },
+  { id: 'buying',   icon: 'buying',   title: 'Buying on Mwakete',    blurb: 'Finding things, ordering, contacting sellers and paying.' },
+  { id: 'selling',  icon: 'selling',  title: 'Selling on Mwakete',   blurb: 'Your store, listings and talking to customers.' },
+  { id: 'business', icon: 'business', title: 'Businesses',           blurb: 'Retailers, wholesalers, distributors and stock tools.' },
+  { id: 'delivery', icon: 'delivery', title: 'Delivery & Shipping',  blurb: 'Pickup, delivery and island-to-island shipping.' },
+  { id: 'services', icon: 'services', title: 'Services',             blurb: 'Offering and booking local services.' },
+  { id: 'rentals',  icon: 'rentals',  title: 'Rentals',              blurb: 'Rental listings, dates and arrangements.' },
+  { id: 'safety',   icon: 'safety',   title: 'Safety & Trust',       blurb: 'Scams, suspicious listings, payments and reporting.' },
+  { id: 'account',  icon: 'account',  title: 'Account & Security',   blurb: 'Signing in, protecting your account and privacy.' },
+  { id: 'support',  icon: 'support',  title: 'Support',              blurb: 'Contacting Mwakete and sorting out problems.', filter: false }
+];
+
+/** Shown when the search box is focused and empty, and after a zero-result search. */
+const HELP_POPULAR_SEARCHES = ['How to sell', 'Delivery', 'Payments', 'Create a store', 'Safety', 'Outer islands'];
+
+/** FAQ ids shown under "Popular questions" when a search finds nothing. */
+const HELP_POPULAR_FAQS = ['selling-how', 'buying-pay', 'delivery-islands', 'safety-scam'];
+
+/**
+ * FAQs. id is stable: it is the URL anchor (help.html#faq-<id>), so renaming
+ * one breaks links people have shared. subtitle stays visible when the answer
+ * is collapsed.
+ */
+const HELP_FAQS = [
+  /* ---------- Getting started ---------- */
+  {
+    id: 'general-what', category: 'general',
+    title: 'What is Mwakete?',
+    subtitle: 'A local marketplace for Kiribati',
+    description: 'Mwakete is an online marketplace where shops, businesses and individuals in Kiribati list products, services and rentals, and shoppers find them and contact them.\n\nMwakete does not sell anything itself and never handles your money. When you buy, the agreement is between you and the seller.',
+    keywords: ['about', 'marketplace', 'kiribati', 'what is', 'mwakete', 'shop online', 'mainkt'],
+    related: ['general-who', 'buying-pay']
+  },
+  {
+    id: 'general-who', category: 'general',
+    title: 'Who can use Mwakete?',
+    subtitle: 'Shoppers, individuals and businesses',
+    description: 'Anyone 18 or older can use Mwakete, or a younger person with the agreement of a parent or guardian. You can browse and order without an account.\n\nPlease give real contact details - a seller cannot deliver to a wrong number.',
+    keywords: ['age', 'who', 'allowed', 'eligible', 'use', '18'],
+    related: ['account-need', 'selling-individuals']
+  },
+  {
+    id: 'general-individuals', category: 'general',
+    title: 'Is Mwakete for individuals?',
+    subtitle: 'Yes - for buying and for selling',
+    description: 'Yes. Individuals can shop on Mwakete, and an individual can open a store to sell what they make or have, offer a service, or rent something out.',
+    keywords: ['individual', 'person', 'personal', 'private seller', 'small'],
+    related: ['selling-individuals', 'selling-how']
+  },
+  {
+    id: 'general-businesses', category: 'general',
+    title: 'Is Mwakete for businesses?',
+    subtitle: 'Retailers, wholesalers and distributors',
+    description: 'Yes. When you open a store you choose your business type: retailer, wholesaler or distributor. Wholesalers and distributors get extra tools, such as several locations and stock transfers between them.',
+    keywords: ['business', 'company', 'shop', 'retailer', 'wholesaler', 'distributor'],
+    related: ['business-store', 'business-wholesale']
+  },
+  {
+    id: 'general-islands', category: 'general',
+    title: 'Can I use Mwakete from another island?',
+    subtitle: 'Yes, from anywhere with internet',
+    description: 'Yes. Mwakete works on any phone or computer with internet, wherever you are. Each store shows where it is, and which delivery methods it offers - truck, ship, air cargo or Pick & Pay - so you can see whether getting something to you is practical before you order.',
+    keywords: ['outer islands', 'island', 'tarawa', 'kiritimati', 'line islands', 'abaiang', 'remote', 'where'],
+    related: ['delivery-islands', 'buying-other-island']
+  },
+
+  /* ---------- Buying ---------- */
+  {
+    id: 'buying-find', category: 'buying',
+    title: 'How do I find something?',
+    subtitle: 'Search, browse categories or stores',
+    description: 'Type what you need in the search box on the home page - a product, a service or a rental. You can also browse by Categories, or open Stores to see every shop.\n\nCards show where each item is, so you can pick something close to you.',
+    keywords: ['search', 'find', 'look for', 'browse', 'category', 'categories', 'stores'],
+    action: { label: 'Go to Categories', href: 'categories.html' },
+    related: ['buying-contact', 'guide-buying']
+  },
+  {
+    id: 'buying-contact', category: 'buying',
+    title: 'How do I contact a seller?',
+    subtitle: 'Message them on Mwakete, or call',
+    description: 'Open the store or product page and use the chat button to message the seller on Mwakete - the chat keeps a record of what you agreed. Many sellers also show buttons to call, WhatsApp or Facebook Messenger them.\n\nIf you leave Mwakete for WhatsApp or Messenger, that conversation is under that app’s own rules and Mwakete cannot see it.',
+    keywords: ['contact', 'message', 'chat', 'call', 'phone', 'whatsapp', 'messenger', 'talk', 'seller'],
+    related: ['buying-questions', 'safety-stay-safe']
+  },
+  {
+    id: 'buying-questions', category: 'buying',
+    title: 'Can I ask questions before buying?',
+    subtitle: 'Yes - ask the seller first',
+    description: 'Yes, and it is a good idea. Message the seller to check the condition, size, stock, price, delivery cost and timing before you order.',
+    keywords: ['question', 'ask', 'before', 'check', 'enquire', 'enquiry'],
+    related: ['buying-contact']
+  },
+  {
+    id: 'buying-other-island', category: 'buying',
+    title: 'Can I buy from another island?',
+    subtitle: 'If the seller can get it to you',
+    description: 'Yes, as long as the seller can get it to you. Check which delivery methods the store offers (truck, ship or air cargo) and ask the seller about cost and timing before you order.',
+    keywords: ['island', 'another island', 'outer island', 'ship', 'send', 'far'],
+    related: ['delivery-islands', 'delivery-who-pays']
+  },
+  {
+    id: 'buying-delivery', category: 'buying',
+    title: 'Does Mwakete provide delivery?',
+    subtitle: 'No - sellers arrange their own delivery',
+    description: 'Mwakete does not deliver anything. Each seller chooses which delivery methods they offer and what they cost. You choose one of those methods when you order, and the seller arranges it with you.',
+    keywords: ['delivery', 'deliver', 'courier', 'transport', 'shipping'],
+    related: ['delivery-islands', 'delivery-who-pays', 'buying-pickup']
+  },
+  {
+    id: 'buying-pickup', category: 'buying',
+    title: 'Can I pick up my order?',
+    subtitle: 'Where the store offers Pick & Pay',
+    description: 'Yes, if the store offers Pick & Pay - you collect from the store and pay there. Pick & Pay has no delivery charge. Agree a time with the seller before you go.',
+    keywords: ['pickup', 'pick up', 'collect', 'pick & pay', 'pick and pay', 'in person'],
+    related: ['delivery-pickup']
+  },
+  {
+    id: 'buying-pay', category: 'buying',
+    title: 'How do I pay?',
+    subtitle: 'You pay the seller directly',
+    description: 'You pay the seller directly, in whatever way the two of you agree. Mwakete never takes payment and never holds money.\n\nPlacing an order is a request to buy, not a completed sale: the seller contacts you to arrange payment and delivery.',
+    keywords: ['pay', 'payment', 'payments', 'money', 'cash', 'bank', 'transfer', 'price', 'cost'],
+    related: ['safety-payment-requests', 'buying-problem']
+  },
+  {
+    id: 'buying-cancel', category: 'buying',
+    title: 'Can I cancel or change an order?',
+    subtitle: 'Ask the seller - quickly is best',
+    description: 'While an order is still Pending Payment you can change your contact and delivery details from your account. To cancel, message the seller - they mark the order as cancelled.\n\nOnce the seller has moved the order on, any change is up to them.',
+    keywords: ['cancel', 'cancellation', 'change', 'edit', 'order', 'mistake', 'wrong'],
+    related: ['buying-contact', 'buying-problem']
+  },
+  {
+    id: 'buying-problem', category: 'buying',
+    title: 'What if there is a problem with my order?',
+    subtitle: 'Talk to the seller first',
+    description: 'Message the seller first - most problems are sorted out that way, and the chat on Mwakete keeps a record. Because the sale is between you and the seller, Mwakete cannot issue refunds or recover money.\n\nIf a seller is acting dishonestly, tell Mwakete. We will look into it and may act on their store.',
+    keywords: ['problem', 'issue', 'wrong item', 'not delivered', 'damaged', 'refund', 'complaint', 'dispute'],
+    related: ['safety-report', 'support-contact']
+  },
+  {
+    id: 'buying-reviews', category: 'buying',
+    title: 'Can I leave a review?',
+    subtitle: 'With an account, after a real experience',
+    description: 'Yes, if you are signed in. Reviews must reflect a real experience with the seller. They are public and show the name on your account.',
+    keywords: ['review', 'rating', 'stars', 'feedback'],
+    related: ['account-need']
+  },
+
+  /* ---------- Selling ---------- */
+  {
+    id: 'selling-how', category: 'selling',
+    title: 'How do I sell on Mwakete?',
+    subtitle: 'Create a store and add your listings',
+    description: 'Open the menu and choose Create Store. Fill in your store details, then add your products, services or rentals with clear photos and prices.\n\nWhen a customer orders or messages you, it appears in your store dashboard. Reply promptly and arrange payment and delivery with them.',
+    keywords: ['sell', 'selling', 'seller', 'vendor', 'start', 'open store', 'create store', 'list', 'products'],
+    action: { label: 'Create your store', href: 'owner/login.html?tab=register' },
+    related: ['guide-first-listing', 'selling-good-listing']
+  },
+  {
+    id: 'selling-individuals', category: 'selling',
+    title: 'Can individuals sell?',
+    subtitle: 'Yes - you do not need to be a company',
+    description: 'Yes. Anyone who can legally sell what they list can open a store. Choose Retailer as your business type if you sell directly to customers.',
+    keywords: ['individual', 'person', 'small seller', 'home business', 'side business'],
+    related: ['selling-how']
+  },
+  {
+    id: 'selling-what', category: 'selling',
+    title: 'What can I list?',
+    subtitle: 'Products, services and rentals',
+    description: 'You can list products, services and rentals that you actually have and are legally allowed to sell in Kiribati.\n\nNot allowed: anything illegal, weapons, drugs, medicines, stolen or counterfeit goods, and other people’s photos or text used without permission.\n\nNew Food & Groceries listings are open to wholesalers and distributors.',
+    keywords: ['allowed', 'list', 'prohibited', 'banned', 'rules', 'what can', 'food', 'groceries'],
+    related: ['selling-good-listing', 'business-wholesale']
+  },
+  {
+    id: 'selling-good-listing', category: 'selling',
+    title: 'How do I create a good listing?',
+    subtitle: 'Real photos, clear prices, honest details',
+    description: 'Use your own clear photos, a plain name customers would search for, the real price, and an honest description of size, condition and what is included. Choose the right category, and set your delivery options and costs so customers know what to expect.',
+    keywords: ['listing', 'photo', 'photos', 'description', 'title', 'price', 'tips', 'good', 'better'],
+    related: ['guide-first-listing', 'selling-edit']
+  },
+  {
+    id: 'selling-edit', category: 'selling',
+    title: 'Can I edit my listing?',
+    subtitle: 'Yes, from your store dashboard',
+    description: 'Yes. Sign in to your store and open Products to change a listing’s details, photos or price. Orders already placed keep the price shown when they were made.',
+    keywords: ['edit', 'change', 'update', 'listing', 'price change', 'remove'],
+    related: ['selling-good-listing']
+  },
+  {
+    id: 'selling-islands', category: 'selling',
+    title: 'Can I sell across islands?',
+    subtitle: 'Yes - choose the delivery you can offer',
+    description: 'Yes. In your store settings, turn on the delivery methods you can genuinely offer - truck, ship, air cargo or Pick & Pay - and set a cost for each, or leave it to be negotiated.',
+    keywords: ['islands', 'ship', 'outer islands', 'send', 'deliver', 'shipping'],
+    related: ['delivery-islands', 'delivery-who-pays']
+  },
+
+  /* ---------- Services ---------- */
+  {
+    id: 'services-advertise', category: 'services',
+    title: 'Can I advertise a service?',
+    subtitle: 'Yes - list it as a service',
+    description: 'Yes. When you add a listing in your store, choose Service. Describe what you do, where you work and how you charge.',
+    keywords: ['service', 'services', 'advertise', 'trade', 'repair', 'tutor', 'hire'],
+    related: ['services-contact', 'selling-how']
+  },
+  {
+    id: 'services-contact', category: 'services',
+    title: 'How do customers contact service providers?',
+    subtitle: 'Chat, call or send a booking request',
+    description: 'Customers can message the provider on Mwakete, use their call or WhatsApp buttons if shown, or send a booking request with the dates they want. A booking is a request until the provider confirms it.',
+    keywords: ['contact', 'book', 'booking', 'provider', 'request', 'appointment'],
+    related: ['guide-bookings', 'buying-contact']
+  },
+
+  /* ---------- Rentals ---------- */
+  {
+    id: 'rentals-list', category: 'rentals',
+    title: 'Can I list something for rent?',
+    subtitle: 'Yes - list it as a rental',
+    description: 'Yes. When you add a listing in your store, choose Rental. Customers can then request the dates they want.',
+    keywords: ['rent', 'rental', 'rentals', 'hire', 'lease', 'accommodation', 'house', 'car'],
+    related: ['rentals-info', 'rentals-arrange']
+  },
+  {
+    id: 'rentals-info', category: 'rentals',
+    title: 'What should a rental listing include?',
+    subtitle: 'Price, period, location and conditions',
+    description: 'Include the price and what period it covers (per day, week or month), where it is, clear photos, what is included, any deposit you ask for, and your rules - so customers can decide before they request dates.',
+    keywords: ['rental', 'details', 'deposit', 'conditions', 'rules', 'listing'],
+    related: ['selling-good-listing']
+  },
+  {
+    id: 'rentals-arrange', category: 'rentals',
+    title: 'How do I arrange a rental?',
+    subtitle: 'Request dates, then agree the details',
+    description: 'Open the rental and request your dates. The request is pending until the owner confirms it - pending is not booked. Mwakete will not let you request dates that clash with a booking the owner has already confirmed.\n\nYou can change your request while it is pending. Agree payment, deposit and handover with the owner directly.',
+    keywords: ['book', 'booking', 'dates', 'arrange', 'request', 'confirm', 'pending', 'availability'],
+    related: ['guide-bookings']
+  },
+
+  /* ---------- Safety ---------- */
+  {
+    id: 'safety-stay-safe', category: 'safety',
+    title: 'How can I stay safe?',
+    subtitle: 'Keep the conversation on Mwakete and check first',
+    description: 'Message sellers through Mwakete so there is a record. Check the item and price before you pay, meet in a public place for pickups, and be careful with anyone who pushes you to pay quickly or off the usual route.\n\nThe Verified badge means Mwakete has verified that store. It is not a promise about any particular sale.',
+    keywords: ['safe', 'safety', 'secure', 'trust', 'careful', 'tips', 'verified'],
+    related: ['guide-safe-trading', 'safety-scam']
+  },
+  {
+    id: 'safety-scam', category: 'safety',
+    title: 'What if I suspect a scam?',
+    subtitle: 'Stop, do not pay, and tell us',
+    description: 'Stop before sending money or personal details. Do not click links sent by someone you do not know. Then email Mwakete with the store name and what happened - we will look into it and may hide the listing or close the store.',
+    keywords: ['scam', 'fraud', 'fake', 'suspicious', 'cheat', 'dishonest'],
+    action: { label: 'Email Mwakete', href: HELP_CONTACT_HREF },
+    related: ['safety-report', 'safety-payment-requests']
+  },
+  {
+    id: 'safety-report', category: 'safety',
+    title: 'How do I report a suspicious listing?',
+    subtitle: 'Email Mwakete with the details',
+    description: 'Email Mwakete with the store name, the listing and what worries you. We will look into it and may hide the listing or close the store. We cannot recover money paid to a seller.',
+    keywords: ['report', 'reporting', 'suspicious', 'listing', 'flag', 'abuse'],
+    action: { label: 'Email Mwakete', href: HELP_CONTACT_HREF },
+    related: ['safety-scam']
+  },
+  {
+    id: 'safety-pin', category: 'safety',
+    title: 'Should I share my PIN, password or sign-in code?',
+    subtitle: 'Never - not even with Mwakete',
+    description: 'Never. Mwakete will never ask for your bank PIN, your password or the code we email you to sign in. Anyone who asks for them is trying to get into your account or your money.',
+    keywords: ['pin', 'password', 'code', 'otp', 'share', 'bank', 'security'],
+    related: ['account-protect', 'safety-scam']
+  },
+  {
+    id: 'safety-payment-requests', category: 'safety',
+    title: 'How do I spot a suspicious payment request?',
+    subtitle: 'Pressure, odd methods and changed details',
+    description: 'Be careful if someone asks you to pay before you have agreed the details, pushes you to hurry, asks for payment to a different person or account than before, sends a link to pay, or asks for more than the price shown. Check with the seller through Mwakete chat before paying.',
+    keywords: ['payment', 'request', 'suspicious', 'link', 'pay', 'money', 'deposit', 'advance'],
+    related: ['buying-pay', 'safety-scam']
+  },
+
+  /* ---------- Business ---------- */
+  {
+    id: 'business-store', category: 'business',
+    title: 'Can my business have a store?',
+    subtitle: 'Yes - one store per account',
+    description: 'Yes. Create a store with your business name, logo and contact details. Customers can find it under Stores, and it has its own page with all your listings.',
+    keywords: ['store', 'shop', 'business', 'storefront', 'page', 'logo'],
+    action: { label: 'Create your store', href: 'owner/login.html?tab=register' },
+    related: ['selling-how']
+  },
+  {
+    id: 'business-products', category: 'business',
+    title: 'Can I manage many products?',
+    subtitle: 'Yes, with stock tracking built in',
+    description: 'Yes. Your store dashboard lists all your products, and Inventory lets you track stock, see what is held for open orders, and get low-stock warnings.',
+    keywords: ['many products', 'inventory', 'stock', 'manage', 'catalogue', 'bulk'],
+    related: ['business-inventory']
+  },
+  {
+    id: 'business-wholesale', category: 'business',
+    title: 'Can wholesalers use Mwakete?',
+    subtitle: 'Yes - choose Wholesaler when you sign up',
+    description: 'Yes. Choose Wholesaler (or Distributor) as your business type. Mwakete contacts new wholesalers to verify them. Wholesalers and distributors can list Food & Groceries, add several locations and move stock between them.',
+    keywords: ['wholesale', 'wholesaler', 'distributor', 'bulk', 'supplier', 'verification'],
+    related: ['general-businesses', 'business-inventory']
+  },
+  {
+    id: 'business-retail', category: 'business',
+    title: 'Can retailers use Mwakete?',
+    subtitle: 'Yes - most stores are retailers',
+    description: 'Yes. Choose Retailer when you create your store. Retailers get the full store, ordering, messaging and stock tools.',
+    keywords: ['retail', 'retailer', 'shop', 'store'],
+    related: ['business-store']
+  },
+  {
+    id: 'business-inventory', category: 'business',
+    title: 'Can Mwakete connect with my existing stock records?',
+    subtitle: 'Yes - CSV files and Google Sheets',
+    description: 'Yes. Under Inventory, Import & Sync can read a CSV file from Excel, your till or another system, or link a Google Sheet. You see every change before anything is applied. Direct links to other systems are not available yet.',
+    keywords: ['inventory', 'stock', 'sync', 'csv', 'excel', 'google sheet', 'spreadsheet', 'pos', 'till', 'import'],
+    related: ['guide-connect-stock']
+  },
+
+  /* ---------- Delivery ---------- */
+  {
+    id: 'delivery-islands', category: 'delivery',
+    title: 'How does island-to-island delivery work?',
+    subtitle: 'The seller ships it by ship or air cargo',
+    description: 'If a store offers ship or air cargo, choose it when you order. The seller arranges sending it and tells you the details. Timing depends on schedules between the islands, so agree it with the seller first.',
+    keywords: ['island', 'ship', 'boat', 'air cargo', 'plane', 'outer islands', 'line islands', 'kiritimati', 'send'],
+    related: ['guide-shipping', 'delivery-who-pays']
+  },
+  {
+    id: 'delivery-who-pays', category: 'delivery',
+    title: 'Who pays for delivery?',
+    subtitle: 'The customer, at the seller’s price',
+    description: 'Each store sets its own delivery prices, shown at checkout. Where a store has not set a price, it says delivery is to be negotiated - agree the cost with the seller before you commit. Pick & Pay has no delivery charge.',
+    keywords: ['delivery cost', 'shipping cost', 'fee', 'charge', 'who pays', 'negotiated', 'free delivery'],
+    related: ['delivery-islands', 'buying-pickup']
+  },
+  {
+    id: 'delivery-time', category: 'delivery',
+    title: 'How long does delivery take?',
+    subtitle: 'It depends on the seller and the route',
+    description: 'Delivery times are set by each seller and, between islands, by ship and flight schedules. Ask the seller before you order and agree a time.',
+    keywords: ['how long', 'time', 'days', 'when', 'arrive', 'delivery time', 'wait'],
+    related: ['buying-contact']
+  },
+  {
+    id: 'delivery-pickup', category: 'delivery',
+    title: 'Can I arrange pickup?',
+    subtitle: 'Choose Pick & Pay if the store offers it',
+    description: 'Yes, if the store offers Pick & Pay. Choose it at checkout, then agree a time with the seller and pay when you collect.',
+    keywords: ['pickup', 'pick up', 'collect', 'pick & pay', 'store'],
+    related: ['buying-pickup']
+  },
+
+  /* ---------- Account ---------- */
+  {
+    id: 'account-need', category: 'account',
+    title: 'Do I need an account?',
+    subtitle: 'Not to browse or order',
+    description: 'No. You can browse and order as a guest - you only give your name and phone number so the seller can reach you. An account adds your order history in one place, the ability to leave reviews, and staying signed in.\n\nTo sell, you need a store account.',
+    keywords: ['account', 'sign up', 'register', 'guest', 'login', 'need'],
+    related: ['account-protect']
+  },
+  {
+    id: 'account-protect', category: 'account',
+    title: 'How do I protect my account?',
+    subtitle: 'Keep your codes private and log out on shared phones',
+    description: 'Never share the sign-in code we email you. On a shared phone, tick “This is a shared device” when signing in and log out when you finish. Sellers can turn on two-step sign-in (2FA) in store Settings.',
+    keywords: ['protect', 'secure', 'security', '2fa', 'two-step', 'shared device', 'logout', 'hacked'],
+    related: ['safety-pin', 'account-access']
+  },
+  {
+    id: 'account-access', category: 'account',
+    title: 'What if I cannot get into my account?',
+    subtitle: 'Request a new code, or contact us',
+    description: 'Shoppers sign in with a code sent to their email, or with Google - request a new code if the old one expired. Sellers can use “Forgot password” on the store sign-in page.\n\nStill stuck, or think someone else got in? Email Mwakete from the address on your account.',
+    keywords: ['locked out', 'cannot login', 'forgot', 'password', 'code', 'access', 'sign in'],
+    action: { label: 'Email Mwakete', href: HELP_CONTACT_HREF },
+    related: ['account-protect']
+  },
+  {
+    id: 'account-data', category: 'account',
+    title: 'How is my information handled?',
+    subtitle: 'Sellers see only their own orders',
+    description: 'When you order, that seller sees your name, phone, island and village and what you ordered - nothing from other stores. Mwakete does not sell your information or share it for advertising, and does not run advertising or tracking tools. The Privacy Policy explains everything, including how to have your data deleted.',
+    keywords: ['privacy', 'data', 'information', 'personal', 'delete', 'gdpr'],
+    action: { label: 'Read the Privacy Policy', href: 'privacy.html' },
+    related: ['account-need']
+  },
+
+  /* ---------- Support ---------- */
+  {
+    id: 'support-contact', category: 'support',
+    title: 'How do I contact Mwakete?',
+    subtitle: 'Email admin@mwakete.com',
+    description: 'Email admin@mwakete.com and tell us what happened, with the store or order involved. For a problem with an order, message the seller first - they are the one who can fix it.',
+    keywords: ['contact', 'support', 'help', 'email', 'customer service', 'enquiry'],
+    action: { label: 'Email Mwakete', href: HELP_CONTACT_HREF },
+    related: ['buying-problem']
+  }
+];
+
+/**
+ * Guides: step-by-step. `url` set = the guide lives on its own page (and the
+ * Help Centre links to it); otherwise it is shown in full here at
+ * help.html#guide-<id>.
+ */
+const HELP_GUIDES = [
+  {
+    id: 'guide-buying', category: 'buying', minutes: 2,
+    title: 'Buying on Mwakete, step by step',
+    subtitle: 'From finding an item to getting it',
+    description: 'How an order works, and what to agree with the seller.',
+    keywords: ['buy', 'order', 'checkout', 'cart', 'how to buy', 'steps'],
+    steps: [
+      'Search or browse Categories to find what you need. Cards show where each item is.',
+      'Check the store’s delivery icons - truck, ship, air cargo or Pick & Pay.',
+      'Add items to your cart. Each store has its own cart.',
+      'At checkout, give your name, phone, island and village, and choose a delivery method.',
+      'The seller contacts you to confirm the order, payment and delivery. You pay the seller directly.'
+    ],
+    related: ['buying-pay', 'delivery-who-pays']
+  },
+  {
+    id: 'guide-first-listing', category: 'selling', minutes: 3,
+    title: 'Create your first listing',
+    subtitle: 'Open a store and add something to sell',
+    description: 'Everything you need to get your first product, service or rental online.',
+    keywords: ['listing', 'create', 'first', 'sell', 'add product', 'store', 'start'],
+    steps: [
+      'Open the menu and choose Create Store. Pick your business type: retailer, wholesaler or distributor.',
+      'Add your store name, location, contact numbers and logo.',
+      'In Settings, turn on the delivery methods you can offer and set a cost for each, or leave it to be negotiated.',
+      'Open Products and add your first listing: product, service or rental, with a clear photo, a plain name and the real price.',
+      'Check your dashboard and messages often, and reply to customers promptly.'
+    ],
+    action: { label: 'Create your store', href: 'owner/login.html?tab=register' },
+    related: ['selling-good-listing', 'selling-what']
+  },
+  {
+    id: 'guide-safe-trading', category: 'safety', minutes: 2,
+    title: 'Trading safely on Mwakete',
+    subtitle: 'Simple habits that prevent most problems',
+    description: 'For buyers and sellers.',
+    keywords: ['safe', 'safety', 'scam', 'trust', 'tips'],
+    steps: [
+      'Keep conversations in Mwakete chat, so there is a record of what was agreed.',
+      'Agree the price, delivery cost and timing before anyone pays.',
+      'Check the item before paying where you can, and meet in a public place for pickups.',
+      'Never share your PIN, password or sign-in code.',
+      'If something feels wrong, stop and email Mwakete.'
+    ],
+    related: ['safety-scam', 'safety-payment-requests']
+  },
+  {
+    id: 'guide-shipping', category: 'delivery', minutes: 2,
+    title: 'Sending and receiving between islands',
+    subtitle: 'How ship and air cargo orders work',
+    description: 'What buyers and sellers should agree for orders that travel.',
+    keywords: ['ship', 'air cargo', 'islands', 'outer islands', 'send', 'shipping', 'freight'],
+    steps: [
+      'Buyers: check the store offers ship or air cargo, and the delivery cost shown at checkout.',
+      'If the cost says “to be negotiated”, agree it with the seller before ordering.',
+      'Agree who will collect the parcel at the other end, and when.',
+      'Sellers: send the buyer the shipping details once it is on its way.'
+    ],
+    related: ['delivery-islands', 'delivery-who-pays']
+  },
+  {
+    id: 'guide-bookings', category: 'rentals', minutes: 1,
+    title: 'Booking a service or rental',
+    subtitle: 'Requesting dates and getting them confirmed',
+    description: 'How booking requests work.',
+    keywords: ['booking', 'book', 'dates', 'request', 'rental', 'service', 'confirm'],
+    steps: [
+      'Open the service or rental and request the dates you want.',
+      'Your request stays pending until the seller confirms it - pending is not booked.',
+      'You can change the request while it is pending. After that, message the seller.',
+      'Agree payment and any deposit with the seller directly.'
+    ],
+    related: ['rentals-arrange', 'services-contact']
+  },
+  {
+    id: 'guide-connect-stock', category: 'business', minutes: 4,
+    title: 'Connect your stock to Mwakete',
+    subtitle: 'CSV files, Google Sheets and stock words explained',
+    description: 'The full seller guide to Inventory and Import & Sync.',
+    keywords: ['inventory', 'stock', 'csv', 'google sheets', 'sync', 'import', 'excel'],
+    url: 'owner/inventory-help.html',
+    related: ['business-inventory']
+  }
+];
+
+/**
+ * Blog posts. Mwakete has no blog yet, so this is empty and the Blog filter
+ * stays hidden. When a blog exists, map each post into this shape (from
+ * whatever source it lives in) - nothing else in the Help Centre changes:
+ *   { id, title, subtitle, description, category, tags: [], url,
+ *     publishedAt: 'YYYY-MM-DD', minutes }
+ */
+const HELP_BLOG_POSTS = [];
+
+if (typeof module !== 'undefined') {
+  module.exports = {
+    HELP_CONTACT_EMAIL, HELP_CONTACT_HREF, HELP_STRINGS, HELP_CATEGORIES, HELP_POPULAR_SEARCHES,
+    HELP_POPULAR_FAQS, HELP_FAQS, HELP_GUIDES, HELP_BLOG_POSTS
+  };
+}
