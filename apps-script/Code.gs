@@ -56,7 +56,8 @@ var PROTECTED_POST_ACTIONS = [
   'listSellerBadges', 'setSellerBadgeOverride', 'setBadgeConfig', 'recomputeBadges',
   'listWholesalers', 'setWholesaleVerified',
   'startFeaturePurchase', 'listMyFeaturePurchases', 'submitFeaturePayment',
-  'listFeaturePurchases', 'setFeaturePurchaseStatus', 'adminSearch', 'adminStoreAnalytics'
+  'listFeaturePurchases', 'setFeaturePurchaseStatus', 'adminSearch', 'adminStoreAnalytics',
+  'getInventory', 'receiveStock', 'adjustStock', 'updateStockSettings', 'listStockMovements'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -76,7 +77,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'inventory1-2026-10-07';
+var APP_VERSION = 'inventory2-2026-10-07';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -465,6 +466,11 @@ function doPost(e) {
         case 'setFeaturePurchaseStatus': return jsonOut(actionSetFeaturePurchaseStatus(owner, body));
         case 'adminSearch': return jsonOut(actionAdminSearch(owner, body));
         case 'adminStoreAnalytics': return jsonOut(actionAdminStoreAnalytics(owner, body));
+        case 'getInventory': return jsonOut(actionGetInventory(owner));
+        case 'receiveStock': return jsonOut(actionReceiveStock(owner, body));
+        case 'adjustStock': return jsonOut(actionAdjustStock(owner, body));
+        case 'updateStockSettings': return jsonOut(actionUpdateStockSettings(owner, body));
+        case 'listStockMovements': return jsonOut(actionListStockMovements(owner, body));
         case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
         case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
       }

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventory — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell owner-inventory-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Inventory</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Inventory</h1>
+      <p class="helper-text">Your stock, what's held by open orders, and every change. Shoppers can buy what's <strong>available</strong> (in stock minus held).</p>
+      <p id="inv-status" class="helper-text" role="status"></p>
+
+      <div id="inv-summary" class="inv-summary hidden" aria-label="Stock summary"></div>
+      <nav id="inv-more" class="inv-more hidden" aria-label="More inventory tools"></nav>
+
+      <section class="dash-section" aria-labelledby="inv-list-heading">
+        <h2 id="inv-list-heading">Stock</h2>
+        <div class="inv-filters">
+          <label class="sr-only" for="inv-search">Search stock</label>
+          <input type="search" id="inv-search" placeholder="Search name, SKU or barcode" autocomplete="off">
+          <div class="inv-filter-chips" role="group" aria-label="Show">
+            <button type="button" class="inv-chip is-active" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="inv-chip" data-filter="low" aria-pressed="false">Low</button>
+            <button type="button" class="inv-chip" data-filter="out" aria-pressed="false">Out</button>
+            <button type="button" class="inv-chip" data-filter="untracked" aria-pressed="false">Not tracked</button>
+          </div>
+        </div>
+        <div id="inv-list" class="inv-list"></div>
+      </section>
+
+      <!-- One action panel, opened under the chosen row's details. -->
+      <section id="inv-panel" class="dash-section inv-panel hidden" aria-live="polite" aria-labelledby="inv-panel-title">
+        <h2 id="inv-panel-title"></h2>
+        <p id="inv-panel-sub" class="helper-text"></p>
+        <form id="inv-form" novalidate></form>
+        <p id="inv-panel-error" class="form-error" role="alert"></p>
+        <p id="inv-panel-saved" class="inv-saved hidden" role="status"></p>
+      </section>
+
+      <section class="dash-section" aria-labelledby="inv-history-heading">
+        <h2 id="inv-history-heading">Stock history</h2>
+        <p id="inv-history-filter" class="helper-text hidden"></p>
+        <div id="inv-history"></div>
+        <p class="load-more-row"><button type="button" id="inv-history-more" class="btn btn-small hidden">Show older</button></p>
+      </section>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/owner-inventory.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>
