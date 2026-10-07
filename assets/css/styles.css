@@ -4043,6 +4043,34 @@ header.site-header .header-menu-item:focus-visible {
   background: var(--color-bg-alt);
 }
 
+/* Terms · Privacy: fine print at the foot of the menu, standing in for the
+   footer phones and tablets no longer show. Small text, full-size targets. */
+.header-menu-legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+header.site-header .header-menu-legal-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  color: var(--color-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+header.site-header .header-menu-legal-link:hover,
+header.site-header .header-menu-legal-link:focus-visible {
+  color: var(--color-ink);
+}
+
 .header-menu-icon {
   display: inline-flex;
   flex-shrink: 0;
@@ -7115,4 +7143,11 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
     flex: 0 0 200px;
     min-width: 0;
   }
+}
+
+/* Customer sign-in: the agreement line under the form. */
+.auth-terms-note {
+  margin: var(--space-3) 0 0;
+  text-align: center;
+  font-size: 0.8125rem;
 }
