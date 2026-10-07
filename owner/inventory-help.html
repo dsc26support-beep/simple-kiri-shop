@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connect Your Stock — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell owner-help-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong>Help</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="inventory.html">Inventory</a></li>
+          <li><a href="inventory-sync.html">Import &amp; Sync</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container help-guide">
+      <h1>How to connect your stock to Mwakete</h1>
+      <p class="helper-text">Keep using what you already use. Mwakete fits in around it.</p>
+
+      <section class="dash-section">
+        <h2>First: what do you use now?</h2>
+        <ul>
+          <li><strong>"I just use a spreadsheet."</strong> Connect your Google Sheet, or save it as a CSV file and import it.</li>
+          <li><strong>"I have a till, POS or accounting system."</strong> Export a CSV from it and import that. (Direct links to other systems are coming later.)</li>
+          <li><strong>"I don't have anything."</strong> You don't need to. Open <a href="inventory.html">Inventory</a> - Mwakete keeps your stock for you.</li>
+        </ul>
+      </section>
+
+      <section class="dash-section">
+        <h2>Words you'll see</h2>
+        <dl class="help-terms">
+          <dt>In stock</dt><dd>What you physically have.</dd>
+          <dt>Held</dt><dd>Units customers have ordered but you haven't handed over yet. They're kept aside so nobody else buys them.</dd>
+          <dt>Available</dt><dd>In stock minus held. This is what shoppers can buy.</dd>
+          <dt>Low stock</dt><dd>Available is at or below the level you chose. Mwakete only warns you - it never orders stock for you.</dd>
+        </dl>
+      </section>
+
+      <section class="dash-section">
+        <h2>Orders and your stock</h2>
+        <ol>
+          <li>A customer orders 5 → those 5 are <strong>held</strong>. In stock doesn't change yet.</li>
+          <li>You mark the order <strong>Fulfilled</strong> → the 5 come off your stock.</li>
+          <li>You mark it <strong>Cancelled</strong> instead → the 5 are released for others to buy.</li>
+        </ol>
+      </section>
+
+      <section class="dash-section">
+        <h2>Import a CSV file</h2>
+        <ol>
+          <li>In Excel: <em>File › Save As › CSV</em>. In Google Sheets: <em>File › Download › CSV</em>. From a till: look for <em>Export</em>.</li>
+          <li>Open <a href="inventory-sync.html">Import &amp; Sync</a>, choose <strong>CSV file</strong>, and pick your file.</li>
+          <li>Check the column matching. Mwakete guesses it - for example <em>Item Code</em> → SKU, <em>Stock Balance</em> → stock on hand. The column that identifies each item (SKU, barcode, or the Mwakete ID from a Mwakete download) is the important one.</li>
+          <li>Press <strong>Preview changes</strong>. You'll see every change before anything happens: new numbers, prices, items not found, and problems.</li>
+          <li>Happy? Press <strong>Apply changes</strong>. Not happy? Press Cancel - nothing changes.</li>
+        </ol>
+        <p class="helper-text">Tip: <strong>Download CSV</strong> on the same page gives you a file with all your items. Change the numbers in it and import it back.</p>
+      </section>
+
+      <section class="dash-section">
+        <h2>Connect a Google Sheet</h2>
+        <ol>
+          <li>Open your sheet and press <strong>Share</strong>. Add the Mwakete address shown on the Import &amp; Sync page.
+            Choose <strong>Editor</strong> if you want Mwakete to write sales back into your sheet, or <strong>Viewer</strong> to only read it.</li>
+          <li>Copy your sheet's address from the browser and paste it into Mwakete. Choose the tab, and the row that has your column names.</li>
+          <li>Match the columns, then choose who is in charge:
+            <ul>
+              <li><strong>My sheet → Mwakete</strong> - you keep your sheet up to date; Mwakete copies it. (Best if your sheet is already reliable.)</li>
+              <li><strong>Mwakete → my sheet</strong> - Mwakete keeps the stock; your sheet is updated from it.</li>
+              <li><strong>Both ways</strong> - a change on either side is copied to the other.</li>
+            </ul></li>
+          <li>Preview, then Apply. After that it can keep in step every hour, or press <strong>Sync now</strong> any time.</li>
+        </ol>
+      </section>
+
+      <section class="dash-section">
+        <h2>"This item changed in both places"</h2>
+        <p>With <strong>Both ways</strong>, if the same item changed in your sheet <em>and</em> on Mwakete since the last sync, Mwakete doesn't guess. It asks you:</p>
+        <p class="help-example">Rice 25kg — <strong>Your sheet: 48</strong> · <strong>Mwakete: 45</strong> · Leave both for now</p>
+        <p>Pick the right number and both sides are set to it.</p>
+      </section>
+
+      <section class="dash-section">
+        <h2>Several shops or warehouses?</h2>
+        <p>Stores registered as a <strong>Wholesaler</strong> or <strong>Distributor</strong> can add locations on the Inventory page (<em>Locations</em>), see how much of each item is where, <strong>Transfer</strong> stock between them, keep a list of <strong>Suppliers</strong>, and choose where stock arrives when they receive it.</p>
+      </section>
+
+      <section class="dash-section">
+        <h2>If something goes wrong</h2>
+        <ul>
+          <li>Mwakete never says something worked unless it did. If the connection drops, it tells you, and pressing the button again is safe - a change is never applied twice.</li>
+          <li>If Mwakete can't open your sheet (for example the sharing was removed), your stock on Mwakete is <strong>not changed</strong>. Share it again and press Sync now.</li>
+          <li>Every stock change is listed under <strong>Stock history</strong>, and every import or sync under <strong>Sync history</strong>.</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>

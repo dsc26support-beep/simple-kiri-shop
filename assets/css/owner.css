@@ -1507,3 +1507,29 @@ label.is-required::after {
 .inv-report-list {
   padding-left: 1.2em;
 }
+
+/* Seller guide (owner/inventory-help.html). */
+.help-guide ol,
+.help-guide ul {
+  padding-left: 1.3em;
+}
+
+.help-guide li {
+  margin-bottom: var(--space-2);
+}
+
+.help-terms dt {
+  font-weight: 700;
+  margin-top: var(--space-2);
+}
+
+.help-terms dd {
+  margin: 0;
+}
+
+.help-example {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-gold-soft);
+  overflow-wrap: anywhere;
+}
