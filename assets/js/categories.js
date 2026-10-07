@@ -447,6 +447,7 @@ function renderCategoryTile(product) {
     <a class="category-tile" data-product-id="${escapeHtml(product.productId)}"
        href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}">
       ${media}
+      ${featuredBadgeHtml(product)}
       <span class="category-tile-name">${escapeHtml(product.name)}</span>
     </a>
   `;

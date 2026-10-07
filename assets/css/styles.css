@@ -6149,3 +6149,25 @@ html.auth-for-meeting .auth-guest-row {
 html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   display: none;
 }
+
+/* "Featured" pill on a paid-featured product's card (featuredBadgeHtml in
+   helpers.js). Gold, to match the existing highlight colour, and small enough
+   not to compete with the name. */
+.featured-badge {
+  display: inline-block;
+  align-self: flex-start;
+  margin: 0 0 var(--space-1);
+  padding: 0.1em 0.55em;
+  border-radius: 999px;
+  border: 1px solid var(--color-gold);
+  background: var(--color-gold-soft);
+  color: var(--color-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
+.category-tile .featured-badge {
+  margin-top: var(--space-1);
+}

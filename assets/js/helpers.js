@@ -498,6 +498,13 @@ function sellerBadgeRow(product) {
   return renderSellerBadges(product.sellerBadges, { size: 'chip', max: 2, interactive: false });
 }
 
+// "Featured" pill for a product a seller is currently paying to feature
+// (Featuring.gs markPaidFeatured sets product.featured). Text, not an icon, so
+// it reads the same to a screen reader.
+function featuredBadgeHtml(product) {
+  return product && product.featured ? '<span class="featured-badge">Featured</span>' : '';
+}
+
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
@@ -554,6 +561,7 @@ function renderBrowseProductCard(product, opts) {
     <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
       ${media}
       <div class="product-card-body">
+        ${featuredBadgeHtml(product)}
         ${heading}
         ${renderStars(product.rating, product.reviewCount)}
         ${sellerBadgeRow(product)}

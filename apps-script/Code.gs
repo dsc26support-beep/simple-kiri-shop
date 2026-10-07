@@ -76,7 +76,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'adminsearch1-2026-10-06';
+var APP_VERSION = 'featbadge1-2026-10-06';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -345,13 +345,13 @@ function doGet(e) {
     var params = (e && e.parameter) || {};
     switch (params.action) {
       case 'listStores': return jsonOut(actionListStores(params));
-      case 'listProducts': return jsonOut(actionListProducts(params));
+      case 'listProducts': return jsonOut(markPaidFeatured(actionListProducts(params)));
       case 'getStorePublicInfo': return jsonOut(actionGetStorePublicInfo(params));
-      case 'searchProducts': return jsonOut(actionSearchProducts(params));
-      case 'listTopProducts': return jsonOut(actionListTopProducts());
+      case 'searchProducts': return jsonOut(markPaidFeatured(actionSearchProducts(params)));
+      case 'listTopProducts': return jsonOut(markPaidFeatured(actionListTopProducts()));
       case 'listTopStores': return jsonOut(actionListTopStores());
-      case 'getHomePageData': return jsonOut(actionGetHomePageData());
-      case 'getTips': return jsonOut(actionGetTips(params));
+      case 'getHomePageData': return jsonOut(markPaidFeatured(actionGetHomePageData()));
+      case 'getTips': return jsonOut(markPaidFeatured(actionGetTips(params)));
       case 'listProductReviews': return jsonOut(actionListProductReviews(params));
       // Deploy health probe: no auth, no Sheets access, so it answers even on a
       // half-configured project - it can only report the running build or, if
