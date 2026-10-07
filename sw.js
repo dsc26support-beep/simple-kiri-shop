@@ -19,7 +19,7 @@
 // PREVIOUS stylesheet and only refreshes it in the background - the change
 // appears one load late, which reads as "my fix didn't ship". Renaming the
 // cache makes activate() drop the old one, so the next load fetches fresh.
-var CACHE = 'mwakete-v103';
+var CACHE = 'mwakete-v104';
 
 // Separate cache for cross-origin product/logo photos. Cache-first is safe here
 // because every uploaded image has a unique URL (Drive file id / Cloudinary
@@ -65,6 +65,7 @@ var PRECACHE = [
   'privacy.html',
   'terms.html',
   'help.html',
+  'recent.html',
 
   'assets/js/config.min.js',
   'assets/js/api.min.js',
@@ -100,7 +101,9 @@ var PRECACHE = [
   'assets/js/help-content.min.js',
   'assets/js/help-icons.min.js',
   'assets/js/help-search.min.js',
-  'assets/js/help.min.js'
+  'assets/js/help.min.js',
+  'assets/js/recent-views.min.js',
+  'assets/js/recent.min.js'
 ];
 
 self.addEventListener('install', function (event) {

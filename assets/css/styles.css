@@ -6084,7 +6084,7 @@ html.has-remembered-email .auth-shared-row {
    pill padding/border would have fought this shape instead of fitting it. */
 .quick-action-strip {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-2);   /* five tiles fit a 390px phone without scrolling */
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
@@ -6105,7 +6105,7 @@ html.has-remembered-email .auth-shared-row {
 }
 
 .quick-action-item {
-  flex: 0 0 68px;
+  flex: 0 0 64px;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
@@ -6880,5 +6880,143 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   .help-acc-sign::before,
   .help-acc-sign::after {
     transition: none;
+  }
+}
+
+/* ==========================================================================
+   Recent Views (recent.html)
+   ========================================================================== */
+
+.recent-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.recent-tab {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+/* Selected is a heavier underline AND the ink colour, not colour alone. */
+.recent-tab[aria-selected="true"] {
+  color: var(--color-purple);
+  border-bottom-color: var(--color-purple);
+}
+
+.recent-tab:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: -3px;
+}
+
+.recent-count {
+  font-weight: 400;
+}
+
+.recent-panel:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* minmax(0, ...) so a long name truncates instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.recent-item:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .recent-item:hover {
+    border-color: var(--color-purple-light);
+  }
+}
+
+/* Fixed box so a slow photo never moves the row. */
+.recent-thumb {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--color-bg-alt);
+}
+
+.recent-thumb--blank {
+  display: block;
+}
+
+.recent-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-name {
+  font-weight: 700;
+  color: var(--color-purple);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-meta {
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-when {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.recent-empty {
+  text-align: center;
+  padding: var(--space-4) var(--space-3);
+  color: var(--color-muted);
+}
+
+.recent-clear-row {
+  margin: var(--space-4) 0;
+  text-align: center;
+}
+
+@media (min-width: 720px) {
+  .recent-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

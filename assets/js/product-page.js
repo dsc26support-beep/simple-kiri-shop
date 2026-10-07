@@ -91,6 +91,9 @@ async function init() {
   showMetaRow();
   renderStoreBadges(res.sellerBadges);
   document.title = `${product.name} — Mwakete`;
+  // Recent Views (recent.html). Guarded: a page without recent-views.js loaded
+  // simply keeps no history.
+  if (typeof recordRecentProduct === 'function') recordRecentProduct(product, slug, res);
   wireActions();
   wireGallery();
   if (!window.__storeOpen) {

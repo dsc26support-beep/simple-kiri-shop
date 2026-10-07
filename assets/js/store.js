@@ -84,6 +84,7 @@ async function init() {
   }
 
   recordStoreVisitOnce(currentSlug);
+  if (typeof recordRecentStore === 'function') recordRecentStore(currentSlug, res);   // Recent Views
   updateCartCount();
   wireProductEvents();
   wireGalleryScrollSync();
