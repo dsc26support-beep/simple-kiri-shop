@@ -4152,6 +4152,17 @@ body.has-header-menu header.site-header > .container:first-of-type {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
   }
 
+  /* The Install pill (and its hint) stack above the chat button, so they rise
+     by the same bar height. Without this the chat button was lifted but the
+     pill wasn't, and on store pages it sat on top of the chat button. */
+  body.has-bottom-nav .install-fab {
+    bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
+  }
+
+  body.has-bottom-nav .install-hint {
+    bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2) + 3rem);
+  }
+
 }
 
 /* Static "Continue Shopping" button on cart.html - sits beneath the bigger

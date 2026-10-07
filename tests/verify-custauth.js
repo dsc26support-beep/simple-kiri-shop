@@ -44,13 +44,14 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.click('#signup-form button[type="submit"]');
     await page.waitForSelector('#signup-code-form:not(.hidden)');
     ok('signup registerCustomer called w/ name+email+phone', posted.some(p => p.action === 'registerCustomer' && p.body.name === 'Debby' && p.body.phone === '7301234'));
-    // enter code -> verify -> session saved + redirect to index
+    // enter code -> verify -> session saved + redirect to the customer's account
+    // (customer-login.js nextDest: My Account by default, ?next= when given)
     await page.fill('#signup-code', '123456');
     await page.click('#signup-code-form button[type="submit"]');
-    await page.waitForURL('**/index.html', { timeout: 4000 }).catch(() => {});
+    await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
     const tok = await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } });
     ok('signup verify saved customer session', tok === 'sess-1', String(tok));
-    ok('signup redirected to home', /index\.html$/.test(page.url()), page.url());
+    ok('signup lands on My Account', /customer-dashboard\.html$/.test(page.url()), page.url());
     await ctx.close();
   }
 

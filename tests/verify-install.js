@@ -6,6 +6,17 @@ const BASE = 'http://127.0.0.1:8099';
   const results = [];
   const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
+  // The button only shows when it can help: Chromium says the app is
+  // installable (beforeinstallprompt), or it's iOS (register-sw.js). A test
+  // browser never fires that event by itself, so the tests fire it, as
+  // Chrome on Android would.
+  const fireInstallable = (page) => page.evaluate(() => {
+    const e = new Event('beforeinstallprompt');
+    e.prompt = () => {};
+    e.userChoice = Promise.resolve({ outcome: 'dismissed' });
+    window.dispatchEvent(e);
+  });
+
   async function newCtx(opts) {
     const ctx = await browser.newContext(opts);
     await ctx.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, products: [], stores: [] }) }));
@@ -17,6 +28,9 @@ const BASE = 'http://127.0.0.1:8099';
     const ctx = await newCtx({ viewport: { width: 390, height: 800 } });
     const page = await ctx.newPage();
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await page.waitForTimeout(300);
+    ok('mobile, browser not offering install: no button (it never nags)', !(await page.$('.install-fab.is-visible')));
+    await fireInstallable(page);
     await page.waitForSelector('.install-fab.is-visible', { timeout: 3000 }).catch(() => {});
     const visible = await page.$eval('.install-fab', el => getComputedStyle(el).display !== 'none').catch(() => false);
     ok('mobile home: install button visible', visible);
@@ -26,6 +40,7 @@ const BASE = 'http://127.0.0.1:8099';
 
     const sp = await ctx.newPage();
     await sp.goto(BASE + '/store.html?store=x', { waitUntil: 'load' });
+    await fireInstallable(sp);
     await sp.waitForSelector('.install-fab.is-visible', { timeout: 3000 }).catch(() => {});
     const geo = await sp.evaluate(() => {
       const f = document.querySelector('.install-fab').getBoundingClientRect();
@@ -93,6 +108,7 @@ const BASE = 'http://127.0.0.1:8099';
     const page = await ctx.newPage();
     await page.addInitScript(() => { window.MWAKETE_INSTALL_HIDE_MS = 300; });
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await fireInstallable(page);
     await page.waitForSelector('.install-fab.is-visible', { timeout: 3000 });
     await page.waitForTimeout(700);
     const gone = await page.$eval('.install-fab', el => !el.classList.contains('is-visible'));
@@ -106,8 +122,10 @@ const BASE = 'http://127.0.0.1:8099';
     const ctx = await newCtx({ viewport: { width: 390, height: 800 } });
     const page = await ctx.newPage();
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    await fireInstallable(page);
     await page.waitForSelector('.install-fab.is-visible', { timeout: 3000 });
     await page.reload({ waitUntil: 'load' });
+    await fireInstallable(page); // Chrome fires it again on every load while installable
     const again = await page.waitForSelector('.install-fab.is-visible', { timeout: 3000 }).then(() => true).catch(() => false);
     ok('reappears on reload', again);
     await page.close();
