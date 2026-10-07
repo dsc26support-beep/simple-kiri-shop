@@ -65,6 +65,15 @@ function recordStockMovements(movements) {
     return headers.map(function (h) { return m[h] === undefined ? '' : sanitizeForSheetCell(m[h]); });
   });
   sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+
+  // Multi-location stores (InventoryLocations.gs): a fall in the TOTAL can't
+  // leave the other locations holding more than exists. typeof guard: this
+  // file must keep working if that one isn't deployed.
+  var fell = movements.filter(function (m) {
+    return m.LocationId === DEFAULT_LOCATION_ID && m.MovementType !== 'STOCK_TRANSFER' &&
+      m.NewStock !== '' && m.PreviousStock !== '' && Number(m.NewStock) < Number(m.PreviousStock);
+  });
+  if (fell.length && typeof rebalanceLocationStock === 'function') rebalanceLocationStock(fell);
 }
 
 /* ==================== Stock maths (pure) ==================== */
@@ -295,14 +304,27 @@ function actionGetInventory(owner) {
       var rank = { out: 0, low: 1, healthy: 2, untracked: 3 };
       return (rank[a.health] - rank[b.health]) || String(a.productName).localeCompare(String(b.productName));
     });
-  return ok({ items: items, summary: inventorySummary(items), businessType: storeTypeOf(owner), capabilities: inventoryCapabilities(owner) });
+  // Wholesalers and distributors with more than one place see each item's
+  // split across them (InventoryLocations.gs).
+  var extra = [];
+  if (isBulkSeller(owner) && typeof locationBreakdown === 'function') {
+    extra = ownLocations(owner.OwnerId).filter(function (l) { return l.LocationId !== DEFAULT_LOCATION_ID; });
+    if (extra.length) {
+      var stock = ownLocationStock(owner.OwnerId);
+      var mainName = mainLocationName(owner);
+      var rows = {};
+      sheetToObjects(variantsSheet).forEach(function (v) { rows[v.VariantId] = v; });
+      items.forEach(function (i) { if (i.tracked) i.locations = locationBreakdown(rows[i.variantId], stock[i.variantId], extra, mainName); });
+    }
+  }
+  return ok({ items: items, summary: inventorySummary(items), businessType: storeTypeOf(owner), capabilities: inventoryCapabilities(owner, extra.length) });
 }
 
 /** What this seller's inventory screens show - grows with business type, never a separate app. */
-function inventoryCapabilities(owner) {
-  var type = storeTypeOf(owner);
-  var advanced = type === 'wholesaler' || type === 'distributor';
-  return { locations: type === 'distributor', suppliers: advanced, transfers: type === 'distributor', purchaseOrders: advanced, sync: true };
+function inventoryCapabilities(owner, extraLocations) {
+  var advanced = isBulkSeller(owner);
+  // Purchase orders are not built: they need a new tab that hasn't been approved.
+  return { locations: advanced, suppliers: advanced, transfers: advanced && extraLocations > 0, reports: true, purchaseOrders: false, sync: true };
 }
 
 /** Loads one of this seller's active, tracked-or-trackable varieties for a stock action. */
@@ -341,15 +363,19 @@ function actionReceiveStock(owner, body) {
   try {
     var v = ownVariantForStock(owner, body.variantId);
     if (!v) return fail('That product variety was not found.');
+    var locationId = body.locationId || DEFAULT_LOCATION_ID;
+    var locErr = typeof locationDeltaError === 'function' ? locationDeltaError(owner, v, locationId, qty) : '';
+    if (locErr) return fail(locErr);
     var before = isStockTracked(v) ? physicalOf(v) : 0;
     var after = before + qty;
     var update = { StockQty: after };
     if (cost !== null) update.CostPrice = cost;
     updateRowFromObject(v.__sheet, v.__row, update);
+    if (typeof applyLocationDelta === 'function') applyLocationDelta(owner, v, locationId, qty);
     recordStockMovements([{
       OwnerId: owner.OwnerId, ProductId: v.ProductId, VariantId: v.VariantId, Quantity: qty, MovementType: 'STOCK_RECEIVED',
       PreviousStock: isStockTracked(v) ? before : '', NewStock: after, PreviousReserved: reservedOf(v), NewReserved: reservedOf(v),
-      Source: 'receive', ReferenceId: invoice, UserId: owner.OwnerId,
+      Source: 'receive', ReferenceId: invoice, UserId: owner.OwnerId, LocationId: locationId,
       Notes: [supplier && 'Supplier: ' + supplier, invoice && 'Invoice: ' + invoice, cost !== null && 'Unit cost: ' + cost].filter(Boolean).join(' · ')
     }]);
     invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
@@ -382,25 +408,38 @@ function actionAdjustStock(owner, body) {
     if (!v) return fail('That product variety was not found.');
     var before = isStockTracked(v) ? physicalOf(v) : 0;
     var held = reservedOf(v);
-    var after;
+    // At one location of several (InventoryLocations.gs), the change is to
+    // that location's quantity; the total moves by the same amount.
+    var locationId = body.locationId || DEFAULT_LOCATION_ID;
+    var here = before;
+    if (typeof locationBreakdown === 'function' && isBulkSeller(owner)) {
+      var spot = locationBreakdown(v, ownLocationStock(owner.OwnerId)[v.VariantId], ownLocations(owner.OwnerId).filter(function (l) { return l.LocationId !== DEFAULT_LOCATION_ID; }), '')
+        .filter(function (b) { return b.locationId === locationId; })[0];
+      if (!spot) return fail('That location was not found.');
+      here = spot.qty;
+    }
+    var delta;
     if (body.reason === 'count') {
-      after = parseWholeQty(body.newCount);
-      if (after === null || after < 0) return fail('Enter the number you counted (0 or more).');
+      var counted = parseWholeQty(body.newCount);
+      if (counted === null || counted < 0) return fail('Enter the number you counted (0 or more).');
+      delta = counted - here;
     } else {
       var q = parseWholeQty(body.quantity);
       if (q === null || q <= 0) return fail('Enter how many units (a whole number above 0).');
-      after = body.reason === 'returned' ? before + q : before - q;
+      delta = body.reason === 'returned' ? q : -q;
     }
-    if (after < 0) return fail('You only have ' + before + ' in stock, so you can\'t remove that many.');
+    if (here + delta < 0) return fail('You only have ' + here + ' there, so you can\'t remove that many.');
+    var after = before + delta;
     if (after < held) {
       return fail(held + ' are held by open orders, so stock can\'t go below ' + held + '. Your stock has not been changed.');
     }
     if (after === before && isStockTracked(v)) return fail('That is the same as the current stock (' + before + '). Nothing to change.');
     updateRowFromObject(v.__sheet, v.__row, { StockQty: after });
+    if (typeof applyLocationDelta === 'function') applyLocationDelta(owner, v, locationId, delta);
     recordStockMovements([{
       OwnerId: owner.OwnerId, ProductId: v.ProductId, VariantId: v.VariantId, Quantity: after - before, MovementType: type,
       PreviousStock: isStockTracked(v) ? before : '', NewStock: after, PreviousReserved: held, NewReserved: held,
-      Source: 'adjust', UserId: owner.OwnerId, Notes: notes
+      Source: 'adjust', UserId: owner.OwnerId, Notes: notes, LocationId: locationId
     }]);
     invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
     v.StockQty = after;
