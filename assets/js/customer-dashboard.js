@@ -19,6 +19,7 @@ async function init() {
   wireDashActions();
   loadOrders();
   loadBookings();
+  loadMarketingOptIn();
   showAppVersion();
 
   // After first paint, and after the two lists that people actually came for.
@@ -573,4 +574,31 @@ function showAppVersion() {
   MwaketeVersion.get().then((v) => {
     if (v) el.textContent = 'Mwakete ' + v;
   }).catch(() => {});
+}
+
+/* ---- Promotional email consent (Marketing.gs). Off unless ticked here. ---- */
+
+async function loadMarketingOptIn() {
+  const wrap = document.getElementById('marketing-optin');
+  const box = document.getElementById('marketing-optin-box');
+  if (!wrap || !box) return;
+  let res;
+  try { res = await Api.post('getMarketingPreference', { token: CustomerAuth.getToken() }); } catch (e) { return; }
+  if (!res || !res.ok) return;   // older backend or signed out: just leave it hidden
+  box.checked = !!res.optIn;
+  wrap.hidden = false;
+  box.addEventListener('change', async () => {
+    const status = document.getElementById('marketing-optin-status');
+    const want = box.checked;
+    box.disabled = true;
+    let r;
+    try { r = await Api.post('setMarketingPreference', { token: CustomerAuth.getToken(), optIn: want }); } catch (e) { r = null; }
+    box.disabled = false;
+    if (r && r.ok) {
+      status.textContent = want ? 'Done - we will email you new products and news.' : 'Done - no more promotional emails.';
+    } else {
+      box.checked = !want;
+      status.textContent = 'Could not save that. Please try again.';
+    }
+  });
 }

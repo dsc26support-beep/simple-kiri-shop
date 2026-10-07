@@ -50,7 +50,9 @@ const OWNERS = [
   { OwnerId: 'o9', StoreSlug: 'gone-store',   StoreName: 'Gone Store',         Phone: '+68673000009', Island: 'Makin',        Village: 'Makin',    LogoUrl: 'g.png', Status: 'suspended', Email: 'g@example.com', PasswordHash: 'nope' },
   { OwnerId: 'o10', StoreSlug: 'long-name',   StoreName: 'a'.repeat(200) + ' Shop', Phone: '+68673000010', Island: 'Banaba',  Village: 'Antereen', LogoUrl: 'l.png', Status: 'active', Email: 'l@example.com', PasswordHash: 'nope' },
   // The admin's own login row (ADMIN_EMAILS) - an active owner, but not a shop.
-  { OwnerId: 'o11', StoreSlug: 'admin',       StoreName: 'ADMIN',              Phone: '+68673000011', Island: 'South Tarawa', Village: 'Bairiki',  LogoUrl: '',      Status: 'active', Email: 'Admin@Mwakete.com', PasswordHash: 'nope' }
+  { OwnerId: 'o11', StoreSlug: 'admin',       StoreName: 'ADMIN',              Phone: '+68673000011', Island: 'South Tarawa', Village: 'Bairiki',  LogoUrl: '',      Status: 'active', Email: 'Admin@Mwakete.com', PasswordHash: 'nope' },
+  // A second store called Admin under an email that is NOT in ADMIN_EMAILS.
+  { OwnerId: 'o12', StoreSlug: 'admin-2',     StoreName: 'Admin',              Phone: '+68673000012', Island: 'South Tarawa', Village: 'Betio',    LogoUrl: '',      Status: 'active', Email: 'someone@gmail.com', PasswordHash: 'nope' }
 ];
 
 /* ---------- build a context holding the real code -------------------------- */
@@ -84,6 +86,7 @@ function makeContext() {
     grab(authSrc, 'isStoreBrowsable'),
     grab(adminSrc, 'getAdminEmails'),
     grab(adminSrc, 'isOwnerAdmin'),
+    grab(authSrc, 'isAdminNamedStore'),
     grab(customersSrc, 'normalizeEmail'),
     grab(utilsSrc, 'clampPageSize'),
     grabVar(utilsSrc, 'DEFAULT_LIST_PAGE_SIZE'),
@@ -223,7 +226,7 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   ok('a suspended store is never returned', names(all).indexOf('Gone Store') === -1);
   ok('a suspended store is not findable by name either', list({ q: 'Gone Store' }).stores.length === 0);
-  ok('the admin account is not in the directory', names(all).indexOf('ADMIN') === -1);
+  ok('the admin account is not in the directory', names(all).indexOf('ADMIN') === -1 && names(all).indexOf('Admin') === -1);
   ok('nor findable by name', list({ q: 'admin' }).stores.length === 0);
   ok('a standby store IS returned', names(all).indexOf('Resting Store') !== -1);
   ok('a standby store is findable by name', names(list({ q: 'Resting' })).indexOf('Resting Store') === 0);
@@ -249,7 +252,7 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 {
   const misses = [];
   let checked = 0;
-  OWNERS.filter(function (o) { return (o.Status === 'active' || o.Status === 'standby') && o.StoreName !== 'ADMIN'; })
+  OWNERS.filter(function (o) { return (o.Status === 'active' || o.Status === 'standby') && o.StoreName.toLowerCase() !== 'admin'; })
     .forEach(function (o) {
       const hay = (o.StoreName + ' ' + o.Island + ' ' + o.Village).toLowerCase();
       for (let start = 0; start < hay.length; start += 3) {
@@ -286,7 +289,7 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   ok('four different queries cost ONE sheet read, not four', sheetReads - readsAtStart === 1,
     'reads=' + (sheetReads - readsAtStart));
   ok('the cache key does not contain the query',
-    Array.from(fresh.__cache.keys()).join(',') === 'v2:listStores',
+    Array.from(fresh.__cache.keys()).join(',') === 'v3:listStores',
     Array.from(fresh.__cache.keys()).join(','));
 
   const p1 = list({ q: 'betio', limit: 2 });

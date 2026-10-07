@@ -171,11 +171,11 @@ function deliveryFlagsOf(owner) {
  *
  * With the key in one place, the next bump is one line and cannot half-happen.
  */
-function storeListCacheKey() { return 'v2:listStores'; }
-function topStoresCacheKey() { return 'v2:topStores'; }
-function topProductsCacheKey() { return 'v2:topProducts'; }
-function storeProductsCacheKey(slug) { return 'v2:listProducts:' + slug; }
-function storeInfoCacheKey(slug) { return 'v3:storeInfo:' + slug; }
+function storeListCacheKey() { return 'v3:listStores'; }
+function topStoresCacheKey() { return 'v3:topStores'; }
+function topProductsCacheKey() { return 'v3:topProducts'; }
+function storeProductsCacheKey(slug) { return 'v3:listProducts:' + slug; }
+function storeInfoCacheKey(slug) { return 'v4:storeInfo:' + slug; }
 
 /** Every key a change to one store's own record can go stale in. */
 function storeCacheKeys(slug) {
@@ -517,7 +517,7 @@ function actionSearchProducts(params) {
   // Listing-type filter: the [All][Products][Rentals][Services] strip.
   var type = String(params.type || '').trim();
   if (LISTING_TYPE_IDS.indexOf(type) === -1) type = '';
-  var cacheKey = 'v3:search:' + category + ':' + type + ':' + q.slice(0, 100);
+  var cacheKey = 'v4:search:' + category + ':' + type + ':' + q.slice(0, 100);
 
   var results = getCached(cacheKey, 60, function () {
     // THE ONE THAT MATTERS. This builder already reads Owners, Variants,

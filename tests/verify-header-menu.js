@@ -156,8 +156,7 @@ async function measureCLS(browser, path, opts) {
     ok('Stores -> stores.html', hrefs[0] === 'stores.html');
     ok('Categories -> categories.html', hrefs[1] === 'categories.html');
     ok('Create Store -> owner register', hrefs[2] === 'owner/login.html?tab=register');
-    ok('Help & Support is the existing enquiry mailto',
-      hrefs[3] === 'mailto:admin@mwakete.com?subject=Mwakete%20Enquiry', hrefs[3]);
+    ok('Help & Support -> the Help Centre', hrefs[3] === 'help.html', hrefs[3]);
     ok('Tips -> customer-tips.html', hrefs[4] === 'customer-tips.html');
     ok('signed-out My Account -> login', hrefs[5] === 'customer-login.html');
 
@@ -170,9 +169,10 @@ async function measureCLS(browser, path, opts) {
     ));
     ok('icon never stands alone', iconed);
 
-    // The mailto must be exactly the link index.html already carried.
-    const footer = await page.$eval('a[href^="mailto:admin@mwakete.com"]', (a) => a.getAttribute('href')).catch(() => null);
-    ok('mailto matches the existing Enquiry link', footer === 'mailto:admin@mwakete.com?subject=Mwakete%20Enquiry', String(footer));
+    // The Help Centre ends in the same support address the menu used to open.
+    const contact = require('fs').readFileSync(require('path').join(__dirname, '..', 'help.html'), 'utf8')
+      .match(/href="(mailto:admin@mwakete\.com[^"]*)" data-help-contact/);
+    ok('Help Centre contact button is the support mailto', !!contact, String(contact && contact[1]));
     await ctx.close();
   }
 
@@ -217,7 +217,7 @@ async function measureCLS(browser, path, opts) {
     const got = await labels(page);
     ok('with a cart: Recent Stores appears', got.indexOf('Recent Stores') !== -1, got.join(' | '));
     ok('Recent Stores is last', got[got.length - 1] === 'Recent Stores');
-    const href = await page.$eval('#header-menu-panel .header-menu-item:last-child', (e) => e.getAttribute('href'));
+    const href = await page.$eval('#header-menu-panel > a.header-menu-item:last-of-type', (e) => e.getAttribute('href'));
     ok('Recent Stores -> the pick-up-where-you-left-off row', href === 'stores.html#cart-stores', href);
     await ctx.close();
   }
@@ -286,13 +286,13 @@ async function measureCLS(browser, path, opts) {
     ok('ArrowUp moves back', await page.evaluate(() =>
       document.activeElement === document.querySelectorAll('#header-menu-panel .header-menu-item')[0]));
     await page.keyboard.press('ArrowUp');
-    ok('ArrowUp from the top wraps to the bottom', await page.evaluate(() => {
-      const l = document.querySelectorAll('#header-menu-panel .header-menu-item');
+    ok('ArrowUp from the top wraps to the bottom (Privacy, the last link)', await page.evaluate(() => {
+      const l = document.querySelectorAll('#header-menu-panel .header-menu-item, #header-menu-panel .header-menu-legal-link');
       return document.activeElement === l[l.length - 1];
     }));
     await page.keyboard.press('End');
     ok('End goes to the last item', await page.evaluate(() => {
-      const l = document.querySelectorAll('#header-menu-panel .header-menu-item');
+      const l = document.querySelectorAll('#header-menu-panel .header-menu-item, #header-menu-panel .header-menu-legal-link');
       return document.activeElement === l[l.length - 1];
     }));
     await page.keyboard.press('Home');
@@ -392,6 +392,17 @@ async function measureCLS(browser, path, opts) {
     const b = Math.min.apply(null, withouts);
     ok('menu adds no layout shift: ' + p.name, w - b < 0.005,
       'with ' + w.toFixed(4) + ' vs without ' + b.toFixed(4));
+  }
+
+  // ---- Terms · Privacy at the foot of the menu (the footer is hidden on
+  //      phones and tablets) ----
+  {
+    const { ctx, page } = await open(browser, '/index.html');
+    await page.click('#header-menu-btn');
+    const legal = await page.$$eval('#header-menu-panel .header-menu-legal-link', (as) => as.map((a) => [a.textContent, a.getAttribute('href'), a.getAttribute('role'), Math.round(a.getBoundingClientRect().height)]));
+    ok('menu ends with Terms · Privacy', JSON.stringify(legal.map((l) => l.slice(0, 3))) === JSON.stringify([['Terms', 'terms.html', 'menuitem'], ['Privacy', 'privacy.html', 'menuitem']]), JSON.stringify(legal));
+    ok('...each a full-size tap target', legal.every((l) => l[3] >= 44));
+    await ctx.close();
   }
 
   await browser.close();

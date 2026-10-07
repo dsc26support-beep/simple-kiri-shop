@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Email Preferences — Mwakete</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.min.css">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <meta name="theme-color" content="#332d63">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-top-row">
+      <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
+        <img src="assets/img/favicon.svg" alt="" class="header-logo-mark"><span class="header-wordmark" aria-hidden="true">wakete</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="page-products">
+    <div class="container unsub-page">
+      <h1>Promotional emails</h1>
+      <!-- A button rather than unsubscribing on page load: some email apps
+           open every link to scan it, and that must not switch anyone off. -->
+      <div id="unsub-ask">
+        <p>Stop emails about new products and news from Mwakete?</p>
+        <p class="helper-text">Emails about your orders, bookings and signing in are not affected.</p>
+        <p><button type="button" class="btn btn-primary" id="unsub-btn">Stop these emails</button></p>
+      </div>
+      <p id="unsub-done" role="status" aria-live="polite" hidden>Done. You will not get promotional emails from Mwakete any more. You can turn them back on from your account page.</p>
+      <p id="unsub-error" class="form-error" role="alert"></p>
+      <p><a href="index.html">Back to Mwakete</a></p>
+    </div>
+  </main>
+
+  <script defer src="assets/js/config.min.js"></script>
+  <script defer src="assets/js/api.min.js"></script>
+  <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/unsubscribe.min.js"></script>
+</body>
+</html>

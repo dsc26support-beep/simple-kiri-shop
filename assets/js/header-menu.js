@@ -25,9 +25,6 @@ const HEADER_MENU_ICON = {
   recent: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4"></path><path d="M3 4v5h5"></path><path d="M12 8v4l3 2"></path></svg>'
 };
 
-const HEADER_MENU_ENQUIRY =
-  'mailto:admin@mwakete.com?subject=Mwakete%20Enquiry';
-
 /**
  * The items, in the order they are shown.
  *
@@ -61,11 +58,12 @@ function headerMenuItems() {
     });
   }
 
+  // The Help Centre, which answers most questions and ends in the same
+  // Enquiry email for the rest.
   items.push({
     label: 'Help & Support',
-    href: HEADER_MENU_ENQUIRY,
-    icon: HEADER_MENU_ICON.help,
-    external: true
+    href: 'help.html',
+    icon: HEADER_MENU_ICON.help
   });
   items.push({ label: 'Tips', href: 'customer-tips.html', icon: HEADER_MENU_ICON.tips });
 
@@ -150,7 +148,15 @@ function initHeaderMenu() {
       (it.chooser ? ' data-login-chooser="1"' : '') +
       '><span class="header-menu-icon">' + it.icon + '</span>' +
       '<span class="header-menu-label">' + escapeHtml(it.label) + '</span></a>';
-  }).join('');
+  }).join('') +
+    // The footer (Terms | Privacy) is hidden on phones and tablets, so the
+    // menu carries them - small, last, and in the arrow-key order with the
+    // rest. Kept apart from .header-menu-item: they are not destinations
+    // with an icon, and they read as fine print, not navigation.
+    '<div class="header-menu-legal">' +
+    '<a class="header-menu-legal-link" role="menuitem" href="terms.html">Terms</a>' +
+    '<span aria-hidden="true">·</span>' +
+    '<a class="header-menu-legal-link" role="menuitem" href="privacy.html">Privacy</a></div>';
 
   wrap.appendChild(btn);
   wrap.appendChild(panel);
@@ -160,7 +166,7 @@ function initHeaderMenu() {
 }
 
 function headerMenuLinks(panel) {
-  return Array.prototype.slice.call(panel.querySelectorAll('.header-menu-item'));
+  return Array.prototype.slice.call(panel.querySelectorAll('.header-menu-item, .header-menu-legal-link'));
 }
 
 function closeHeaderMenu(btn, panel, refocus) {

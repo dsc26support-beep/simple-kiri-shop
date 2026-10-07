@@ -109,19 +109,19 @@ const linkInfo = (page) => page.evaluate(() => {
   ok('it authenticates the caller', /requireCustomerAuth\(body\.token\)/.test(fn));
   ok('it reads the email from the AUTHENTICATED customer, not the request body',
     /normalizeEmail\(customer\.Email\)/.test(fn) && !/body\.email/.test(fn));
-  // isStoreBrowsable is 'active' or 'standby' - which is exactly ownerCanLogIn.
-  // The only status it excludes is 'closed', the soft delete from Settings,
-  // where the owner is locked out and their sessions revoked. Sending them to
-  // owner/dashboard.html would dead-end at a login that refuses them, so this
-  // filter is the right one and must stay.
-  ok('a deleted store does not count as having one', /isStoreBrowsable/.test(fn));
+  // ownerCanLogIn is 'active' or 'standby'. The only status it excludes is
+  // 'closed', the soft delete from Settings, where the owner is locked out and
+  // their sessions revoked. Sending them to owner/dashboard.html would
+  // dead-end at a login that refuses them, so this filter is the right one.
+  // (isStoreBrowsable would be wrong here: it also hides the admin's own store
+  // from shoppers, and the admin still needs their My Store link.)
+  ok('a deleted store does not count as having one', /ownerCanLogIn\(o\)/.test(fn));
   const auth = fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8');
   const canLogIn = (auth.match(/function ownerCanLogIn[\s\S]*?\n}/) || [''])[0];
   const browsable = (auth.match(/function isStoreBrowsable[\s\S]*?\n}/) || [''])[0];
-  const bodyOf = (f) => f.replace(/^function \w+\(owner\) \{/, '').replace(/\s+/g, ' ').trim();
-  ok('and "browsable" still means the same statuses as "can log in" - which is '
-    + 'what makes My Store a link they can actually follow',
-    bodyOf(canLogIn) === bodyOf(browsable) && bodyOf(browsable).length > 0, bodyOf(browsable));
+  ok('and "browsable" uses the same statuses as "can log in" (plus hiding admin stores)',
+    /owner\.Status === 'active' \|\| owner\.Status === 'standby'/.test(canLogIn)
+    && /owner\.Status === 'active' \|\| owner\.Status === 'standby'/.test(browsable), browsable.replace(/\s+/g, ' '));
   const code = fs.readFileSync(REPO + 'apps-script/Code.gs', 'utf8');
   ok('the action is routed', /case 'getCustomerStore'/.test(code));
 

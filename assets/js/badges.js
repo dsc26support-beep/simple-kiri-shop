@@ -23,8 +23,9 @@
  * same 24-unit box with a single 2px stroke as the phone, messenger and
  * delivery glyphs, so a badge sits beside them as part of one set.
  *
- * ICONS NEVER CARRY MEANING ALONE. Every badge renders its text label at every
- * size, and the shape/weight differences below survive monochrome and
+ * Only Verified shows its word; every other badge is icon-only (iconOnly),
+ * with its full name kept for screen readers, shown in full in the Badges?
+ * legend, and explained in the popovers. The shape/weight differences below survive monochrome and
  * forced-colours mode - see the .seller-badge block in styles.css.
  */
 
@@ -87,6 +88,7 @@ const SELLER_BADGES = {
     label: 'Recommended',
     srLabel: 'Mwakete Recommended',
     explain: 'Recommended by Mwakete based on seller performance and customer experience.',
+    iconOnly: true,
     tier: 'ribbon',
     category: 'trust',
     // The one emoji in the set, because the brief names this exact string.
@@ -97,6 +99,7 @@ const SELLER_BADGES = {
     label: 'Top',
     srLabel: 'Top Seller',
     explain: 'Consistently strong seller performance on Mwakete.',
+    iconOnly: true,
     tier: 'star', category: 'performance', icon: BADGE_ICON_STAR
   },
   verified: {
@@ -109,34 +112,39 @@ const SELLER_BADGES = {
     label: 'Responsive',
     srLabel: 'Responsive Seller',
     explain: 'Usually responds quickly to customer messages.',
+    iconOnly: true,
     tier: 'chip', category: 'performance', icon: BADGE_ICON_CHAT
   },
   delivery: {
     label: 'Delivery',
     srLabel: 'Reliable Delivery',
     explain: 'Strong record of successful fulfilment.',
+    iconOnly: true,
     tier: 'chip', category: 'performance', icon: BADGE_ICON_PACKAGE
   },
   favourite: {
     label: 'Favourite',
     srLabel: 'Customer Favourite',
     explain: 'Popular with returning and satisfied customers.',
+    iconOnly: true,
     tier: 'chip', category: 'popularity', icon: BADGE_ICON_HEART
   },
   popular: {
     label: 'Popular',
     srLabel: 'Popular Seller',
     explain: 'Currently receiving strong customer interest.',
+    iconOnly: true,
     tier: 'chip', category: 'popularity', icon: BADGE_ICON_FLAME
   },
-  // The only badge that shows no visible word. `label` is kept because it is
-  // what it WOULD read - clearing iconOnly is all it takes to bring the word
-  // back - and because the "+N" counter and the screen-reader name are built
-  // from this entry either way.
+  // Every badge but Verified shows no visible word (owner decision). `label`
+  // is kept because it is what it WOULD read - clearing iconOnly is all it
+  // takes to bring the word back - and because the "+N" counter and the
+  // screen-reader name are built from these entries either way.
   //
-  // A sparkle on its own says nothing to a sighted shopper, so the legend
-  // panel is now the only place its meaning is written down. That is why
-  // renderBadgeLegend lists every badge rather than only the ones on screen.
+  // An icon on its own says little to a sighted shopper, so the legend panel
+  // names every badge in full (fullNames) and explains it, and the per-badge
+  // popovers explain it too. That is why renderBadgeLegend lists every badge
+  // rather than only the ones on screen.
   new: {
     label: 'New',
     srLabel: 'New Seller',
@@ -164,12 +172,12 @@ function sortSellerBadges(ids) {
 // inventing one. Reset per page load, which is all the uniqueness ids need.
 let sellerBadgeSeq = 0;
 
-function sellerBadgeClasses(id, size) {
+function sellerBadgeClasses(id, size, iconOnly) {
   const b = SELLER_BADGES[id];
   return 'seller-badge seller-badge--' + size
     + ' seller-badge--' + b.tier
     + ' seller-badge--cat-' + b.category
-    + (b.iconOnly ? ' seller-badge--iconic' : '')
+    + (iconOnly ? ' seller-badge--iconic' : '')
     + ' seller-badge--' + id;
 }
 
@@ -178,6 +186,12 @@ function sellerBadgeClasses(id, size) {
  *                  storefronts, admin). Both keep the text label.
  * opts.max         show at most this many; the rest go behind a "+N" control.
  * opts.interactive false renders plain spans with no popover.
+ * opts.labels      true shows every badge's word, iconOnly or not - for the
+ *                  admin back-office, which needs to tell badges apart at a
+ *                  glance. Shopper-facing pages leave it off.
+ * opts.fullNames   true makes the visible word the full name (srLabel,
+ *                  "Top Seller") rather than the short label - the Badges?
+ *                  legend, where each icon is decoded. Implies labels.
  *
  * WHY interactive:false EXISTS. A product card is a single <a>. A <button>
  * inside an anchor is invalid HTML, and the browser's behaviour for a click on
@@ -198,8 +212,11 @@ function renderSellerBadges(ids, opts) {
   const shown = list.slice(0, max);
   const hidden = list.slice(max);
 
+  const fullNames = opts.fullNames === true;
+  const forceLabels = opts.labels === true || fullNames;
   const one = (id) => {
     const b = SELLER_BADGES[id];
+    const iconOnly = b.iconOnly && !forceLabels;
     // The visible text is hidden from assistive tech and the full name supplied
     // beside it, so the accessible name is computed from content. An aria-label
     // would have been shorter, but on a plain <span> - which is what a card
@@ -209,15 +226,15 @@ function renderSellerBadges(ids, opts) {
     // what a screen reader announces is unchanged - it is the sighted shopper
     // who now has to reach the legend to decode it, not the listening one.
     const inner = b.icon
-      + (b.iconOnly ? ''
-        : '<span class="seller-badge-label" aria-hidden="true">' + escapeHtml(b.label) + '</span>')
+      + (iconOnly ? ''
+        : '<span class="seller-badge-label" aria-hidden="true">' + escapeHtml(fullNames ? b.srLabel : b.label) + '</span>')
       + '<span class="sr-only">' + escapeHtml(b.srLabel) + '</span>';
     if (!interactive) {
-      return '<span class="' + sellerBadgeClasses(id, size) + '">' + inner + '</span>';
+      return '<span class="' + sellerBadgeClasses(id, size, iconOnly) + '">' + inner + '</span>';
     }
     const n = ++sellerBadgeSeq;
     return '<span class="seller-badge-wrap">'
-      + '<button type="button" class="' + sellerBadgeClasses(id, size) + '"'
+      + '<button type="button" class="' + sellerBadgeClasses(id, size, iconOnly) + '"'
       + ' aria-expanded="false" aria-controls="sb-pop-' + n + '">' + inner + '</button>'
       + '<span class="info-pop seller-badge-pop" id="sb-pop-' + n + '" role="status" hidden>'
       + escapeHtml(b.explain) + '</span>'
@@ -266,7 +283,9 @@ function renderBadgeLegend() {
     + SELLER_BADGE_ORDER.map((id) => {
       const b = SELLER_BADGES[id];
       return '<div class="badge-legend-row">'
-        + '<dt>' + renderSellerBadges([id], { size: 'chip', interactive: false }) + '</dt>'
+        // The one place every badge is named in full - on cards and pages all
+        // but Verified are icon-only, so this is where a shopper decodes them.
+        + '<dt>' + renderSellerBadges([id], { size: 'chip', interactive: false, fullNames: true }) + '</dt>'
         + '<dd>' + escapeHtml(b.explain) + '</dd>'
         + '</div>';
     }).join('')

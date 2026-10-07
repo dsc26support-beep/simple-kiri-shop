@@ -97,7 +97,8 @@ const probe = (page) => page.evaluate(() => {
     // suite never looked. Every page that is supposed to HAVE a footer is now
     // checked for the line, so the two lists cannot drift apart again.
     const pages = KEEP.map((f) => [f, f.indexOf('/') === -1 ? '' : '../']);
-    const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    // Desktop: phones and tablets no longer show the customer footer (below).
+    const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx2.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
       contentType: 'application/json', body: JSON.stringify({ ok: true, products: [], stores: [] }) }));
     const page2 = await ctx2.newPage();
@@ -125,6 +126,23 @@ const probe = (page) => page.evaluate(() => {
       ok(`clicking it opens /${dest}`, page2.url().endsWith('/' + dest), page2.url());
     }
     await ctx2.close();
+  }
+
+  // Phones and tablets (<= 1024px): no customer footer at all. The seller
+  // sign-in pages keep theirs - its Enquiry link is a deleted store's way back.
+  for (const w of [390, 768, 1024, 1025]) {
+    const ctx3 = await browser.newContext({ viewport: { width: w, height: 844 } });
+    await ctx3.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
+      contentType: 'application/json', body: JSON.stringify({ ok: true, products: [], stores: [] }) }));
+    const page3 = await ctx3.newPage();
+    for (const file of ['index.html', 'customer-login.html', 'help.html', 'owner/login.html', 'owner/forgot-password.html']) {
+      await page3.goto(BASE + '/' + file, { waitUntil: 'load' });
+      const shown = await page3.$eval('footer.site-footer', (f) => getComputedStyle(f).display !== 'none');
+      const seller = file.indexOf('owner/') === 0;
+      const want = seller || w > 1024;
+      ok(`${w}px ${file}: footer ${want ? 'shown' : 'hidden'}`, shown === want);
+    }
+    await ctx3.close();
   }
 
   await browser.close();

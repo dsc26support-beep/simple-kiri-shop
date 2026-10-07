@@ -253,7 +253,10 @@ function actionGetCustomerStore(body) {
   var cacheKey = 'v1:custstore:' + email;
   return getCached(cacheKey, 60, function () {
     var owner = sheetToObjects(getSheet('Owners')).filter(function (o) {
-      return normalizeEmail(o.Email) === email && isStoreBrowsable(o);
+      // ownerCanLogIn, not isStoreBrowsable: the question is "can this person
+      // open their dashboard", and an admin's own store - hidden from shoppers
+      // by isStoreBrowsable - still has a dashboard to open.
+      return normalizeEmail(o.Email) === email && ownerCanLogIn(o);
     })[0];
     if (!owner) return ok({ hasStore: false });
     return ok({ hasStore: true, storeSlug: owner.StoreSlug, storeName: owner.StoreName });

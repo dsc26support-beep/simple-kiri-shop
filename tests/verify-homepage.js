@@ -85,8 +85,8 @@ const layout = (page) => page.evaluate(() => {
     ok('mobile: the discovery row (Popular Stores) fits within the first screen',
       m.storesTop < 844, String(m.storesTop));
     // Tips is not a quick action - it lives in the bottom nav and header menu
-    // - so four remain: Categories, Stores, Rentals, Services.
-    ok('mobile: four quick actions are shown', m.quickActionCount === 4, String(m.quickActionCount));
+    // - so five: Categories, Stores, Rentals, Services, Recent Views.
+    ok('mobile: five quick actions are shown', m.quickActionCount === 5, String(m.quickActionCount));
     ok('mobile: the quick-action tiles stay on one row, not wrapping',
       m.quickActionsOneRow === true, String(m.quickActionsOneRow));
     // The same three lines are in the header ticker (#64); a second copy
