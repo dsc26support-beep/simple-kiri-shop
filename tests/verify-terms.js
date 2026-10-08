@@ -59,17 +59,22 @@ const ok = (name, cond, detail) => {
     && /already confirmed/i.test(text));
   ok('and it says plainly that pending is not booked', /Pending is not booked/i.test(text));
 
-  // --- fees: the page says none, so none may exist --------------------------
+  // --- fees: only optional paid featuring (owner-approved, Oct 2026) -------
   const gs = fs.readdirSync(REPO + 'apps-script').filter((f) => f.endsWith('.gs'))
     .map((f) => fs.readFileSync(REPO + 'apps-script/' + f, 'utf8')).join('\n');
-  ok('it says no fees are charged',
-    /charges nothing|no listing\s*fee, no commission/i.test(text));
+  ok('it says selling is free - no listing fee, no commission',
+    /no listing\s*fee, no\s*commission/i.test(text));
+  ok('and names paid featuring as the only charge', /only charge is optional paid\s*featuring/i.test(text));
   ok('and no commission or platform fee exists in the backend',
     !/commissionRate|platformFee|serviceFeePercent|takeRate/i.test(gs));
 
-  // --- seller cannot buy placement ------------------------------------------
-  ok('it says featured placement cannot be bought by a seller',
-    /cannot be bought or set by a seller/i.test(text));
+  // --- featured placement: chosen by Mwakete or paid for, at the real price ---
+  ok('it says featuring is chosen by Mwakete or paid for by the seller',
+    /chose\s*it, or because the seller paid for featuring/i.test(text));
+  const price = Number((gs.match(/FEATURE_PRICE_PER_PRODUCT_DAY\s*=\s*([\d.]+)/) || [])[1]);
+  ok('and the price in the Terms matches the backend (' + Math.round(price * 100) + 'c)',
+    new RegExp(Math.round(price * 100) + 'c per product per day').test(text));
+  ok('fake payment receipts lead to suspension', /Fake payment receipts[\s\S]*store will be\s*suspended/i.test(text));
   const products = fs.readFileSync(REPO + 'apps-script/Products.gs', 'utf8');
   ok('and no public seller-facing action writes a featured flag',
     !/function actionSetFeatured|isBestValue\s*=\s*body\./i.test(products));

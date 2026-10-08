@@ -36,6 +36,20 @@
  * Apps Script editor). Without it nothing breaks - every payment just goes
  * to Pending review.
  *
+ * Anti-fraud (owner-approved, Oct 2026). No bank feed exists for the account
+ * (no email or SMS alerts), so the system only ever sees the seller's
+ * screenshot. These rules make faking it hard and not worth it:
+ *   1. The receipt's date can't be before the day the order was started.
+ *   2. The bank's own Reference Number (ANZ: "Reference Number AQC84078") is
+ *      read and can only ever be used once.
+ *   3. Images saved by photo editors, or not shaped like a phone screenshot,
+ *      are refused before any checking.
+ *   4. Per-store weekly limit on automatic approval (lower for new stores);
+ *      above it a payment waits for a human.
+ *   5. Featuring starts FEATURE_START_DELAY_HOURS after automatic approval.
+ *   6. Free first featuring only for an active store with a phone number
+ *      that no other store has already had free featuring with.
+ *
  * Sheet: FeaturePurchases - created on first use with the headers below. It
  * holds payment records, so like Orders it is deliberately NOT in
  * REQUIRED_TABS, whose setupSheets "repair" rewrites header rows.
@@ -48,10 +62,14 @@ var FEATURE_FREE_MAX_PRODUCTS = 3;
 var FEATURE_PAY_ACCOUNT_NAME = 'Mwakete';
 var FEATURE_PAY_ACCOUNT_NUMBER = '906149';
 var FEATURE_SUBMITS_PER_HOUR = 10;
+// Kiribati's westernmost zone (Tarawa). Order days are compared in this time,
+// so a receipt from Kiritimati (UTC+14) can only ever look later, never earlier.
+var FEATURE_LOCAL_UTC_OFFSET_HOURS = 12;
+var FEATURE_ESTABLISHED_AFTER_PAYMENTS = 3;
 
 var FEATURE_PURCHASE_HEADERS = ['PurchaseId', 'OwnerId', 'StoreSlug', 'ProductIdsJson', 'Days', 'Amount',
   'Reference', 'Status', 'ScreenshotUrl', 'ScreenshotHash', 'OcrNotes', 'StartsAt', 'EndsAt',
-  'CreatedAt', 'UpdatedAt', 'ViewsAtStartJson', 'ViewsAtEndJson'];
+  'CreatedAt', 'UpdatedAt', 'ViewsAtStartJson', 'ViewsAtEndJson', 'BankMatchedAt', 'ReceiptNo'];
 
 var FEATURE_STATUS = {
   AWAITING: 'Awaiting payment',
@@ -69,6 +87,10 @@ function getFeaturePurchasesSheet() {
     // Additive - appends header cells, moves nothing.
     ensureColumn(sheet, 'ViewsAtStartJson');
     ensureColumn(sheet, 'ViewsAtEndJson');
+    // Admin ticks a paid purchase once the money is seen in the bank account.
+    ensureColumn(sheet, 'BankMatchedAt');
+    // The bank's own Reference Number from the receipt - each usable once.
+    ensureColumn(sheet, 'ReceiptNo');
     return sheet;
   }
   sheet = ss.insertSheet('FeaturePurchases');
@@ -110,17 +132,49 @@ function publicFeaturePurchase(row, productNamesById) {
   };
 }
 
-/** Pure: has this store already had its free featuring? (A row with Amount 0.) */
-function featureFreeUsed(rows, owner) {
-  return rows.some(function (r) {
-    var mine = r.OwnerId === owner.OwnerId || (owner.StoreSlug && r.StoreSlug === owner.StoreSlug);
-    return mine && String(r.Amount) !== '' && Number(r.Amount) === 0;
+/** Kiribati numbers are 7-8 digits; drop spaces, + and the 686 country code. '' when there isn't one. */
+function normalizeFeaturePhone(phone) {
+  var d = String(phone || '').replace(/\D/g, '');
+  if (d.length > 8 && d.indexOf('686') === 0) d = d.slice(3);
+  return d.length >= 7 ? d : '';
+}
+
+/**
+ * Pure: why this store can't have the free featuring, or '' if it can.
+ * 'used'     - this store, or another store with the same phone, had it.
+ * 'nophone'  - no usable phone number on the store.
+ * 'inactive' - the store is paused or closed.
+ * phoneByOwnerId: { OwnerId: phone } for every store (to spot one person
+ * opening several stores to collect the offer again).
+ */
+function featureFreeBlock(rows, owner, phoneByOwnerId) {
+  var phones = phoneByOwnerId || {};
+  var myPhone = normalizeFeaturePhone(owner.Phone);
+  var used = rows.some(function (r) {
+    if (String(r.Amount) === '' || Number(r.Amount) !== 0) return false;
+    if (r.OwnerId === owner.OwnerId || (owner.StoreSlug && r.StoreSlug === owner.StoreSlug)) return true;
+    return !!myPhone && normalizeFeaturePhone(phones[r.OwnerId]) === myPhone;
   });
+  if (used) return 'used';
+  if (owner.Status !== undefined && owner.Status !== 'active') return 'inactive';
+  if (!myPhone) return 'nophone';
+  return '';
+}
+
+/** Pure: has this store already had its free featuring? */
+function featureFreeUsed(rows, owner, phoneByOwnerId) {
+  return featureFreeBlock(rows, owner, phoneByOwnerId) === 'used';
 }
 
 /** Pure: is a featuring of productCount products free for this store right now? */
-function featureIsFree(rows, owner, productCount) {
-  return productCount >= 1 && productCount <= FEATURE_FREE_MAX_PRODUCTS && !featureFreeUsed(rows, owner);
+function featureIsFree(rows, owner, productCount, phoneByOwnerId) {
+  return productCount >= 1 && productCount <= FEATURE_FREE_MAX_PRODUCTS && featureFreeBlock(rows, owner, phoneByOwnerId) === '';
+}
+
+function featurePhonesByOwnerId() {
+  var out = {};
+  sheetToObjects(getSheet('Owners')).forEach(function (o) { out[o.OwnerId] = o.Phone; });
+  return out;
 }
 
 function featurePaymentDetails() {
@@ -154,7 +208,7 @@ function actionStartFeaturePurchase(owner, body) {
     var sheet = getFeaturePurchasesSheet();
     var existing = sheetToObjects(sheet);
     // Decided inside the lock, so two quick taps can't both get the free one.
-    free = featureIsFree(existing, owner, unique.length);
+    free = featureIsFree(existing, owner, unique.length, featurePhonesByOwnerId());
     var now = nowIso();
     var purchaseId = newId('feat');
     var record = {
@@ -194,6 +248,7 @@ function actionListMyFeaturePurchases(owner) {
     views[p.ProductId] = Number(p.Views) || 0;
   });
   var all = sheetToObjects(getFeaturePurchasesSheet());
+  var phones = featurePhonesByOwnerId();
   var rows = all
     .filter(function (r) { return r.OwnerId === owner.OwnerId; })
     .sort(function (a, b) { return String(b.CreatedAt).localeCompare(String(a.CreatedAt)); })
@@ -204,7 +259,8 @@ function actionListMyFeaturePurchases(owner) {
     });
   return ok({
     purchases: rows, payment: featurePaymentDetails(), pricePerProductDay: FEATURE_PRICE_PER_PRODUCT_DAY,
-    freeAvailable: !featureFreeUsed(all, owner),
+    freeAvailable: featureFreeBlock(all, owner, phones) === '',
+    freeBlockedBecause: featureFreeBlock(all, owner, phones),
     freeMaxProducts: FEATURE_FREE_MAX_PRODUCTS
   });
 }
@@ -235,20 +291,27 @@ function actionSubmitFeaturePayment(owner, body) {
   if (bytes.length > MAX_IMAGE_BYTES) return fail('That image is too large (max 5MB).');
   if (bytes.length < featureMinImageBytes()) return fail('That image looks too small or empty. Please upload the full screenshot.');
 
+  // Before any checking: edited or cropped images are refused outright.
+  var fileProblem = featureImageProblem(imageInfo(bytes));
+  if (fileProblem) return fail(fileProblem);
+
   var hash = sha256Hex(bytes);
-  var reused = sheetToObjects(sheet).some(function (r) { return r.ScreenshotHash === hash && r.PurchaseId !== row.PurchaseId; });
+  var allRows = sheetToObjects(sheet);
+  var reused = allRows.some(function (r) { return r.ScreenshotHash === hash && r.PurchaseId !== row.PurchaseId; });
   if (reused) return fail('That screenshot has already been used for another payment.');
 
   var screenshotUrl = saveFeatureScreenshot(bytes, mimeType, row.PurchaseId);
-  var check = checkFeaturePaymentScreenshot(bytes, mimeType, row);
+  var check = checkFeaturePaymentScreenshot(bytes, mimeType, row, featureDecisionContext(allRows, row, Date.now()));
   var now = nowIso();
   var update = {
     Status: check.status, ScreenshotUrl: screenshotUrl, ScreenshotHash: hash,
-    OcrNotes: check.notes, UpdatedAt: now
+    OcrNotes: check.notes, UpdatedAt: now, ReceiptNo: check.receiptNo || ''
   };
   if (check.status === FEATURE_STATUS.APPROVED) {
-    update.StartsAt = now;
-    update.EndsAt = new Date(Date.now() + Number(row.Days) * 86400000).toISOString();
+    // Starts a little later, not now: makes a quick fake-and-go less worth it.
+    var startMs = Date.now() + featureStartDelayHours() * 3600000;
+    update.StartsAt = new Date(startMs).toISOString();
+    update.EndsAt = new Date(startMs + Number(row.Days) * 86400000).toISOString();
     update.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(row));
   }
   updateRowFromObject(sheet, row.__row, update);
@@ -281,6 +344,7 @@ function actionListFeaturePurchases(owner) {
       p.storeName = storeNames[r.OwnerId] || r.StoreSlug;
       p.screenshotUrl = r.ScreenshotUrl || '';
       p.ocrNotes = r.OcrNotes || '';
+      p.bankMatchedAt = r.BankMatchedAt || '';
       return p;
     });
   return ok({ purchases: rows });
@@ -312,6 +376,23 @@ function actionSetFeaturePurchaseStatus(owner, body) {
   updateRowFromObject(sheet, row.__row, update);
   invalidateCache([TIPS_CACHE_KEY, PAID_FEATURED_CACHE_KEY]);
   return ok({ purchaseId: row.PurchaseId, status: update.Status });
+}
+
+/**
+ * body.purchaseId, body.matched: boolean. The admin's tick that this payment
+ * was seen arriving in the bank account - the one check no screenshot can
+ * fake. Only paid purchases that went past Awaiting payment can be ticked.
+ */
+function actionSetFeatureBankMatched(owner, body) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var sheet = getFeaturePurchasesSheet();
+  var row = findRowById(sheet, 'PurchaseId', String(body.purchaseId || ''));
+  if (!row) return fail('Purchase not found.');
+  if (Number(row.Amount) === 0) return fail('Free featuring - nothing to match.');
+  if (row.Status === FEATURE_STATUS.AWAITING) return fail('No payment has been uploaded for this purchase yet.');
+  var at = body.matched ? nowIso() : '';
+  updateRowFromObject(sheet, row.__row, { BankMatchedAt: at });
+  return ok({ purchaseId: row.PurchaseId, bankMatchedAt: at });
 }
 
 /* ==================== What's currently featured ==================== */
@@ -538,8 +619,25 @@ function ocrAmountCovers(ocrText, amount) {
   return Math.round((paid - Number(amount)) * 100) >= 0;
 }
 
+// "receipt" is deliberately NOT a success word: our own page says it.
 function ocrHasSuccessWord(ocrText) {
-  return /(successful|completed|confirmed|approved|receipt|success|posted)/i.test(ocrText);
+  return /(successful|completed|confirmed|approved|success|posted)/i.test(ocrText);
+}
+
+/**
+ * A screenshot of Mwakete's own pay page or the drawn example receipt. Both
+ * carry the account, reference and amount, so without this they would pass
+ * every other check. Matches the words those screens show; spacing-blind.
+ */
+function ocrLooksLikeMwaketePage(ocrText) {
+  var t = String(ocrText || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return ['example', 'copypaste', 'screenshotpaymentreceipt', 'uploadpayment', 'payandupload', 'featureyourproducts']
+    .some(function (w) { return t.indexOf(w) !== -1; });
+}
+
+/** Some date on the receipt that ocrTooOld can read. */
+function ocrHasDate(ocrText) {
+  return ocrReceiptDate(ocrText) !== null;
 }
 
 /** The "Transfer Confirmation" / Confirm-and-Cancel screen a bank shows BEFORE sending - not proof of payment. */
@@ -549,17 +647,29 @@ function ocrLooksUnsubmitted(ocrText) {
   return /\bconfirm\b/.test(t) && !/confirmed/.test(t) && /\bcancel\b/.test(t);
 }
 
-function ocrTooOld(ocrText) {
-  var maxHours = Number(PropertiesService.getScriptProperties().getProperty('FEATURE_MAX_PAYMENT_AGE_HOURS') || '72');
+var OCR_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+/** The first date on the receipt: 2026-10-08, 08/10/2026, 8 Oct 2026 or Oct 8, 2026. null if none. */
+function ocrReceiptDate(ocrText) {
   var text = String(ocrText || '');
   var d = null;
-  var iso = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (iso) d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-  if (!d) {
-    var dmy = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-    if (dmy) d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+  var m = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (!d && (m = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/))) d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  var mon = '(' + OCR_MONTHS.join('|') + ')[a-z]*\\.?';
+  if (!d && (m = text.match(new RegExp('\\b(\\d{1,2})\\s*' + mon + ',?\\s*(\\d{4})', 'i')))) {
+    d = new Date(Number(m[3]), OCR_MONTHS.indexOf(m[2].toLowerCase()), Number(m[1]));
   }
-  if (!d || isNaN(d.getTime())) return false; // no date found - more likely an OCR miss than a problem
+  if (!d && (m = text.match(new RegExp('\\b' + mon + '\\s*(\\d{1,2}),?\\s*(\\d{4})', 'i')))) {
+    d = new Date(Number(m[3]), OCR_MONTHS.indexOf(m[1].toLowerCase()), Number(m[2]));
+  }
+  return d && !isNaN(d.getTime()) ? d : null;
+}
+
+function ocrTooOld(ocrText) {
+  var maxHours = Number(PropertiesService.getScriptProperties().getProperty('FEATURE_MAX_PAYMENT_AGE_HOURS') || '72');
+  var d = ocrReceiptDate(ocrText);
+  if (!d) return false; // no date found - handled by the "dated" check, which sends it to a human
   return (Date.now() - d.getTime()) / 3600000 > maxHours;
 }
 
@@ -581,7 +691,8 @@ function ocrPaymentImage(bytes, mimeType) {
  * Pure decision over the OCR text - kept apart from the Drive calls so it can
  * be tested directly (tests/test-featuring.js). ocrText null = OCR unavailable.
  */
-function decideFeaturePayment(ocrText, purchase, isPhoto) {
+function decideFeaturePayment(ocrText, purchase, isPhoto, ctx) {
+  ctx = ctx || {};
   if (ocrText === null) {
     return { status: FEATURE_STATUS.PENDING, notes: 'OCR unavailable (Drive API service not enabled)',
       message: 'Thanks - your payment is waiting for a quick check by Mwakete. Your products will be featured as soon as it is approved.' };
@@ -592,11 +703,29 @@ function decideFeaturePayment(ocrText, purchase, isPhoto) {
     amount: ocrAmountCovers(ocrText, purchase.Amount),
     success: ocrHasSuccessWord(ocrText),
     submitted: !ocrLooksUnsubmitted(ocrText),
-    recent: !ocrTooOld(ocrText)
+    recent: !ocrTooOld(ocrText),
+    dated: ocrHasDate(ocrText),
+    notOurPage: !ocrLooksLikeMwaketePage(ocrText)
   };
+  // 1. Paid on or after the day this order (and its reference) was created.
+  var receiptDay = ocrReceiptDay(ocrText);
+  var createdMs = new Date(purchase.CreatedAt).getTime();
+  checks.afterOrder = !receiptDay || isNaN(createdMs) || receiptDay >= featureLocalDay(createdMs);
+  // 2. The bank's own number for this transfer, used once only.
+  var receiptNo = ocrReceiptNumber(ocrText, purchase);
+  checks.receiptNo = !!receiptNo;
+  checks.receiptUnused = !receiptNo || (ctx.usedReceiptNumbers || []).indexOf(receiptNo) === -1;
   var notes = Object.keys(checks).map(function (k) { return k + ':' + checks[k]; }).join(' ') +
-    ' photo:' + !!isPhoto + ' paid:' + ocrPaidAmount(ocrText);
+    ' photo:' + !!isPhoto + ' paid:' + ocrPaidAmount(ocrText) + (receiptNo ? ' receiptNo:' + receiptNo : '');
+  var pending = function (why) {
+    return { status: FEATURE_STATUS.PENDING, notes: notes + ' (' + why + ')', receiptNo: receiptNo,
+      message: 'Thanks - your payment is waiting for a quick check by Mwakete. Your products will be featured as soon as it is approved.' };
+  };
 
+  if (!checks.notOurPage) {
+    return { status: FEATURE_STATUS.REJECTED, notes: notes + ' (Mwakete page or example)',
+      message: 'That is a screenshot of the Mwakete page or the example, not your bank\'s receipt. Please pay in your banking app, then upload the receipt screen it shows.' };
+  }
   if (!checks.submitted) {
     return { status: FEATURE_STATUS.REJECTED, notes: notes,
       message: 'That looks like the screen before you press Confirm in your bank app. Please finish the transfer, then upload the receipt screen that says it was successful.' };
@@ -614,16 +743,33 @@ function decideFeaturePayment(ocrText, purchase, isPhoto) {
       message: 'We couldn\'t confirm this payment - the screenshot needs to show ' +
         failed.map(function (k) { return why[k]; }).join(', ') + '. Please check and upload the receipt again.' };
   }
-  var autoMax = Number(PropertiesService.getScriptProperties().getProperty('FEATURE_AUTO_APPROVE_MAX') || '20');
-  if (Number(purchase.Amount) > autoMax) {
-    return { status: FEATURE_STATUS.PENDING, notes: notes + ' (over auto-approve max)',
-      message: 'Thanks - your payment is waiting for a quick check by Mwakete. Your products will be featured as soon as it is approved.' };
+  if (!checks.afterOrder) {
+    return { status: FEATURE_STATUS.REJECTED, notes: notes + ' (receipt before order)',
+      message: 'That receipt is dated before you started this order. Please pay for this order (reference ' +
+        purchase.Reference + ') and upload that receipt.' };
   }
-  return { status: FEATURE_STATUS.APPROVED, notes: notes,
-    message: 'Payment confirmed - your products are featured now.' };
+  if (!checks.receiptUnused) {
+    return { status: FEATURE_STATUS.REJECTED, notes: notes + ' (receipt number reused)',
+      message: 'That bank receipt (Reference Number ' + receiptNo + ') has already been used for another payment.' };
+  }
+  // Couldn't read a date or the bank's number: the checks above couldn't fully run, so a human looks.
+  if (!checks.dated) return pending('no date read');
+  if (!checks.receiptNo) return pending('no receipt number read');
+  // 4. Per-store weekly cap on automatic approval.
+  var weekCap = featureWeeklyAutoMax(ctx.paidApprovedCount || 0);
+  if (Math.round(((ctx.weekApproved || 0) + Number(purchase.Amount)) * 100) > Math.round(weekCap * 100)) {
+    return pending('over weekly auto limit $' + weekCap);
+  }
+  var autoMax = Number(PropertiesService.getScriptProperties().getProperty('FEATURE_AUTO_APPROVE_MAX') || '20');
+  if (Number(purchase.Amount) > autoMax) return pending('over auto-approve max');
+  var hours = featureStartDelayHours();
+  return { status: FEATURE_STATUS.APPROVED, notes: notes, receiptNo: receiptNo,
+    message: hours > 0
+      ? 'Payment confirmed - your products will be featured within ' + hours + ' hour' + (hours === 1 ? '' : 's') + '.'
+      : 'Payment confirmed - your products are featured now.' };
 }
 
-function checkFeaturePaymentScreenshot(bytes, mimeType, purchase) {
+function checkFeaturePaymentScreenshot(bytes, mimeType, purchase, ctx) {
   var ocrText;
   try {
     ocrText = ocrPaymentImage(bytes, mimeType);
@@ -631,7 +777,153 @@ function checkFeaturePaymentScreenshot(bytes, mimeType, purchase) {
     Logger.log('feature OCR failed: ' + e);
     ocrText = null;
   }
-  return decideFeaturePayment(ocrText, purchase, imageHasExif(bytes));
+  return decideFeaturePayment(ocrText, purchase, imageHasExif(bytes), ctx);
+}
+
+/** Hours between automatic approval and the featuring starting (Script Property, default 2). */
+function featureStartDelayHours() {
+  var raw = PropertiesService.getScriptProperties().getProperty('FEATURE_START_DELAY_HOURS');
+  var v = Number(raw);
+  return raw === null || raw === '' || isNaN(v) || v < 0 ? 2 : v;
+}
+
+/**
+ * Pure: what decideFeaturePayment needs to know beyond the screenshot -
+ * receipt numbers already used, and this store's recent paid approvals.
+ */
+function featureDecisionContext(rows, purchase, nowMs) {
+  var weekAgo = nowMs - 7 * 86400000;
+  var ctx = { usedReceiptNumbers: [], weekApproved: 0, paidApprovedCount: 0 };
+  rows.forEach(function (r) {
+    if (r.PurchaseId === purchase.PurchaseId) return;
+    var counts = r.Status === FEATURE_STATUS.APPROVED || r.Status === FEATURE_STATUS.PENDING;
+    if (counts && r.ReceiptNo) ctx.usedReceiptNumbers.push(String(r.ReceiptNo).toUpperCase());
+    if (r.OwnerId !== purchase.OwnerId || r.Status !== FEATURE_STATUS.APPROVED || !(Number(r.Amount) > 0)) return;
+    ctx.paidApprovedCount++;
+    var t = new Date(r.CreatedAt).getTime();
+    if (!isNaN(t) && t >= weekAgo) ctx.weekApproved += Number(r.Amount);
+  });
+  ctx.weekApproved = Math.round(ctx.weekApproved * 100) / 100;
+  return ctx;
+}
+
+/** Most a store can have approved automatically in 7 days; new stores get less until they've paid a few times. */
+function featureWeeklyAutoMax(paidApprovedCount) {
+  var props = PropertiesService.getScriptProperties();
+  if (paidApprovedCount >= FEATURE_ESTABLISHED_AFTER_PAYMENTS) return Number(props.getProperty('FEATURE_STORE_WEEKLY_AUTO_MAX') || '20');
+  return Number(props.getProperty('FEATURE_NEW_STORE_WEEKLY_AUTO_MAX') || '5');
+}
+
+/** 'YYYY-MM-DD' of a moment, in Kiribati (Tarawa) time. */
+function featureLocalDay(ms) {
+  var d = new Date(ms + FEATURE_LOCAL_UTC_OFFSET_HOURS * 3600000);
+  return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+}
+
+/** 'YYYY-MM-DD' of the date printed on the receipt, or '' if none was read. */
+function ocrReceiptDay(ocrText) {
+  var d = ocrReceiptDate(ocrText);
+  if (!d) return '';
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+
+/**
+ * The bank's own number for this transfer. ANZ goMoney labels it "Reference
+ * Number" (e.g. AQC84078); other labels are accepted too. Falls back to the
+ * first letters-then-digits code anywhere, since OCR can split a table's
+ * labels from its values. Never the MWF reference or the account number.
+ */
+function ocrReceiptNumber(ocrText, purchase) {
+  var text = String(ocrText || '');
+  var mine = String((purchase && purchase.Reference) || '').toUpperCase();
+  var usable = function (tok) {
+    var t = String(tok || '').toUpperCase();
+    return t.length >= 6 && t.length <= 16 && /\d{3}/.test(t) && t !== mine && t.indexOf('MWF') !== 0 &&
+      t !== FEATURE_PAY_ACCOUNT_NUMBER && !/^\d+$/.test(t) && !/^(AUD|NZD|USD)\d/.test(t);
+  };
+  var labelled = /(?:reference\s*number|receipt\s*(?:no\.?|number|#)|transaction\s*(?:id|no\.?|number)|trace\s*(?:no\.?|number)|confirmation\s*(?:no\.?|number))\s*[:#.\-]?\s*([A-Za-z0-9]{6,16})/ig;
+  var m;
+  while ((m = labelled.exec(text))) { if (usable(m[1])) return m[1].toUpperCase(); }
+  var loose = /\b([A-Z]{2,4}\d{4,10})\b/g;
+  while ((m = loose.exec(text))) { if (usable(m[1])) return m[1]; }
+  return '';
+}
+
+/* ---------- the image file itself ---------- */
+
+/** Pure: { width, height, editor } from PNG / JPEG / WebP bytes (signed or unsigned). Unknown parts are 0 / ''. */
+function imageInfo(bytes) {
+  var b = function (i) { return bytes[i] & 0xff; };
+  var n = bytes.length;
+  var info = { width: 0, height: 0, editor: '' };
+  if (n > 24 && b(0) === 0x89 && b(1) === 0x50) {
+    info.width = ((b(16) << 24) | (b(17) << 16) | (b(18) << 8) | b(19)) >>> 0;
+    info.height = ((b(20) << 24) | (b(21) << 16) | (b(22) << 8) | b(23)) >>> 0;
+  } else if (n > 4 && b(0) === 0xff && b(1) === 0xd8) {
+    var i = 2;
+    while (i + 9 < n && b(i) === 0xff) {
+      var marker = b(i + 1);
+      var len = (b(i + 2) << 8) | b(i + 3);
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        info.height = (b(i + 5) << 8) | b(i + 6);
+        info.width = (b(i + 7) << 8) | b(i + 8);
+        break;
+      }
+      if (len < 2) break;
+      i += 2 + len;
+    }
+  } else if (n > 30 && b(8) === 0x57 && b(9) === 0x45 && b(10) === 0x42 && b(11) === 0x50) {
+    var kind = String.fromCharCode(b(12), b(13), b(14), b(15));
+    if (kind === 'VP8 ') {
+      info.width = ((b(27) << 8) | b(26)) & 0x3fff;
+      info.height = ((b(29) << 8) | b(28)) & 0x3fff;
+    } else if (kind === 'VP8L') {
+      info.width = 1 + (((b(22) & 0x3f) << 8) | b(21));
+      info.height = 1 + (((b(24) & 0x0f) << 10) | (b(23) << 2) | ((b(22) & 0xc0) >> 6));
+    } else if (kind === 'VP8X') {
+      info.width = 1 + (b(24) | (b(25) << 8) | (b(26) << 16));
+      info.height = 1 + (b(27) | (b(28) << 8) | (b(29) << 16));
+    }
+  }
+  info.editor = imageEditorTag(bytes);
+  return info;
+}
+
+// Names photo editors write into a file's metadata (EXIF Software, XMP
+// CreatorTool, PNG text). Case-sensitive and 5+ characters, so random image
+// data practically never matches. A phone's own screenshot carries none.
+var IMAGE_EDITOR_TAGS = ['Photoshop', 'Lightroom', 'Snapseed', 'PicsArt', 'Picsart', 'Canva', 'Created with GIMP',
+  'Pixlr', 'Fotor', 'PhotoDirector', 'Polarr', 'Meitu', 'InShot', 'Photopea', 'paint.net', 'Affinity Photo',
+  'Pixelmator', 'Facetune', 'PicMonkey', 'PhotoRoom'];
+
+/** The editor named in the file's metadata, or ''. Looks at the start and end, where metadata lives. */
+function imageEditorTag(bytes) {
+  var parts = [];
+  var take = function (from, to) {
+    var chunk = [];
+    for (var i = Math.max(0, from); i < Math.min(bytes.length, to); i++) chunk.push(bytes[i] & 0xff);
+    for (var j = 0; j < chunk.length; j += 8192) parts.push(String.fromCharCode.apply(null, chunk.slice(j, j + 8192)));
+  };
+  take(0, 131072);
+  if (bytes.length > 131072) take(bytes.length - 65536, bytes.length);
+  var text = parts.join('');
+  for (var k = 0; k < IMAGE_EDITOR_TAGS.length; k++) {
+    if (text.indexOf(IMAGE_EDITOR_TAGS[k]) !== -1) return IMAGE_EDITOR_TAGS[k];
+  }
+  return '';
+}
+
+/** Pure: a message refusing the file, or '' if it looks like an untouched phone screenshot. */
+function featureImageProblem(info) {
+  if (info.editor) {
+    return 'That image has been through a photo editor (' + info.editor + '). Please upload the screenshot exactly as your phone saved it - not edited or cropped.';
+  }
+  if (!info.width || !info.height) return ''; // size unreadable - let the other checks decide
+  var ratio = info.height / info.width;
+  if (info.width < 300 || ratio < 1.3 || ratio > 2.7) {
+    return 'That doesn\'t look like a full phone screenshot. Please upload the whole receipt screen exactly as your phone saved it - not cropped, rotated or a photo of it.';
+  }
+  return '';
 }
 
 /** Private Drive folder - never shared by link; these are banking screenshots. Only admins open them. */

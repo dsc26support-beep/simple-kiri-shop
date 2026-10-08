@@ -11,6 +11,7 @@ const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 let purchases = [];
 let payment = { accountName: '', accountNumber: '' };
 let freeAvailable = false;
+let freeBlockedBecause = '';
 let freeMaxProducts = 3;
 
 async function init() {
@@ -30,6 +31,7 @@ async function init() {
   purchases = res.purchases || [];
   payment = res.payment || payment;
   freeAvailable = !!res.freeAvailable;
+  freeBlockedBecause = res.freeBlockedBecause || '';
   if (res.freeMaxProducts) freeMaxProducts = res.freeMaxProducts;
   renderHistory();
 
@@ -49,6 +51,8 @@ async function init() {
 async function showSelectStep(preset) {
   const section = document.getElementById('feature-select');
   document.getElementById('feature-free-note').classList.toggle('hidden', !freeAvailable);
+  // The free offer needs a phone number on the store (one free featuring per person).
+  document.getElementById('feature-free-phone-note').classList.toggle('hidden', freeBlockedBecause !== 'nophone');
   const listEl = document.getElementById('feature-product-list');
   section.classList.remove('hidden');
   const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit: 100 });
@@ -136,11 +140,13 @@ async function onContinue() {
 /* ---------- step 2: pay + upload ---------- */
 
 // The "?" beside the step 2 heading shows a drawn example of the receipt
-// screen to screenshot, filled in with this purchase's own details.
-function setupExample(p) {
+// screen to screenshot. It shows where to pay, but deliberately not this
+// purchase's reference or amount - so a screenshot of it is no use as a
+// "receipt" (and it says EXAMPLE, which the server check rejects).
+function setupExample() {
   const btn = document.getElementById('feature-example-btn');
   const fig = document.getElementById('feature-example');
-  const values = { name: payment.accountName, number: payment.accountNumber, amount: formatMoney(p.amount), reference: p.reference };
+  const values = { name: payment.accountName, number: payment.accountNumber };
   fig.querySelectorAll('[data-example]').forEach((el) => {
     const v = values[el.dataset.example];
     if (v) el.textContent = v;
@@ -163,7 +169,7 @@ function showPayStep(p) {
     document.getElementById('feature-example-btn').classList.add('hidden');
     document.getElementById('feature-pay-title').textContent = 'Featured for free';
   } else {
-    setupExample(p);
+    setupExample();
   }
   document.getElementById('feature-pay-summary').textContent =
     `${p.productNames.join(', ')} - ${p.days} day${p.days === 1 ? '' : 's'}.`;
@@ -180,7 +186,9 @@ function showPayStep(p) {
   if (p.status === 'Approved' || p.status === 'Pending review') {
     document.getElementById('feature-pay-steps').classList.add('hidden');
     showPayResult(p.status === 'Approved'
-      ? `${isFreePurchase(p) ? 'Free' : 'Paid'} - featured until ${fmtDate(p.endsAt)}.`
+      ? (notStartedYet(p)
+        ? `Paid - featuring starts ${fmtDateTime(p.startsAt)} and runs until ${fmtDate(p.endsAt)}.`
+        : `${isFreePurchase(p) ? 'Free' : 'Paid'} - featured until ${fmtDate(p.endsAt)}.`)
       : 'Your payment is waiting for a quick check by Mwakete.', p.status);
   } else if (p.status === 'Rejected') {
     document.getElementById('feature-pay-error').textContent =
@@ -254,7 +262,17 @@ function fmtDate(iso) {
   return iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 }
 
+function fmtDateTime(iso) {
+  return iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+}
+
+// Automatic approvals start a couple of hours later (Featuring.gs, FEATURE_START_DELAY_HOURS).
+function notStartedYet(p) {
+  return p.status === 'Approved' && !!p.startsAt && new Date(p.startsAt).getTime() > Date.now();
+}
+
 function statusLine(p) {
+  if (notStartedYet(p)) return `Paid - starts ${fmtDateTime(p.startsAt)}`;
   if (p.status === 'Approved') {
     const live = new Date(p.endsAt).getTime() > Date.now();
     return live ? `Featured until ${fmtDate(p.endsAt)}` : `Ended ${fmtDate(p.endsAt)}`;

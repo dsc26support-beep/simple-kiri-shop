@@ -74,10 +74,10 @@ function renderSummary(s) {
 // get links to the extra tools as those screens exist.
 function renderMore(c) {
   const links = [];
-  if (c.sync) links.push('<a class="btn btn-light-purple btn-small" href="inventory-sync.html">Import / Sync</a>');
-  if (c.locations) links.push('<button type="button" class="btn btn-light-purple btn-small" data-tool="locations">Locations</button>');
-  if (c.suppliers) links.push('<button type="button" class="btn btn-light-purple btn-small" data-tool="suppliers">Suppliers</button>');
-  if (c.reports) links.push('<button type="button" class="btn btn-light-purple btn-small" data-tool="reports">Reports</button>');
+  if (c.sync) links.push('<a class="btn btn-small inv-tool-btn" href="inventory-sync.html">Import / Sync</a>');
+  if (c.locations) links.push('<button type="button" class="btn btn-small inv-tool-btn" data-tool="locations">Locations</button>');
+  if (c.suppliers) links.push('<button type="button" class="btn btn-small inv-tool-btn" data-tool="suppliers">Suppliers</button>');
+  if (c.reports) links.push('<button type="button" class="btn btn-small inv-tool-btn" data-tool="reports">Reports</button>');
   const el = document.getElementById('inv-more');
   el.innerHTML = links.join(' ');
   el.classList.toggle('hidden', links.length === 0);

@@ -35,6 +35,7 @@
     <div class="container">
       <h1>Feature your products</h1>
       <p class="helper-text">Featured products are shown to shoppers in Tips and at the top of the Featured list. It costs <strong>5c per product per day</strong>.</p>
+      <p id="feature-free-phone-note" class="helper-text hidden">Add a phone number to your store in <a href="settings.html">Settings</a> to get your first featuring of up to 3 products free.</p>
       <p id="feature-free-note" class="feature-free-note hidden">Your first featuring is <strong>free</strong>: choose up to 3 products - no payment needed.</p>
       <p id="feature-status" class="helper-text" role="status"></p>
 
@@ -61,11 +62,12 @@
           <span id="feature-pay-title">Pay and upload your receipt</span>
         </h2>
         <!-- A drawn example of the receipt screen to screenshot. Not a real
-             receipt: the numbered boxes point at what the check looks for. -->
+             receipt: the numbered boxes point at what the check looks for.
+             It never shows the buyer's own reference or amount. -->
         <figure id="feature-example" class="feature-example" hidden>
-          <svg class="feature-example-img" viewBox="0 0 300 420" role="img" aria-labelledby="feature-example-title">
+          <svg class="feature-example-img" viewBox="0 0 300 470" role="img" aria-labelledby="feature-example-title">
             <title id="feature-example-title">Example: the banking app screen after the payment has gone through</title>
-            <rect x="1" y="1" width="298" height="418" rx="22" fill="#ffffff" stroke="#c9c6dc" stroke-width="2"/>
+            <rect x="1" y="1" width="298" height="468" rx="22" fill="#ffffff" stroke="#c9c6dc" stroke-width="2"/>
             <rect x="1" y="1" width="298" height="54" rx="22" fill="#332d63"/>
             <rect x="1" y="34" width="298" height="21" fill="#332d63"/>
             <text x="150" y="35" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="700">Kiribati Banking App</text>
@@ -80,17 +82,24 @@
             <text x="30" y="243" fill="#222" font-size="14" data-example="number">906149</text>
             <rect x="18" y="258" width="264" height="44" rx="8" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
             <text x="30" y="276" fill="#777" font-size="11">Amount</text>
-            <text x="30" y="293" fill="#222" font-size="15" font-weight="700" data-example="amount">$0.70</text>
+            <text x="30" y="293" fill="#222" font-size="15" font-weight="700">Your amount</text>
             <rect x="18" y="310" width="264" height="44" rx="8" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
             <text x="30" y="328" fill="#777" font-size="11">Reference to Recipient</text>
-            <text x="30" y="345" fill="#222" font-size="15" font-weight="700" data-example="reference">MWFABC234</text>
-            <text x="30" y="378" fill="#777" font-size="11">Date</text>
-            <text x="30" y="395" fill="#222" font-size="13">Today</text>
+            <text x="30" y="345" fill="#222" font-size="15" font-weight="700">Your reference (MWF…)</text>
+            <rect x="18" y="362" width="264" height="88" rx="8" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <text x="30" y="380" fill="#777" font-size="11">Date</text>
+            <text x="30" y="397" fill="#222" font-size="14" font-weight="700">Today's date</text>
+            <text x="30" y="420" fill="#777" font-size="11">Reference Number</text>
+            <text x="30" y="437" fill="#222" font-size="14" font-weight="700">The bank's own number</text>
+            <!-- Watermark: the payment check rejects any screenshot that says
+                 EXAMPLE, so this picture can never be uploaded as a receipt. -->
+            <text x="150" y="270" text-anchor="middle" fill="#c0392b" fill-opacity="0.28" font-size="64" font-weight="900" transform="rotate(-30 150 270)">EXAMPLE</text>
             <g font-size="13" font-weight="700" fill="#ffffff" text-anchor="middle">
               <circle cx="262" cy="128" r="11" fill="#c0392b"/><text x="262" y="133">1</text>
               <circle cx="282" cy="190" r="11" fill="#c0392b"/><text x="282" y="195">2</text>
               <circle cx="282" cy="258" r="11" fill="#c0392b"/><text x="282" y="263">3</text>
               <circle cx="282" cy="310" r="11" fill="#c0392b"/><text x="282" y="315">4</text>
+              <circle cx="282" cy="362" r="11" fill="#c0392b"/><text x="282" y="367">5</text>
             </g>
           </svg>
           <figcaption>
@@ -100,6 +109,7 @@
               <li>Paid to <strong data-example="name">Mwakete</strong>, account <strong data-example="number">906149</strong></li>
               <li>The <strong>full amount</strong></li>
               <li>Your <strong>Reference to Recipient</strong>, exactly as given</li>
+              <li>The <strong>date</strong> and the bank's own <strong>Reference Number</strong></li>
             </ol>
             <p class="helper-text">This is a drawn example - your bank app will look a little different.</p>
           </figcaption>
@@ -114,6 +124,7 @@
             <div><dt>Amount</dt><dd id="pay-amount" class="feature-pay-strong"></dd><button type="button" class="btn btn-small" data-copy="pay-amount">Copy</button></div>
           </dl>
           <p class="feature-pay-shot">SCREENSHOT PAYMENT RECEIPT</p>
+          <p class="helper-text feature-pay-shot-hint">Upload it exactly as your phone saved it - the whole screen, not cropped or edited.</p>
           <div class="field">
             <label for="feature-screenshot">Payment screenshot</label>
             <input type="file" id="feature-screenshot" accept="image/png,image/jpeg,image/webp">
