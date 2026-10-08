@@ -160,12 +160,15 @@ const cart = (page, slug) => page.evaluate((s) => JSON.parse(localStorage.getIte
   const st = await page.evaluate(() => ({
     n: document.querySelectorAll('#product-list article.product-card .card-cart-btn').length,
     oldControls: document.querySelectorAll('#product-list .variety-select, #product-list .qty-input, #product-list .add-to-cart-btn').length,
-    place: (document.querySelector('#product-list .product-card-place') || {}).textContent,
-    badge: !!document.querySelector('#product-list .product-card-verified .seller-badge--verified'),
+    extras: document.querySelectorAll('#product-list .product-card-meta, #product-list .product-card-verified, #product-list .seller-badge, #product-list .delivery-icons, #product-list .product-card-place').length,
+    kids: Array.from(document.querySelector('#product-list .product-card-body').children).map((k) => k.className.split(' ')[0]).join(','),
     href: document.querySelector('#product-list .product-card-link').getAttribute('href')
   }));
   ok('store page: the same card, with the round cart button (not on the rental)', st.n === 2 && st.oldControls === 0, JSON.stringify(st));
-  ok('store page: the store\'s place, delivery and badges are on every card', st.place === 'Abaiang' && st.badge, JSON.stringify(st));
+  // Compact on a store's own page (owner's call): the store's place, delivery
+  // and badges are shown once at the top, not on every card.
+  ok('store page: compact cards - text, price + cart, stars; no place, delivery or badges', st.extras === 0
+    && st.kids === 'product-name,product-card-buy,rating', JSON.stringify(st));
   ok('store page: cards link to the product page', st.href === 'product.html?store=bong&product=p1', st.href);
   await page.click('#product-list .product-card[data-product-id="p1"] .card-cart-btn');
   await page.waitForTimeout(200);

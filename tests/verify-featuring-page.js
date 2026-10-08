@@ -236,17 +236,20 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   // ---------- admin queue ----------
   st = { calls: [], admin: [
     Object.assign({}, AWAITING, { status: 'Pending review', storeName: 'Bong Store', screenshotUrl: 'https://drive.google.com/x', ocrNotes: 'ocr:unavailable' }),
-    Object.assign({}, AWAITING, { purchaseId: 'fp2', status: 'Approved', storeName: 'Two', endsAt: ends })] };
+    Object.assign({}, AWAITING, { purchaseId: 'fp2', status: 'Approved', storeName: 'Two', startsAt: new Date().toISOString(), endsAt: ends })] };
   ({ ctx, page } = await open('/owner/admin.html', st));
   await page.waitForSelector('.feature-payment-row', { timeout: 6000 }).catch(() => {});
   const rows = await page.$$('.feature-payment-row');
   ok('admin lists featuring payments', rows.length === 2);
   ok('pending row has screenshot link and notes', await page.isVisible('.feature-payment-row a[href="https://drive.google.com/x"]') && /ocr:unavailable/.test(await rows[0].textContent()));
   ok('approved row offers Reject only', !(await rows[1].$('[data-approve="true"]')) && !!(await rows[1].$('[data-approve="false"]')));
+  ok('an unticked paid payment offers "Seen in bank & approve", not a plain Approve',
+    (await page.textContent('.feature-payment-row [data-purchase-id="fp1"][data-approve="true"]')).trim() === 'Seen in bank & approve');
+  ok('an auto-approved unticked payment says when it stops', /stops .* unless ticked/.test(await rows[1].textContent()), await rows[1].textContent());
   await page.click('.feature-payment-row [data-purchase-id="fp1"][data-approve="true"]');
   await page.waitForTimeout(500);
   const set = st.calls.find((c) => c.action === 'setFeaturePurchaseStatus');
-  ok('Approve calls setFeaturePurchaseStatus', set && set.purchaseId === 'fp1' && set.approve === true, JSON.stringify(set));
+  ok('Seen in bank & approve sends the bank tick with the approval', set && set.purchaseId === 'fp1' && set.approve === true && set.bankSeen === true, JSON.stringify(set));
   ok('admin: unmatched paid payments are counted at the top', /2 payments \(\$1\.40\) not yet matched to the bank/.test(await page.textContent('#feature-payments-unmatched')),
     await page.textContent('#feature-payments-unmatched'));
   ok('admin: each paid row says it is not matched, with a Seen in bank button',

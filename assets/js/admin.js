@@ -407,16 +407,21 @@ async function loadFeaturePayments() {
     return;
   }
   const list = res.purchases || [];
+  featureBankMatchDays = res.bankMatchDays || featureBankMatchDays;
   statusEl.textContent = list.length ? '' : 'No featuring payments yet.';
   renderUnmatchedSummary(list);
   listEl.innerHTML = list.map(featurePaymentRowHtml).join('');
   listEl.querySelectorAll('[data-approve]').forEach((btn) => {
-    btn.addEventListener('click', () => setFeaturePaymentStatus(btn.dataset.purchaseId, btn.dataset.approve === 'true', btn));
+    btn.addEventListener('click', () => setFeaturePaymentStatus(btn.dataset.purchaseId, btn.dataset.approve === 'true', btn, btn.dataset.bankSeen === 'true'));
   });
   listEl.querySelectorAll('[data-bank]').forEach((btn) => {
     btn.addEventListener('click', () => setFeatureBankMatched(btn.dataset.purchaseId, btn.dataset.bank === 'true', btn));
   });
 }
+
+// Auto-approved paid featuring stops this many days after it starts unless
+// ticked "Seen in bank" (Featuring.gs sweepFeatureBankMatches); sent by the server.
+let featureBankMatchDays = 7;
 
 // A screenshot can be edited; the bank statement can't. Paid purchases that
 // are live (or waiting) but not yet ticked as seen in account 906149.
@@ -438,18 +443,25 @@ function renderUnmatchedSummary(list) {
   el.className = 'feature-unmatched is-todo';
 }
 
-const FEATURE_STATUS_BADGE = { 'Approved': 'status-active', 'Pending review': 'status-pending', 'Rejected': 'status-declined' };
+const FEATURE_STATUS_BADGE = { 'Approved': 'status-active', 'Pending review': 'status-pending', 'Rejected': 'status-declined', 'Stopped': 'status-declined' };
 
 function featurePaymentRowHtml(p) {
   const when = p.endsAt && p.status === 'Approved' ? ' · until ' + new Date(p.endsAt).toLocaleDateString() : '';
-  const canApprove = p.status === 'Pending review' || p.status === 'Rejected';
+  const canApprove = p.status === 'Pending review' || p.status === 'Rejected' || p.status === 'Stopped';
   const canReject = p.status === 'Pending review' || p.status === 'Approved';
   const free = Number(p.amount) === 0;
   const matchable = !free && (p.status === 'Approved' || p.status === 'Pending review');
-  const bankLine = !matchable ? ''
+  // A paid purchase approved by a person needs the money seen first - one
+  // button does both (Featuring.gs actionSetFeaturePurchaseStatus).
+  const approveNeedsBank = !free && !p.bankMatchedAt;
+  const stopsOn = p.status === 'Approved' && p.startsAt && !p.bankMatchedAt && !free
+    ? new Date(new Date(p.startsAt).getTime() + featureBankMatchDays * 86400000) : null;
+  const bankLine = p.status === 'Stopped'
+    ? '<div class="helper-text feature-bank-todo">Stopped - not seen in the bank in time</div>'
+    : !matchable ? ''
     : p.bankMatchedAt
       ? `<div class="helper-text feature-bank-ok">✓ Seen in bank ${escapeHtml(new Date(p.bankMatchedAt).toLocaleDateString())}</div>`
-      : '<div class="helper-text feature-bank-todo">Not yet matched to the bank</div>';
+      : `<div class="helper-text feature-bank-todo">Not yet matched to the bank${stopsOn ? ` - stops ${escapeHtml(stopsOn.toLocaleDateString())} unless ticked` : ''}</div>`;
   return `
     <div class="wholesale-row feature-payment-row">
       <div class="wholesale-row-info">
@@ -464,7 +476,7 @@ function featurePaymentRowHtml(p) {
         ${p.screenshotUrl ? `<a href="${escapeAttr(p.screenshotUrl)}" target="_blank" rel="noopener">View screenshot</a>` : ''}
       </div>
       <div class="feature-payment-actions">
-        ${canApprove ? `<button type="button" class="btn btn-small btn-primary" data-purchase-id="${escapeAttr(p.purchaseId)}" data-approve="true">Approve</button>` : ''}
+        ${canApprove ? `<button type="button" class="btn btn-small btn-primary" data-purchase-id="${escapeAttr(p.purchaseId)}" data-approve="true"${approveNeedsBank ? ' data-bank-seen="true"' : ''}>${approveNeedsBank ? 'Seen in bank &amp; approve' : 'Approve'}</button>` : ''}
         ${canReject ? `<button type="button" class="btn btn-small" data-purchase-id="${escapeAttr(p.purchaseId)}" data-approve="false">Reject</button>` : ''}
         ${matchable ? (p.bankMatchedAt
           ? `<button type="button" class="btn btn-small btn-light-purple" data-purchase-id="${escapeAttr(p.purchaseId)}" data-bank="false">Undo bank tick</button>`
@@ -474,12 +486,13 @@ function featurePaymentRowHtml(p) {
   `;
 }
 
-async function setFeaturePaymentStatus(purchaseId, approve, btn) {
+async function setFeaturePaymentStatus(purchaseId, approve, btn, bankSeen) {
   const errorEl = document.getElementById('feature-payments-error');
   errorEl.textContent = '';
   if (!approve && !window.confirm('Reject this payment? If it was approved, the products stop being featured now.')) return;
+  if (approve && bankSeen && !window.confirm('Have you seen this payment (reference and amount) arrive in the Mwakete bank account?')) return;
   btn.disabled = true;
-  const res = await Api.post('setFeaturePurchaseStatus', { token: Auth.getToken(), purchaseId, approve });
+  const res = await Api.post('setFeaturePurchaseStatus', { token: Auth.getToken(), purchaseId, approve, bankSeen: !!bankSeen });
   if (!res.ok) {
     btn.disabled = false;
     errorEl.textContent = res.error || 'Could not update that payment.';
