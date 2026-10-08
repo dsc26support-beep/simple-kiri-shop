@@ -591,9 +591,8 @@ section {
    it: ">" reads as "next", not as "search", and stripping the pill to
    transparent left it looking like a stray bracket rather than a control.
 
-   The same purple as .btn-primary now, so the disc rhymes with the active chip
-   sitting directly under it on the search and home pages. The desktop pill is
-   untouched.
+   Outlined in the same purple as .btn-primary, so the disc rhymes with the
+   other buttons. The desktop pill is untouched.
 
    Scoped to .search-box so the Continue / Place Order / chat Send buttons are
    not affected. */
@@ -609,7 +608,7 @@ section {
     min-height: 44px;
     padding: 0;
     border-radius: 999px;
-    background: var(--color-purple);
+    /* Outlined like every .btn-primary now - no solid purple fill. */
     transition: opacity .18s ease, transform .18s ease, width .18s ease,
                 min-width .18s ease, border-width .18s ease;
   }
@@ -2897,9 +2896,35 @@ textarea.meeting-request-input {
   cursor: not-allowed;
 }
 
+/* Outlined (owner's call, Oct 2026): white inside, dark purple border and
+   text, a soft lavender fill on hover/tap. The few steps that complete a
+   purchase or a payment add .btn-solid and stay filled, so the one thing to
+   press next still stands out: Proceed to Checkout, Place Order, and the
+   featuring Continue to payment / Upload payment screenshot / Pay now. */
 .btn-primary {
+  background: #fff;
+  color: var(--color-purple);
+  border-color: var(--color-purple);
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible,
+.btn-primary:active {
+  background: var(--color-purple-soft);
+}
+
+.btn-primary.btn-solid,
+.btn-solid {
   background: var(--color-purple);
   color: #fff;
+  border-color: var(--color-purple);
+}
+
+.btn-primary.btn-solid:hover,
+.btn-primary.btn-solid:focus-visible,
+.btn-solid:hover,
+.btn-solid:focus-visible {
+  background: #453d80;
 }
 
 /* SAVE, AND ONLY SAVE. The three buttons that store what somebody has typed:
@@ -2914,6 +2939,7 @@ textarea.meeting-request-input {
 .btn-primary.btn-save {
   background: var(--color-save);
   color: #fff;
+  border-color: transparent;
 }
 
 .btn-save:hover,

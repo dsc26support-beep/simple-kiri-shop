@@ -312,7 +312,7 @@ function renderHistory() {
         </div>
         <div class="feature-history-status">
           <span>${escapeHtml(statusLine(p))}</span>
-          ${payable ? `<a class="btn btn-small btn-primary" href="feature.html?purchase=${encodeURIComponent(p.purchaseId)}">Pay now</a>` : ''}
+          ${payable ? `<a class="btn btn-small btn-primary btn-solid" href="feature.html?purchase=${encodeURIComponent(p.purchaseId)}">Pay now</a>` : ''}
         </div>
       </div>`;
   }).join('');
