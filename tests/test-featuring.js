@@ -35,7 +35,7 @@ ok('a reference already in the sheet is never reissued', (() => {
 /* ---------- the screenshot decision ---------- */
 const purchase = { Reference: 'MWFABC234', Amount: 1.05, Days: 7 };
 const today = new Date().toISOString().slice(0, 10);
-const goodReceipt = `ANZ goMoney\nPayment successful\nTo: Nei Recharge 786149\nAmount $1.05\nReference to recipient MWFABC234\nDate ${today}`;
+const goodReceipt = `ANZ goMoney\nPayment successful\nTo: Mwakete 906149\nAmount $1.05\nReference to recipient MWFABC234\nDate ${today}`;
 const decide = (text, photo, p) => box.decideFeaturePayment(text, p || purchase, !!photo);
 
 let d = decide(goodReceipt);
@@ -48,11 +48,11 @@ d = decide(goodReceipt.replace('$1.05', '$1.00'));
 ok('5c short is Rejected - no underpayment tolerance on featuring', d.status === 'Rejected' && /full amount of \$1\.05/.test(d.message), d.message);
 d = decide(goodReceipt.replace('MWFABC234', 'MWFZZZ999'));
 ok('wrong reference is Rejected and says which', d.status === 'Rejected' && /reference MWFABC234/.test(d.message), d.message);
-d = decide(goodReceipt.replace('786149', '906149'));
-ok('wrong account is Rejected', d.status === 'Rejected' && /786149/.test(d.message), d.message);
+d = decide(goodReceipt.replace('906149', '786149'));
+ok('wrong account (the old AM TOPUP one) is Rejected', d.status === 'Rejected' && /906149/.test(d.message), d.message);
 d = decide(goodReceipt.replace('Payment successful', 'Payment'));
 ok('no success word is Rejected', d.status === 'Rejected' && /successful/.test(d.message), d.message);
-d = decide('Transfer Confirmation\nTo Nei Recharge 786149\n$1.05\nMWFABC234\nConfirm   Cancel');
+d = decide('Transfer Confirmation\nTo Mwakete 906149\n$1.05\nMWFABC234\nConfirm   Cancel');
 ok('the pre-send Confirm/Cancel screen is Rejected with its own explanation', d.status === 'Rejected' && /before you press Confirm/.test(d.message), d.message);
 d = decide(goodReceipt.replace(today, '2020-01-01'));
 ok('an old receipt is Rejected', d.status === 'Rejected' && /recent date/.test(d.message), d.message);
