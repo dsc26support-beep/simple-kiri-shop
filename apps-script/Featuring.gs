@@ -12,10 +12,14 @@
  * transfer is actually sent. Paid into Mwakete's own account (owner
  * decision, Oct 2026 - it was the AM TOPUP account before).
  *
- * Free first featuring (owner decision): each store's first featuring of up
- * to FEATURE_FREE_MAX_PRODUCTS products costs nothing - no payment, approved
- * at once. Once per store. The free row is the one with Amount 0 (a paid
- * amount is always at least 5c), so no new sheet column is needed.
+ * Free monthly featuring (owner decision, revised Oct 2026): one featuring of
+ * up to FEATURE_FREE_MAX_PRODUCTS products a month costs nothing - no
+ * payment, approved at once. "A month" is the calendar month in Kiribati
+ * time, and it is one per PHONE NUMBER, so several stores run by one person
+ * share it. The store must be active, have a phone number, and have 2-step
+ * sign-in on (TwoFAEnabled - which proved its email with a code). The free
+ * row is the one with Amount 0 (a paid amount is always at least 5c), so no
+ * new sheet column is needed.
  *
  * Outcomes, as in topup:
  *   Approved       - every check passed; featuring starts now.
@@ -47,8 +51,8 @@
  *   4. Per-store weekly limit on automatic approval (lower for new stores);
  *      above it a payment waits for a human.
  *   5. Featuring starts FEATURE_START_DELAY_HOURS after automatic approval.
- *   6. Free first featuring only for an active store with a phone number
- *      that no other store has already had free featuring with.
+ *   6. Free featuring once a month per phone number, for an active store
+ *      with 2-step sign-in on.
  *
  * Sheet: FeaturePurchases - created on first use with the headers below. It
  * holds payment records, so like Orders it is deliberately NOT in
@@ -139,36 +143,54 @@ function normalizeFeaturePhone(phone) {
   return d.length >= 7 ? d : '';
 }
 
+/** 'YYYY-MM' of a moment, in Kiribati (Tarawa) time. */
+function featureLocalMonth(ms) {
+  return featureLocalDay(ms).slice(0, 7);
+}
+
+/** 'YYYY-MM-01' of the next Kiribati month - when the next free featuring opens. */
+function featureNextFreeMonthStart(nowMs) {
+  var m = featureLocalMonth(nowMs).split('-').map(Number);
+  var y = m[1] === 12 ? m[0] + 1 : m[0];
+  var mo = m[1] === 12 ? 1 : m[1] + 1;
+  return y + '-' + ('0' + mo).slice(-2) + '-01';
+}
+
 /**
- * Pure: why this store can't have the free featuring, or '' if it can.
- * 'used'     - this store, or another store with the same phone, had it.
- * 'nophone'  - no usable phone number on the store.
+ * Pure: why this store can't have the free featuring right now, or '' if it can.
+ * 'used'     - this month, this store or another store with the same phone had it.
  * 'inactive' - the store is paused or closed.
+ * 'nophone'  - no usable phone number on the store.
+ * 'no2fa'    - 2-step sign-in is off (it is how a store proves its email).
  * phoneByOwnerId: { OwnerId: phone } for every store (to spot one person
- * opening several stores to collect the offer again).
+ * running several stores to collect the offer more than once a month).
  */
-function featureFreeBlock(rows, owner, phoneByOwnerId) {
+function featureFreeBlock(rows, owner, phoneByOwnerId, nowMs) {
   var phones = phoneByOwnerId || {};
+  var month = featureLocalMonth(nowMs === undefined ? Date.now() : nowMs);
   var myPhone = normalizeFeaturePhone(owner.Phone);
   var used = rows.some(function (r) {
     if (String(r.Amount) === '' || Number(r.Amount) !== 0) return false;
+    var t = new Date(r.CreatedAt).getTime();
+    if (isNaN(t) || featureLocalMonth(t) !== month) return false;
     if (r.OwnerId === owner.OwnerId || (owner.StoreSlug && r.StoreSlug === owner.StoreSlug)) return true;
     return !!myPhone && normalizeFeaturePhone(phones[r.OwnerId]) === myPhone;
   });
   if (used) return 'used';
   if (owner.Status !== undefined && owner.Status !== 'active') return 'inactive';
   if (!myPhone) return 'nophone';
+  if (String(owner.TwoFAEnabled) !== 'true') return 'no2fa';
   return '';
 }
 
-/** Pure: has this store already had its free featuring? */
-function featureFreeUsed(rows, owner, phoneByOwnerId) {
-  return featureFreeBlock(rows, owner, phoneByOwnerId) === 'used';
+/** Pure: has this store (or its phone) had this month's free featuring? */
+function featureFreeUsed(rows, owner, phoneByOwnerId, nowMs) {
+  return featureFreeBlock(rows, owner, phoneByOwnerId, nowMs) === 'used';
 }
 
 /** Pure: is a featuring of productCount products free for this store right now? */
-function featureIsFree(rows, owner, productCount, phoneByOwnerId) {
-  return productCount >= 1 && productCount <= FEATURE_FREE_MAX_PRODUCTS && featureFreeBlock(rows, owner, phoneByOwnerId) === '';
+function featureIsFree(rows, owner, productCount, phoneByOwnerId, nowMs) {
+  return productCount >= 1 && productCount <= FEATURE_FREE_MAX_PRODUCTS && featureFreeBlock(rows, owner, phoneByOwnerId, nowMs) === '';
 }
 
 function featurePhonesByOwnerId() {
@@ -222,7 +244,7 @@ function actionStartFeaturePurchase(owner, body) {
       Status: free ? FEATURE_STATUS.APPROVED : FEATURE_STATUS.AWAITING,
       ScreenshotUrl: '',
       ScreenshotHash: '',
-      OcrNotes: free ? 'free: first featuring' : '',
+      OcrNotes: free ? 'free: monthly featuring' : '',
       StartsAt: free ? now : '',
       EndsAt: free ? new Date(Date.now() + days * 86400000).toISOString() : '',
       CreatedAt: now,
@@ -261,6 +283,7 @@ function actionListMyFeaturePurchases(owner) {
     purchases: rows, payment: featurePaymentDetails(), pricePerProductDay: FEATURE_PRICE_PER_PRODUCT_DAY,
     freeAvailable: featureFreeBlock(all, owner, phones) === '',
     freeBlockedBecause: featureFreeBlock(all, owner, phones),
+    freeNextOn: featureNextFreeMonthStart(Date.now()),
     freeMaxProducts: FEATURE_FREE_MAX_PRODUCTS
   });
 }

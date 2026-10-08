@@ -1,7 +1,7 @@
 /**
- * Free first featuring, on the REAL backend sources (gas-harness): a store's
- * first featuring of up to 3 products costs nothing and is approved at once;
- * once only; 4+ products is paid as normal; and paying goes to Mwakete's
+ * Free featuring, on the REAL backend sources (gas-harness): up to 3 products
+ * free once a month per phone number (Kiribati calendar month), for active
+ * stores with a phone and 2-step sign-in; approved at once; 4+ products is paid as normal; and paying goes to Mwakete's
  * own account.
  */
 const { makeBox } = require('./lib/gas-harness.js');
@@ -14,28 +14,42 @@ for (let i = 1; i <= 4; i++) products.push(['pd' + i, 'own_d', 'D' + i, 'active'
 for (let i = 1; i <= 3; i++) products.push(['pe' + i, 'own_e', 'E' + i, 'active', 0]);
 products.push(['pf1', 'own_f', 'F1', 'active', 0], ['pg1', 'own_g', 'G1', 'active', 0]);
 for (let i = 1; i <= 5; i++) products.push(['ph' + i, 'own_h', 'H' + i, 'active', 0]);
-const ownerRows = [['OwnerId', 'StoreSlug', 'StoreName', 'Status', 'Phone'],
-  ['own_a', 'a', 'A', 'active', '7300 0001'], ['own_b', 'b', 'B', 'active', '73000002'], ['own_c', 'c', 'C', 'active', '73000003'],
-  ['own_d', 'd', 'D', 'active', '73000004'],
-  ['own_e', 'e', 'E', 'active', '+686 7300 0001'],  // same person as A, second store
-  ['own_f', 'f', 'F', 'active', ''], ['own_g', 'g', 'G', 'standby', '73000007'], ['own_h', 'h', 'H', 'active', '73000008']];
+for (let i = 1; i <= 2; i++) products.push(['pi' + i, 'own_i', 'I' + i, 'active', 0]);
+const ownerRows = [['OwnerId', 'StoreSlug', 'StoreName', 'Status', 'Phone', 'TwoFAEnabled'],
+  ['own_a', 'a', 'A', 'active', '7300 0001', 'true'], ['own_b', 'b', 'B', 'active', '73000002', 'true'], ['own_c', 'c', 'C', 'active', '73000003', 'true'],
+  ['own_d', 'd', 'D', 'active', '73000004', 'true'],
+  ['own_e', 'e', 'E', 'active', '+686 7300 0001', 'true'],  // same person as A, second store
+  ['own_f', 'f', 'F', 'active', '', 'true'], ['own_g', 'g', 'G', 'standby', '73000007', 'true'], ['own_h', 'h', 'H', 'active', '73000008', 'true'],
+  ['own_i', 'i', 'I', 'active', '73000009', 'false']];   // 2-step sign-in off
 const box = makeBox({ Products: products, Owners: ownerRows });
-const owner = (id) => { const r = ownerRows.find((x) => x[0] === id); return { OwnerId: r[0], StoreSlug: r[1], StoreName: r[2], Status: r[3], Phone: r[4] }; };
-const A = owner('own_a'), B = owner('own_b'), C = owner('own_c'), D = owner('own_d'), E = owner('own_e'), F = owner('own_f'), G = owner('own_g'), H = owner('own_h');
+const owner = (id) => { const r = ownerRows.find((x) => x[0] === id); return { OwnerId: r[0], StoreSlug: r[1], StoreName: r[2], Status: r[3], Phone: r[4], TwoFAEnabled: r[5] }; };
+const A = owner('own_a'), B = owner('own_b'), C = owner('own_c'), D = owner('own_d'), E = owner('own_e'), F = owner('own_f'), G = owner('own_g'), H = owner('own_h'), I = owner('own_i');
+const NOW = new Date().toISOString();
 const rows = () => box.__sheets.FeaturePurchases.objects();
 
 /* ---------- pure rules ---------- */
 ok('pure: free for 1-3 products when unused', box.featureIsFree([], A, 1) && box.featureIsFree([], A, 3));
 ok('pure: never free for 0 or 4+ products', !box.featureIsFree([], A, 0) && !box.featureIsFree([], A, 4));
-ok('pure: a paid row does not use up the free one', !box.featureFreeUsed([{ OwnerId: 'own_a', Amount: 0.35 }], A));
-ok('pure: an Amount 0 row does', box.featureFreeUsed([{ OwnerId: 'own_a', Amount: 0 }], A));
-ok('pure: matched by store slug too (same store, other owner id)', box.featureFreeUsed([{ OwnerId: 'x', StoreSlug: 'a', Amount: 0 }], A));
-ok('pure: another store\'s free row does not count', !box.featureFreeUsed([{ OwnerId: 'own_b', StoreSlug: 'b', Amount: 0 }], A));
-ok('pure: a blank Amount is not read as free', !box.featureFreeUsed([{ OwnerId: 'own_a', Amount: '' }], A));
+ok('pure: a paid row does not use up the free one', !box.featureFreeUsed([{ OwnerId: 'own_a', Amount: 0.35, CreatedAt: NOW }], A));
+ok('pure: an Amount 0 row does', box.featureFreeUsed([{ OwnerId: 'own_a', Amount: 0, CreatedAt: NOW }], A));
+ok('pure: matched by store slug too (same store, other owner id)', box.featureFreeUsed([{ OwnerId: 'x', StoreSlug: 'a', Amount: 0, CreatedAt: NOW }], A));
+ok('pure: another store\'s free row does not count', !box.featureFreeUsed([{ OwnerId: 'own_b', StoreSlug: 'b', Amount: 0, CreatedAt: NOW }], A));
+ok('pure: a blank Amount is not read as free', !box.featureFreeUsed([{ OwnerId: 'own_a', Amount: '', CreatedAt: NOW }], A));
 
 ok('pure: phones compare without spaces or the +686 code', box.normalizeFeaturePhone('+686 7300 0001') === '73000001' && box.normalizeFeaturePhone('7300 0001') === '73000001');
 ok('pure: another store with the same phone that had it -> used',
-  box.featureFreeBlock([{ OwnerId: 'own_a', Amount: 0 }], E, { own_a: '7300 0001', own_e: '+686 7300 0001' }) === 'used');
+  box.featureFreeBlock([{ OwnerId: 'own_a', Amount: 0, CreatedAt: NOW }], E, { own_a: '7300 0001', own_e: '+686 7300 0001' }) === 'used');
+// Monthly (owner's revision, Oct 2026): calendar month in Kiribati time.
+const oct = Date.UTC(2026, 9, 20), nov = Date.UTC(2026, 10, 3);
+ok('monthly: a free one in October blocks the rest of October', box.featureFreeBlock([{ OwnerId: 'own_a', Amount: 0, CreatedAt: new Date(Date.UTC(2026, 9, 2)).toISOString() }], A, {}, oct) === 'used');
+ok('monthly: ...but not November', box.featureFreeBlock([{ OwnerId: 'own_a', Amount: 0, CreatedAt: new Date(Date.UTC(2026, 9, 2)).toISOString() }], A, {}, nov) === '');
+ok('monthly: Kiribati time - 13:00 UTC on 31 Oct is already 1 Nov in Tarawa',
+  box.featureFreeBlock([{ OwnerId: 'own_a', Amount: 0, CreatedAt: new Date(Date.UTC(2026, 9, 31, 13)).toISOString() }], A, {}, Date.UTC(2026, 9, 31, 10)) === '');
+ok('monthly: same phone, other store, same month -> used (one per phone per month)',
+  box.featureFreeBlock([{ OwnerId: 'own_a', Amount: 0, CreatedAt: new Date(Date.UTC(2026, 9, 2)).toISOString() }], E, { own_a: '73000001' }, oct) === 'used');
+ok('monthly: next free date is the 1st of next month (Dec -> Jan rolls the year)',
+  box.featureNextFreeMonthStart(oct) === '2026-11-01' && box.featureNextFreeMonthStart(Date.UTC(2026, 11, 10)) === '2027-01-01');
+ok('2-step sign-in off -> no2fa', box.featureFreeBlock([], I, {}) === 'no2fa');
 ok('pure: no phone -> nophone; paused store -> inactive',
   box.featureFreeBlock([], F, {}) === 'nophone' && box.featureFreeBlock([], G, {}) === 'inactive');
 
@@ -52,7 +66,7 @@ ok('3 products: free, Approved straight away, amount 0', res.ok && res.free === 
 ok('...runs for the chosen days', Math.abs(new Date(p.endsAt) - new Date(p.startsAt) - 14 * 86400000) < 5000, p.startsAt + ' ' + p.endsAt);
 const r0 = rows()[0];
 ok('...records the views snapshot so results work', r0.ViewsAtStartJson === '{"pa1":10,"pa2":20,"pa3":30}', r0.ViewsAtStartJson);
-ok('...noted as the free one, no screenshot', r0.OcrNotes === 'free: first featuring' && r0.ScreenshotUrl === '');
+ok('...noted as the free one, no screenshot', r0.OcrNotes === 'free: monthly featuring' && r0.ScreenshotUrl === '');
 ok('...Tips cache is cleared so it shows at once', !('v4:tips' in box.__cache));
 ok('...is live on Tips right away (in the paid-featured list)', box.activePaidFeaturedProductIds().sort().join() === 'pa1,pa2,pa3', box.activePaidFeaturedProductIds().join());
 ok('list: offer now gone', box.actionListMyFeaturePurchases(A).freeAvailable === false);
@@ -84,6 +98,20 @@ ok('6: a store with no phone is told why', res.freeAvailable === false && res.fr
 ok('6: ...and pays', box.actionStartFeaturePurchase(F, { productIds: ['pf1'], days: 1 }).free === false);
 ok('6: a paused (standby) store gets no free featuring', box.actionStartFeaturePurchase(G, { productIds: ['pg1'], days: 1 }).free === false
   && box.actionListMyFeaturePurchases(G).freeBlockedBecause === 'inactive');
+
+res = box.actionListMyFeaturePurchases(I);
+ok('2fa: a store without 2-step sign-in is told why, and pays', res.freeBlockedBecause === 'no2fa'
+  && box.actionStartFeaturePurchase(I, { productIds: ['pi1'], days: 1 }).free === false, JSON.stringify(res.freeBlockedBecause));
+ok('list: says when the next free one opens', /^\d{4}-\d{2}-01$/.test(box.actionListMyFeaturePurchases(A).freeNextOn || ''));
+// Last month's free featuring doesn't count this month.
+const fp = box.__sheets.FeaturePurchases;
+const aFree = box.findRowById(fp, 'PurchaseId', rows().find((r) => r.OwnerId === 'own_a' && Number(r.Amount) === 0).PurchaseId);
+box.updateRowFromObject(fp, aFree.__row, { CreatedAt: new Date(Date.now() - 40 * 86400000).toISOString() });
+ok('monthly: once last month\'s free one is in the past, A (and E, same phone) can have this month\'s',
+  box.actionListMyFeaturePurchases(A).freeAvailable === true && box.actionListMyFeaturePurchases(E).freeAvailable === true);
+const aAgain = box.actionStartFeaturePurchase(A, { productIds: ['pa5'], days: 3 });
+ok('monthly: ...and gets it free', aAgain.free === true && aAgain.purchase.amount === 0, JSON.stringify(aAgain.purchase));
+ok('monthly: ...after which E (same phone) has used this month\'s too', box.actionListMyFeaturePurchases(E).freeBlockedBecause === 'used');
 
 /* ---------- the upload flow (OCR and Drive stubbed) ---------- */
 let ocr = '';
@@ -129,7 +157,7 @@ ok('4: a new store going over $5 in a week waits for a human', sub.purchase.stat
 /* ---------- admin list shows it ---------- */
 box.isOwnerAdmin = () => true;
 const admin = box.actionListFeaturePurchases({ OwnerId: 'admin' });
-ok('admin list includes the free ones as Approved $0 (A, B, H)', admin.ok && admin.purchases.filter((x) => x.amount === 0 && x.status === 'Approved').length === 3, JSON.stringify(admin).slice(0, 300));
+ok('admin list includes the free ones as Approved $0 (A twice, B, H)', admin.ok && admin.purchases.filter((x) => x.amount === 0 && x.status === 'Approved').length === 4, JSON.stringify(admin).slice(0, 300));
 
 /* ---------- admin "Seen in bank" tick ---------- */
 const paidRow = rows().find((r) => Number(r.Amount) === 0.35);
