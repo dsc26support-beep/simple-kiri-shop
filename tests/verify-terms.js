@@ -74,6 +74,8 @@ const ok = (name, cond, detail) => {
   const price = Number((gs.match(/FEATURE_PRICE_PER_PRODUCT_DAY\s*=\s*([\d.]+)/) || [])[1]);
   ok('and the price in the Terms matches the backend (' + Math.round(price * 100) + 'c)',
     new RegExp(Math.round(price * 100) + 'c per product per day').test(text));
+  ok('the top box says featuring is the only money Mwakete receives',
+    /only money Mwakete receives is from sellers who\s*choose to pay for featuring/i.test(text));
   ok('fake payment receipts lead to suspension', /Fake payment receipts[\s\S]*store will be\s*suspended/i.test(text));
   const products = fs.readFileSync(REPO + 'apps-script/Products.gs', 'utf8');
   ok('and no public seller-facing action writes a featured flag',
