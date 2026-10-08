@@ -72,13 +72,21 @@ async function init() {
     airCargoCost: res.storeDeliveryAirCargoCost
   });
 
-  currentProducts = res.products;
+  // Every card on the page is the shared product card now, which reads the
+  // store's details off each product - so the store's own are copied on.
+  currentProducts = res.products.map((p) => Object.assign({
+    storeSlug: currentSlug, storeName: res.storeName, storeIsland: res.storeIsland, storeVillage: res.storeVillage,
+    storeDeliveryTruck: res.storeDeliveryTruck, storeDeliveryShip: res.storeDeliveryShip,
+    storeDeliveryAirCargo: res.storeDeliveryAirCargo, storeDeliveryPickPay: res.storeDeliveryPickPay,
+    storeDeliveryTruckCost: res.storeDeliveryTruckCost, storeDeliveryShipCost: res.storeDeliveryShipCost,
+    storeDeliveryAirCargoCost: res.storeDeliveryAirCargoCost, sellerBadges: res.sellerBadges
+  }, p));
 
   if (currentProducts.length === 0) {
     statusEl.textContent = 'This store has no products listed yet.';
   } else {
     statusEl.textContent = '';
-    listEl.innerHTML = currentProducts.map((p) => renderProductCard(p, { storeSlug: currentSlug })).join('');
+    listEl.innerHTML = currentProducts.map((p) => renderBrowseProductCard(p)).join('');
     fitPriceLabels(listEl);
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
   }
@@ -119,7 +127,7 @@ function renderFilteredProducts(query) {
   }
 
   statusEl.textContent = '';
-  listEl.innerHTML = filtered.map((p) => renderProductCard(p, { storeSlug: currentSlug })).join('');
+  listEl.innerHTML = filtered.map((p) => renderBrowseProductCard(p)).join('');
   fitPriceLabels(listEl);
   // Re-render replaces the gallery track elements, and their scroll sync
   // (wireGalleryScrollSync) is per-element, not delegated like the click
@@ -374,6 +382,14 @@ function wireGalleryScrollSync() {
 // removed (e.g. on cart.html) and the shopper returns here. Runs on init and
 // after every add, so it's the resting-state applier; the one-shot flash/blink
 // lives in animateCartOnAdd (add path only), never here.
+// The round cart button on a card (card-cart.js) adds without this page's
+// own handler, so the floating cart button is refreshed from its event.
+document.addEventListener('cart:added', (e) => {
+  if (!currentSlug || e.detail.storeSlug !== currentSlug) return;
+  updateCartCount();
+  animateCartOnAdd(e.detail.distinctBefore, Cart.getDistinctProductCount(currentSlug));
+});
+
 function updateCartCount() {
   const el = document.getElementById('cart-link');
   el.querySelector('#cart-count').textContent = Cart.getItemCount(currentSlug);

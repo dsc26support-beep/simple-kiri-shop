@@ -45,7 +45,7 @@ ok('list: freeAvailable true and freeMaxProducts 3 for a new store', res.ok && r
 ok('list: pays Mwakete 906149', res.payment.accountName === 'Mwakete' && res.payment.accountNumber === '906149', JSON.stringify(res.payment));
 
 /* ---------- first featuring of 3: free ---------- */
-box.__cache['v3:tips'] = 'stale';
+box.__cache['v4:tips'] = 'stale';
 res = box.actionStartFeaturePurchase(A, { productIds: ['pa1', 'pa2', 'pa3'], days: 14 });
 let p = res.purchase;
 ok('3 products: free, Approved straight away, amount 0', res.ok && res.free === true && p.status === 'Approved' && p.amount === 0, JSON.stringify(res));
@@ -53,7 +53,7 @@ ok('...runs for the chosen days', Math.abs(new Date(p.endsAt) - new Date(p.start
 const r0 = rows()[0];
 ok('...records the views snapshot so results work', r0.ViewsAtStartJson === '{"pa1":10,"pa2":20,"pa3":30}', r0.ViewsAtStartJson);
 ok('...noted as the free one, no screenshot', r0.OcrNotes === 'free: first featuring' && r0.ScreenshotUrl === '');
-ok('...Tips cache is cleared so it shows at once', !('v3:tips' in box.__cache));
+ok('...Tips cache is cleared so it shows at once', !('v4:tips' in box.__cache));
 ok('...is live on Tips right away (in the paid-featured list)', box.activePaidFeaturedProductIds().sort().join() === 'pa1,pa2,pa3', box.activePaidFeaturedProductIds().join());
 ok('list: offer now gone', box.actionListMyFeaturePurchases(A).freeAvailable === false);
 

@@ -82,7 +82,8 @@ const snap = (page) => page.evaluate(() => ({
   badges: document.querySelectorAll('.seller-badge').length,
   labels: Array.from(document.querySelectorAll('.seller-badge-label')).map((e) => e.textContent.trim()),
   buttonsInLinks: document.querySelectorAll('a button').length,
-  buttonsInCards: document.querySelectorAll('.product-card button, .store-card button').length,
+  // The round cart button (Oct 2026) is the one button a product card has, and it is not inside a link.
+  buttonsInCards: document.querySelectorAll('.product-card button:not(.card-cart-btn), .store-card button').length,
   legend: document.querySelectorAll('.badge-legend-panel').length,
   overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
   headerBadges: document.querySelectorAll('.store-branding .seller-badge').length
@@ -98,7 +99,7 @@ const snap = (page) => page.evaluate(() => ({
     const r = await snap(page);
     ok(name + ': no JS errors', errs.length === 0, errs.join(' | '));
     ok(name + ': cards carry badges', r.badges > 0, String(r.badges));
-    ok(name + ': NO button inside a link - a card is an <a>, and a button in one navigates',
+    ok(name + ': NO button inside a link, and badges stay read-only (only the cart button is a button)',
       r.buttonsInLinks === 0 && r.buttonsInCards === 0, r.buttonsInLinks + '/' + r.buttonsInCards);
     ok(name + ': the page explains them once', r.legend === 1, String(r.legend));
     ok(name + ': and does not scroll sideways at 390px', !r.overflow);
@@ -132,8 +133,9 @@ const snap = (page) => page.evaluate(() => ({
         more: (c.querySelector('.seller-badge--more') || {}).getAttribute
           ? c.querySelector('.seller-badge--more').getAttribute('aria-label') : null
       })));
-    ok('a card shows the HIGHEST-priority badges first, not the first ones sent',
-      cards[0].labels[0] === 'recommended' && cards[0].labels[1] === 'verified',
+    // Product cards put Verified first (owner's call, Oct 2026), then priority order.
+    ok('a card shows Verified first, then the HIGHEST-priority badge, not the first ones sent',
+      cards[0].labels[0] === 'verified' && cards[0].labels[1] === 'recommended',
       cards[0].labels.join(' | '));
     ok('and caps a dense card at two plus a counter',
       cards[0].labels.length === 3 && cards[0].labels[2] === '+2', cards[0].labels.join(' | '));
@@ -296,7 +298,7 @@ const snap = (page) => page.evaluate(() => ({
   /* ---------- read from the source ---------- */
   const helpers = fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8');
   ok('the card badge row is capped at two and read-only, in one place',
-    /renderSellerBadges\(product\.sellerBadges, \{ size: 'chip', max: 2, interactive: false \}\)/.test(helpers));
+    /renderSellerBadges\(product\.sellerBadges, \{ size: 'chip', max: 2, interactive: false, first: 'verified' \}\)/.test(helpers));
   ok('and guarded, so a page without badges.js renders the card it always did',
     /typeof renderSellerBadges !== 'function'\) return ''/.test(helpers));
 

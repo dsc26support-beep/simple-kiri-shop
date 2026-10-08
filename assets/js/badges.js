@@ -205,6 +205,8 @@ function renderSellerBadges(ids, opts) {
   opts = opts || {};
   const list = sortSellerBadges(ids);
   if (!list.length) return '';
+  // opts.first: one badge moved to the front (product cards put Verified first).
+  if (opts.first && list.indexOf(opts.first) > 0) list.unshift(list.splice(list.indexOf(opts.first), 1)[0]);
 
   const size = opts.size === 'detail' ? 'detail' : 'chip';
   const interactive = opts.interactive !== false;

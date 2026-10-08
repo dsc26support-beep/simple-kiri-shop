@@ -175,22 +175,19 @@ function storeResponse(over) {
   }
 
   // ---------- store.html ----------
+  // The store page shows the shared product card (Oct 2026): a rental's card
+  // has no inline booking form and no cart button - it opens the product
+  // page, where the booking (and the contact block tested above) happens.
   {
     const ctx = await makeCtx();
     const page = await ctx.newPage();
     await page.goto(`${BASE}/store.html?store=bong`, { waitUntil: 'load' });
-    await page.waitForSelector('.request-booking-btn', { timeout: 6000 });
-    const iso = (d) => d.toISOString().slice(0, 10);
-    const t = Date.now();
-    await page.fill('#name-p-rental', 'Debby');
-    await page.fill('#phone-p-rental', '73011111');
-    await page.fill('#start-p-rental', iso(new Date(t + 86400000)));
-    await page.fill('#end-p-rental', iso(new Date(t + 3 * 86400000)));
-    await page.click('.request-booking-btn');
-    await page.waitForSelector('#booking-contact-p-rental:not(.hidden)', { timeout: 6000 });
-    const labels = await page.$$eval('#booking-contact-p-rental .btn', (b) => b.map((x) => x.textContent.trim()));
-    ok('store page: the same three buttons, not the old two',
-      JSON.stringify(labels) === JSON.stringify(['Call', 'WhatsApp', 'Messenger']), JSON.stringify(labels));
+    await page.waitForSelector('.product-card[data-product-id="p-rental"]', { timeout: 6000 });
+    const r = await page.$eval('.product-card[data-product-id="p-rental"]', (c) => ({
+      form: !!c.querySelector('.request-booking-btn'), cart: !!c.querySelector('.card-cart-btn'),
+      href: c.querySelector('.product-card-link').getAttribute('href') }));
+    ok('store page: a rental card opens its product page to book (no inline form, no cart button)',
+      !r.form && !r.cart && r.href === 'product.html?store=bong&product=p-rental', JSON.stringify(r));
     await ctx.close();
   }
 

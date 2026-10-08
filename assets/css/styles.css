@@ -7160,3 +7160,226 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   text-align: center;
   font-size: 0.8125rem;
 }
+
+/* ==========================================================================
+   Product cards (renderBrowseProductCard in helpers.js) - Oct 2026
+   One line of description; price with a round cart button; stars; place,
+   delivery icons, Verified, other badges. At the end of the file so these win
+   over the older card rules without !important.
+   ========================================================================== */
+/* The title link is stretched over the whole card (::after), so a tap
+   anywhere opens the product; the cart button is lifted above it. */
+.product-card {
+  position: relative;
+}
+
+.product-card-body {
+  gap: 2px;
+}
+
+.product-card .product-name {
+  margin: 0;
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-card-link {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.product-card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.product-card-link:focus-visible {
+  outline: none;
+}
+
+.product-card:focus-within {
+  outline: 3px solid var(--color-purple-light);
+  outline-offset: 2px;
+}
+
+.product-card-buy {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  min-height: 36px;
+}
+
+.product-price.product-price--card {
+  font-size: 1.05rem;
+  font-weight: 800;
+  /* Shrinks to fit beside the cart button (fitPriceLabels), never cut. */
+  min-width: 0;
+  overflow: hidden;
+}
+
+.product-price.product-price--card.product-price--wrap {
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.15;
+}
+
+.card-cart-btn {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 30px;
+  padding: 0;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.card-cart-btn:hover,
+.card-cart-btn:focus-visible {
+  background: var(--color-purple-soft);
+}
+
+.card-cart-btn--added {
+  border-color: var(--color-success);
+  background: #e3f4e8;
+  color: var(--color-success);
+}
+
+/* Several options: a small picker opens over the card, above the button. */
+.card-cart-picker {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  bottom: calc(100% + 4px);
+  /* Inside the card: .product-card clips its overflow, so it can't hang out. */
+  left: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.card-cart-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 4px;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.card-cart-close {
+  border: 0;
+  background: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  min-width: 28px;
+  min-height: 28px;
+  cursor: pointer;
+  color: var(--color-ink);
+}
+
+.card-cart-option {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card-cart-option:hover,
+.card-cart-option:focus-visible {
+  background: var(--color-purple-soft);
+}
+
+.card-cart-option[disabled] {
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.card-cart-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 1000;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: #fff;
+  font-size: 0.875rem;
+  transform: translate(-50%, 20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.card-cart-toast.is-shown {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 700px) {
+  body.has-bottom-nav .card-cart-toast { bottom: calc(var(--bottom-nav-h) + 12px + env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-cart-toast { transition: none; }
+}
+
+.product-card .rating {
+  font-size: 0.75rem;
+}
+
+.product-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 5px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--color-muted);
+}
+
+.product-card-meta .seller-badges {
+  margin: 0;
+  gap: 3px;
+}
+
+.product-card-meta .seller-badge--chip {
+  padding: 0.1em 0.45em;
+  font-size: 0.68rem;
+}
+
+.product-card-meta .featured-badge {
+  margin: 0;
+  padding: 0 0.45em;
+  font-size: 0.68rem;
+}

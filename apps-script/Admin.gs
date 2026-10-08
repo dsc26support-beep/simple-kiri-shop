@@ -138,7 +138,7 @@ function actionRemoveFeatured(owner, body) {
 // addFeatured/removeFeatured drop the key, so an admin's change is visible
 // immediately rather than up to five minutes later.
 var TIPS_CACHE_TTL_SECONDS = 300;
-var TIPS_CACHE_KEY = 'v3:tips';   // v1 -> v2: the payload now carries sellerBadges; v3: admin stores hidden
+var TIPS_CACHE_KEY = 'v4:tips';   // v1 -> v2: the payload now carries sellerBadges; v3: admin stores hidden; v4: store island/village
 
 function actionGetTips(params) {
   return getCached(TIPS_CACHE_KEY, TIPS_CACHE_TTL_SECONDS, function () {
@@ -204,6 +204,9 @@ function buildTips() {
         storeName: owner.StoreName,
         storePhone: owner.Phone,
         storeLogoUrl: owner.LogoUrl,
+        // Product cards show where the store is (island, or village on South Tarawa).
+        storeIsland: owner.Island,
+        storeVillage: owner.Village,
         variants: pv,
         storeDeliveryTruck: String(owner.DeliveryTruck) === 'true',
         storeDeliveryShip: String(owner.DeliveryShip) === 'true',

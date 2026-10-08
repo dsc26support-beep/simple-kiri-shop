@@ -1,4 +1,5 @@
-// Homepage/search cards: location instead of store name, price beside the name.
+// Product cards: where the store is (village on South Tarawa, else island) on the
+// place row, before the delivery icons. Layout and cart button: verify-card-cart.js.
 const fs = require('fs'), vm = require('vm');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
@@ -52,39 +53,16 @@ async function open(browser, path, opts) {
 const cards = (page, sel) => page.evaluate((s) => {
   const out = [];
   document.querySelectorAll(s + ' .product-card').forEach((c) => {
-    const name = c.querySelector('.product-name');
-    const price = c.querySelector('.product-price');
-    const meta = c.querySelector('.helper-text');
-    const cs = name && price ? {
-      nameSize: getComputedStyle(name).fontSize,
-      priceSize: getComputedStyle(price).fontSize,
-      nameWeight: getComputedStyle(name).fontWeight,
-      priceWeight: getComputedStyle(price).fontWeight,
-      priceFamily: getComputedStyle(price).fontFamily,
-      nameFamily: getComputedStyle(name).fontFamily,
-      priceInsideName: !!(price && name && name.contains(price)),
-      inlineFontSize: price.style.fontSize || ''
-    } : {};
-    out.push(Object.assign({
+    const meta = c.querySelector('.product-card-meta');
+    out.push({
       text: c.textContent.replace(/\s+/g, ' ').trim(),
-      meta: meta ? meta.textContent.trim() : null,
-      // Geometry, not just presence - the point of the change is that these
-      // two now occupy a single line and still fit.
-      iconsInMetaLine: !!(meta && meta.querySelector('.delivery-icons')),
-      metaLines: meta ? Math.round(meta.getBoundingClientRect().height /
-        parseFloat(getComputedStyle(meta).lineHeight || 16)) : null,
-      metaScrollW: meta ? meta.scrollWidth : null,
-      metaClientW: meta ? meta.clientWidth : null,
-      metaTruncated: meta ? meta.scrollWidth > meta.clientWidth + 1 : null,
-      iconW: (() => { const s = c.querySelector('.product-card-meta .delivery-icons svg');
-        return s ? Math.round(s.getBoundingClientRect().width) : null; })(),
-      iconH: (() => { const s = c.querySelector('.product-card-meta .delivery-icons svg');
-        return s ? Math.round(s.getBoundingClientRect().height) : null; })(),
-      hasPhoneRow: !!c.querySelector('.store-phone-row'),
+      place: meta && meta.querySelector('.product-card-place') ? meta.querySelector('.product-card-place').textContent.trim() : null,
+      metaOrder: meta ? Array.from(meta.children).map((k) => k.className.split(' ')[0]) : [],
+      metaSize: meta ? parseFloat(getComputedStyle(meta).fontSize) : null,
+      metaClipped: meta ? meta.scrollWidth > meta.clientWidth + 1 : null,
       phone: !!c.querySelector('.store-phone'),
-      delivery: !!c.querySelector('.delivery-icons'),
-      aria: c.getAttribute('aria-label')
-    }, cs));
+      aria: (c.querySelector('.product-card-link') || {}).getAttribute ? c.querySelector('.product-card-link').getAttribute('aria-label') : null
+    });
   });
   return out;
 }, sel);
@@ -92,106 +70,39 @@ const cards = (page, sel) => page.evaluate((s) => {
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 
-  // Home only. The search row is gone with search.html: the browse page that
-  // absorbed it renders renderCategoryTile - photo and name, no location line -
-  // so there is nothing here to assert. store.html below still covers the full
-  // card, which is where the location logic actually lives.
-  for (const [path, sel, label] of [
-    ['/index.html', '#trending-products-list', 'home']
-  ]) {
-    const { ctx, page } = await open(browser, path);
+  /* --- where the store is: every product card, home and similar products alike --- */
+  const pages = [['/index.html', '#trending-products-list', 'home', {}], ['/store.html?store=bong', '#similar-products-list', 'similar products', { similar: true }]];
+  for (const [path, sel, label, o] of pages) {
+    const { ctx, page } = await open(browser, path, o);
     const c = await cards(page, sel);
-    ok(`${label}: four cards render`, c.length === 4, String(c.length));
-
-    ok(`${label}: South Tarawa shows the VILLAGE`, c[0].meta === 'Bairiki', String(c[0].meta));
-    ok(`${label}: elsewhere shows the ISLAND`, c[1].meta === 'Abaiang', String(c[1].meta));
-    ok(`${label}: South Tarawa with no village falls back to the island`,
-      c[2].meta === 'South Tarawa', String(c[2].meta));
-    ok(`${label}: no location at all falls back to the store name`,
-      c[3].meta === 'Bong Restaurant', String(c[3].meta));
-
-    ok(`${label}: store name is gone from the visible card`,
-      !c[0].text.includes('Bong Restaurant'), c[0].text);
-    ok(`${label}: store name is still in the aria-label`,
-      (c[0].aria || '').includes('Bong Restaurant'), String(c[0].aria));
-    ok(`${label}: phone dropped`, c[0].phone === false);
-    ok(`${label}: delivery icons kept`, c[0].delivery === true);
-    ok(`${label}: icons share the location's line`, c[0].iconsInMetaLine === true);
-    ok(`${label}: location and icons are on ONE line`, c[0].metaLines === 1, String(c[0].metaLines));
-    ok(`${label}: icons shrunk to 13px so both fit`,
-      c[0].iconW === 13 && c[0].iconH === 13, `${c[0].iconW}x${c[0].iconH}`);
-    ok(`${label}: the place name is not truncated`, c[0].metaTruncated === false,
-      `${c[0].metaScrollW} vs ${c[0].metaClientW}`);
-    ok(`${label}: the old separate icon row is gone`, c[0].hasPhoneRow === false);
-
-    ok(`${label}: price sits inside the heading, beside the name`, c[0].priceInsideName === true);
-    ok(`${label}: price is the same size as the name`,
-      c[0].priceSize === c[0].nameSize, `${c[0].priceSize} vs ${c[0].nameSize}`);
-    ok(`${label}: price is the same weight as the name`,
-      c[0].priceWeight === c[0].nameWeight, `${c[0].priceWeight} vs ${c[0].nameWeight}`);
-    ok(`${label}: price is the same font as the name`,
-      c[0].priceFamily === c[0].nameFamily, c[0].priceFamily);
-    ok(`${label}: price still shows the range`, /7\.50/.test(c[0].text) && /40\.00/.test(c[0].text), c[0].text);
-    // fitPriceLabels must not have shrunk it - it wraps instead.
-    ok(`${label}: fitPriceLabels left the inline price alone`,
-      c[0].inlineFontSize === '', c[0].inlineFontSize);
-    ok(`${label}: a long name keeps its full price`,
-      /8\.00|7\.50/.test(c[1].text) && /40\.00/.test(c[1].text), c[1].text);
-    await ctx.close();
-  }
-
-  /* --- the surfaces that must NOT change --- */
-  {
-    const { ctx, page } = await open(browser, '/store.html?store=bong', { similar: true });
-    const c = await cards(page, '#similar-products-list');
-    if (c.length) {
-      // The candidate comes from another store, and its name is what must
-      // still be shown there - the location swap is homepage/search only.
-      ok('similar products: still shows the store name', c[0].meta === 'Other Store', String(c[0].meta));
-      ok('similar products: price is NOT inside the heading', c[0].priceInsideName === false);
-      ok('similar products: price keeps its own larger size',
-        c[0].priceSize !== c[0].nameSize, `${c[0].priceSize} vs ${c[0].nameSize}`);
-      ok('similar products: icons stay on their own row', c[0].hasPhoneRow === true);
-      ok('similar products: icons stay full size',
-        c[0].iconW === null, String(c[0].iconW));
+    if (label === 'home') {
+      ok(`${label}: four cards render`, c.length === 4, String(c.length));
+      ok(`${label}: South Tarawa shows the VILLAGE`, c[0].place === 'Bairiki', String(c[0].place));
+      ok(`${label}: elsewhere shows the ISLAND`, c[1].place === 'Abaiang', String(c[1].place));
+      ok(`${label}: South Tarawa with no village falls back to the island`, c[2].place === 'South Tarawa', String(c[2].place));
+      ok(`${label}: no location at all falls back to the store name`, c[3].place === 'Bong Restaurant', String(c[3].place));
+      ok(`${label}: store name is gone from the visible card`, !c[0].text.includes('Bong Restaurant'), c[0].text);
     } else {
-      ok('similar products: rendered', false, 'no cards found');
+      ok(`${label}: rendered`, c.length > 0, 'no cards found');
+      if (!c.length) { await ctx.close(); continue; }
+      ok(`${label}: shows the place now, like every card`, c[0].place === 'Abaiang', String(c[0].place));
     }
+    ok(`${label}: store name still in the link's accessible name`, /Bong Restaurant|Other Store/.test(c[0].aria || ''), String(c[0].aria));
+    ok(`${label}: place row - place first, then the delivery icons`,
+      c[0].metaOrder[0] === 'product-card-place' && c[0].metaOrder[1] === 'delivery-icons', c[0].metaOrder.join(','));
+    ok(`${label}: place row in small type (0.75rem)`, c[0].metaSize === 12, String(c[0].metaSize));
+    ok(`${label}: no phone number`, c[0].phone === false);
     await ctx.close();
   }
 
-  /* --- narrow phone: icons step down, and nothing is ever clipped --- */
-  {
+  /* --- narrow phones: nothing clipped, page never scrolls sideways --- */
+  for (const w of [320, 360]) {
     const { ctx, page } = await open(browser, '/index.html');
-    await page.setViewportSize({ width: 320, height: 700 });
+    await page.setViewportSize({ width: w, height: 700 });
     await page.waitForTimeout(400);
-    const narrow = await page.evaluate(() => {
-      const m = document.querySelector('.product-card-meta');
-      const svg = document.querySelector('.product-card-meta .delivery-icons svg');
-      return {
-        icon: svg ? Math.round(svg.getBoundingClientRect().width) : null,
-        clipped: m ? m.scrollWidth > m.clientWidth + 1 : null,
-        iconsStillInLine: !!(m && m.querySelector('.delivery-icons'))
-      };
-    });
-    ok('320px: icons step down to 11px', narrow.icon === 11, String(narrow.icon));
-    // Wrapping is the accepted fallback past that: below 11px the icons stop
-    // being tellable apart, so a long name puts them on a second line rather
-    // than shrinking further or truncating the place name.
-    ok('320px: nothing is clipped even when it wraps', narrow.clipped === false);
-    ok('320px: icons stay in the location element', narrow.iconsStillInLine === true);
-    await ctx.close();
-  }
-
-  /* --- resize must not undo the inline price (fitPriceLabels runs globally) --- */
-  {
-    const { ctx, page } = await open(browser, '/index.html');
-    await page.setViewportSize({ width: 320, height: 700 });
-    await page.waitForTimeout(400);
-    const after = await cards(page, '#trending-products-list');
-    ok('resize does not shrink the inline price', after[0].inlineFontSize === '', after[0].inlineFontSize);
-    ok('resize keeps price and name the same size',
-      after[0].priceSize === after[0].nameSize, `${after[0].priceSize} vs ${after[0].nameSize}`);
+    const c = await cards(page, '#trending-products-list');
+    ok(`${w}px: place row is never clipped (it wraps instead)`, c.every((x) => x.metaClipped === false));
+    ok(`${w}px: the page does not scroll sideways`, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await ctx.close();
   }
 
@@ -205,6 +116,8 @@ const cards = (page, sel) => page.evaluate((s) => {
     ok(`${fn} sends storeIsland`, /storeIsland: owner\.Island/.test(body));
     ok(`${fn} sends storeVillage`, /storeVillage: owner\.Village/.test(body));
   }
+  const admin = fs.readFileSync(REPO + 'apps-script/Admin.gs', 'utf8');
+  ok('Tips products send storeIsland and storeVillage too', /storeIsland: owner\.Island/.test(admin) && /storeVillage: owner\.Village/.test(admin));
   // Was pinned to the literal 'cardloc1-2026-09-04', which meant the NEXT
   // backend change broke this suite for no reason - the same literal-pinning
   // trap already removed from the other suites. The durable rule: if any .gs
