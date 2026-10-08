@@ -7424,3 +7424,30 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   padding: 0.1em 0.45em;
   font-size: 0.68rem;
 }
+
+/* "Badges?" panel: headings for the two groups, and the delivery rows. */
+.badge-legend-heading {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.badge-legend-heading:first-child {
+  margin-top: 0;
+}
+
+.badge-legend--delivery dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.badge-legend--delivery .delivery-icon svg {
+  width: 18px;
+  height: 18px;
+}

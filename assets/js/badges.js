@@ -280,8 +280,31 @@ function renderSellerBadges(ids, opts) {
  * A <dl> because that is what this is - terms and their definitions - so a
  * screen reader announces the pairing instead of sixteen loose lines.
  */
+// Delivery icons on cards, explained in the same panel (owner's call, Oct
+// 2026). Short on purpose: what each icon means, nothing else.
+const DELIVERY_LEGEND = [
+  ['truck', 'Truck', 'Delivered by truck on the store\'s island.'],
+  ['ship', 'Ship', 'Sent by ship to other islands.'],
+  ['airCargo', 'Air cargo', 'Sent by plane to other islands.'],
+  ['pickPay', 'Pick & Pay', 'Collect from the store and pay there. Always free.']
+];
+
+function renderDeliveryLegend() {
+  if (typeof DELIVERY_ICON_SVG === 'undefined') return '';   // page without helpers.js
+  const icon = (m, free) => '<span class="delivery-icon' + (free ? ' delivery-icon-free' : '') + '" aria-hidden="true">' + DELIVERY_ICON_SVG[m] + '</span>';
+  return '<p class="badge-legend-heading">Delivery</p>'
+    + '<dl class="badge-legend badge-legend--delivery">'
+    + DELIVERY_LEGEND.map(([m, name, text]) => '<div class="badge-legend-row">'
+      + '<dt>' + icon(m, m === 'pickPay') + '<span>' + escapeHtml(name) + '</span></dt>'
+      + '<dd>' + escapeHtml(text) + '</dd></div>').join('')
+    + '<div class="badge-legend-row"><dt>' + icon('truck', true) + '<span>Green icon</span></dt>'
+    + '<dd>That delivery is free.</dd></div>'
+    + '</dl>';
+}
+
 function renderBadgeLegend() {
-  return '<dl class="badge-legend">'
+  return '<p class="badge-legend-heading">Seller badges</p>'
+    + '<dl class="badge-legend">'
     + SELLER_BADGE_ORDER.map((id) => {
       const b = SELLER_BADGES[id];
       return '<div class="badge-legend-row">'
@@ -291,7 +314,8 @@ function renderBadgeLegend() {
         + '<dd>' + escapeHtml(b.explain) + '</dd>'
         + '</div>';
     }).join('')
-    + '</dl>';
+    + '</dl>'
+    + renderDeliveryLegend();
 }
 
 /**
@@ -326,8 +350,10 @@ function wireSellerBadges(root) {
  * pages.
  */
 function renderBadgeLegendPanel(items) {
-  const any = Array.isArray(items)
-    && items.some((it) => it && Array.isArray(it.sellerBadges) && it.sellerBadges.length);
+  // Shown when any card has a badge OR a delivery icon - both are explained in it.
+  const any = Array.isArray(items) && items.some((it) => it && (
+    (Array.isArray(it.sellerBadges) && it.sellerBadges.length)
+    || it.storeDeliveryTruck || it.storeDeliveryShip || it.storeDeliveryAirCargo || it.storeDeliveryPickPay));
   if (!any) return '';
   return '<details class="badge-legend-panel">'
     + '<summary>Badges?</summary>'

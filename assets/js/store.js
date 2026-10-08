@@ -89,6 +89,9 @@ async function init() {
     listEl.innerHTML = currentProducts.map((p) => renderBrowseProductCard(p)).join('');
     fitPriceLabels(listEl);
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
+    // "Badges?" panel for this store's own cards; loadSimilarProducts re-mounts
+    // it with the similar row added once that arrives.
+    mountBadgeLegend('store-badge-legend', currentProducts);
   }
 
   recordStoreVisitOnce(currentSlug);
@@ -194,16 +197,9 @@ async function loadSimilarProducts() {
     .map((p) => renderBrowseProductCard(p, { cardClass: 'similar-product-card' }))
     .join('');
   document.getElementById('similar-section').classList.remove('hidden');
-  /*
-   * Mounted from the SIMILAR products, not this store's own.
-   *
-   * A store page's own products carry no sellerBadges - they all belong to one
-   * seller, whose badges arrive once at the top of the response and are
-   * rendered interactively above the grid. The only read-only chips on this
-   * page are in the similar-products row, which comes from other stores. Keying
-   * the panel off currentProducts would have meant it never appeared.
-   */
-  mountBadgeLegend('store-badge-legend', similar);
+  // The store's own cards carry its badges and delivery icons too (they were
+  // given the store's details when loaded), so the panel covers both rows.
+  mountBadgeLegend('store-badge-legend', currentProducts.concat(similar));
   // After unhiding: a hidden element has no width to measure against.
   fitPriceLabels(document.getElementById('similar-products-list'));
   recordProductViewsOnce(similar.map((p) => p.productId));
