@@ -91,10 +91,10 @@ ok('plan: ticked, free and pending purchases are never reminded or stopped', !/x
 plan = box.featureBankMatchPlan([mk('x2', 5.5)], now, 7, { x2: { 2: 'sent' } });
 ok('plan: each reminder goes once', plan.remind2.length === 0);
 
-ok('reminder emails go to the three addresses', box.featureBankReminderEmails().join() === 'admin@mwakete.com,motenakau@gmail.com,mootenakau@gmail.com');
-box.__props.FEATURE_BANK_REMINDER_EMAILS = 'a@x.com, b@x.com';
-ok('...unless the Script Property sets others', box.featureBankReminderEmails().join() === 'a@x.com,b@x.com');
-delete box.__props.FEATURE_BANK_REMINDER_EMAILS;
+box.__props.ADMIN_EMAILS = 'boss@x.com';
+ok('reminder emails default to the admins', box.featureBankReminderEmails().join() === 'boss@x.com');
+box.__props.FEATURE_BANK_REMINDER_EMAILS = 'a@x.com, b@x.com, c@x.com';
+ok('...and go to the Script Property list when the owner sets one', box.featureBankReminderEmails().join() === 'a@x.com,b@x.com,c@x.com');
 
 // The sweep, end to end, on the real sheet.
 const fp = box.__sheets.FeaturePurchases;
@@ -105,12 +105,12 @@ box.__mail.length = 0;
 box.sweepFeatureBankMatches();
 const mails = box.__mail.map((m) => ({ to: m[0], subject: m[1], body: m[2] }));
 const remind = mails.filter((m) => /to tick in the bank - stops in about 2 days/.test(m.subject));
-ok('sweep: the 2-day reminder emails all three admins, naming the payment', remind.length === 3
+ok('sweep: the 2-day reminder emails everyone on the list, naming the payment', remind.length === 3
   && remind.every((m) => m.body.includes(b.reference) && /Seen in bank/.test(m.body)), JSON.stringify(mails.map((m) => m.to + ': ' + m.subject)));
 ok('sweep: the overdue one is Stopped, and leaves Tips', row(e.purchaseId).Status === 'Stopped' && /auto-stopped/.test(row(e.purchaseId).OcrNotes)
   && box.activePaidFeaturedProductIds().indexOf('p5') === -1);
 ok('sweep: admins are told what stopped', mails.filter((m) => /featuring stopped - payment not seen in bank/.test(m.subject)).length === 3);
-ok('sweep: the seller is told and how to get it restarted', mails.some((m) => m.to === 'shop@example.com' && /could not find your payment/.test(m.body) && /admin@mwakete\.com/.test(m.body)));
+ok('sweep: the seller is told and how to get it restarted', mails.some((m) => m.to === 'shop@example.com' && /could not find your payment/.test(m.body) && /reply to this email/.test(m.body)));
 box.__mail.length = 0;
 box.sweepFeatureBankMatches();
 ok('sweep: running again an hour later sends nothing new', box.__mail.length === 0, JSON.stringify(box.__mail.map((m) => m[1])));

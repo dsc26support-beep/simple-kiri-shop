@@ -478,7 +478,6 @@ function actionSetFeatureBankMatched(owner, body) {
 // Paid featuring approved automatically must be ticked "Seen in bank" within
 // this many days of starting, or it stops (owner's call, Oct 2026). Admins are
 // emailed 2 days and 1 day before. Free featuring is never affected.
-var FEATURE_BANK_REMINDER_DEFAULT = ['admin@mwakete.com', 'motenakau@gmail.com', 'mootenakau@gmail.com'];
 var FEATURE_BANK_REMINDED_KEY = 'FEATURE_BANK_REMINDED';
 
 function featureBankMatchDays() {
@@ -486,10 +485,14 @@ function featureBankMatchDays() {
   return v > 0 ? v : 7;
 }
 
-/** Who gets the "tick these in the bank" emails. Script Property FEATURE_BANK_REMINDER_EMAILS (comma-separated) overrides. */
+/**
+ * Who gets the "tick these in the bank" emails: the Script Property
+ * FEATURE_BANK_REMINDER_EMAILS (comma-separated - set by the owner), else the
+ * admins (ADMIN_EMAILS). Kept out of the code so no address is published here.
+ */
 function featureBankReminderEmails() {
   var raw = PropertiesService.getScriptProperties().getProperty('FEATURE_BANK_REMINDER_EMAILS');
-  var list = raw ? String(raw).split(',') : FEATURE_BANK_REMINDER_DEFAULT;
+  var list = raw ? String(raw).split(',') : getAdminEmails();
   return list.map(function (e) { return String(e).trim(); }).filter(function (e) { return /@/.test(e); });
 }
 
@@ -594,7 +597,7 @@ function sweepFeatureBankMatches() {
           sendAppEmail(o.Email, 'Your Mwakete featuring has been stopped',
             'Hi ' + o.StoreName + ',\n\nWe could not find your payment of $' + Number(r.Amount).toFixed(2) +
             ' (reference ' + r.Reference + ') in our bank account, so this featuring has been stopped.\n\n' +
-            'If you did pay, reply to this email or contact admin@mwakete.com with your bank receipt and we will restart it.\n');
+            'If you did pay, reply to this email with your bank receipt and we will restart it.\n');
         } catch (e) { Logger.log('seller stop notice failed: ' + e); }
       });
     }
