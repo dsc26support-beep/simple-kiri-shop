@@ -7160,3 +7160,74 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   text-align: center;
   font-size: 0.8125rem;
 }
+
+/* ==========================================================================
+   Browse product cards (renderBrowseProductCard in helpers.js) - Oct 2026
+   Row 1: price at the far left, the first 15 characters of the description
+   at the far right. Row 2: place, delivery icons, Verified, other badges,
+   Featured. Smaller type throughout to fit both rows on a half-width phone
+   card. At the end of the file so these win over the older card rules
+   without !important.
+   ========================================================================== */
+/* The name is a screen-reader-only heading now. .sr-only is position:absolute,
+   so it needs a positioned box to sit in - without one it is placed against
+   the page, and a card scrolled off to the right in a sideways row (related
+   products) widened the whole page. */
+.product-card-body {
+  position: relative;
+}
+
+.product-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  column-gap: var(--space-2);
+  margin: 0;
+}
+
+.product-price.product-price--card {
+  font-size: 0.9rem;
+}
+
+/* margin-left:auto keeps it at the right edge even when it has to drop under
+   a long price range ("$219.99-500.00") on a narrow card. */
+.product-card-blurb {
+  margin-left: auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.product-card .rating {
+  font-size: 0.75rem;
+}
+
+.product-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 5px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--color-muted);
+}
+
+.product-card-meta .seller-badges {
+  margin: 0;
+  gap: 3px;
+}
+
+.product-card-meta .seller-badge--chip {
+  padding: 0.1em 0.45em;
+  font-size: 0.68rem;
+}
+
+.product-card-meta .featured-badge {
+  margin: 0;
+  padding: 0 0.45em;
+  font-size: 0.68rem;
+}

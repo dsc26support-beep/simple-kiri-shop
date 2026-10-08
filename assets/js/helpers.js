@@ -57,7 +57,8 @@ function fitPriceLabels(root) {
   // heading at the name's own size and wrap to the next line when they don't
   // fit, so shrinking them here would fight that - and this also runs globally
   // on resize, which would undo it after the fact.
-  (root || document).querySelectorAll('.product-price:not(.product-price--inline)').forEach((el) => {
+  // Nor the browse cards' price, which shares a wrapping row with the blurb.
+  (root || document).querySelectorAll('.product-price:not(.product-price--inline):not(.product-price--card)').forEach((el) => {
     el.style.fontSize = '';
     const available = el.clientWidth;
     const needed = el.scrollWidth;
@@ -467,17 +468,6 @@ function renderStars(rating, count) {
 }
 
 /**
- * opts.showLocation switches the card to the homepage/search treatment: the
- * price sits in the heading beside the name at the same size, and the line
- * beneath names WHERE the thing is rather than who sells it. In Kiribati the
- * island - or the village, on South Tarawa - is what tells a shopper whether
- * getting it to them is practical at all, which the store's name does not.
- *
- * The store's phone goes with the store name; a number on its own belongs to
- * nobody. Delivery icons stay either way. The Tips page and a store's
- * similar-products row keep the original card, where the seller is the point.
- */
-/**
  * The seller's badges on a product card: at most two, read-only.
  *
  * TWO, because this card is half the width of a phone and the badges are
@@ -495,7 +485,8 @@ function renderStars(rating, count) {
  */
 function sellerBadgeRow(product) {
   if (typeof renderSellerBadges !== 'function') return '';   // page without badges.js
-  return renderSellerBadges(product.sellerBadges, { size: 'chip', max: 2, interactive: false });
+  // Verified first on product cards (owner's call), then the usual priority order.
+  return renderSellerBadges(product.sellerBadges, { size: 'chip', max: 2, interactive: false, first: 'verified' });
 }
 
 // "Featured" pill for a product a seller is currently paying to feature
@@ -505,33 +496,48 @@ function featuredBadgeHtml(product) {
   return product && product.featured ? '<span class="featured-badge">Featured</span>' : '';
 }
 
+const CARD_BLURB_CHARS = 15;
+
+/**
+ * The card's short text: the first 15 characters of the description, or of
+ * the name when there is no description, so the row is never empty. Counted
+ * in characters, not UTF-16 units, so an emoji or accented letter is never cut
+ * in half.
+ */
+function cardBlurb(product) {
+  const text = String(product.description || '').replace(/\s+/g, ' ').trim()
+    || String(product.name || '').replace(/\s+/g, ' ').trim();
+  const chars = Array.from(text);
+  return chars.length > CARD_BLURB_CHARS ? chars.slice(0, CARD_BLURB_CHARS).join('').trimEnd() + '…' : text;
+}
+
+/**
+ * Every browse product card (home, Tips, related and similar products):
+ *   row 1  price at the far left, the first 15 characters of the description
+ *          at the far right;
+ *          stars on their own small row, only when rated;
+ *   row 2  where the store is (village on South Tarawa, else the island),
+ *          the delivery icons, then Verified, then the other badges and
+ *          Featured.
+ * The product name is not shown, but is still the card's heading for a
+ * screen reader, the photo's alt text and part of the link's label.
+ * opts.showLocation is accepted for older callers; every card shows it now.
+ */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
-  const showLocation = !!opts.showLocation;
 
   const media = product.imageUrl
     ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
     : `<div class="placeholder-swatch category-${escapeHtml(categoryIdOf(product.category))}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   const priceText = formatPriceLabel(product.variants);
-  const location = storeLocationLabel(product.storeIsland, product.storeVillage);
-
-  // Price inside the heading, at the name's size. Normal inline flow, not a
-  // flex row: it puts the price beside the name and lets it fall to the next
-  // line by itself when both won't fit, which is what was asked for.
-  const heading = showLocation
-    ? `<h3 class="product-name product-name--with-price">${escapeHtml(product.name)} <span class="product-price product-price--inline">${priceText}</span></h3>`
-    : `<h3 class="product-name">${escapeHtml(product.name)}</h3>
-        <strong class="product-price">${priceText}</strong>`;
-
   // Falls back to the store name if this store has no location recorded, so
   // the line is never blank.
-  const meta = showLocation ? (location || product.storeName) : product.storeName;
+  const place = storeLocationLabel(product.storeIsland, product.storeVillage) || product.storeName || '';
 
   // Delivery flags are store-wide, so they are meaningless - and misleading -
-  // on a rental or service listing. Suppressed there; the goods listings and
-  // the store page keep them.
+  // on a rental or service listing. Suppressed there.
   const deliveryIcons = isBookingListing(product)
     ? ''
     : renderDeliveryIcons({
@@ -544,28 +550,19 @@ function renderBrowseProductCard(product, opts) {
         airCargoCost: product.storeDeliveryAirCargoCost
       });
 
-  // On the location cards the icons run straight on from the place name, one
-  // line instead of two, with the icons shrunk so both fit on a half-width
-  // phone card (.product-card-meta in styles.css). The other surfaces keep the
-  // store name on its own line with the phone and icons beneath, where there
-  // is more to fit.
-  const metaBlock = showLocation
-    ? `<p class="helper-text product-card-meta">${escapeHtml(meta)}${deliveryIcons ? ' ' + deliveryIcons : ''}</p>`
-    : `<p class="helper-text">${escapeHtml(meta)}</p>
-        <div class="store-phone-row">
-          ${product.storePhone ? `<span class="store-phone">${escapeHtml(product.storePhone)}</span>` : ''}
-          ${deliveryIcons}
-        </div>`;
-
   return `
     <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
       ${media}
       <div class="product-card-body">
-        ${featuredBadgeHtml(product)}
-        ${heading}
+        <h3 class="product-name sr-only">${escapeHtml(product.name)}</h3>
+        <p class="product-card-top">
+          <strong class="product-price product-price--card">${priceText}</strong>
+          <span class="product-card-blurb">${escapeHtml(cardBlurb(product))}</span>
+        </p>
         ${renderStars(product.rating, product.reviewCount)}
-        ${sellerBadgeRow(product)}
-        ${metaBlock}
+        <div class="product-card-meta">
+          <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}${featuredBadgeHtml(product)}
+        </div>
       </div>
     </a>
   `;

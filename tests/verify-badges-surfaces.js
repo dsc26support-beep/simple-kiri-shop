@@ -132,8 +132,9 @@ const snap = (page) => page.evaluate(() => ({
         more: (c.querySelector('.seller-badge--more') || {}).getAttribute
           ? c.querySelector('.seller-badge--more').getAttribute('aria-label') : null
       })));
-    ok('a card shows the HIGHEST-priority badges first, not the first ones sent',
-      cards[0].labels[0] === 'recommended' && cards[0].labels[1] === 'verified',
+    // Product cards put Verified first (owner's call, Oct 2026), then priority order.
+    ok('a card shows Verified first, then the HIGHEST-priority badge, not the first ones sent',
+      cards[0].labels[0] === 'verified' && cards[0].labels[1] === 'recommended',
       cards[0].labels.join(' | '));
     ok('and caps a dense card at two plus a counter',
       cards[0].labels.length === 3 && cards[0].labels[2] === '+2', cards[0].labels.join(' | '));
@@ -296,7 +297,7 @@ const snap = (page) => page.evaluate(() => ({
   /* ---------- read from the source ---------- */
   const helpers = fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8');
   ok('the card badge row is capped at two and read-only, in one place',
-    /renderSellerBadges\(product\.sellerBadges, \{ size: 'chip', max: 2, interactive: false \}\)/.test(helpers));
+    /renderSellerBadges\(product\.sellerBadges, \{ size: 'chip', max: 2, interactive: false, first: 'verified' \}\)/.test(helpers));
   ok('and guarded, so a page without badges.js renders the card it always did',
     /typeof renderSellerBadges !== 'function'\) return ''/.test(helpers));
 

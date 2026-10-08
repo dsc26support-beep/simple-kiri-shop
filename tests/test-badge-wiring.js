@@ -257,7 +257,7 @@ function byIdOf(r) {
   ok('storeInfo cache bumped', /storeInfoCacheKey\(slug\) \{ return 'v4:storeInfo:'/.test(products));
   ok('listProducts cache bumped', /storeProductsCacheKey\(slug\) \{ return 'v3:listProducts:'/.test(products));
   ok('search cache bumped', /v4:search/.test(products) && !/'v3:search/.test(products));
-  ok('tips cache bumped', /v3:tips/.test(admin) && !/'v2:tips/.test(admin));
+  ok('tips cache bumped', /v4:tips/.test(admin) && !/'v3:tips/.test(admin));
 
   /*
    * THE REGRESSION THIS EXISTS TO STOP.
