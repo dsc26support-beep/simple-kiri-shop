@@ -11,6 +11,7 @@ const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 let purchases = [];
 let payment = { accountName: '', accountNumber: '' };
 let freeAvailable = false;
+let freeBlockedBecause = '';
 let freeMaxProducts = 3;
 
 async function init() {
@@ -30,6 +31,7 @@ async function init() {
   purchases = res.purchases || [];
   payment = res.payment || payment;
   freeAvailable = !!res.freeAvailable;
+  freeBlockedBecause = res.freeBlockedBecause || '';
   if (res.freeMaxProducts) freeMaxProducts = res.freeMaxProducts;
   renderHistory();
 
@@ -49,6 +51,8 @@ async function init() {
 async function showSelectStep(preset) {
   const section = document.getElementById('feature-select');
   document.getElementById('feature-free-note').classList.toggle('hidden', !freeAvailable);
+  // The free offer needs a phone number on the store (one free featuring per person).
+  document.getElementById('feature-free-phone-note').classList.toggle('hidden', freeBlockedBecause !== 'nophone');
   const listEl = document.getElementById('feature-product-list');
   section.classList.remove('hidden');
   const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit: 100 });
@@ -182,7 +186,9 @@ function showPayStep(p) {
   if (p.status === 'Approved' || p.status === 'Pending review') {
     document.getElementById('feature-pay-steps').classList.add('hidden');
     showPayResult(p.status === 'Approved'
-      ? `${isFreePurchase(p) ? 'Free' : 'Paid'} - featured until ${fmtDate(p.endsAt)}.`
+      ? (notStartedYet(p)
+        ? `Paid - featuring starts ${fmtDateTime(p.startsAt)} and runs until ${fmtDate(p.endsAt)}.`
+        : `${isFreePurchase(p) ? 'Free' : 'Paid'} - featured until ${fmtDate(p.endsAt)}.`)
       : 'Your payment is waiting for a quick check by Mwakete.', p.status);
   } else if (p.status === 'Rejected') {
     document.getElementById('feature-pay-error').textContent =
@@ -256,7 +262,17 @@ function fmtDate(iso) {
   return iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 }
 
+function fmtDateTime(iso) {
+  return iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+}
+
+// Automatic approvals start a couple of hours later (Featuring.gs, FEATURE_START_DELAY_HOURS).
+function notStartedYet(p) {
+  return p.status === 'Approved' && !!p.startsAt && new Date(p.startsAt).getTime() > Date.now();
+}
+
 function statusLine(p) {
+  if (notStartedYet(p)) return `Paid - starts ${fmtDateTime(p.startsAt)}`;
   if (p.status === 'Approved') {
     const live = new Date(p.endsAt).getTime() > Date.now();
     return live ? `Featured until ${fmtDate(p.endsAt)}` : `Ended ${fmtDate(p.endsAt)}`;

@@ -186,3 +186,21 @@ It is a public endpoint, not a secret — it is in the frontend of every page.
   merge; a backend change waits for the steps above. Write frontend code so it
   degrades sensibly against a not-yet-redeployed backend rather than breaking —
   see `unreadCountOf()` in `customer-messages.js` for the pattern.
+
+## Featuring payments - Script Properties (all optional)
+
+Set under **Project Settings → Script Properties** in Apps Script. No redeploy
+is needed after changing one. Leave a property unset to use its default.
+
+| Property | Default | What it does |
+|---|---|---|
+| `FEATURE_AUTO_APPROVE_MAX` | `20` | A single payment above this ($) always waits for an admin. `0` = every payment waits. |
+| `FEATURE_STORE_WEEKLY_AUTO_MAX` | `20` | Most an established store (3+ paid featurings) can have auto-approved in 7 days. Above it, waits for an admin. |
+| `FEATURE_NEW_STORE_WEEKLY_AUTO_MAX` | `5` | The same limit for a store with fewer than 3 paid featurings. |
+| `FEATURE_START_DELAY_HOURS` | `2` | Hours between automatic approval and the featuring starting. `0` = start at once. |
+| `FEATURE_MAX_PAYMENT_AGE_HOURS` | `72` | Receipts dated older than this are rejected. |
+| `FEATURE_MIN_IMAGE_BYTES` | `15000` | Smaller uploads are refused as blank or cropped. |
+
+What the automatic check refuses or holds, and why, is described at the top of
+`apps-script/Featuring.gs`. Every decision is written to the purchase's
+`OcrNotes` cell (e.g. `receiptNo:false ... (no receipt number read)`).

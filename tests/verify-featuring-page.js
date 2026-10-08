@@ -21,7 +21,8 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
       state.calls.push(body);
       let res = { ok: true };
       if (a === 'getOwnerProfile') res = { ok: true, owner: OWNER };
-      else if (a === 'listMyFeaturePurchases') res = { ok: true, purchases: state.purchases, payment: PAYMENT, freeAvailable: !!state.free, freeMaxProducts: 3 };
+      else if (a === 'listMyFeaturePurchases') res = { ok: true, purchases: state.purchases, payment: PAYMENT, freeAvailable: !!state.free,
+        freeBlockedBecause: state.free ? '' : (state.freeBlock || 'used'), freeMaxProducts: 3 };
       else if (a === 'listOwnerProducts') res = { ok: true, products: [
         { productId: 'p1', name: 'Rice', status: 'active' }, { productId: 'p2', name: 'Flour', status: 'active' },
         { productId: 'p3', name: 'Old', status: 'archived' }] };
@@ -94,7 +95,9 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     steps: document.querySelectorAll('.feature-example-list li').length
   }));
   ok('tapping ? shows the example, with where to pay', ex.shown && ex.expanded === 'true'
-    && ex.svg.join('|') === 'Mwakete|906149' && ex.steps === 4, JSON.stringify(ex));
+    && ex.svg.join('|') === 'Mwakete|906149' && ex.steps === 5, JSON.stringify(ex));
+  ok('the example asks for the date and the bank\'s Reference Number (step 5)', /date.*Reference Number/.test(await page.textContent('.feature-example-list li:nth-child(5)')));
+  ok('upload hint: whole screen, not cropped or edited', /not cropped or edited/.test(await page.textContent('.feature-pay-shot-hint')));
   ok('the example never shows this purchase\'s reference or amount, and says EXAMPLE',
     !/MWFABC234|\$0\.70/.test(ex.svgText) && /EXAMPLE/.test(ex.svgText), ex.svgText.replace(/\s+/g, ' '));
   await page.screenshot({ path: process.env.SHOT_DIR ? process.env.SHOT_DIR + '/feature-example.png' : '/dev/null', fullPage: true }).catch(() => {});
@@ -200,7 +203,26 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   st = { calls: [], purchases: [] };
   ({ ctx, page } = await open('/owner/feature.html', st));
   await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
-  ok('offer used: no free note', !(await page.isVisible('#feature-free-note')));
+  ok('offer used: no free note', !(await page.isVisible('#feature-free-note')) && !(await page.isVisible('#feature-free-phone-note')));
+  await ctx.close();
+  st = { calls: [], purchases: [], freeBlock: 'nophone' };
+  ({ ctx, page } = await open('/owner/feature.html', st));
+  await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
+  ok('no phone on the store: told to add one in Settings for the free offer', await page.isVisible('#feature-free-phone-note')
+    && await page.$eval('#feature-free-phone-note a', (a) => a.getAttribute('href')) === 'settings.html');
+  await ctx.close();
+
+  // ---------- approved, starting later (2 hour delay) ----------
+  const later = Object.assign({}, AWAITING, { status: 'Approved', startsAt: new Date(Date.now() + 2 * 3600000).toISOString(),
+    endsAt: new Date(Date.now() + 2 * 3600000 + 7 * 86400000).toISOString() });
+  st = { calls: [], purchases: [later] };
+  ({ ctx, page } = await open('/owner/feature.html?purchase=fp1', st));
+  await page.waitForSelector('#feature-pay-result.is-approved', { timeout: 6000 }).catch(() => {});
+  ok('delayed start: the pay step says when featuring starts', /^Paid - featuring starts .* and runs until/.test(await page.textContent('#feature-pay-result')),
+    await page.textContent('#feature-pay-result'));
+  ok('delayed start: history says "Paid - starts …", not "Featured until"', /Paid - starts/.test(await page.textContent('#feature-history'))
+    && !/Featured until/.test(await page.textContent('#feature-history')));
+  ok('no page errors (delayed)', st.errors.length === 0, st.errors.join('; '));
   await ctx.close();
 
   // ---------- admin queue ----------

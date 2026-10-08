@@ -1706,3 +1706,8 @@ label.is-required::after {
 .feature-bank-ok {
   color: var(--color-success);
 }
+
+.feature-pay-shot-hint {
+  margin-top: calc(-1 * var(--space-2));
+  text-align: center;
+}
