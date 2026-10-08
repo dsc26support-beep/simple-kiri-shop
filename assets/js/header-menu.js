@@ -45,50 +45,36 @@ function headerMenuItems() {
   const hasCustomer = typeof CustomerAuth !== 'undefined' && !!CustomerAuth.getToken();
   const recentCount = typeof cartStoreSlugs === 'function' ? cartStoreSlugs().length : 0;
 
+  // Order chosen by the owner: Tips, Categories, Stores, Help & Support,
+  // My Account - then the two that only sometimes apply. Tips and My Account
+  // are `inBar`: phones already have both in the bottom nav, so there they
+  // are hidden from this menu (styles.css, .header-menu-item--in-bar).
   const items = [
+    { label: 'Tips', href: 'customer-tips.html', icon: HEADER_MENU_ICON.tips, inBar: true },
+    { label: 'Categories', href: 'categories.html', icon: HEADER_MENU_ICON.categories },
     { label: 'Stores', href: 'stores.html', icon: HEADER_MENU_ICON.stores },
-    { label: 'Categories', href: 'categories.html', icon: HEADER_MENU_ICON.categories }
+    // The Help Centre, which answers most questions and ends in the same
+    // Enquiry email for the rest.
+    { label: 'Help & Support', href: 'help.html', icon: HEADER_MENU_ICON.help }
   ];
-
-  if (!hasStore) {
-    items.push({
-      label: 'Create Store',
-      href: 'owner/login.html?tab=register',
-      icon: HEADER_MENU_ICON.createStore
-    });
-  }
-
-  // The Help Centre, which answers most questions and ends in the same
-  // Enquiry email for the rest.
-  items.push({
-    label: 'Help & Support',
-    href: 'help.html',
-    icon: HEADER_MENU_ICON.help
-  });
-  items.push({ label: 'Tips', href: 'customer-tips.html', icon: HEADER_MENU_ICON.tips });
 
   // Signed in as a customer: straight to the dashboard. Signed in only as a
   // seller: neither destination is the obvious one, so ask - the same chooser
   // the homepage "Sign In" link used to open. Signed in as neither: the
   // customer login, which is what "My Account" means to a shopper.
   if (hasCustomer) {
-    items.push({
-      label: 'My Account',
-      href: 'customer-dashboard.html',
-      icon: HEADER_MENU_ICON.account
-    });
+    items.push({ label: 'My Account', href: 'customer-dashboard.html', icon: HEADER_MENU_ICON.account, inBar: true });
   } else if (hasStore) {
-    items.push({
-      label: 'My Account',
-      href: 'customer-login.html',
-      icon: HEADER_MENU_ICON.account,
-      chooser: true
-    });
+    items.push({ label: 'My Account', href: 'customer-login.html', icon: HEADER_MENU_ICON.account, chooser: true, inBar: true });
   } else {
+    items.push({ label: 'My Account', href: 'customer-login.html', icon: HEADER_MENU_ICON.account, inBar: true });
+  }
+
+  if (!hasStore) {
     items.push({
-      label: 'My Account',
-      href: 'customer-login.html',
-      icon: HEADER_MENU_ICON.account
+      label: 'Create Store',
+      href: 'owner/login.html?tab=register',
+      icon: HEADER_MENU_ICON.createStore
     });
   }
 
@@ -142,7 +128,7 @@ function initHeaderMenu() {
     // them is a destination. The current page keeps its entry (the menu reads
     // the same on every page) and says so instead of pretending otherwise.
     const isCurrent = !it.external && it.href.split('#')[0].toLowerCase() === current;
-    return '<a class="header-menu-item' + (isCurrent ? ' is-current' : '') + '"' +
+    return '<a class="header-menu-item' + (isCurrent ? ' is-current' : '') + (it.inBar ? ' header-menu-item--in-bar' : '') + '"' +
       ' role="menuitem" href="' + it.href + '"' +
       (isCurrent ? ' aria-current="page"' : '') +
       (it.chooser ? ' data-login-chooser="1"' : '') +
@@ -166,7 +152,10 @@ function initHeaderMenu() {
 }
 
 function headerMenuLinks(panel) {
-  return Array.prototype.slice.call(panel.querySelectorAll('.header-menu-item, .header-menu-legal-link'));
+  // Only the links actually showing: on phones Tips and My Account are hidden
+  // (they are in the bottom nav), and the arrow keys must skip them.
+  return Array.prototype.slice.call(panel.querySelectorAll('.header-menu-item, .header-menu-legal-link'))
+    .filter((a) => a.getClientRects().length > 0);
 }
 
 function closeHeaderMenu(btn, panel, refocus) {

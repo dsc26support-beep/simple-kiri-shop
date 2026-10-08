@@ -25,7 +25,8 @@ const BASE = 'http://127.0.0.1:8099';
     const signin = links.find((a) => /My Account/i.test(label(a)));
     if (!signin || !create) return { signin: false };
     const cs = getComputedStyle(signin), cc = getComputedStyle(create);
-    const order = create.compareDocumentPosition(signin) & Node.DOCUMENT_POSITION_FOLLOWING;
+    // Owner's order (2026-10): ... Help & Support, My Account, then Create Store.
+    const order = create.compareDocumentPosition(signin) & Node.DOCUMENT_POSITION_PRECEDING;
     return {
       signin: true,
       href: signin.getAttribute('href'),
@@ -36,7 +37,7 @@ const BASE = 'http://127.0.0.1:8099';
     };
   });
   ok('§12 account link exists', link.signin);
-  ok('§12 account link is beneath Create Store', link.below);
+  ok('§12 account link comes before Create Store (owner\'s menu order)', link.below);
   ok('§12 account link routes to login', link.href === 'customer-login.html', link.href);
   ok('§12 account link matches Create Store styling', link.sameColor && link.sameSize && link.sameWeight, JSON.stringify(link));
   await ctx.close();
