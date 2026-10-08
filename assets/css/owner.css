@@ -1192,6 +1192,21 @@ label.is-required::after {
   margin-bottom: var(--space-3);
 }
 
+/* The tool links above the stock list (Import / Sync, Reports, Locations,
+   Suppliers): outline only, so the solid Receive on each row stands out as
+   the main action. */
+.inv-tool-btn {
+  background: transparent;
+  color: var(--color-purple-light);
+  border-color: var(--color-purple-light);
+}
+
+.inv-tool-btn:hover,
+.inv-tool-btn:focus-visible {
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+}
+
 .inv-filters {
   display: flex;
   flex-wrap: wrap;

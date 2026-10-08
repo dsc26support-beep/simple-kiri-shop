@@ -93,6 +93,14 @@ let who = { OwnerId: 'own_d', StoreSlug: 'd', StoreType: 'distributor' };
   await page.waitForSelector('.inv-row', { timeout: 6000 });
   const rtools = await page.$$eval('#inv-more [data-tool], #inv-more a', (b) => b.map((x) => x.textContent.trim()));
   ok('retailer sees only Import / Sync and Reports', rtools.join('|') === 'Import / Sync|Reports', rtools.join('|'));
+  const look = await page.evaluate(() => {
+    const st = (el) => { const c = getComputedStyle(el); return { bg: c.backgroundColor, color: c.color, border: c.borderTopColor, bw: c.borderTopWidth }; };
+    return { tools: [...document.querySelectorAll('#inv-more .btn')].map(st), receive: st(document.querySelector('[data-act="receive"]')) };
+  });
+  ok('Import / Sync and Reports are outline only: purple border and text, no fill',
+    look.tools.length === 2 && look.tools.every((t) => t.bg === 'rgba(0, 0, 0, 0)' && t.color === 'rgb(106, 97, 184)' && t.border === 'rgb(106, 97, 184)' && t.bw === '2px'), JSON.stringify(look.tools));
+  ok('...while Receive stays solid dark purple', look.receive.bg === 'rgb(51, 45, 99)', JSON.stringify(look.receive));
+  await page.screenshot({ path: process.env.SHOT2 || '/dev/null', fullPage: false }).catch(() => {});
   ok('retailer: no split, no Transfer, no location picker', !(await page.$('.inv-split')) && !(await page.$('[data-act="transfer"]')));
   await page.click('[data-act="receive"]');
   ok('...receive has no location field', !(await page.$('#inv-loc')));
