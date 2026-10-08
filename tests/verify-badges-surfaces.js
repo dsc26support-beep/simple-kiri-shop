@@ -133,14 +133,15 @@ const snap = (page) => page.evaluate(() => ({
         more: (c.querySelector('.seller-badge--more') || {}).getAttribute
           ? c.querySelector('.seller-badge--more').getAttribute('aria-label') : null
       })));
-    // Product cards put Verified first (owner's call, Oct 2026), then priority order.
-    ok('a card shows Verified first, then the HIGHEST-priority badge, not the first ones sent',
-      cards[0].labels[0] === 'verified' && cards[0].labels[1] === 'recommended',
+    // Verified has its own row at the bottom of a product card (owner's call,
+    // Oct 2026); the other badges keep priority order, capped at two + counter.
+    ok('a card shows the HIGHEST-priority badges first, then Verified on its own row last',
+      cards[0].labels[0] === 'recommended' && cards[0].labels[cards[0].labels.length - 1] === 'verified',
       cards[0].labels.join(' | '));
-    ok('and caps a dense card at two plus a counter',
-      cards[0].labels.length === 3 && cards[0].labels[2] === '+2', cards[0].labels.join(' | '));
+    ok('and caps the other badges at two plus a counter',
+      cards[0].labels.length === 4 && cards[0].labels[2] === '+1', cards[0].labels.join(' | '));
     ok('the counter names what is behind it for a screen reader',
-      /2 more seller badges: Reliable Delivery, New Seller/.test(cards[0].more || ''), cards[0].more);
+      /1 more seller badge: New Seller/.test(cards[0].more || ''), cards[0].more);
     ok('a seller with exactly two shows both and no counter',
       cards[1].labels.join(',') === 'top,responsive', cards[1].labels.join(','));
     ok('only Verified shows a word on a card', (await page.evaluate(() => Array.from(document.querySelectorAll('#trending-products-list .seller-badge:not(.seller-badge--more) .seller-badge-label')).map((e) => e.textContent.trim()))).every((t) => t === 'Verified'));
@@ -298,7 +299,8 @@ const snap = (page) => page.evaluate(() => ({
   /* ---------- read from the source ---------- */
   const helpers = fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8');
   ok('the card badge row is capped at two and read-only, in one place',
-    /renderSellerBadges\(product\.sellerBadges, \{ size: 'chip', max: 2, interactive: false, first: 'verified' \}\)/.test(helpers));
+    /renderSellerBadges\(others, \{ size: 'chip', max: 2, interactive: false \}\)/.test(helpers)
+      && /renderSellerBadges\(\['verified'\], \{ size: 'chip', interactive: false \}\)/.test(helpers));
   ok('and guarded, so a page without badges.js renders the card it always did',
     /typeof renderSellerBadges !== 'function'\) return ''/.test(helpers));
 

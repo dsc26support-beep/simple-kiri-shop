@@ -7409,3 +7409,18 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   padding: 0 0.45em;
   font-size: 0.68rem;
 }
+
+/* Verified on its own row at the bottom of a product card. */
+.product-card-verified {
+  display: flex;
+  font-size: 0.75rem;
+}
+
+.product-card-verified .seller-badges {
+  margin: 0;
+}
+
+.product-card-verified .seller-badge--chip {
+  padding: 0.1em 0.45em;
+  font-size: 0.68rem;
+}

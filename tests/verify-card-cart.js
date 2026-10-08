@@ -76,12 +76,19 @@ const cart = (page, slug) => page.evaluate((s) => JSON.parse(localStorage.getIte
     };
   });
   ok('card is an <article> (a button can\'t live inside a link)', card.tag === 'ARTICLE', card.tag);
-  ok('order: text line, price + cart, stars, place row', card.kids.join(',') === 'product-name,product-card-buy,rating,product-card-meta', card.kids.join(','));
+  ok('order: text line, price + cart, stars, place row, Verified row', card.kids.join(',') === 'product-name,product-card-buy,rating,product-card-meta,product-card-verified', card.kids.join(','));
   ok('text line: the description, on one line cut with …', card.title.startsWith('Bright solar lamp') && card.oneLine, card.title);
   ok('the link is named by the product and store for a screen reader', card.linkName === 'Solar Lamp, Bong Store', card.linkName);
   ok('price at the left, round cart button at the right, same row', card.priceLeft && card.btnRight && card.sameRow, JSON.stringify(card));
   ok('cart button says what it adds', card.btnLabel === 'Add Solar Lamp to cart');
-  ok('place row: place, delivery, Verified, other badges', card.meta.join(',') === 'place:Abaiang,delivery,verified,recommended', card.meta.join(','));
+  ok('place row: place, delivery, other badges (Verified has its own row)', card.meta.join(',') === 'place:Abaiang,delivery,recommended', card.meta.join(','));
+  const vrow = await page.$eval('#trending-products-list .product-card[data-product-id="p1"] .product-card-verified', (r) => r.textContent.trim()).catch(() => null);
+  ok('Verified alone on its own row at the bottom', /Verified/.test(vrow || '') && !/Recommended/.test(vrow || ''), String(vrow));
+  ok('no Verified row for a seller who isn\'t verified', await page.evaluate(() => {
+    const box = document.createElement('div');
+    box.innerHTML = renderBrowseProductCard({ productId: 'nv', name: 'N', storeSlug: 's', storeName: 'S', variants: [{ variantId: 'v', label: 'a', price: 1 }], sellerBadges: ['recommended'] });
+    return !box.querySelector('.product-card-verified') && !!box.querySelector('.product-card-meta .seller-badge--recommended');
+  }));
   const noDesc = await page.$eval('.product-card[data-product-id="p2"] .product-name', (e) => e.textContent.trim());
   ok('no description -> the name', noDesc === 'Rice', noDesc);
   ok('a rental has no cart button', !(await page.$('.product-card[data-product-id="p3"] .card-cart-btn')));
@@ -142,7 +149,7 @@ const cart = (page, slug) => page.evaluate((s) => JSON.parse(localStorage.getIte
     n: document.querySelectorAll('#product-list article.product-card .card-cart-btn').length,
     oldControls: document.querySelectorAll('#product-list .variety-select, #product-list .qty-input, #product-list .add-to-cart-btn').length,
     place: (document.querySelector('#product-list .product-card-place') || {}).textContent,
-    badge: !!document.querySelector('#product-list .product-card-meta .seller-badge--verified'),
+    badge: !!document.querySelector('#product-list .product-card-verified .seller-badge--verified'),
     href: document.querySelector('#product-list .product-card-link').getAttribute('href')
   }));
   ok('store page: the same card, with the round cart button (not on the rental)', st.n === 2 && st.oldControls === 0, JSON.stringify(st));

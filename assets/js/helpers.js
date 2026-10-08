@@ -492,8 +492,21 @@ function renderStars(rating, count) {
  */
 function sellerBadgeRow(product) {
   if (typeof renderSellerBadges !== 'function') return '';   // page without badges.js
-  // Verified first on product cards (owner's call), then the usual priority order.
-  return renderSellerBadges(product.sellerBadges, { size: 'chip', max: 2, interactive: false, first: 'verified' });
+  // Verified has its own row on product cards (cardVerifiedRow), so it is
+  // left out here; the rest keep the usual priority order.
+  const others = (product.sellerBadges || []).filter((id) => id !== 'verified');
+  return renderSellerBadges(others, { size: 'chip', max: 2, interactive: false });
+}
+
+/**
+ * Verified always gets its own row at the bottom of a product card (owner's
+ * call, Oct 2026), under the place and delivery icons. Nothing at all for a
+ * seller who isn't verified, so those cards are simply a line shorter.
+ */
+function cardVerifiedRow(product) {
+  if (typeof renderSellerBadges !== 'function') return '';
+  if ((product.sellerBadges || []).indexOf('verified') === -1) return '';
+  return `<div class="product-card-verified">${renderSellerBadges(['verified'], { size: 'chip', interactive: false })}</div>`;
 }
 
 // "Featured" pill for a product a seller is currently paying to feature
@@ -529,8 +542,9 @@ const CART_PLUS_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="no
  *   one line of description, cut with … at the card's edge;
  *   price, with a round cart button at the right;
  *   stars, when rated;
- *   place (village on South Tarawa, else island), delivery icons, Verified,
- *   the other badges, Featured.
+ *   place (village on South Tarawa, else island), delivery icons, the other
+ *   badges, Featured;
+ *   Verified, on its own row, only when the seller is verified.
  *
  * The whole card opens the product: the title link is stretched over it
  * (.product-card-link::after), and the cart button sits above that. A real
@@ -587,6 +601,7 @@ function renderBrowseProductCard(product, opts) {
         <div class="product-card-meta">
           <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}${featuredBadgeHtml(product)}
         </div>
+        ${cardVerifiedRow(product)}
       </div>
     </article>
   `;
