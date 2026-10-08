@@ -1,7 +1,7 @@
 /**
  * Recent Views page (recent.html): the products and stores this device has
  * opened, newest first, from recent-views.js. No request is made - it all
- * lives on the phone - so the page renders at once, even offline.
+ * lives on the device - so the page renders at once, even offline.
  *
  * Rows link to the live product / store page, which carries the current
  * price and stock; the history deliberately keeps neither.
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', initRecentPage);
 function initRecentPage() {
   wireRecentTabs();
   document.getElementById('recent-clear').addEventListener('click', () => {
-    if (!window.confirm('Clear your recently viewed products and stores on this phone?')) return;
+    if (!window.confirm('Clear your recently viewed products and stores on this device?')) return;
     clearRecentViews();
     renderRecent();
     document.getElementById('recent-status').textContent = 'History cleared.';
@@ -72,7 +72,7 @@ function storeRow(s) {
 }
 
 function emptyRow(what, href, label) {
-  return '<li class="recent-empty"><p>No ' + what + ' viewed yet on this phone.</p>'
+  return '<li class="recent-empty"><p>No ' + what + ' viewed yet on this device.</p>'
     + '<p><a class="btn btn-light-purple" href="' + href + '">' + label + '</a></p></li>';
 }
 
