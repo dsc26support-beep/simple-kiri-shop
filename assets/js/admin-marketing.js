@@ -92,7 +92,9 @@ function renderMktCampaigns(list) {
   }
   body.innerHTML = list.map((c) => {
     const ops = (MKT_OPS[c.status] || []).map(([op, label]) =>
-      `<button type="button" class="btn btn-small" data-mkt-op="${escapeAttr(op)}" data-id="${escapeAttr(c.campaignId)}">${escapeHtml(label)}</button>`).join(' ');
+      // Approve/Resume is the one action you are here to take: filled purple.
+      // Pause and Cancel are outlined, so they can't be hit by mistake for it.
+      `<button type="button" class="btn btn-small ${op === 'approve' || op === 'resume' ? 'btn-primary' : 'btn-light-purple'}" data-mkt-op="${escapeAttr(op)}" data-id="${escapeAttr(c.campaignId)}">${escapeHtml(label)}</button>`).join(' ');
     return `<tr>
       <td>${escapeHtml(c.name)}<br><span class="helper-text">${escapeHtml(c.subject)}</span></td>
       <td>${escapeHtml(MKT_TYPE_LABEL[c.type] || c.type)}</td>
@@ -100,7 +102,7 @@ function renderMktCampaigns(list) {
       <td>${escapeHtml(MKT_AUDIENCE_LABEL[c.audienceType] || c.audienceType)}</td>
       <td>${escapeHtml(mktDate(c.startAt))}<br><span class="helper-text">to ${escapeHtml(mktDate(c.endAt))}</span></td>
       <td>${escapeHtml(c.sentCount)}${c.failedCount ? ` <span class="helper-text">(${escapeHtml(c.failedCount)} failed)</span>` : ''}</td>
-      <td class="mkt-ops"><button type="button" class="btn btn-small" data-mkt-preview="${escapeAttr(c.campaignId)}">Preview</button> ${ops}</td>
+      <td class="mkt-ops"><button type="button" class="btn btn-small btn-light-purple" data-mkt-preview="${escapeAttr(c.campaignId)}">Preview</button> ${ops}</td>
     </tr>`;
   }).join('');
 }
@@ -135,7 +137,7 @@ async function showMktPreview(id) {
   if (!res.ok) { box.textContent = res.error || 'Could not load the preview.'; return; }
   const reasons = Object.keys(res.reasons || {}).map((r) => `<li>${escapeHtml(res.reasons[r])} × ${escapeHtml(r)}</li>`).join('');
   box.innerHTML = `<div class="admin-analytics-head"><h3>${escapeHtml(res.campaign.name)}</h3>
-      <button type="button" class="btn btn-small" id="mkt-preview-close">Close</button></div>
+      <button type="button" class="btn btn-small btn-light-purple" id="mkt-preview-close">Close</button></div>
     <p><strong>${escapeHtml(res.audienceSize)}</strong> would get it now${res.alreadyHandled ? `, ${escapeHtml(res.alreadyHandled)} already handled` : ''}. Estimated emails: ${escapeHtml(res.estimatedEmails)}.</p>
     ${reasons ? `<p>Why they qualify:</p><ul>${reasons}</ul>` : '<p>Nobody qualifies right now.</p>'}
     ${res.sample ? `<p><strong>Subject:</strong> ${escapeHtml(res.sample.subject)}</p><pre class="mkt-sample">${escapeHtml(res.sample.text)}</pre>` : ''}`;
