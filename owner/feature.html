@@ -35,8 +35,9 @@
     <div class="container">
       <h1>Feature your products</h1>
       <p class="helper-text">Featured products are shown to shoppers in Tips and at the top of the Featured list. It costs <strong>5c per product per day</strong>.</p>
-      <p id="feature-free-phone-note" class="helper-text hidden">Add a phone number to your store in <a href="settings.html">Settings</a> to get your first featuring of up to 3 products free.</p>
-      <p id="feature-free-note" class="feature-free-note hidden">Your first featuring is <strong>free</strong>: choose up to 3 products - no payment needed.</p>
+      <!-- Why the monthly free featuring is or isn't available: filled by owner-feature.js. -->
+      <p id="feature-free-phone-note" class="helper-text hidden"></p>
+      <p id="feature-free-note" class="feature-free-note hidden">Featuring up to 3 products is <strong>free once a month</strong> - choose up to 3, no payment needed.</p>
       <p id="feature-status" class="helper-text" role="status"></p>
 
       <!-- Step 1: choose products and days. -->
@@ -52,7 +53,7 @@
         </div>
         <p id="feature-total" class="feature-total" aria-live="polite"></p>
         <p id="feature-select-error" class="form-error" role="alert"></p>
-        <button type="button" id="feature-continue-btn" class="btn btn-primary">Continue to payment</button>
+        <button type="button" id="feature-continue-btn" class="btn btn-primary btn-solid">Continue to payment</button>
       </section>
 
       <!-- Step 2: pay by bank transfer, then upload the receipt. Reached via ?purchase=. -->
@@ -130,7 +131,7 @@
             <input type="file" id="feature-screenshot" accept="image/png,image/jpeg,image/webp">
           </div>
           <p id="feature-pay-error" class="form-error" role="alert"></p>
-          <button type="button" id="feature-upload-btn" class="btn btn-primary">Upload payment screenshot</button>
+          <button type="button" id="feature-upload-btn" class="btn btn-primary btn-solid">Upload payment screenshot</button>
         </div>
         <p id="feature-pay-result" class="feature-pay-result hidden" role="status"></p>
         <p><a href="feature.html" id="feature-new-link">Feature more products</a></p>

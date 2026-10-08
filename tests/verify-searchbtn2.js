@@ -112,7 +112,7 @@ const PAGES = [
     ok('the button is a 44px circle', typed.btnW === 44 && typed.btnH === 44,
       JSON.stringify({ w: typed.btnW, h: typed.btnH }));
     ok('it is round, not a pill corner', typed.radius === '999px' || parseInt(typed.radius, 10) >= 22, typed.radius);
-    ok('it is Mwakete purple (#332d63)', typed.bg === 'rgb(51, 45, 99)', typed.bg);
+    ok('it is outlined (white inside, Mwakete purple ring - Oct 2026)', typed.bg === 'rgb(255, 255, 255)', typed.bg);
     ok('it is fully visible and opaque', typed.visibility === 'visible' && typed.opacity === 1,
       JSON.stringify({ v: typed.visibility, o: typed.opacity }));
     ok('the magnifying glass is drawn', typed.iconShown, String(typed.iconShown));
@@ -182,7 +182,7 @@ const PAGES = [
     const settled = await page.evaluate(probe, { formSel: '#browse-search-form', inputSel: '#browse-search-input' });
     ok('arriving at ?q=rice shows the button with no empty flash',
       !early.isEmpty && !settled.isEmpty, JSON.stringify({ early: early.isEmpty, settled: settled.isEmpty }));
-    ok('and it is the 44px purple disc', settled.btnW === 44 && settled.bg === 'rgb(51, 45, 99)',
+    ok('and it is the 44px outlined disc', settled.btnW === 44 && settled.bg === 'rgb(255, 255, 255)',
       JSON.stringify(settled));
     await ctx.close();
   }
@@ -200,8 +200,8 @@ const PAGES = [
     // Desktop and phone used to differ by colour too. Both are brand purple
     // since the theme pass, so the assertion that still means something is that
     // desktop keeps a WRITTEN pill (checked above) on the standard primary fill.
-    ok('desktop keeps the standard primary fill',
-      wide.bg === 'rgb(51, 45, 99)', wide.bg);
+    ok('desktop keeps the standard primary look (outlined)',
+      wide.bg === 'rgb(255, 255, 255)', wide.bg);
     ok('desktop draws no magnifier', !wide.iconShown, String(wide.iconShown));
     ok('desktop label is not clipped', !wide.labelClipped, String(wide.labelClipped));
     await ctx.close();

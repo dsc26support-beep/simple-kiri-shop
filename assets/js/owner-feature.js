@@ -1,7 +1,7 @@
 // Paid featuring: choose products + days, then pay by bank transfer and upload
 // the receipt. The checking itself is server-side (apps-script/Featuring.gs);
 // the price shown here is a preview - the server computes the real amount,
-// and decides whether this is the store's free first featuring.
+// and decides whether this is the store's free featuring for the month.
 document.addEventListener('DOMContentLoaded', init);
 
 const PRICE_PER_PRODUCT_DAY = 0.05;
@@ -13,6 +13,7 @@ let payment = { accountName: '', accountNumber: '' };
 let freeAvailable = false;
 let freeBlockedBecause = '';
 let freeMaxProducts = 3;
+let freeNextOn = '';
 
 async function init() {
   const owner = await Auth.guardOwnerAuth();
@@ -33,6 +34,7 @@ async function init() {
   freeAvailable = !!res.freeAvailable;
   freeBlockedBecause = res.freeBlockedBecause || '';
   if (res.freeMaxProducts) freeMaxProducts = res.freeMaxProducts;
+  freeNextOn = res.freeNextOn || '';
   renderHistory();
 
   const purchaseId = getQueryParam('purchase');
@@ -51,8 +53,11 @@ async function init() {
 async function showSelectStep(preset) {
   const section = document.getElementById('feature-select');
   document.getElementById('feature-free-note').classList.toggle('hidden', !freeAvailable);
-  // The free offer needs a phone number on the store (one free featuring per person).
-  document.getElementById('feature-free-phone-note').classList.toggle('hidden', freeBlockedBecause !== 'nophone');
+  // Why there's no free featuring right now, and what would get it.
+  const why = freeBlockReason();
+  const whyEl = document.getElementById('feature-free-phone-note');
+  whyEl.innerHTML = why;
+  whyEl.classList.toggle('hidden', !why);
   const listEl = document.getElementById('feature-product-list');
   section.classList.remove('hidden');
   const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit: 100 });
@@ -95,6 +100,19 @@ function selectedDays() {
   return parseInt(document.getElementById('feature-days').value, 10);
 }
 
+// Free featuring: up to 3 products once a month per phone number, for an
+// active store with a phone and 2-step sign-in on (Featuring.gs featureFreeBlock).
+function freeBlockReason() {
+  const settings = '<a href="settings.html">Settings</a>';
+  if (freeBlockedBecause === 'used') {
+    const next = freeNextOn ? new Date(freeNextOn + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : 'next month';
+    return `You've had this month's free featuring. The next one is available from ${escapeHtml(next)}.`;
+  }
+  if (freeBlockedBecause === 'nophone') return `Add a phone number to your store in ${settings} to feature up to ${freeMaxProducts} products free each month.`;
+  if (freeBlockedBecause === 'no2fa') return `Turn on 2-step sign-in in ${settings} to feature up to ${freeMaxProducts} products free each month.`;
+  return '';
+}
+
 function isFreeChoice(n) {
   return freeAvailable && n >= 1 && n <= freeMaxProducts;
 }
@@ -111,7 +129,7 @@ function updateTotal() {
   }
   const what = `${n} product${n === 1 ? '' : 's'} × ${days} day${days === 1 ? '' : 's'}`;
   if (isFreeChoice(n)) {
-    out.textContent = `${what} = Free (your first featuring)`;
+    out.textContent = `${what} = Free (this month's free featuring)`;
     return;
   }
   const total = Math.round(n * days * PRICE_PER_PRODUCT_DAY * 100) / 100;
@@ -312,7 +330,7 @@ function renderHistory() {
         </div>
         <div class="feature-history-status">
           <span>${escapeHtml(statusLine(p))}</span>
-          ${payable ? `<a class="btn btn-small btn-primary" href="feature.html?purchase=${encodeURIComponent(p.purchaseId)}">Pay now</a>` : ''}
+          ${payable ? `<a class="btn btn-small btn-primary btn-solid" href="feature.html?purchase=${encodeURIComponent(p.purchaseId)}">Pay now</a>` : ''}
         </div>
       </div>`;
   }).join('');

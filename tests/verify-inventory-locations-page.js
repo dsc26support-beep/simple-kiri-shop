@@ -99,7 +99,8 @@ let who = { OwnerId: 'own_d', StoreSlug: 'd', StoreType: 'distributor' };
   });
   ok('Import / Sync and Reports are outline only: purple border and text, no fill',
     look.tools.length === 2 && look.tools.every((t) => t.bg === 'rgba(0, 0, 0, 0)' && t.color === 'rgb(106, 97, 184)' && t.border === 'rgb(106, 97, 184)' && t.bw === '2px'), JSON.stringify(look.tools));
-  ok('...while Receive stays solid dark purple', look.receive.bg === 'rgb(51, 45, 99)', JSON.stringify(look.receive));
+  // Every dark purple button is outlined now (Oct 2026), Receive included.
+  ok('...and Receive is outlined in dark purple', look.receive.bg === 'rgb(255, 255, 255)' && look.receive.border === 'rgb(51, 45, 99)', JSON.stringify(look.receive));
   await page.screenshot({ path: process.env.SHOT2 || '/dev/null', fullPage: false }).catch(() => {});
   ok('retailer: no split, no Transfer, no location picker', !(await page.$('.inv-split')) && !(await page.$('[data-act="transfer"]')));
   await page.click('[data-act="receive"]');

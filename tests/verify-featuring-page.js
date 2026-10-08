@@ -22,7 +22,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
       let res = { ok: true };
       if (a === 'getOwnerProfile') res = { ok: true, owner: OWNER };
       else if (a === 'listMyFeaturePurchases') res = { ok: true, purchases: state.purchases, payment: PAYMENT, freeAvailable: !!state.free,
-        freeBlockedBecause: state.free ? '' : (state.freeBlock || 'used'), freeMaxProducts: 3 };
+        freeBlockedBecause: state.free ? '' : (state.freeBlock || 'used'), freeMaxProducts: 3, freeNextOn: '2026-11-01' };
       else if (a === 'listOwnerProducts') res = { ok: true, products: [
         { productId: 'p1', name: 'Rice', status: 'active' }, { productId: 'p2', name: 'Flour', status: 'active' },
         { productId: 'p3', name: 'Old', status: 'archived' }] };
@@ -170,7 +170,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   st = { calls: [], purchases: [], free: true, start: { ok: true, free: true, purchase: FREE } };
   ({ ctx, page } = await open('/owner/feature.html', st));
   await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
-  ok('free: the offer is announced', await page.isVisible('#feature-free-note') && /first featuring is free/.test(await page.textContent('#feature-free-note')));
+  ok('free: the offer is announced', await page.isVisible('#feature-free-note') && /free once a month/.test(await page.textContent('#feature-free-note')));
   await page.check('#feature-product-list input[value="p1"]');
   await page.check('#feature-product-list input[value="p2"]');
   let ft = await page.textContent('#feature-total');
@@ -203,13 +203,21 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   st = { calls: [], purchases: [] };
   ({ ctx, page } = await open('/owner/feature.html', st));
   await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
-  ok('offer used: no free note', !(await page.isVisible('#feature-free-note')) && !(await page.isVisible('#feature-free-phone-note')));
+  ok('offer used this month: no free note, and says when the next one opens', !(await page.isVisible('#feature-free-note'))
+    && /had this month's free featuring\. The next one is available from (1 November|November 1)/.test(await page.textContent('#feature-free-phone-note')),
+    await page.textContent('#feature-free-phone-note'));
   await ctx.close();
   st = { calls: [], purchases: [], freeBlock: 'nophone' };
   ({ ctx, page } = await open('/owner/feature.html', st));
   await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
   ok('no phone on the store: told to add one in Settings for the free offer', await page.isVisible('#feature-free-phone-note')
     && await page.$eval('#feature-free-phone-note a', (a) => a.getAttribute('href')) === 'settings.html');
+  await ctx.close();
+  st = { calls: [], purchases: [], freeBlock: 'no2fa' };
+  ({ ctx, page } = await open('/owner/feature.html', st));
+  await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
+  ok('2-step sign-in off: told to turn it on in Settings for the free offer',
+    /Turn on 2-step sign-in in Settings to feature up to 3 products free each month/.test(await page.textContent('#feature-free-phone-note')));
   await ctx.close();
 
   // ---------- approved, starting later (2 hour delay) ----------

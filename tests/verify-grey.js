@@ -31,8 +31,8 @@ const rgb = s => s.replace(/\s+/g,'');
                radius: cs.borderTopLeftRadius, w: Math.round(btn.getBoundingClientRect().width) };
     });
     // --color-purple #332d63 = rgb(51,45,99)
-    ok(`mobile ${p}: purple disc, not a grey chevron`,
-       rgb(s.bg)==='rgb(51,45,99)' && s.radius==='999px' && s.w===44, JSON.stringify(s));
+    ok(`mobile ${p}: outlined disc (Oct 2026), not a grey chevron`,
+       rgb(s.bg)==='rgb(255,255,255)' && s.radius==='999px' && s.w===44, JSON.stringify(s));
     ok(`mobile ${p}: no ::after glyph left behind`, s.after==='none'||s.after==='normal', s.after);
     await page.close();
   }
@@ -45,7 +45,7 @@ const rgb = s => s.replace(/\s+/g,'');
     await page.goto(BASE+'/categories.html',{waitUntil:'load'});
     await page.waitForSelector('.search-box button[type="submit"]');
     const d=await page.evaluate(()=>{const btn=document.querySelector('.search-box button[type="submit"]');return {bg:getComputedStyle(btn).backgroundColor,text:btn.textContent.trim()};});
-    ok('desktop: filled Search button unchanged', rgb(d.bg)==='rgb(51,45,99)' && d.text==='Search', JSON.stringify(d));
+    ok('desktop: outlined Search button', rgb(d.bg)==='rgb(255,255,255)' && d.text==='Search', JSON.stringify(d));
     await page.close();
   }
   await b.close();

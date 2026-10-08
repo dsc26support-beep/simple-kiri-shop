@@ -135,8 +135,9 @@ const contrast = (a, b) => {
       const b = document.querySelector('.btn-primary');
       return b ? { bg: getComputedStyle(b).backgroundColor, color: getComputedStyle(b).color } : null;
     });
-    ok('the primary button is purple', primary && primary.bg === PURPLE, JSON.stringify(primary));
-    ok('with white text at a readable contrast',
+    // Outlined since Oct 2026: purple text (and border) on white.
+    ok('the primary button is purple (outlined: purple text on white)', primary && primary.color === PURPLE, JSON.stringify(primary));
+    ok('at a readable contrast',
       primary && contrast(primary.bg, primary.color) >= 4.5,
       primary && contrast(primary.bg, primary.color).toFixed(2) + ':1');
     await page.close();
