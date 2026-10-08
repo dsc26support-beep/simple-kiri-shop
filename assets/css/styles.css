@@ -7413,7 +7413,16 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 /* Verified on its own row at the bottom of a product card. */
 .product-card-verified {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 5px;
   font-size: 0.75rem;
+}
+
+.product-card-verified .featured-badge {
+  margin: 0;
+  padding: 0 0.45em;
+  font-size: 0.68rem;
 }
 
 .product-card-verified .seller-badges {

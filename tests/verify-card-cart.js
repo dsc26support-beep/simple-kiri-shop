@@ -84,6 +84,18 @@ const cart = (page, slug) => page.evaluate((s) => JSON.parse(localStorage.getIte
   ok('place row: place, delivery, other badges (Verified has its own row)', card.meta.join(',') === 'place:Abaiang,delivery,recommended', card.meta.join(','));
   const vrow = await page.$eval('#trending-products-list .product-card[data-product-id="p1"] .product-card-verified', (r) => r.textContent.trim()).catch(() => null);
   ok('Verified alone on its own row at the bottom', /Verified/.test(vrow || '') && !/Recommended/.test(vrow || ''), String(vrow));
+  const vf = await page.evaluate(() => {
+    const mk = (o) => { const box = document.createElement('div'); box.innerHTML = renderBrowseProductCard(Object.assign({ productId: 'f', name: 'N', storeSlug: 's', storeName: 'S', variants: [{ variantId: 'v', label: 'a', price: 1 }] }, o)); return box; };
+    const both = mk({ sellerBadges: ['verified'], featured: true });
+    const onlyF = mk({ sellerBadges: [], featured: true });
+    return {
+      bothRow: !!both.querySelector('.product-card-verified .seller-badge--verified') && !!both.querySelector('.product-card-verified .featured-badge'),
+      bothNotOnPlace: !both.querySelector('.product-card-meta .featured-badge'),
+      onlyFeaturedOnPlace: !!onlyF.querySelector('.product-card-meta .featured-badge') && !onlyF.querySelector('.product-card-verified')
+    };
+  });
+  ok('Verified + Featured share the bottom row when both exist', vf.bothRow && vf.bothNotOnPlace, JSON.stringify(vf));
+  ok('Featured alone stays on the place row', vf.onlyFeaturedOnPlace, JSON.stringify(vf));
   ok('no Verified row for a seller who isn\'t verified', await page.evaluate(() => {
     const box = document.createElement('div');
     box.innerHTML = renderBrowseProductCard({ productId: 'nv', name: 'N', storeSlug: 's', storeName: 'S', variants: [{ variantId: 'v', label: 'a', price: 1 }], sellerBadges: ['recommended'] });

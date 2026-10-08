@@ -503,10 +503,16 @@ function sellerBadgeRow(product) {
  * call, Oct 2026), under the place and delivery icons. Nothing at all for a
  * seller who isn't verified, so those cards are simply a line shorter.
  */
+function cardIsVerified(product) {
+  return typeof renderSellerBadges === 'function' && (product.sellerBadges || []).indexOf('verified') !== -1;
+}
+
+// When the seller is verified AND the product is featured, Featured joins
+// Verified on that bottom row (owner's call); otherwise Featured stays on
+// the place row.
 function cardVerifiedRow(product) {
-  if (typeof renderSellerBadges !== 'function') return '';
-  if ((product.sellerBadges || []).indexOf('verified') === -1) return '';
-  return `<div class="product-card-verified">${renderSellerBadges(['verified'], { size: 'chip', interactive: false })}</div>`;
+  if (!cardIsVerified(product)) return '';
+  return `<div class="product-card-verified">${renderSellerBadges(['verified'], { size: 'chip', interactive: false })}${featuredBadgeHtml(product)}</div>`;
 }
 
 // "Featured" pill for a product a seller is currently paying to feature
@@ -544,7 +550,8 @@ const CART_PLUS_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="no
  *   stars, when rated;
  *   place (village on South Tarawa, else island), delivery icons, the other
  *   badges, Featured;
- *   Verified, on its own row, only when the seller is verified.
+ *   Verified, on its own row, only when the seller is verified - with
+ *   Featured beside it when the product is featured too.
  *
  * The whole card opens the product: the title link is stretched over it
  * (.product-card-link::after), and the cart button sits above that. A real
@@ -599,7 +606,7 @@ function renderBrowseProductCard(product, opts) {
         </div>
         ${renderStars(product.rating, product.reviewCount)}
         <div class="product-card-meta">
-          <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}${featuredBadgeHtml(product)}
+          <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}${cardIsVerified(product) ? '' : featuredBadgeHtml(product)}
         </div>
         ${cardVerifiedRow(product)}
       </div>
