@@ -47,8 +47,9 @@ const rgb = s => s.replace(/\s+/g, '');
     // the shape: a round 44px disc on a phone, a labelled pill on desktop.
     ok(`mobile ${p}: a disc, not the desktop pill`, s.radius === '999px' && s.w === 44,
        JSON.stringify(s));
-    ok(`mobile ${p}: a round 44px purple disc`,
-       rgb(s.bg) === 'rgb(51,45,99)' && s.radius === '999px' && s.w === 44, JSON.stringify(s));
+    // Outlined since Oct 2026 (every dark purple button): a white disc with a purple ring.
+    ok(`mobile ${p}: a round 44px outlined disc`,
+       rgb(s.bg) === 'rgb(255,255,255)' && s.radius === '999px' && s.w === 44, JSON.stringify(s));
     await page.close();
   }
 
@@ -62,7 +63,7 @@ const rgb = s => s.replace(/\s+/g, '');
       const b = document.querySelector('.search-box button[type="submit"]');
       return { bg: getComputedStyle(b).backgroundColor, text: b.textContent.trim(), fs: getComputedStyle(b).fontSize, radius: getComputedStyle(b).borderTopLeftRadius };
     });
-    ok('desktop: brand purple fill retained', rgb(bgAndText.bg) === 'rgb(51,45,99)', bgAndText.bg);
+    ok('desktop: outlined like every primary button (white fill)', rgb(bgAndText.bg) === 'rgb(255,255,255)', bgAndText.bg);
     ok('desktop: and it is NOT a disc - shape is what separates the two now',
        bgAndText.radius !== '999px', bgAndText.radius);
     ok('desktop: shows "Search"', bgAndText.text === 'Search' && bgAndText.fs !== '0px', JSON.stringify(bgAndText));
