@@ -81,7 +81,7 @@ function fitPriceLabels(root) {
 let priceFitResizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(priceFitResizeTimer);
-  priceFitResizeTimer = setTimeout(() => fitPriceLabels(), 150);
+  priceFitResizeTimer = setTimeout(() => { fitPriceLabels(); fitCardBadges(); }, 150);
 });
 
 // Apps Script's own per-request execution-startup overhead means even a
@@ -493,9 +493,10 @@ function renderStars(rating, count) {
 function sellerBadgeRow(product) {
   if (typeof renderSellerBadges !== 'function') return '';   // page without badges.js
   // Verified has its own row on product cards (cardVerifiedRow), so it is
-  // left out here; the rest keep the usual priority order.
+  // left out here; the rest keep the usual priority order. No cap: all are
+  // rendered, and fitCardBadges shows as many as the line has room for.
   const others = (product.sellerBadges || []).filter((id) => id !== 'verified');
-  return renderSellerBadges(others, { size: 'chip', max: 2, interactive: false });
+  return renderSellerBadges(others, { size: 'chip', interactive: false });
 }
 
 /**
@@ -512,7 +513,62 @@ function cardIsVerified(product) {
 // the place row.
 function cardVerifiedRow(product) {
   if (!cardIsVerified(product)) return '';
-  return `<div class="product-card-verified">${renderSellerBadges(['verified'], { size: 'chip', interactive: false })}${featuredBadgeHtml(product)}</div>`;
+  return `<div class="product-card-verified">${renderSellerBadges(['verified'], { size: 'chip', interactive: false })}${featuredBadgeHtml(product)}<span class="seller-badges card-badge-spill"></span></div>`;
+}
+
+/**
+ * Badges on a product card: as many as fit on the place row (after the place
+ * and delivery icons); the rest continue on the Verified row when the card has
+ * one; only what fits on neither becomes a "+N" (owner's call, Oct 2026). So
+ * a wide desktop card shows more than a half-width phone card. Measured, so
+ * it runs after layout - on render (card-cart.js) and on resize.
+ */
+function fitCardBadges(root) {
+  (root || document).querySelectorAll('.product-card').forEach(fitOneCardBadges);
+}
+
+function fitOneCardBadges(card) {
+  const meta = card.querySelector('.product-card-meta');
+  const home = meta && meta.querySelector('.seller-badges');
+  if (!home) return;
+  const spill = card.querySelector('.card-badge-spill');
+  const vRow = card.querySelector('.product-card-verified');
+  card.querySelectorAll('.card-badge-count').forEach((e) => e.remove());
+  const chips = Array.from(card.querySelectorAll('.seller-badges .seller-badge:not(.seller-badge--verified):not(.seller-badge--more)'));
+  chips.forEach((c) => { c.hidden = false; home.appendChild(c); });
+  const place = meta.querySelector('.product-card-place');
+  if (!chips.length || !place || !meta.offsetWidth) return;
+
+  // Below a row's first line = its top is under the bottom of that line's reference item.
+  const below = (el, ref) => el.getBoundingClientRect().top >= ref.getBoundingClientRect().bottom - 1;
+  let over = chips.filter((c) => below(c, place));
+  let row = home, ref = place;
+  if (over.length && spill && vRow) {
+    over.forEach((c) => spill.appendChild(c));
+    row = spill;
+    ref = vRow.querySelector('.seller-badge--verified') || vRow.firstElementChild;
+    over = over.filter((c) => below(c, ref));
+  }
+  if (!over.length) return;
+  over.forEach((c) => { c.hidden = true; });
+
+  // "+N" at the end of the last row; if it doesn't fit there either, hide one more.
+  const count = document.createElement('span');
+  count.className = 'seller-badge seller-badge--chip seller-badge--more card-badge-count';
+  const label = () => {
+    const hidden = chips.filter((c) => c.hidden);
+    const names = hidden.map((c) => (c.querySelector('.sr-only') || c).textContent.trim()).join(', ');
+    count.setAttribute('aria-label', hidden.length + ' more seller badge' + (hidden.length === 1 ? '' : 's') + ': ' + names);
+    count.innerHTML = '<span class="seller-badge-label" aria-hidden="true">+' + hidden.length + '</span>';
+  };
+  label();
+  row.appendChild(count);
+  let visible = Array.from(row.children).filter((c) => c !== count && !c.hidden && c.classList.contains('seller-badge'));
+  while (below(count, ref) && visible.length) {
+    visible.pop().hidden = true;
+    label();
+    visible = Array.from(row.children).filter((c) => c !== count && !c.hidden && c.classList.contains('seller-badge'));
+  }
 }
 
 // "Featured" pill for a product a seller is currently paying to feature

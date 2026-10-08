@@ -7460,3 +7460,10 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   width: 18px;
   height: 18px;
 }
+
+/* Each badge flows on its own in the card's rows (not as one block that drops
+   to the next line whole), so fitCardBadges can fill the line badge by badge. */
+.product-card-meta .seller-badges,
+.product-card-verified .seller-badges {
+  display: contents;
+}

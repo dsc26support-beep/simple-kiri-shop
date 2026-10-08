@@ -128,20 +128,26 @@ const snap = (page) => page.evaluate(() => ({
       Array.from(document.querySelectorAll('#trending-products-list .product-card')).map((c) => ({
         // Badges are icon-only except Verified, so read each one's id off its
         // class; the "+N" counter keeps its visible text.
-        labels: Array.from(c.querySelectorAll('.seller-badge')).map((e) => (e.classList.contains('seller-badge--more')
+        labels: Array.from(c.querySelectorAll('.seller-badge:not([hidden])')).map((e) => (e.classList.contains('seller-badge--more')
           ? e.textContent.trim() : (Array.from(e.classList).find((k) => /^seller-badge--(recommended|top|verified|responsive|delivery|favourite|popular|new)$/.test(k)) || '').slice(14))),
         more: (c.querySelector('.seller-badge--more') || {}).getAttribute
-          ? c.querySelector('.seller-badge--more').getAttribute('aria-label') : null
+          ? c.querySelector('.seller-badge--more').getAttribute('aria-label') : null,
+        total: c.querySelectorAll('.seller-badge:not(.seller-badge--more)').length,
+        shown: c.querySelectorAll('.seller-badge:not(.seller-badge--more):not([hidden])').length,
+        counted: Number(((c.querySelector('.card-badge-count') || {}).textContent || '+0').replace('+', '')),
+        oneLine: ['.product-card-meta', '.product-card-verified'].every((sel) => { const r = c.querySelector(sel); return !r || r.getBoundingClientRect().height < 24; })
       })));
-    // Verified has its own row at the bottom of a product card (owner's call,
-    // Oct 2026); the other badges keep priority order, capped at two + counter.
+    // Verified has its own row at the bottom of a product card; the other
+    // badges keep priority order, as many as fit on the place row, then on the
+    // Verified row, then a "+N" (owner's calls, Oct 2026).
     ok('a card shows the HIGHEST-priority badges first, then Verified on its own row last',
       cards[0].labels[0] === 'recommended' && cards[0].labels[cards[0].labels.length - 1] === 'verified',
       cards[0].labels.join(' | '));
-    ok('and caps the other badges at two plus a counter',
-      cards[0].labels.length === 4 && cards[0].labels[2] === '+1', cards[0].labels.join(' | '));
-    ok('the counter names what is behind it for a screen reader',
-      /1 more seller badge: New Seller/.test(cards[0].more || ''), cards[0].more);
+    ok('no fixed cap: every badge is either shown or counted in the +N, and each row stays one line',
+      cards[0].shown + cards[0].counted === cards[0].total && cards[0].shown > 3 && cards[0].oneLine,
+      JSON.stringify({ shown: cards[0].shown, counted: cards[0].counted, total: cards[0].total }));
+    ok('the counter (if any) names what is behind it for a screen reader',
+      !cards[0].counted || new RegExp(cards[0].counted + ' more seller badge').test(cards[0].more || ''), cards[0].more);
     ok('a seller with exactly two shows both and no counter',
       cards[1].labels.join(',') === 'top,responsive', cards[1].labels.join(','));
     ok('only Verified shows a word on a card', (await page.evaluate(() => Array.from(document.querySelectorAll('#trending-products-list .seller-badge:not(.seller-badge--more) .seller-badge-label')).map((e) => e.textContent.trim()))).every((t) => t === 'Verified'));
@@ -298,8 +304,8 @@ const snap = (page) => page.evaluate(() => ({
 
   /* ---------- read from the source ---------- */
   const helpers = fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8');
-  ok('the card badge row is capped at two and read-only, in one place',
-    /renderSellerBadges\(others, \{ size: 'chip', max: 2, interactive: false \}\)/.test(helpers)
+  ok('card badges: read-only, uncapped, fitted to the space by fitCardBadges',
+    /renderSellerBadges\(others, \{ size: 'chip', interactive: false \}\)/.test(helpers) && /function fitCardBadges/.test(helpers)
       && /renderSellerBadges\(\['verified'\], \{ size: 'chip', interactive: false \}\)/.test(helpers));
   ok('and guarded, so a page without badges.js renders the card it always did',
     /typeof renderSellerBadges !== 'function'\) return ''/.test(helpers));
