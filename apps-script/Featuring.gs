@@ -79,7 +79,10 @@ var FEATURE_STATUS = {
   AWAITING: 'Awaiting payment',
   PENDING: 'Pending review',
   APPROVED: 'Approved',
-  REJECTED: 'Rejected'
+  REJECTED: 'Rejected',
+  // Auto-approved, but never ticked "Seen in bank" within FEATURE_BANK_MATCH_DAYS
+  // (sweepFeatureBankMatches). Its screenshot and bank receipt stay used.
+  STOPPED: 'Stopped'
 };
 
 function getFeaturePurchasesSheet() {
@@ -319,25 +322,53 @@ function actionSubmitFeaturePayment(owner, body) {
   if (fileProblem) return fail(fileProblem);
 
   var hash = sha256Hex(bytes);
-  var allRows = sheetToObjects(sheet);
-  var reused = allRows.some(function (r) { return r.ScreenshotHash === hash && r.PurchaseId !== row.PurchaseId; });
-  if (reused) return fail('That screenshot has already been used for another payment.');
-
-  var screenshotUrl = saveFeatureScreenshot(bytes, mimeType, row.PurchaseId);
-  var check = checkFeaturePaymentScreenshot(bytes, mimeType, row, featureDecisionContext(allRows, row, Date.now()));
-  var now = nowIso();
-  var update = {
-    Status: check.status, ScreenshotUrl: screenshotUrl, ScreenshotHash: hash,
-    OcrNotes: check.notes, UpdatedAt: now, ReceiptNo: check.receiptNo || ''
-  };
-  if (check.status === FEATURE_STATUS.APPROVED) {
-    // Starts a little later, not now: makes a quick fake-and-go less worth it.
-    var startMs = Date.now() + featureStartDelayHours() * 3600000;
-    update.StartsAt = new Date(startMs).toISOString();
-    update.EndsAt = new Date(startMs + Number(row.Days) * 86400000).toISOString();
-    update.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(row));
+  // Cheap early refusal; repeated under the lock below, where it counts.
+  if (featureHashUsedElsewhere(sheetToObjects(sheet), hash, row.PurchaseId)) {
+    return fail('That screenshot has already been used for another payment.');
   }
-  updateRowFromObject(sheet, row.__row, update);
+
+  // Slow work OUTSIDE the lock: saving the file and reading the receipt take
+  // seconds, and the script lock is shared by every write on the site.
+  var screenshotUrl = saveFeatureScreenshot(bytes, mimeType, row.PurchaseId);
+  var ocrText;
+  try { ocrText = ocrPaymentImage(bytes, mimeType); } catch (e) { Logger.log('feature OCR failed: ' + e); ocrText = null; }
+  var isPhoto = imageHasExif(bytes);
+
+  // Then, under ONE lock: re-read the sheet, re-check everything another
+  // upload could have changed meanwhile (this order's status, the screenshot,
+  // the bank receipt number, the store's weekly total), decide, and write.
+  // Two uploads racing can no longer both pass the duplicate checks.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  var check, update;
+  try {
+    var fresh = findRowById(sheet, 'PurchaseId', row.PurchaseId);
+    if (!fresh || (fresh.Status !== FEATURE_STATUS.AWAITING && fresh.Status !== FEATURE_STATUS.REJECTED)) {
+      return fail(fresh && fresh.Status === FEATURE_STATUS.APPROVED
+        ? 'This purchase is already paid and approved.'
+        : 'This payment is already being checked. Please wait a moment and refresh.');
+    }
+    var allRows = sheetToObjects(sheet);
+    if (featureHashUsedElsewhere(allRows, hash, fresh.PurchaseId)) {
+      return fail('That screenshot has already been used for another payment.');
+    }
+    check = decideFeaturePayment(ocrText, fresh, isPhoto, featureDecisionContext(allRows, fresh, Date.now()));
+    var now = nowIso();
+    update = {
+      Status: check.status, ScreenshotUrl: screenshotUrl, ScreenshotHash: hash,
+      OcrNotes: check.notes, UpdatedAt: now, ReceiptNo: check.receiptNo || ''
+    };
+    if (check.status === FEATURE_STATUS.APPROVED) {
+      // Starts a little later, not now: makes a quick fake-and-go less worth it.
+      var startMs = Date.now() + featureStartDelayHours() * 3600000;
+      update.StartsAt = new Date(startMs).toISOString();
+      update.EndsAt = new Date(startMs + Number(fresh.Days) * 86400000).toISOString();
+      update.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(fresh));
+    }
+    updateRowFromObject(sheet, fresh.__row, update);
+  } finally {
+    lock.releaseLock();
+  }
   if (check.status === FEATURE_STATUS.APPROVED) invalidateCache([TIPS_CACHE_KEY, PAID_FEATURED_CACHE_KEY]);
   if (check.status === FEATURE_STATUS.PENDING) notifyAdminsOfFeaturePayment(owner, row, check.notes);
 
@@ -370,33 +401,57 @@ function actionListFeaturePurchases(owner) {
       p.bankMatchedAt = r.BankMatchedAt || '';
       return p;
     });
-  return ok({ purchases: rows });
+  return ok({ purchases: rows, bankMatchDays: featureBankMatchDays() });
 }
 
 /** body.purchaseId, body.approve: boolean. Approving starts the featuring now, for the days bought. */
 function actionSetFeaturePurchaseStatus(owner, body) {
   if (!isOwnerAdmin(owner)) return fail('Not authorized');
   var sheet = getFeaturePurchasesSheet();
-  var row = findRowById(sheet, 'PurchaseId', String(body.purchaseId || ''));
-  if (!row) return fail('Purchase not found.');
-  if (row.Status === FEATURE_STATUS.AWAITING) return fail('No payment has been uploaded for this purchase yet.');
-  var now = nowIso();
-  var update = { UpdatedAt: now, OcrNotes: String(row.OcrNotes || '') + ' | admin ' + (body.approve ? 'approved' : 'rejected') + ' ' + now };
-  if (body.approve) {
-    if (row.Status === FEATURE_STATUS.APPROVED) return fail('Already approved.');
-    update.Status = FEATURE_STATUS.APPROVED;
-    update.StartsAt = now;
-    update.EndsAt = new Date(Date.now() + Number(row.Days) * 86400000).toISOString();
-    update.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(row));
-    update.ViewsAtEndJson = '';
-  } else {
-    update.Status = FEATURE_STATUS.REJECTED;
-    update.StartsAt = '';
-    update.EndsAt = '';
-    update.ViewsAtStartJson = '';
-    update.ViewsAtEndJson = '';
+  // Same lock as payment uploads, so an admin decision and an upload can't
+  // interleave on one purchase or one bank receipt.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  var update, row;
+  try {
+    row = findRowById(sheet, 'PurchaseId', String(body.purchaseId || ''));
+    if (!row) return fail('Purchase not found.');
+    if (row.Status === FEATURE_STATUS.AWAITING) return fail('No payment has been uploaded for this purchase yet.');
+    var now = nowIso();
+    update = { UpdatedAt: now, OcrNotes: String(row.OcrNotes || '') + ' | admin ' + (body.approve ? 'approved' : 'rejected') + ' ' + now };
+    if (body.approve) {
+      if (row.Status === FEATURE_STATUS.APPROVED) return fail('Already approved.');
+      var paid = Number(row.Amount) > 0;
+      // A person approving a paid purchase must have seen the money arrive
+      // ("Seen in bank & approve" sends bankSeen). Free featuring is exempt.
+      if (paid && !row.BankMatchedAt && body.bankSeen !== true) {
+        return fail('Check this payment arrived in the bank account first, then use "Seen in bank & approve".');
+      }
+      if (paid && row.ReceiptNo) {
+        var receipt = String(row.ReceiptNo).toUpperCase();
+        var taken = sheetToObjects(sheet).some(function (r) {
+          return r.PurchaseId !== row.PurchaseId && String(r.ReceiptNo || '').toUpperCase() === receipt &&
+            (r.Status === FEATURE_STATUS.APPROVED || r.Status === FEATURE_STATUS.PENDING || r.Status === FEATURE_STATUS.STOPPED);
+        });
+        if (taken) return fail('That bank receipt (Reference Number ' + receipt + ') is already used by another purchase.');
+      }
+      if (paid && !row.BankMatchedAt) update.BankMatchedAt = now;
+      update.Status = FEATURE_STATUS.APPROVED;
+      update.StartsAt = now;
+      update.EndsAt = new Date(Date.now() + Number(row.Days) * 86400000).toISOString();
+      update.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(row));
+      update.ViewsAtEndJson = '';
+    } else {
+      update.Status = FEATURE_STATUS.REJECTED;
+      update.StartsAt = '';
+      update.EndsAt = '';
+      update.ViewsAtStartJson = '';
+      update.ViewsAtEndJson = '';
+    }
+    updateRowFromObject(sheet, row.__row, update);
+  } finally {
+    lock.releaseLock();
   }
-  updateRowFromObject(sheet, row.__row, update);
   invalidateCache([TIPS_CACHE_KEY, PAID_FEATURED_CACHE_KEY]);
   return ok({ purchaseId: row.PurchaseId, status: update.Status });
 }
@@ -416,6 +471,140 @@ function actionSetFeatureBankMatched(owner, body) {
   var at = body.matched ? nowIso() : '';
   updateRowFromObject(sheet, row.__row, { BankMatchedAt: at });
   return ok({ purchaseId: row.PurchaseId, bankMatchedAt: at });
+}
+
+/* ==================== Bank matching: reminders and auto-stop ==================== */
+
+// Paid featuring approved automatically must be ticked "Seen in bank" within
+// this many days of starting, or it stops (owner's call, Oct 2026). Admins are
+// emailed 2 days and 1 day before. Free featuring is never affected.
+var FEATURE_BANK_REMINDER_DEFAULT = ['admin@mwakete.com', 'motenakau@gmail.com', 'mootenakau@gmail.com'];
+var FEATURE_BANK_REMINDED_KEY = 'FEATURE_BANK_REMINDED';
+
+function featureBankMatchDays() {
+  var v = Number(PropertiesService.getScriptProperties().getProperty('FEATURE_BANK_MATCH_DAYS'));
+  return v > 0 ? v : 7;
+}
+
+/** Who gets the "tick these in the bank" emails. Script Property FEATURE_BANK_REMINDER_EMAILS (comma-separated) overrides. */
+function featureBankReminderEmails() {
+  var raw = PropertiesService.getScriptProperties().getProperty('FEATURE_BANK_REMINDER_EMAILS');
+  var list = raw ? String(raw).split(',') : FEATURE_BANK_REMINDER_DEFAULT;
+  return list.map(function (e) { return String(e).trim(); }).filter(function (e) { return /@/.test(e); });
+}
+
+/**
+ * Pure: what the hourly sweep should do. Paid, approved, not yet ticked, and
+ * started: past its deadline -> stop; within 1 day -> 1-day reminder; within
+ * 2 days -> 2-day reminder (each reminder once - `sent` records them).
+ */
+function featureBankMatchPlan(rows, nowMs, days, sent) {
+  var plan = { stop: [], remind2: [], remind1: [] };
+  sent = sent || {};
+  rows.forEach(function (r) {
+    if (r.Status !== FEATURE_STATUS.APPROVED || !(Number(r.Amount) > 0) || r.BankMatchedAt) return;
+    var start = new Date(r.StartsAt).getTime();
+    if (isNaN(start)) return;
+    var deadline = start + days * 86400000;
+    var left = deadline - nowMs;
+    var item = { row: r, deadline: deadline };
+    var done = sent[r.PurchaseId] || {};
+    if (left <= 0) plan.stop.push(item);
+    else if (left <= 86400000) { if (!done['1']) plan.remind1.push(item); }
+    else if (left <= 2 * 86400000) { if (!done['2']) plan.remind2.push(item); }
+  });
+  return plan;
+}
+
+function featureBankReminderBody(items, whenText, storeNames) {
+  var adminUrl = siteBaseUrl() ? siteBaseUrl() + '/owner/admin.html' : '';
+  return 'These paid featurings have not been ticked "Seen in bank" yet. They stop ' + whenText +
+    ' unless the money is found in the bank account and ticked in Admin.\n\n' +
+    items.map(function (it) {
+      var r = it.row;
+      return '- ' + (storeNames[r.OwnerId] || r.StoreSlug) + ': ref ' + r.Reference + ', $' + Number(r.Amount).toFixed(2) +
+        (r.ReceiptNo ? ', bank Reference Number ' + r.ReceiptNo : '') +
+        ' - stops ' + new Date(it.deadline).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+    }).join('\n') +
+    '\n\n' + (adminUrl ? 'Tick them here: ' + adminUrl + '\n' : 'Tick them in Admin > Featuring payments.\n');
+}
+
+/** Hourly (Reminders.gs sweep): email the 2-day and 1-day reminders, and stop what is past its deadline. */
+function sweepFeatureBankMatches() {
+  var sheet = SpreadsheetApp.getActive().getSheetByName('FeaturePurchases');
+  if (!sheet) return;
+  var props = PropertiesService.getScriptProperties();
+  var sent = {};
+  try { sent = JSON.parse(props.getProperty(FEATURE_BANK_REMINDED_KEY) || '{}'); } catch (e) { sent = {}; }
+  var days = featureBankMatchDays();
+  var now = Date.now();
+  var rows = sheetToObjects(getFeaturePurchasesSheet());
+  var plan = featureBankMatchPlan(rows, now, days, sent);
+  var storeNames = {};
+  var owners = {};
+  sheetToObjects(getSheet('Owners')).forEach(function (o) { storeNames[o.OwnerId] = o.StoreName; owners[o.OwnerId] = o; });
+  var to = featureBankReminderEmails();
+
+  [['2', plan.remind2, 'in about 2 days'], ['1', plan.remind1, 'within 1 day']].forEach(function (stage) {
+    if (!stage[1].length) return;
+    var body = featureBankReminderBody(stage[1], stage[2], storeNames);
+    var subject = 'Mwakete: ' + stage[1].length + ' featuring payment' + (stage[1].length === 1 ? '' : 's') +
+      ' to tick in the bank - stops ' + stage[2];
+    to.forEach(function (addr) {
+      try { sendAppEmail(addr, subject, body); } catch (e) { Logger.log('bank reminder failed: ' + e); }
+    });
+    stage[1].forEach(function (it) {
+      sent[it.row.PurchaseId] = sent[it.row.PurchaseId] || {};
+      sent[it.row.PurchaseId][stage[0]] = new Date(now).toISOString();
+    });
+  });
+
+  if (plan.stop.length) {
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000);
+    var stopped = [];
+    try {
+      plan.stop.forEach(function (it) {
+        var fresh = findRowById(sheet, 'PurchaseId', it.row.PurchaseId);
+        // Re-checked under the lock: it may have been ticked a moment ago.
+        if (!fresh || fresh.Status !== FEATURE_STATUS.APPROVED || fresh.BankMatchedAt) return;
+        var at = new Date(now).toISOString();
+        updateRowFromObject(sheet, fresh.__row, {
+          Status: FEATURE_STATUS.STOPPED, EndsAt: at, UpdatedAt: at,
+          OcrNotes: String(fresh.OcrNotes || '') + ' | auto-stopped ' + at + ': not seen in bank within ' + days + ' days'
+        });
+        stopped.push(fresh);
+      });
+    } finally {
+      lock.releaseLock();
+    }
+    if (stopped.length) {
+      invalidateCache([TIPS_CACHE_KEY, PAID_FEATURED_CACHE_KEY]);
+      var adminBody = 'Stopped because the payment was not ticked "Seen in bank" within ' + days + ' days:\n\n' +
+        stopped.map(function (r) { return '- ' + (storeNames[r.OwnerId] || r.StoreSlug) + ': ref ' + r.Reference + ', $' + Number(r.Amount).toFixed(2); }).join('\n') +
+        '\n\nIf one of these was really paid, tick it in Admin and use "Seen in bank & approve" to restart it.\n';
+      to.forEach(function (addr) {
+        try { sendAppEmail(addr, 'Mwakete: ' + stopped.length + ' featuring stopped - payment not seen in bank', adminBody); } catch (e) { Logger.log('bank stop notice failed: ' + e); }
+      });
+      // The seller is told too, so a real payer can get in touch.
+      stopped.forEach(function (r) {
+        var o = owners[r.OwnerId];
+        if (!o || !o.Email) return;
+        try {
+          sendAppEmail(o.Email, 'Your Mwakete featuring has been stopped',
+            'Hi ' + o.StoreName + ',\n\nWe could not find your payment of $' + Number(r.Amount).toFixed(2) +
+            ' (reference ' + r.Reference + ') in our bank account, so this featuring has been stopped.\n\n' +
+            'If you did pay, reply to this email or contact admin@mwakete.com with your bank receipt and we will restart it.\n');
+        } catch (e) { Logger.log('seller stop notice failed: ' + e); }
+      });
+    }
+  }
+
+  // Keep the record small: forget purchases that no longer need reminding.
+  var live = {};
+  rows.forEach(function (r) { if (r.Status === FEATURE_STATUS.APPROVED && !r.BankMatchedAt) live[r.PurchaseId] = true; });
+  Object.keys(sent).forEach(function (id) { if (!live[id]) delete sent[id]; });
+  props.setProperty(FEATURE_BANK_REMINDED_KEY, JSON.stringify(sent));
 }
 
 /* ==================== What's currently featured ==================== */
@@ -792,15 +981,9 @@ function decideFeaturePayment(ocrText, purchase, isPhoto, ctx) {
       : 'Payment confirmed - your products are featured now.' };
 }
 
-function checkFeaturePaymentScreenshot(bytes, mimeType, purchase, ctx) {
-  var ocrText;
-  try {
-    ocrText = ocrPaymentImage(bytes, mimeType);
-  } catch (e) {
-    Logger.log('feature OCR failed: ' + e);
-    ocrText = null;
-  }
-  return decideFeaturePayment(ocrText, purchase, imageHasExif(bytes), ctx);
+/** Pure: is this screenshot (by file hash) on any OTHER purchase, whatever its status? */
+function featureHashUsedElsewhere(rows, hash, purchaseId) {
+  return rows.some(function (r) { return r.ScreenshotHash === hash && r.PurchaseId !== purchaseId; });
 }
 
 /** Hours between automatic approval and the featuring starting (Script Property, default 2). */
@@ -819,7 +1002,8 @@ function featureDecisionContext(rows, purchase, nowMs) {
   var ctx = { usedReceiptNumbers: [], weekApproved: 0, paidApprovedCount: 0 };
   rows.forEach(function (r) {
     if (r.PurchaseId === purchase.PurchaseId) return;
-    var counts = r.Status === FEATURE_STATUS.APPROVED || r.Status === FEATURE_STATUS.PENDING;
+    // A receipt claimed by an approved, pending or auto-stopped purchase is taken.
+    var counts = r.Status === FEATURE_STATUS.APPROVED || r.Status === FEATURE_STATUS.PENDING || r.Status === FEATURE_STATUS.STOPPED;
     if (counts && r.ReceiptNo) ctx.usedReceiptNumbers.push(String(r.ReceiptNo).toUpperCase());
     if (r.OwnerId !== purchase.OwnerId || r.Status !== FEATURE_STATUS.APPROVED || !(Number(r.Amount) > 0)) return;
     ctx.paidApprovedCount++;

@@ -291,6 +291,7 @@ function notStartedYet(p) {
 
 function statusLine(p) {
   if (notStartedYet(p)) return `Paid - starts ${fmtDateTime(p.startsAt)}`;
+  if (p.status === 'Stopped') return 'Stopped - payment not found in the bank';
   if (p.status === 'Approved') {
     const live = new Date(p.endsAt).getTime() > Date.now();
     return live ? `Featured until ${fmtDate(p.endsAt)}` : `Ended ${fmtDate(p.endsAt)}`;

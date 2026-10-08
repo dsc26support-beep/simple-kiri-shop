@@ -204,3 +204,12 @@ is needed after changing one. Leave a property unset to use its default.
 What the automatic check refuses or holds, and why, is described at the top of
 `apps-script/Featuring.gs`. Every decision is written to the purchase's
 `OcrNotes` cell (e.g. `receiptNo:false ... (no receipt number read)`).
+
+### Bank matching (Oct 2026)
+
+| Property | Default | What it does |
+|---|---|---|
+| `FEATURE_BANK_MATCH_DAYS` | `7` | Auto-approved paid featuring stops this many days after it starts unless ticked "Seen in bank" in Admin. |
+| `FEATURE_BANK_REMINDER_EMAILS` | admin@mwakete.com, motenakau@gmail.com, mootenakau@gmail.com | Who gets the reminder emails 2 days and 1 day before, and the "stopped" notice (comma-separated). |
+
+Runs inside the existing hourly reminders trigger - no new trigger to set up.
