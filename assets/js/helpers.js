@@ -42,7 +42,7 @@ function clampToAvailableStock(storeSlug, variant, requestedQty, productName) {
 // its column overflows (and gets clipped by the card) instead of wrapping.
 // This shrinks it just enough to fit rather than letting either happen.
 const PRICE_FIT_MAX_REM = 1.15; // matches .product-price's CSS font-size
-const PRICE_FIT_MIN_REM = 0.8;
+const PRICE_FIT_MIN_REM = 0.75;
 
 /**
  * Auto-fits every price label under `root` (default: the whole document) to
@@ -57,15 +57,22 @@ function fitPriceLabels(root) {
   // heading at the name's own size and wrap to the next line when they don't
   // fit, so shrinking them here would fight that - and this also runs globally
   // on resize, which would undo it after the fact.
-  // Nor the browse cards' price, which shares a wrapping row with the blurb.
-  (root || document).querySelectorAll('.product-price:not(.product-price--inline):not(.product-price--card)').forEach((el) => {
+  (root || document).querySelectorAll('.product-price:not(.product-price--inline)').forEach((el) => {
     el.style.fontSize = '';
+    el.classList.remove('product-price--wrap');
     const available = el.clientWidth;
     const needed = el.scrollWidth;
     if (!available || needed <= available) return;
+    // Scaled from the size the CSS gives it (product cards use a smaller one
+    // than PRICE_FIT_MAX_REM), so a price is never cut - only made smaller.
+    const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const baseRem = (parseFloat(getComputedStyle(el).fontSize) / rootPx) || PRICE_FIT_MAX_REM;
     // 0.98 keeps it off the exact edge, where sub-pixel rounding can still clip.
-    const fitted = PRICE_FIT_MAX_REM * (available / needed) * 0.98;
+    const fitted = baseRem * (available / needed) * 0.98;
     el.style.fontSize = Math.max(PRICE_FIT_MIN_REM, fitted) + 'rem';
+    // Still too wide at the smallest size (a long range on a 320px phone):
+    // a product card's price wraps at the dash rather than being cut.
+    if (fitted < PRICE_FIT_MIN_REM && el.classList.contains('product-price--card')) el.classList.add('product-price--wrap');
   });
 }
 
@@ -496,49 +503,58 @@ function featuredBadgeHtml(product) {
   return product && product.featured ? '<span class="featured-badge">Featured</span>' : '';
 }
 
-const CARD_BLURB_CHARS = 15;
+// The products behind the cards on this page, by id, so the card's cart
+// button (card-cart.js) can add the right variant without a request.
+const BROWSE_CARD_PRODUCTS = new Map();
 
-/**
- * The card's short text: the first 15 characters of the description, or of
- * the name when there is no description, so the row is never empty. Counted
- * in characters, not UTF-16 units, so an emoji or accented letter is never cut
- * in half.
- */
-function cardBlurb(product) {
+/** The card's one line of text: the description, or the name when there is none. CSS cuts it to the card's width. */
+function cardTextLine(product) {
   const text = String(product.description || '').replace(/\s+/g, ' ').trim()
     || String(product.name || '').replace(/\s+/g, ' ').trim();
-  const chars = Array.from(text);
-  return chars.length > CARD_BLURB_CHARS ? chars.slice(0, CARD_BLURB_CHARS).join('').trimEnd() + '…' : text;
+  return Array.from(text).slice(0, 120).join('');
 }
 
+const CART_PLUS_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+  + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 2.5h3l2.4 11.2a1.8 1.8 0 0 0 1.8 1.4h8.6a1.8 1.8 0 0 0 1.8-1.4L21 7H6"/>'
+  + '<circle cx="9" cy="20" r="1.3"/><circle cx="17.5" cy="20" r="1.3"/><path d="M13.5 6.5v5M11 9h5"/></svg>';
+
 /**
- * Every browse product card (home, Tips, related and similar products):
- *   row 1  price at the far left, the first 15 characters of the description
- *          at the far right;
- *          stars on their own small row, only when rated;
- *   row 2  where the store is (village on South Tarawa, else the island),
- *          the delivery icons, then Verified, then the other badges and
- *          Featured.
- * The product name is not shown, but is still the card's heading for a
- * screen reader, the photo's alt text and part of the link's label.
- * opts.showLocation is accepted for older callers; every card shows it now.
+ * Every product card - home, Tips, related and similar products, and a
+ * store's own page - laid out like the owner's reference (Oct 2026):
+ *   one line of description, cut with … at the card's edge;
+ *   price, with a round cart button at the right;
+ *   stars, when rated;
+ *   place (village on South Tarawa, else island), delivery icons, Verified,
+ *   the other badges, Featured.
+ *
+ * The whole card opens the product: the title link is stretched over it
+ * (.product-card-link::after), and the cart button sits above that. A real
+ * <button> can't live inside an <a>, which is why the card is an <article>
+ * and not one big link any more. The link's accessible name is the product's
+ * name and store, so a screen reader hears the name, not the description.
+ *
+ * Rentals and services get no cart button - they are booked on the product
+ * page, not bought.
  */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
+  BROWSE_CARD_PRODUCTS.set(String(product.productId), product);
 
   const media = product.imageUrl
-    ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">`
+    ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="" loading="lazy" decoding="async">`
     : `<div class="placeholder-swatch category-${escapeHtml(categoryIdOf(product.category))}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
+  const href = `product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}`;
   const priceText = formatPriceLabel(product.variants);
   // Falls back to the store name if this store has no location recorded, so
   // the line is never blank.
   const place = storeLocationLabel(product.storeIsland, product.storeVillage) || product.storeName || '';
+  const booking = isBookingListing(product);
 
   // Delivery flags are store-wide, so they are meaningless - and misleading -
   // on a rental or service listing. Suppressed there.
-  const deliveryIcons = isBookingListing(product)
+  const deliveryIcons = booking
     ? ''
     : renderDeliveryIcons({
         truck: product.storeDeliveryTruck,
@@ -550,21 +566,24 @@ function renderBrowseProductCard(product, opts) {
         airCargoCost: product.storeDeliveryAirCargoCost
       });
 
+  const cartBtn = booking || !(product.variants || []).length ? '' :
+    `<button type="button" class="card-cart-btn" data-product-id="${escapeHtml(product.productId)}" aria-label="Add ${escapeHtml(product.name)} to cart">${CART_PLUS_ICON}</button>`;
+
   return `
-    <a class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}" href="product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">
+    <article class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}">
       ${media}
       <div class="product-card-body">
-        <h3 class="product-name sr-only">${escapeHtml(product.name)}</h3>
-        <p class="product-card-top">
-          <strong class="product-price product-price--card">${priceText}</strong>
-          <span class="product-card-blurb">${escapeHtml(cardBlurb(product))}</span>
-        </p>
+        <h3 class="product-name"><a class="product-card-link" href="${escapeHtml(href)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">${escapeHtml(cardTextLine(product))}</a></h3>
+        <div class="product-card-buy">
+          <strong class="product-price product-price--card">${String(priceText).replace('-', '-<wbr>')}</strong>
+          ${cartBtn}
+        </div>
         ${renderStars(product.rating, product.reviewCount)}
         <div class="product-card-meta">
           <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}${featuredBadgeHtml(product)}
         </div>
       </div>
-    </a>
+    </article>
   `;
 }
 

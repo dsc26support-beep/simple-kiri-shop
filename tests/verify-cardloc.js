@@ -1,5 +1,5 @@
-// Browse product cards (Oct 2026): row 1 price left + 15-character description right;
-// row 2 place, delivery icons, Verified, other badges. Name kept for screen readers only.
+// Product cards: where the store is (village on South Tarawa, else island) on the
+// place row, before the delivery icons. Layout and cart button: verify-card-cart.js.
 const fs = require('fs'), vm = require('vm');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
@@ -53,33 +53,15 @@ async function open(browser, path, opts) {
 const cards = (page, sel) => page.evaluate((s) => {
   const out = [];
   document.querySelectorAll(s + ' .product-card').forEach((c) => {
-    const top = c.querySelector('.product-card-top');
-    const price = c.querySelector('.product-price');
-    const blurb = c.querySelector('.product-card-blurb');
     const meta = c.querySelector('.product-card-meta');
-    const name = c.querySelector('.product-name');
-    const kids = meta ? Array.from(meta.children).map((k) => k.className.split(' ')[0]) : [];
-    const pr = price && price.getBoundingClientRect(), br = blurb && blurb.getBoundingClientRect(), tr = top && top.getBoundingClientRect();
     out.push({
       text: c.textContent.replace(/\s+/g, ' ').trim(),
-      visibleName: name ? getComputedStyle(name).position === 'absolute' && name.getBoundingClientRect().width <= 1 : null,
-      nameText: name ? name.textContent.trim() : null,
-      price: price ? price.textContent.trim() : null,
-      blurb: blurb ? blurb.textContent.trim() : null,
-      priceAtLeft: pr && tr ? Math.abs(pr.left - tr.left) < 1 : null,
-      blurbAtRight: br && tr ? Math.abs(br.right - tr.right) < 1 : null,
-      blurbAlign: blurb ? getComputedStyle(blurb).textAlign : null,
       place: meta && meta.querySelector('.product-card-place') ? meta.querySelector('.product-card-place').textContent.trim() : null,
-      metaOrder: kids,
-      firstBadge: (() => { const b = meta && meta.querySelector('.seller-badge'); return b ? (Array.from(b.classList).find((k) => /^seller-badge--(recommended|top|verified|responsive|delivery|favourite|popular|new)$/.test(k)) || '').slice(14) : null; })(),
-      starsBeforeMeta: !!(c.querySelector('.rating') && meta && (c.querySelector('.rating').compareDocumentPosition(meta) & 4)),
-      priceSize: price ? parseFloat(getComputedStyle(price).fontSize) : null,
-      blurbSize: blurb ? parseFloat(getComputedStyle(blurb).fontSize) : null,
+      metaOrder: meta ? Array.from(meta.children).map((k) => k.className.split(' ')[0]) : [],
       metaSize: meta ? parseFloat(getComputedStyle(meta).fontSize) : null,
-      inlineFontSize: price ? price.style.fontSize || '' : '',
       metaClipped: meta ? meta.scrollWidth > meta.clientWidth + 1 : null,
       phone: !!c.querySelector('.store-phone'),
-      aria: c.getAttribute('aria-label')
+      aria: (c.querySelector('.product-card-link') || {}).getAttribute ? c.querySelector('.product-card-link').getAttribute('aria-label') : null
     });
   });
   return out;
@@ -88,7 +70,7 @@ const cards = (page, sel) => page.evaluate((s) => {
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 
-  /* --- the new card (Oct 2026): every browse card, so home and similar products alike --- */
+  /* --- where the store is: every product card, home and similar products alike --- */
   const pages = [['/index.html', '#trending-products-list', 'home', {}], ['/store.html?store=bong', '#similar-products-list', 'similar products', { similar: true }]];
   for (const [path, sel, label, o] of pages) {
     const { ctx, page } = await open(browser, path, o);
@@ -99,62 +81,17 @@ const cards = (page, sel) => page.evaluate((s) => {
       ok(`${label}: elsewhere shows the ISLAND`, c[1].place === 'Abaiang', String(c[1].place));
       ok(`${label}: South Tarawa with no village falls back to the island`, c[2].place === 'South Tarawa', String(c[2].place));
       ok(`${label}: no location at all falls back to the store name`, c[3].place === 'Bong Restaurant', String(c[3].place));
-      ok(`${label}: price shows the range`, c[0].price === '$7.50-40.00', String(c[0].price));
+      ok(`${label}: store name is gone from the visible card`, !c[0].text.includes('Bong Restaurant'), c[0].text);
     } else {
       ok(`${label}: rendered`, c.length > 0, 'no cards found');
       if (!c.length) { await ctx.close(); continue; }
       ok(`${label}: shows the place now, like every card`, c[0].place === 'Abaiang', String(c[0].place));
     }
-    ok(`${label}: product name is not shown`, c[0].visibleName === true);
-    ok(`${label}: ...but is still the heading for a screen reader and in the link label`,
-      !!c[0].nameText && (c[0].aria || '').indexOf(c[0].nameText) === 0, String(c[0].aria));
-    ok(`${label}: store name is gone from the visible card, still in the aria-label`,
-      (label !== 'home' || !c[0].text.includes('Bong Restaurant')) && /Bong Restaurant|Other Store/.test(c[0].aria || ''), c[0].text);
-    ok(`${label}: row 1 - price at the far left`, c[0].priceAtLeft === true);
-    ok(`${label}: row 1 - description at the far right, right-aligned`, c[0].blurbAtRight === true && c[0].blurbAlign === 'right');
-    ok(`${label}: row 2 order - place, delivery icons, badges`,
+    ok(`${label}: store name still in the link's accessible name`, /Bong Restaurant|Other Store/.test(c[0].aria || ''), String(c[0].aria));
+    ok(`${label}: place row - place first, then the delivery icons`,
       c[0].metaOrder[0] === 'product-card-place' && c[0].metaOrder[1] === 'delivery-icons', c[0].metaOrder.join(','));
-    ok(`${label}: smaller type - price 0.9rem, text 0.78rem, row 2 0.75rem`,
-      c[0].priceSize === 14.4 && Math.abs(c[0].blurbSize - 12.48) < 0.01 && c[0].metaSize === 12, `${c[0].priceSize}/${c[0].blurbSize}/${c[0].metaSize}`);
-    ok(`${label}: fitPriceLabels leaves the card price alone`, c[0].inlineFontSize === '', c[0].inlineFontSize);
+    ok(`${label}: place row in small type (0.75rem)`, c[0].metaSize === 12, String(c[0].metaSize));
     ok(`${label}: no phone number`, c[0].phone === false);
-    await ctx.close();
-  }
-
-  /* --- blurb rules, badges, stars, featured --- */
-  {
-    const { ctx, page } = await open(browser, '/index.html');
-    const b = await page.evaluate(() => [
-      cardBlurb({ description: 'Gold necklace with green stones', name: 'Necklace' }),
-      cardBlurb({ description: '   ', name: 'Fried Rice Special Plate' }),
-      cardBlurb({ description: 'Short', name: 'x' }),
-      cardBlurb({ description: '😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀', name: 'x' }),
-      cardBlurb({ description: 'Line one\nline two here', name: 'x' })
-    ]);
-    ok('blurb: the first 15 characters of the description, then …', b[0] === 'Gold necklace w…', b[0]);
-    ok('blurb: no description -> the name, same 15-character rule', b[1] === 'Fried Rice Spec…', b[1]);
-    ok('blurb: short text is left as is', b[2] === 'Short', b[2]);
-    ok('blurb: counts characters, never cuts an emoji in half', Array.from(b[3]).length === 16 && b[3].endsWith('…'), b[3]);
-    ok('blurb: line breaks become spaces', b[4] === 'Line one line t…', b[4]);
-    const html = await page.evaluate(() => {
-      const card = renderBrowseProductCard({ productId: 'z', name: 'N', description: 'd', storeSlug: 's', storeName: 'S',
-        storeIsland: 'Abaiang', variants: [{ variantId: 'v', label: 'a', price: 1 }], rating: 4.5, reviewCount: 2,
-        storeDeliveryTruck: true, sellerBadges: ['recommended', 'top', 'verified'], featured: true });
-      const box = document.createElement('div'); box.innerHTML = card; document.body.appendChild(box);
-      const meta = box.querySelector('.product-card-meta');
-      const order = Array.from(meta.querySelectorAll('.product-card-place, .delivery-icons, .seller-badge, .featured-badge'))
-        .map((e) => e.classList.contains('product-card-place') ? 'place' : e.classList.contains('delivery-icons') ? 'delivery'
-          : e.classList.contains('featured-badge') ? 'featured' : e.classList.contains('seller-badge--more') ? 'more'
-          : (Array.from(e.classList).find((k) => /^seller-badge--(recommended|top|verified)$/.test(k)) || '').slice(14));
-      const stars = box.querySelector('.rating');
-      const r = { order, starsOwnRow: !!stars && stars.parentElement.classList.contains('product-card-body'),
-        starsBetween: !!stars && !!(stars.compareDocumentPosition(meta) & 4) && !!(box.querySelector('.product-card-top').compareDocumentPosition(stars) & 4) };
-      box.remove();
-      return r;
-    });
-    ok('row 2: place, delivery, Verified, then the other badges, then Featured',
-      html.order.join(',') === 'place,delivery,verified,recommended,more,featured', html.order.join(','));
-    ok('stars: their own small row between row 1 and row 2', html.starsOwnRow && html.starsBetween);
     await ctx.close();
   }
 
@@ -164,7 +101,7 @@ const cards = (page, sel) => page.evaluate((s) => {
     await page.setViewportSize({ width: w, height: 700 });
     await page.waitForTimeout(400);
     const c = await cards(page, '#trending-products-list');
-    ok(`${w}px: row 2 is never clipped (it wraps instead)`, c.every((x) => x.metaClipped === false));
+    ok(`${w}px: place row is never clipped (it wraps instead)`, c.every((x) => x.metaClipped === false));
     ok(`${w}px: the page does not scroll sideways`, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await ctx.close();
   }
