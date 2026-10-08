@@ -66,7 +66,9 @@ function mockBody(action) {
  */
 async function open(browser, path, opts) {
   opts = opts || {};
-  const ctx = await browser.newContext({ viewport: { width: opts.width || 390, height: 844 } });
+  // 1024px by default: a tablet, where the menu shows every item (no bottom
+  // bar). Phone behaviour - Tips and My Account hidden - is checked below.
+  const ctx = await browser.newContext({ viewport: { width: opts.width || 1024, height: 844 } });
   await ctx.route('**/macros/s/**', (route) => {
     const action = new URL(route.request().url()).searchParams.get('action');
     route.fulfill({
@@ -149,16 +151,16 @@ async function measureCLS(browser, path, opts) {
     const { ctx, page } = await open(browser, '/index.html');
     const got = await labels(page);
     ok('signed-out item list', JSON.stringify(got) === JSON.stringify(
-      ['Stores', 'Categories', 'Create Store', 'Help & Support', 'Tips', 'My Account']
+      ['Tips', 'Categories', 'Stores', 'Help & Support', 'My Account', 'Create Store']
     ), got.join(' | '));
 
     const hrefs = await page.$$eval('#header-menu-panel .header-menu-item', (els) => els.map((e) => e.getAttribute('href')));
-    ok('Stores -> stores.html', hrefs[0] === 'stores.html');
+    ok('Tips -> customer-tips.html', hrefs[0] === 'customer-tips.html');
     ok('Categories -> categories.html', hrefs[1] === 'categories.html');
-    ok('Create Store -> owner register', hrefs[2] === 'owner/login.html?tab=register');
+    ok('Stores -> stores.html', hrefs[2] === 'stores.html');
     ok('Help & Support -> the Help Centre', hrefs[3] === 'help.html', hrefs[3]);
-    ok('Tips -> customer-tips.html', hrefs[4] === 'customer-tips.html');
-    ok('signed-out My Account -> login', hrefs[5] === 'customer-login.html');
+    ok('signed-out My Account -> login', hrefs[4] === 'customer-login.html');
+    ok('Create Store -> owner register', hrefs[5] === 'owner/login.html?tab=register');
 
     const roles = await page.$$eval('#header-menu-panel .header-menu-item', (els) => els.map((e) => e.getAttribute('role')));
     ok('every item is a menuitem', roles.every((r) => r === 'menuitem'));
@@ -181,7 +183,7 @@ async function measureCLS(browser, path, opts) {
     const { ctx, page } = await open(browser, '/index.html', { owner: true });
     const got = await labels(page);
     ok('owner: no Create Store', got.indexOf('Create Store') === -1, got.join(' | '));
-    ok('owner: everything else stays', got.length === 5 && got[0] === 'Stores' && got[4] === 'My Account');
+    ok('owner: everything else stays', got.length === 5 && got[0] === 'Tips' && got[4] === 'My Account', got.join(' | '));
     const chooser = await page.$('#header-menu-panel [data-login-chooser]');
     ok('owner without customer account gets the login chooser', !!chooser);
     await page.click('#header-menu-btn');
@@ -199,7 +201,7 @@ async function measureCLS(browser, path, opts) {
   {
     const { ctx, page } = await open(browser, '/index.html', { customer: true });
     const hrefs = await page.$$eval('#header-menu-panel .header-menu-item', (els) => els.map((e) => e.getAttribute('href')));
-    ok('customer: My Account -> dashboard', hrefs[hrefs.length - 1] === 'customer-dashboard.html', hrefs.join(' | '));
+    ok('customer: My Account -> dashboard', hrefs.indexOf('customer-dashboard.html') === 4, hrefs.join(' | '));
     ok('customer: no chooser', !(await page.$('#header-menu-panel [data-login-chooser]')));
     ok('customer who is not a seller still sees Create Store',
       (await labels(page)).indexOf('Create Store') !== -1);
@@ -223,7 +225,7 @@ async function measureCLS(browser, path, opts) {
   }
   {
     // An EMPTY cart is not a cart. Same rule cartStoreSlugs() applies.
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 844 } });
     await ctx.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
     const page = await ctx.newPage();
     await page.addInitScript(() => { try {
@@ -321,7 +323,8 @@ async function measureCLS(browser, path, opts) {
       const cart = document.getElementById('header-cart-link');
       const c = cart && getComputedStyle(cart).display !== 'none' ? cart.getBoundingClientRect() : null;
       const items = Array.prototype.map.call(
-        document.querySelectorAll('#header-menu-panel .header-menu-item'),
+        // Visible items only: on phones Tips and My Account are hidden on purpose.
+        Array.from(document.querySelectorAll('#header-menu-panel .header-menu-item')).filter((e) => e.getClientRects().length > 0),
         (e) => e.getBoundingClientRect().height
       );
       // The corner it belongs in is the content column's, not the window's -
@@ -356,7 +359,7 @@ async function measureCLS(browser, path, opts) {
     await page.click('#header-menu-btn');
     await page.waitForTimeout(120);
     const hit = await page.evaluate(() => {
-      const first = document.querySelector('#header-menu-panel .header-menu-item');
+      const first = Array.from(document.querySelectorAll('#header-menu-panel .header-menu-item')).find((e) => e.getClientRects().length > 0);
       const r = first.getBoundingClientRect();
       const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       return !!(el && (el === first || first.contains(el)));
@@ -392,6 +395,32 @@ async function measureCLS(browser, path, opts) {
     const b = Math.min.apply(null, withouts);
     ok('menu adds no layout shift: ' + p.name, w - b < 0.005,
       'with ' + w.toFixed(4) + ' vs without ' + b.toFixed(4));
+  }
+
+  // ---- phones: Tips and My Account are in the bottom bar, not the menu ----
+  for (const w of [390, 700]) {
+    const { ctx, page } = await open(browser, '/index.html', { width: w });
+    await page.click('#header-menu-btn');
+    const shown = await page.$$eval('#header-menu-panel .header-menu-item', (els) =>
+      els.filter((e) => e.getClientRects().length > 0).map((e) => e.querySelector('.header-menu-label').textContent));
+    ok(w + 'px: menu skips Tips and My Account (they are in the bottom bar)',
+      JSON.stringify(shown) === JSON.stringify(['Categories', 'Stores', 'Help & Support', 'Create Store']), shown.join(' | '));
+    const bar = await page.$$eval('.bottom-nav .bottom-nav-label', (els) => els.map((e) => e.textContent.trim()));
+    ok(w + 'px: ...and the bottom bar has them', bar.indexOf('Tips') !== -1 && bar.indexOf('Account') !== -1, bar.join(' | '));
+    await page.keyboard.press('Escape');
+    await page.focus('#header-menu-btn');
+    await page.keyboard.press('ArrowDown');
+    ok(w + 'px: arrow keys land on a visible item (Categories), not a hidden one',
+      await page.evaluate(() => document.activeElement.textContent.trim()) === 'Categories');
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await open(browser, '/index.html', { width: 701 });
+    await page.click('#header-menu-btn');
+    const shown = await page.$$eval('#header-menu-panel .header-menu-item', (els) =>
+      els.filter((e) => e.getClientRects().length > 0).map((e) => e.querySelector('.header-menu-label').textContent));
+    ok('701px (tablet, no bottom bar): Tips and My Account stay in the menu', shown[0] === 'Tips' && shown.indexOf('My Account') === 4, shown.join(' | '));
+    await ctx.close();
   }
 
   // ---- Terms · Privacy at the foot of the menu (the footer is hidden on

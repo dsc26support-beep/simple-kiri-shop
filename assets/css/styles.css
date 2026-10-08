@@ -4043,6 +4043,15 @@ header.site-header .header-menu-item:focus-visible {
   background: var(--color-bg-alt);
 }
 
+/* Phones (where the bottom nav shows, <= 700px): Tips and My Account are
+   already in the bottom bar, so the menu doesn't repeat them. Scoped to pages
+   that actually have the bottom nav. */
+@media (max-width: 700px) {
+  body.has-bottom-nav .header-menu-item--in-bar {
+    display: none;
+  }
+}
+
 /* Terms · Privacy: fine print at the foot of the menu, standing in for the
    footer phones and tablets no longer show. Small text, full-size targets. */
 .header-menu-legal {
