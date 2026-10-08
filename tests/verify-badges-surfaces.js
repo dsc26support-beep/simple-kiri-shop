@@ -82,7 +82,8 @@ const snap = (page) => page.evaluate(() => ({
   badges: document.querySelectorAll('.seller-badge').length,
   labels: Array.from(document.querySelectorAll('.seller-badge-label')).map((e) => e.textContent.trim()),
   buttonsInLinks: document.querySelectorAll('a button').length,
-  buttonsInCards: document.querySelectorAll('.product-card button, .store-card button').length,
+  // The round cart button (Oct 2026) is the one button a product card has, and it is not inside a link.
+  buttonsInCards: document.querySelectorAll('.product-card button:not(.card-cart-btn), .store-card button').length,
   legend: document.querySelectorAll('.badge-legend-panel').length,
   overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
   headerBadges: document.querySelectorAll('.store-branding .seller-badge').length
@@ -98,7 +99,7 @@ const snap = (page) => page.evaluate(() => ({
     const r = await snap(page);
     ok(name + ': no JS errors', errs.length === 0, errs.join(' | '));
     ok(name + ': cards carry badges', r.badges > 0, String(r.badges));
-    ok(name + ': NO button inside a link - a card is an <a>, and a button in one navigates',
+    ok(name + ': NO button inside a link, and badges stay read-only (only the cart button is a button)',
       r.buttonsInLinks === 0 && r.buttonsInCards === 0, r.buttonsInLinks + '/' + r.buttonsInCards);
     ok(name + ': the page explains them once', r.legend === 1, String(r.legend));
     ok(name + ': and does not scroll sideways at 390px', !r.overflow);

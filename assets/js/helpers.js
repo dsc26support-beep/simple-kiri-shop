@@ -503,9 +503,14 @@ function featuredBadgeHtml(product) {
   return product && product.featured ? '<span class="featured-badge">Featured</span>' : '';
 }
 
-// The products behind the cards on this page, by id, so the card's cart
-// button (card-cart.js) can add the right variant without a request.
+// The products behind the cards on this page, so the card's cart button
+// (card-cart.js) can add the right variant without a request. Keyed by store
+// AND product: one page can show the same product twice (a store's list and
+// a similar-products row), and the two must not overwrite each other.
 const BROWSE_CARD_PRODUCTS = new Map();
+function browseCardKey(product) {
+  return String(product.storeSlug || '') + '/' + String(product.productId);
+}
 
 /** The card's one line of text: the description, or the name when there is none. CSS cuts it to the card's width. */
 function cardTextLine(product) {
@@ -539,7 +544,7 @@ const CART_PLUS_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="no
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
-  BROWSE_CARD_PRODUCTS.set(String(product.productId), product);
+  BROWSE_CARD_PRODUCTS.set(browseCardKey(product), product);
 
   const media = product.imageUrl
     ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="" loading="lazy" decoding="async">`
@@ -567,7 +572,7 @@ function renderBrowseProductCard(product, opts) {
       });
 
   const cartBtn = booking || !(product.variants || []).length ? '' :
-    `<button type="button" class="card-cart-btn" data-product-id="${escapeHtml(product.productId)}" aria-label="Add ${escapeHtml(product.name)} to cart">${CART_PLUS_ICON}</button>`;
+    `<button type="button" class="card-cart-btn" data-card-key="${escapeHtml(browseCardKey(product))}" aria-label="Add ${escapeHtml(product.name)} to cart">${CART_PLUS_ICON}</button>`;
 
   return `
     <article class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}">

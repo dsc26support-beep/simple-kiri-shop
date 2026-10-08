@@ -73,11 +73,12 @@ ok('"Ex ample" split by OCR still caught', decide(exampleShot.replace('EXAMPLE',
 ok('"receipt" alone no longer counts as a success word', decide(goodReceipt.replace('Payment successful', 'Receipt')).status === 'Rejected');
 d = decide(goodReceipt.replace('Date ' + today, ''));
 ok('no readable date -> Pending review (a human looks), never auto-approved', d.status === 'Pending review' && /no date read/.test(d.notes), JSON.stringify(d));
-const td = new Date();
-const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][td.getMonth()];
-ok('"8 Oct 2026" style dates are read (ANZ)', decide(goodReceipt.replace(today, `${td.getDate()} ${mon} ${td.getFullYear()}`)).status === 'Approved');
-ok('"Oct 8, 2026" style dates are read', decide(goodReceipt.replace(today, `${mon} ${td.getDate()}, ${td.getFullYear()}`)).status === 'Approved');
-ok('"08/10/2026" style dates are read', decide(goodReceipt.replace(today, `${String(td.getDate()).padStart(2, '0')}/${String(td.getMonth() + 1).padStart(2, '0')}/${td.getFullYear()}`)).status === 'Approved');
+// Today in Kiribati, which after midday UTC is already tomorrow in UTC terms.
+const [tY, tM, tD] = today.split('-').map(Number);
+const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][tM - 1];
+ok('"8 Oct 2026" style dates are read (ANZ)', decide(goodReceipt.replace(today, `${tD} ${mon} ${tY}`)).status === 'Approved');
+ok('"Oct 8, 2026" style dates are read', decide(goodReceipt.replace(today, `${mon} ${tD}, ${tY}`)).status === 'Approved');
+ok('"08/10/2026" style dates are read', decide(goodReceipt.replace(today, `${String(tD).padStart(2, '0')}/${String(tM).padStart(2, '0')}/${tY}`)).status === 'Approved');
 ok('an old "3 Jan 2020" receipt is Rejected', decide(goodReceipt.replace(today, '3 Jan 2020')).status === 'Rejected');
 
 /* ---------- anti-fraud rules 1, 2 and 4 (Oct 2026) ---------- */

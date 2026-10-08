@@ -138,8 +138,9 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.waitForFunction(() => typeof renderBrowseProductCard === 'function');
     const href = await page.evaluate(() => {
       const html = renderBrowseProductCard({ productId: 'p1', name: 'Rice', storeSlug: 'bong', storeName: 'Bong', category: 'pantry', variants: [{ variantId: 'v1', label: '1kg', price: 6 }] });
-      const m = html.match(/href="([^"]+)"/);
-      return m ? m[1] : '';
+      const box = document.createElement('div'); box.innerHTML = html;
+      const a = box.querySelector('a[href]');
+      return a ? a.getAttribute('href') : '';
     });
     ok('browse card links to product.html', href.indexOf('product.html?store=bong&product=p1') === 0, href);
     await ctx.close();

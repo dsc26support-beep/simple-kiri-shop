@@ -296,7 +296,8 @@ const deliveries = (box) => rows(box, 'CampaignEvents').filter((e) => e.EventTyp
 {
   const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8');
   ok('setupSheets knows the three new tabs', /Campaigns: \[/.test(src) && /CampaignEvents: \[/.test(src) && /MarketingPreferences: \[/.test(src));
-  ok('APP_VERSION bumped', /APP_VERSION = 'marketing1-/.test(src));
+  // Pinned to 'marketing1-' at first; any later release moves it on, so check it is set at all.
+  ok('APP_VERSION is set', /APP_VERSION = '[a-z0-9]+-\d{4}-\d{2}-\d{2}'/.test(src));
 }
 
 let f = 0;

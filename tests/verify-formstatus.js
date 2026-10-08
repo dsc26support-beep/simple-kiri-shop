@@ -64,8 +64,9 @@ const iso = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10
     };
   };
 
-  for (const [label, path] of [['product page', '/product.html?store=a&product=p1'],
-                               ['store page', '/store.html?store=a']]) {
+  // Booking happens on the product page only: since Oct 2026 the store page
+  // shows the shared product card, and a rental's card opens its product page.
+  for (const [label, path] of [['product page', '/product.html?store=a&product=p1']]) {
     // ---- a warning ----
     {
       const { ctx, pg } = await open(path);

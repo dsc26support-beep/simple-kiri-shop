@@ -19,7 +19,7 @@ function onCardCartClick(e) {
   if (choice) {
     e.preventDefault();
     const picker = choice.closest('.card-cart-picker');
-    const product = BROWSE_CARD_PRODUCTS.get(picker.dataset.productId);
+    const product = BROWSE_CARD_PRODUCTS.get(picker.dataset.cardKey);
     const variant = product && product.variants.find((v) => String(v.variantId) === choice.dataset.variantId);
     const btn = picker.parentElement.querySelector('.card-cart-btn');
     closeCardCartPicker(false);
@@ -38,7 +38,7 @@ function onCardCartClick(e) {
     return;
   }
   e.preventDefault();
-  const product = BROWSE_CARD_PRODUCTS.get(btn.dataset.productId);
+  const product = BROWSE_CARD_PRODUCTS.get(btn.dataset.cardKey);
   if (!product || !product.variants || !product.variants.length) return;
   const open = btn.parentElement.querySelector('.card-cart-picker');
   closeCardCartPicker(false);
@@ -57,7 +57,7 @@ function openCardCartPicker(product, btn) {
       + `<span>${escapeHtml(v.label)}</span><strong>${out ? 'Sold out' : formatMoney(v.price)}</strong></button>`;
   }).join('');
   btn.insertAdjacentHTML('afterend',
-    `<div class="card-cart-picker" role="group" aria-label="Choose an option for ${escapeHtml(product.name)}" data-product-id="${escapeHtml(product.productId)}">`
+    `<div class="card-cart-picker" role="group" aria-label="Choose an option for ${escapeHtml(product.name)}" data-card-key="${escapeHtml(browseCardKey(product))}">`
     + `<div class="card-cart-picker-head"><span>Choose one</span><button type="button" class="card-cart-close" aria-label="Close">&times;</button></div>`
     + options + '</div>');
   btn.setAttribute('aria-expanded', 'true');
