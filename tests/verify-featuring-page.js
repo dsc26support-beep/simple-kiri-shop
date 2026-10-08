@@ -4,7 +4,7 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const OWNER = { ownerId: 'o1', storeName: 'Bong Store', storeSlug: 'bong', status: 'active', isAdmin: true };
-const PAYMENT = { accountName: 'Nei Recharge', accountNumber: '786149' };
+const PAYMENT = { accountName: 'Mwakete', accountNumber: '906149' };
 const AWAITING = { purchaseId: 'fp1', productIds: ['p1', 'p2'], productNames: ['Rice', 'Flour'], days: 7, amount: 0.7,
   reference: 'MWFABC234', status: 'Awaiting payment', startsAt: '', endsAt: '' };
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
@@ -21,11 +21,11 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
       state.calls.push(body);
       let res = { ok: true };
       if (a === 'getOwnerProfile') res = { ok: true, owner: OWNER };
-      else if (a === 'listMyFeaturePurchases') res = { ok: true, purchases: state.purchases, payment: PAYMENT };
+      else if (a === 'listMyFeaturePurchases') res = { ok: true, purchases: state.purchases, payment: PAYMENT, freeAvailable: !!state.free, freeMaxProducts: 3 };
       else if (a === 'listOwnerProducts') res = { ok: true, products: [
         { productId: 'p1', name: 'Rice', status: 'active' }, { productId: 'p2', name: 'Flour', status: 'active' },
         { productId: 'p3', name: 'Old', status: 'archived' }] };
-      else if (a === 'startFeaturePurchase') res = { ok: true, purchase: AWAITING };
+      else if (a === 'startFeaturePurchase') res = state.start || { ok: true, purchase: AWAITING };
       else if (a === 'submitFeaturePayment') res = state.submit;
       else if (a === 'listFeaturePurchases') res = { ok: true, purchases: state.admin };
       else if (a === 'setFeaturePurchaseStatus') res = { ok: true };
@@ -67,7 +67,36 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   ({ ctx, page } = await open('/owner/feature.html?purchase=fp1', st));
   await page.waitForSelector('#feature-pay:not(.hidden)', { timeout: 6000 });
   const box = await page.evaluate(() => ['pay-account-name', 'pay-account-number', 'pay-reference', 'pay-amount'].map((id) => document.getElementById(id).textContent));
-  ok('pay step shows account, number, reference and amount', JSON.stringify(box) === '["Nei Recharge","786149","MWFABC234","$0.70"]', JSON.stringify(box));
+  ok('pay step shows account, number, reference and amount', JSON.stringify(box) === '["Mwakete","906149","MWFABC234","$0.70"]', JSON.stringify(box));
+  const words = await page.evaluate(() => ({
+    heading: document.getElementById('feature-pay-heading').textContent.replace(/\s+/g, ' ').trim(),
+    intro: document.querySelector('#feature-pay-steps > p').textContent.trim(),
+    labels: [...document.querySelectorAll('.feature-pay-box dt')].map((d) => d.textContent),
+    shot: document.querySelector('.feature-pay-shot').textContent.trim(),
+    shotAlign: getComputedStyle(document.querySelector('.feature-pay-shot')).textAlign,
+    oldText: /goMoney|Not the screen with the Confirm button/.test(document.getElementById('feature-pay-steps').textContent)
+  }));
+  ok('heading: a ? button, no "2."', /^\? ?Show an example payment screenshot Pay and upload your receipt$/.test(words.heading) && !/2\./.test(words.heading), words.heading);
+  ok('intro says Copy/Paste onto the Kiribati Banking App', words.intro === 'Copy/Paste the following onto your Kiribati Banking App', words.intro);
+  ok('label reads "Reference to Recipient"', words.labels.join('|') === 'Account name|Account number|Reference to Recipient|Amount', words.labels.join('|'));
+  ok('"SCREENSHOT PAYMENT RECEIPT", centred, replaces the old paragraph', words.shot === 'SCREENSHOT PAYMENT RECEIPT' && words.shotAlign === 'center' && !words.oldText, JSON.stringify(words));
+  ok('example receipt starts hidden', !(await page.isVisible('#feature-example')) && await page.getAttribute('#feature-example-btn', 'aria-expanded') === 'false');
+  const qb = await page.$eval('#feature-example-btn', (b) => { const r = b.getBoundingClientRect(); return { w: r.width, h: r.height, round: getComputedStyle(b).borderRadius }; });
+  ok('the ? is a small circle', qb.w <= 32 && Math.abs(qb.w - qb.h) < 1 && qb.round === '50%', JSON.stringify(qb));
+  await page.click('#feature-example-btn');
+  const ex = await page.evaluate(() => ({
+    shown: !document.getElementById('feature-example').hidden,
+    expanded: document.getElementById('feature-example-btn').getAttribute('aria-expanded'),
+    svg: [...document.querySelectorAll('#feature-example svg [data-example]')].map((t) => t.textContent),
+    w: document.querySelector('.feature-example-img').getBoundingClientRect().width,
+    steps: document.querySelectorAll('.feature-example-list li').length
+  }));
+  ok('tapping ? shows the example, filled with this purchase\'s details', ex.shown && ex.expanded === 'true'
+    && ex.svg.join('|') === 'Mwakete|906149|$0.70|MWFABC234' && ex.steps === 4, JSON.stringify(ex));
+  await page.screenshot({ path: process.env.SHOT_DIR ? process.env.SHOT_DIR + '/feature-example.png' : '/dev/null', fullPage: true }).catch(() => {});
+  ok('example fits the phone screen', ex.w > 200 && ex.w <= 300 && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), String(ex.w));
+  await page.click('#feature-example-btn');
+  ok('tapping ? again hides it', !(await page.isVisible('#feature-example')));
   ok('the choose step stays hidden on the pay step', await page.$eval('#feature-select', (e) => e.classList.contains('hidden')));
   await page.click('#feature-upload-btn');
   ok('upload without a file asks for one', /Choose the screenshot/.test(await page.textContent('#feature-pay-error')));
@@ -126,6 +155,48 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   ok('ended purchase shows "+1 view while featured" (singular)', /\+1 view while featured/.test(res[1]), res[1]);
   ok('purchase from before results existed shows no results line', res[2] === '', res[2]);
   ok('no page errors (results)', st.errors.length === 0, st.errors.join('; '));
+  await ctx.close();
+
+  // ---------- free first featuring ----------
+  const FREE = Object.assign({}, AWAITING, { purchaseId: 'free1', amount: 0, status: 'Approved',
+    startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 7 * 86400000).toISOString() });
+  st = { calls: [], purchases: [], free: true, start: { ok: true, free: true, purchase: FREE } };
+  ({ ctx, page } = await open('/owner/feature.html', st));
+  await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
+  ok('free: the offer is announced', await page.isVisible('#feature-free-note') && /first featuring is free/.test(await page.textContent('#feature-free-note')));
+  await page.check('#feature-product-list input[value="p1"]');
+  await page.check('#feature-product-list input[value="p2"]');
+  let ft = await page.textContent('#feature-total');
+  ok('free: 2 products shows Free, button says Feature for free', /= Free/.test(ft) && (await page.textContent('#feature-continue-btn')) === 'Feature for free', ft);
+  await Promise.all([page.waitForURL(/purchase=free1/), page.click('#feature-continue-btn')]);
+  await ctx.close();
+  st = { calls: [], purchases: [FREE], free: false };
+  ({ ctx, page } = await open('/owner/feature.html?purchase=free1', st));
+  await page.waitForSelector('#feature-pay-result.is-approved', { timeout: 6000 }).catch(() => {});
+  ok('free: lands on "Free - featured until", no bank details, no ?, no upload',
+    /^Free - featured until/.test(await page.textContent('#feature-pay-result')) && !(await page.isVisible('#feature-pay-steps'))
+    && !(await page.isVisible('#feature-example-btn')) && /Featured for free/.test(await page.textContent('#feature-pay-heading')));
+  ok('free: history shows Free, not $0.00', /Free · ref/.test(await page.textContent('#feature-history')) && !/\$0\.00/.test(await page.textContent('#feature-history')));
+  ok('no page errors (free)', st.errors.length === 0, st.errors.join('; '));
+  await ctx.close();
+  // 4 products with the offer still open: normal price, plus a hint.
+  st = { calls: [], purchases: [], free: true };
+  ({ ctx, page } = await open('/owner/feature.html', st));
+  await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
+  await page.evaluate(() => {
+    const list = document.getElementById('feature-product-list');
+    ['p4', 'p5'].forEach((id) => list.insertAdjacentHTML('beforeend', `<label class="feature-product-option"><input type="checkbox" value="${id}"><span>${id}</span></label>`));
+    list.querySelectorAll('input').forEach((i) => { i.checked = true; });
+    list.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  ft = await page.textContent('#feature-total');
+  ok('free: 4 products is priced normally, with a "3 or fewer" hint', /4 products × 7 days × \$0\.05 = \$1\.40/.test(ft) && /choose 3 or fewer/.test(ft)
+    && (await page.textContent('#feature-continue-btn')) === 'Continue to payment', ft);
+  await ctx.close();
+  st = { calls: [], purchases: [] };
+  ({ ctx, page } = await open('/owner/feature.html', st));
+  await page.waitForSelector('#feature-product-list input', { timeout: 6000 });
+  ok('offer used: no free note', !(await page.isVisible('#feature-free-note')));
   await ctx.close();
 
   // ---------- admin queue ----------

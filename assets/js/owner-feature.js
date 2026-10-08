@@ -1,6 +1,7 @@
 // Paid featuring: choose products + days, then pay by bank transfer and upload
 // the receipt. The checking itself is server-side (apps-script/Featuring.gs);
-// the price shown here is a preview - the server computes the real amount.
+// the price shown here is a preview - the server computes the real amount,
+// and decides whether this is the store's free first featuring.
 document.addEventListener('DOMContentLoaded', init);
 
 const PRICE_PER_PRODUCT_DAY = 0.05;
@@ -9,6 +10,8 @@ const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 let purchases = [];
 let payment = { accountName: '', accountNumber: '' };
+let freeAvailable = false;
+let freeMaxProducts = 3;
 
 async function init() {
   const owner = await Auth.guardOwnerAuth();
@@ -26,6 +29,8 @@ async function init() {
   statusEl.textContent = ''; // the loading text stays until replaced
   purchases = res.purchases || [];
   payment = res.payment || payment;
+  freeAvailable = !!res.freeAvailable;
+  if (res.freeMaxProducts) freeMaxProducts = res.freeMaxProducts;
   renderHistory();
 
   const purchaseId = getQueryParam('purchase');
@@ -43,6 +48,7 @@ async function init() {
 
 async function showSelectStep(preset) {
   const section = document.getElementById('feature-select');
+  document.getElementById('feature-free-note').classList.toggle('hidden', !freeAvailable);
   const listEl = document.getElementById('feature-product-list');
   section.classList.remove('hidden');
   const res = await Api.post('listOwnerProducts', { token: Auth.getToken(), limit: 100 });
@@ -85,16 +91,28 @@ function selectedDays() {
   return parseInt(document.getElementById('feature-days').value, 10);
 }
 
+function isFreeChoice(n) {
+  return freeAvailable && n >= 1 && n <= freeMaxProducts;
+}
+
 function updateTotal() {
   const n = selectedProductIds().length;
   const days = selectedDays();
   const out = document.getElementById('feature-total');
+  const btn = document.getElementById('feature-continue-btn');
+  btn.textContent = isFreeChoice(n) ? 'Feature for free' : 'Continue to payment';
   if (!n || !(days >= 1)) {
     out.textContent = 'Choose at least one product and a number of days.';
     return;
   }
+  const what = `${n} product${n === 1 ? '' : 's'} × ${days} day${days === 1 ? '' : 's'}`;
+  if (isFreeChoice(n)) {
+    out.textContent = `${what} = Free (your first featuring)`;
+    return;
+  }
   const total = Math.round(n * days * PRICE_PER_PRODUCT_DAY * 100) / 100;
-  out.textContent = `${n} product${n === 1 ? '' : 's'} × ${days} day${days === 1 ? '' : 's'} × $0.05 = ${formatMoney(total)}`;
+  out.textContent = `${what} × $0.05 = ${formatMoney(total)}`
+    + (freeAvailable ? ` - choose ${freeMaxProducts} or fewer to feature them free` : '');
 }
 
 async function onContinue() {
@@ -117,8 +135,36 @@ async function onContinue() {
 
 /* ---------- step 2: pay + upload ---------- */
 
+// The "?" beside the step 2 heading shows a drawn example of the receipt
+// screen to screenshot, filled in with this purchase's own details.
+function setupExample(p) {
+  const btn = document.getElementById('feature-example-btn');
+  const fig = document.getElementById('feature-example');
+  const values = { name: payment.accountName, number: payment.accountNumber, amount: formatMoney(p.amount), reference: p.reference };
+  fig.querySelectorAll('[data-example]').forEach((el) => {
+    const v = values[el.dataset.example];
+    if (v) el.textContent = v;
+  });
+  btn.addEventListener('click', () => {
+    const open = fig.hidden;
+    fig.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  });
+}
+
+function isFreePurchase(p) {
+  return Number(p.amount) === 0;
+}
+
 function showPayStep(p) {
   document.getElementById('feature-pay').classList.remove('hidden');
+  if (isFreePurchase(p)) {
+    // Nothing to pay: no bank details, no example, no upload.
+    document.getElementById('feature-example-btn').classList.add('hidden');
+    document.getElementById('feature-pay-title').textContent = 'Featured for free';
+  } else {
+    setupExample(p);
+  }
   document.getElementById('feature-pay-summary').textContent =
     `${p.productNames.join(', ')} - ${p.days} day${p.days === 1 ? '' : 's'}.`;
   document.getElementById('pay-account-name').textContent = payment.accountName;
@@ -134,7 +180,7 @@ function showPayStep(p) {
   if (p.status === 'Approved' || p.status === 'Pending review') {
     document.getElementById('feature-pay-steps').classList.add('hidden');
     showPayResult(p.status === 'Approved'
-      ? `Paid - featured until ${fmtDate(p.endsAt)}.`
+      ? `${isFreePurchase(p) ? 'Free' : 'Paid'} - featured until ${fmtDate(p.endsAt)}.`
       : 'Your payment is waiting for a quick check by Mwakete.', p.status);
   } else if (p.status === 'Rejected') {
     document.getElementById('feature-pay-error').textContent =
@@ -243,7 +289,7 @@ function renderHistory() {
       <div class="feature-history-row">
         <div>
           <strong>${escapeHtml(p.productNames.join(', '))}</strong>
-          <div class="helper-text">${p.days} day${p.days === 1 ? '' : 's'} · ${formatMoney(p.amount)} · ref ${escapeHtml(p.reference)}</div>
+          <div class="helper-text">${p.days} day${p.days === 1 ? '' : 's'} · ${isFreePurchase(p) ? 'Free' : formatMoney(p.amount)} · ref ${escapeHtml(p.reference)}</div>
           ${resultsHtml(p)}
         </div>
         <div class="feature-history-status">

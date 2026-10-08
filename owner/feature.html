@@ -35,6 +35,7 @@
     <div class="container">
       <h1>Feature your products</h1>
       <p class="helper-text">Featured products are shown to shoppers in Tips and at the top of the Featured list. It costs <strong>5c per product per day</strong>.</p>
+      <p id="feature-free-note" class="feature-free-note hidden">Your first featuring is <strong>free</strong>: choose up to 3 products - no payment needed.</p>
       <p id="feature-status" class="helper-text" role="status"></p>
 
       <!-- Step 1: choose products and days. -->
@@ -55,17 +56,64 @@
 
       <!-- Step 2: pay by bank transfer, then upload the receipt. Reached via ?purchase=. -->
       <section id="feature-pay" class="dash-section hidden" aria-labelledby="feature-pay-heading">
-        <h2 id="feature-pay-heading">2. Pay and upload your receipt</h2>
+        <h2 id="feature-pay-heading" class="feature-pay-heading">
+          <button type="button" id="feature-example-btn" class="feature-help-btn" aria-expanded="false" aria-controls="feature-example"><span aria-hidden="true">?</span><span class="sr-only">Show an example payment screenshot</span></button>
+          <span id="feature-pay-title">Pay and upload your receipt</span>
+        </h2>
+        <!-- A drawn example of the receipt screen to screenshot. Not a real
+             receipt: the numbered boxes point at what the check looks for. -->
+        <figure id="feature-example" class="feature-example" hidden>
+          <svg class="feature-example-img" viewBox="0 0 300 420" role="img" aria-labelledby="feature-example-title">
+            <title id="feature-example-title">Example: the banking app screen after the payment has gone through</title>
+            <rect x="1" y="1" width="298" height="418" rx="22" fill="#ffffff" stroke="#c9c6dc" stroke-width="2"/>
+            <rect x="1" y="1" width="298" height="54" rx="22" fill="#332d63"/>
+            <rect x="1" y="34" width="298" height="21" fill="#332d63"/>
+            <text x="150" y="35" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="700">Kiribati Banking App</text>
+            <circle cx="150" cy="96" r="24" fill="#1e7a34"/>
+            <path d="M138 96 l8 8 l16 -16" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="40" y="128" width="220" height="50" rx="8" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <text x="150" y="150" text-anchor="middle" fill="#1e7a34" font-size="17" font-weight="700">Payment successful</text>
+            <text x="150" y="169" text-anchor="middle" fill="#555" font-size="12">Status: Posted</text>
+            <rect x="18" y="190" width="264" height="60" rx="8" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <text x="30" y="210" fill="#777" font-size="11">To account</text>
+            <text x="30" y="226" fill="#222" font-size="14" font-weight="700" data-example="name">Mwakete</text>
+            <text x="30" y="243" fill="#222" font-size="14" data-example="number">906149</text>
+            <rect x="18" y="258" width="264" height="44" rx="8" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <text x="30" y="276" fill="#777" font-size="11">Amount</text>
+            <text x="30" y="293" fill="#222" font-size="15" font-weight="700" data-example="amount">$0.70</text>
+            <rect x="18" y="310" width="264" height="44" rx="8" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <text x="30" y="328" fill="#777" font-size="11">Reference to Recipient</text>
+            <text x="30" y="345" fill="#222" font-size="15" font-weight="700" data-example="reference">MWFABC234</text>
+            <text x="30" y="378" fill="#777" font-size="11">Date</text>
+            <text x="30" y="395" fill="#222" font-size="13">Today</text>
+            <g font-size="13" font-weight="700" fill="#ffffff" text-anchor="middle">
+              <circle cx="262" cy="128" r="11" fill="#c0392b"/><text x="262" y="133">1</text>
+              <circle cx="282" cy="190" r="11" fill="#c0392b"/><text x="282" y="195">2</text>
+              <circle cx="282" cy="258" r="11" fill="#c0392b"/><text x="282" y="263">3</text>
+              <circle cx="282" cy="310" r="11" fill="#c0392b"/><text x="282" y="315">4</text>
+            </g>
+          </svg>
+          <figcaption>
+            <p class="feature-example-head">Your screenshot must show:</p>
+            <ol class="feature-example-list">
+              <li>That the payment was <strong>successful</strong> (not the screen with the Confirm button)</li>
+              <li>Paid to <strong data-example="name">Mwakete</strong>, account <strong data-example="number">906149</strong></li>
+              <li>The <strong>full amount</strong></li>
+              <li>Your <strong>Reference to Recipient</strong>, exactly as given</li>
+            </ol>
+            <p class="helper-text">This is a drawn example - your bank app will look a little different.</p>
+          </figcaption>
+        </figure>
         <p id="feature-pay-summary" class="feature-pay-summary"></p>
         <div id="feature-pay-steps">
-          <p>Pay this exact amount by bank transfer (e.g. ANZ goMoney), using the reference exactly as shown:</p>
+          <p>Copy/Paste the following onto your Kiribati Banking App</p>
           <dl class="feature-pay-box">
             <div><dt>Account name</dt><dd id="pay-account-name"></dd><button type="button" class="btn btn-small" data-copy="pay-account-name">Copy</button></div>
             <div><dt>Account number</dt><dd id="pay-account-number"></dd><button type="button" class="btn btn-small" data-copy="pay-account-number">Copy</button></div>
-            <div><dt>Reference</dt><dd id="pay-reference" class="feature-pay-strong"></dd><button type="button" class="btn btn-small" data-copy="pay-reference">Copy</button></div>
+            <div><dt>Reference to Recipient</dt><dd id="pay-reference" class="feature-pay-strong"></dd><button type="button" class="btn btn-small" data-copy="pay-reference">Copy</button></div>
             <div><dt>Amount</dt><dd id="pay-amount" class="feature-pay-strong"></dd><button type="button" class="btn btn-small" data-copy="pay-amount">Copy</button></div>
           </dl>
-          <p>Then take a screenshot of the receipt screen that says the payment was <strong>successful</strong>, and upload it here. Not the screen with the Confirm button - the one after.</p>
+          <p class="feature-pay-shot">SCREENSHOT PAYMENT RECEIPT</p>
           <div class="field">
             <label for="feature-screenshot">Payment screenshot</label>
             <input type="file" id="feature-screenshot" accept="image/png,image/jpeg,image/webp">

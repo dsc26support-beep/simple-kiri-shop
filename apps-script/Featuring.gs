@@ -9,7 +9,13 @@
  * screenshot of the bank's receipt. The screenshot is OCR'd and checked for
  * the reference, the account number, the full amount, a success word, and
  * that it isn't the "Confirm / Cancel" screen a banking app shows BEFORE the
- * transfer is actually sent. Owner decision: same account as AM TOPUP.
+ * transfer is actually sent. Paid into Mwakete's own account (owner
+ * decision, Oct 2026 - it was the AM TOPUP account before).
+ *
+ * Free first featuring (owner decision): each store's first featuring of up
+ * to FEATURE_FREE_MAX_PRODUCTS products costs nothing - no payment, approved
+ * at once. Once per store. The free row is the one with Amount 0 (a paid
+ * amount is always at least 5c), so no new sheet column is needed.
  *
  * Outcomes, as in topup:
  *   Approved       - every check passed; featuring starts now.
@@ -38,8 +44,9 @@
 var FEATURE_PRICE_PER_PRODUCT_DAY = 0.05;
 var FEATURE_MAX_DAYS = 60;
 var FEATURE_MAX_PRODUCTS = 30;
-var FEATURE_PAY_ACCOUNT_NAME = 'Nei Recharge';
-var FEATURE_PAY_ACCOUNT_NUMBER = '786149';
+var FEATURE_FREE_MAX_PRODUCTS = 3;
+var FEATURE_PAY_ACCOUNT_NAME = 'Mwakete';
+var FEATURE_PAY_ACCOUNT_NUMBER = '906149';
 var FEATURE_SUBMITS_PER_HOUR = 10;
 
 var FEATURE_PURCHASE_HEADERS = ['PurchaseId', 'OwnerId', 'StoreSlug', 'ProductIdsJson', 'Days', 'Amount',
@@ -103,6 +110,19 @@ function publicFeaturePurchase(row, productNamesById) {
   };
 }
 
+/** Pure: has this store already had its free featuring? (A row with Amount 0.) */
+function featureFreeUsed(rows, owner) {
+  return rows.some(function (r) {
+    var mine = r.OwnerId === owner.OwnerId || (owner.StoreSlug && r.StoreSlug === owner.StoreSlug);
+    return mine && String(r.Amount) !== '' && Number(r.Amount) === 0;
+  });
+}
+
+/** Pure: is a featuring of productCount products free for this store right now? */
+function featureIsFree(rows, owner, productCount) {
+  return productCount >= 1 && productCount <= FEATURE_FREE_MAX_PRODUCTS && !featureFreeUsed(rows, owner);
+}
+
 function featurePaymentDetails() {
   return { accountName: FEATURE_PAY_ACCOUNT_NAME, accountNumber: FEATURE_PAY_ACCOUNT_NUMBER };
 }
@@ -127,36 +147,41 @@ function actionStartFeaturePurchase(owner, body) {
     return fail('One of those products is not an active listing in your store. Please refresh and try again.');
   }
 
-  var amount = featureAmountFor(unique.length, days);
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
-  var row;
+  var row, free;
   try {
     var sheet = getFeaturePurchasesSheet();
+    var existing = sheetToObjects(sheet);
+    // Decided inside the lock, so two quick taps can't both get the free one.
+    free = featureIsFree(existing, owner, unique.length);
     var now = nowIso();
     var purchaseId = newId('feat');
-    appendRowFromObject(sheet, {
+    var record = {
       PurchaseId: purchaseId,
       OwnerId: owner.OwnerId,
       StoreSlug: owner.StoreSlug,
       ProductIdsJson: JSON.stringify(unique),
       Days: days,
-      Amount: amount,
-      Reference: newFeatureReference(sheetToObjects(sheet)),
-      Status: FEATURE_STATUS.AWAITING,
+      Amount: free ? 0 : featureAmountFor(unique.length, days),
+      Reference: newFeatureReference(existing),
+      Status: free ? FEATURE_STATUS.APPROVED : FEATURE_STATUS.AWAITING,
       ScreenshotUrl: '',
       ScreenshotHash: '',
-      OcrNotes: '',
-      StartsAt: '',
-      EndsAt: '',
+      OcrNotes: free ? 'free: first featuring' : '',
+      StartsAt: free ? now : '',
+      EndsAt: free ? new Date(Date.now() + days * 86400000).toISOString() : '',
       CreatedAt: now,
       UpdatedAt: now
-    });
+    };
+    if (free) record.ViewsAtStartJson = JSON.stringify(productViewsSnapshot(record));
+    appendRowFromObject(sheet, record);
     row = findRowById(sheet, 'PurchaseId', purchaseId);
   } finally {
     lock.releaseLock();
   }
-  return ok({ purchase: publicFeaturePurchase(row), payment: featurePaymentDetails() });
+  if (free) invalidateCache([TIPS_CACHE_KEY, PAID_FEATURED_CACHE_KEY]);
+  return ok({ purchase: publicFeaturePurchase(row), payment: featurePaymentDetails(), free: free });
 }
 
 /** Every purchase this store has made, newest first, plus where to pay. */
@@ -168,7 +193,8 @@ function actionListMyFeaturePurchases(owner) {
     names[p.ProductId] = p.Name;
     views[p.ProductId] = Number(p.Views) || 0;
   });
-  var rows = sheetToObjects(getFeaturePurchasesSheet())
+  var all = sheetToObjects(getFeaturePurchasesSheet());
+  var rows = all
     .filter(function (r) { return r.OwnerId === owner.OwnerId; })
     .sort(function (a, b) { return String(b.CreatedAt).localeCompare(String(a.CreatedAt)); })
     .map(function (r) {
@@ -176,7 +202,11 @@ function actionListMyFeaturePurchases(owner) {
       p.viewsGained = featureViewsGained(r, views);
       return p;
     });
-  return ok({ purchases: rows, payment: featurePaymentDetails(), pricePerProductDay: FEATURE_PRICE_PER_PRODUCT_DAY });
+  return ok({
+    purchases: rows, payment: featurePaymentDetails(), pricePerProductDay: FEATURE_PRICE_PER_PRODUCT_DAY,
+    freeAvailable: !featureFreeUsed(all, owner),
+    freeMaxProducts: FEATURE_FREE_MAX_PRODUCTS
+  });
 }
 
 /**
