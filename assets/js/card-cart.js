@@ -119,9 +119,10 @@ function announceCardCart(text) {
 }
 
 // Product cards are rendered by several pages, often into a section that is
-// shown later. Rather than each page remembering to fit the card prices
-// (fitPriceLabels, helpers.js), any change to the page re-fits them once per
-// frame - so a long range like "$219.99-500.00" is shrunk, never cut.
+// shown later. Rather than each page remembering to fit the card prices and
+// badges (fitPriceLabels / fitCardBadges, helpers.js), any change to the page
+// re-fits them once per frame - so a long range like "$219.99-500.00" is
+// shrunk, never cut, and each card shows as many badges as it has room for.
 let cardPriceFitQueued = false;
 function queueCardPriceFit() {
   if (cardPriceFitQueued) return;
@@ -129,13 +130,17 @@ function queueCardPriceFit() {
   requestAnimationFrame(() => {
     cardPriceFitQueued = false;
     document.querySelectorAll('.product-card-buy').forEach((row) => fitPriceLabels(row));
+    fitCardBadges();
   });
 }
 document.addEventListener('DOMContentLoaded', () => {
   queueCardPriceFit();
   new MutationObserver((records) => {
-    // Our own font-size writes are style changes on the price - ignore those.
-    if (records.every((r) => r.type === 'attributes' && r.target.classList && r.target.classList.contains('product-price'))) return;
+    // Ignore our own changes - the price's font size and the badges that
+    // fitCardBadges moves, hides and counts - or this would loop every frame.
+    const own = (t) => t.nodeType === 1 && (t.classList.contains('product-price')
+      || !!t.closest('.product-card-meta, .product-card-verified'));
+    if (records.every((r) => own(r.target))) return;
     queueCardPriceFit();
   }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
 });

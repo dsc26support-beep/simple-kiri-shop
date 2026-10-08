@@ -494,8 +494,11 @@ const box = (page, sel) => page.evaluate((s) => {
       document.getElementById('badge-host').innerHTML = renderBadgeLegend();
     });
     const r = await page.evaluate(() => ({
-      terms: document.querySelectorAll('.badge-legend dt').length,
-      defs: Array.from(document.querySelectorAll('.badge-legend dd')).map((e) => e.textContent.trim()),
+      // The seller-badge list; the Delivery list below it (Oct 2026) is checked on its own.
+      terms: document.querySelectorAll('.badge-legend:not(.badge-legend--delivery) dt').length,
+      defs: Array.from(document.querySelectorAll('.badge-legend:not(.badge-legend--delivery) dd')).map((e) => e.textContent.trim()),
+      delivery: Array.from(document.querySelectorAll('.badge-legend--delivery .badge-legend-row')).map((r) => r.querySelector('dt').textContent.trim() + ': ' + r.querySelector('dd').textContent.trim()),
+      deliveryIcons: document.querySelectorAll('.badge-legend--delivery dt .delivery-icon svg').length,
       buttons: document.querySelectorAll('.badge-legend button').length,
       names: Array.from(document.querySelectorAll('.badge-legend dt .seller-badge-label')).map((e) => e.textContent.trim()),
       overflow: document.documentElement.scrollWidth <= window.innerWidth + 1
@@ -504,6 +507,9 @@ const box = (page, sel) => page.evaluate((s) => {
     ok('and names every badge in full, New included', r.names.join(',') ===
       'Mwakete Recommended,Top Seller,Verified Seller,Responsive Seller,Reliable Delivery,Customer Favourite,Popular Seller,New Seller', r.names.join(','));
     ok('each with its own sentence', r.defs.every((d) => d.length > 20) && new Set(r.defs).size === 8);
+    ok('Delivery: truck, ship, air cargo, Pick & Pay and the green icon, each with its icon and a short line',
+      r.delivery.join(' | ') === "Truck: Delivered by truck on the store's island. | Ship: Sent by ship to other islands. | Air cargo: Sent by plane to other islands. | Pick & Pay: Collect from the store and pay there. Always free. | Green icon: That delivery is free."
+      && r.deliveryIcons === 5, r.delivery.join(' | '));
     ok('and no popovers in it - the panel IS the explanation', r.buttons === 0, String(r.buttons));
     ok('it fits a 390px screen', r.overflow);
     await ctx.close();
