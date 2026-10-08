@@ -617,6 +617,9 @@ const CART_PLUS_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="no
  *
  * Rentals and services get no cart button - they are booked on the product
  * page, not bought.
+ *
+ * opts.compact (a store's own page): only the text line, price + cart and
+ * stars - the place, delivery and badges are already shown once at the top.
  */
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
@@ -661,10 +664,10 @@ function renderBrowseProductCard(product, opts) {
           ${cartBtn}
         </div>
         ${renderStars(product.rating, product.reviewCount)}
-        <div class="product-card-meta">
+        ${opts.compact ? '' : `<div class="product-card-meta">
           <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}${cardIsVerified(product) ? '' : featuredBadgeHtml(product)}
         </div>
-        ${cardVerifiedRow(product)}
+        ${cardVerifiedRow(product)}`}
       </div>
     </article>
   `;

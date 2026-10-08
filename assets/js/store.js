@@ -72,26 +72,18 @@ async function init() {
     airCargoCost: res.storeDeliveryAirCargoCost
   });
 
-  // Every card on the page is the shared product card now, which reads the
-  // store's details off each product - so the store's own are copied on.
-  currentProducts = res.products.map((p) => Object.assign({
-    storeSlug: currentSlug, storeName: res.storeName, storeIsland: res.storeIsland, storeVillage: res.storeVillage,
-    storeDeliveryTruck: res.storeDeliveryTruck, storeDeliveryShip: res.storeDeliveryShip,
-    storeDeliveryAirCargo: res.storeDeliveryAirCargo, storeDeliveryPickPay: res.storeDeliveryPickPay,
-    storeDeliveryTruckCost: res.storeDeliveryTruckCost, storeDeliveryShipCost: res.storeDeliveryShipCost,
-    storeDeliveryAirCargoCost: res.storeDeliveryAirCargoCost, sellerBadges: res.sellerBadges
-  }, p));
+  // The shared product card needs to know whose cart a product goes in.
+  // Shown compact here (no place, delivery or badges): the store's own are
+  // already at the top of the page, once.
+  currentProducts = res.products.map((p) => Object.assign({ storeSlug: currentSlug, storeName: res.storeName }, p));
 
   if (currentProducts.length === 0) {
     statusEl.textContent = 'This store has no products listed yet.';
   } else {
     statusEl.textContent = '';
-    listEl.innerHTML = currentProducts.map((p) => renderBrowseProductCard(p)).join('');
+    listEl.innerHTML = currentProducts.map((p) => renderBrowseProductCard(p, { compact: true })).join('');
     fitPriceLabels(listEl);
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
-    // "Badges?" panel for this store's own cards; loadSimilarProducts re-mounts
-    // it with the similar row added once that arrives.
-    mountBadgeLegend('store-badge-legend', currentProducts);
   }
 
   recordStoreVisitOnce(currentSlug);
@@ -130,7 +122,7 @@ function renderFilteredProducts(query) {
   }
 
   statusEl.textContent = '';
-  listEl.innerHTML = filtered.map((p) => renderBrowseProductCard(p)).join('');
+  listEl.innerHTML = filtered.map((p) => renderBrowseProductCard(p, { compact: true })).join('');
   fitPriceLabels(listEl);
   // Re-render replaces the gallery track elements, and their scroll sync
   // (wireGalleryScrollSync) is per-element, not delegated like the click
@@ -197,9 +189,9 @@ async function loadSimilarProducts() {
     .map((p) => renderBrowseProductCard(p, { cardClass: 'similar-product-card' }))
     .join('');
   document.getElementById('similar-section').classList.remove('hidden');
-  // The store's own cards carry its badges and delivery icons too (they were
-  // given the store's details when loaded), so the panel covers both rows.
-  mountBadgeLegend('store-badge-legend', currentProducts.concat(similar));
+  // Only the similar row (other stores) carries badges and delivery icons;
+  // the store's own cards are compact.
+  mountBadgeLegend('store-badge-legend', similar);
   // After unhiding: a hidden element has no width to measure against.
   fitPriceLabels(document.getElementById('similar-products-list'));
   recordProductViewsOnce(similar.map((p) => p.productId));
