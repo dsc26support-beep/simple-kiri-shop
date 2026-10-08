@@ -58,6 +58,26 @@ d = decide(goodReceipt.replace(today, '2020-01-01'));
 ok('an old receipt is Rejected', d.status === 'Rejected' && /recent date/.test(d.message), d.message);
 ok('reference matching ignores spacing/case OCR noise', decide(goodReceipt.replace('MWFABC234', 'mwf abc 234')).status === 'Approved');
 
+/* ---------- screenshots that are not bank receipts (found Oct 2026) ---------- */
+const payPage = 'Pay and upload your receipt\nRice, Flour - 7 days.\nCopy/Paste the following onto your Kiribati Banking App\n'
+  + 'Account name Mwakete Copy\nAccount number 906149 Copy\nReference to Recipient MWFABC234 Copy\nAmount $1.05 Copy\n'
+  + 'SCREENSHOT PAYMENT RECEIPT\nPayment screenshot\nUpload payment screenshot\n' + today;
+d = decide(payPage);
+ok('a screenshot of our own pay page is Rejected, with its own explanation', d.status === 'Rejected' && /Mwakete page or the example/.test(d.message), d.message);
+const exampleShot = 'EXAMPLE\nKiribati Banking App\nPayment successful\nStatus: Posted\nTo account Mwakete 906149\nAmount $1.05\n'
+  + 'Reference to Recipient MWFABC234\nDate ' + today;
+ok('a screenshot of the drawn example (watermarked EXAMPLE) is Rejected', decide(exampleShot).status === 'Rejected');
+ok('"Ex ample" split by OCR still caught', decide(exampleShot.replace('EXAMPLE', 'E X A M P L E')).status === 'Rejected');
+ok('"receipt" alone no longer counts as a success word', decide(goodReceipt.replace('Payment successful', 'Receipt')).status === 'Rejected');
+d = decide(goodReceipt.replace('Date ' + today, ''));
+ok('no readable date -> Pending review (a human looks), never auto-approved', d.status === 'Pending review' && /no date read/.test(d.notes), JSON.stringify(d));
+const td = new Date();
+const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][td.getMonth()];
+ok('"8 Oct 2026" style dates are read (ANZ)', decide(goodReceipt.replace(today, `${td.getDate()} ${mon} ${td.getFullYear()}`)).status === 'Approved');
+ok('"Oct 8, 2026" style dates are read', decide(goodReceipt.replace(today, `${mon} ${td.getDate()}, ${td.getFullYear()}`)).status === 'Approved');
+ok('"08/10/2026" style dates are read', decide(goodReceipt.replace(today, `${String(td.getDate()).padStart(2, '0')}/${String(td.getMonth() + 1).padStart(2, '0')}/${td.getFullYear()}`)).status === 'Approved');
+ok('an old "3 Jan 2020" receipt is Rejected', decide(goodReceipt.replace(today, '3 Jan 2020')).status === 'Rejected');
+
 props.FEATURE_AUTO_APPROVE_MAX = '1';
 ok('above FEATURE_AUTO_APPROVE_MAX it waits for a human even when every check passes', decide(goodReceipt).status === 'Pending review');
 delete props.FEATURE_AUTO_APPROVE_MAX;

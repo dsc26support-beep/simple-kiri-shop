@@ -51,7 +51,7 @@ var FEATURE_SUBMITS_PER_HOUR = 10;
 
 var FEATURE_PURCHASE_HEADERS = ['PurchaseId', 'OwnerId', 'StoreSlug', 'ProductIdsJson', 'Days', 'Amount',
   'Reference', 'Status', 'ScreenshotUrl', 'ScreenshotHash', 'OcrNotes', 'StartsAt', 'EndsAt',
-  'CreatedAt', 'UpdatedAt', 'ViewsAtStartJson', 'ViewsAtEndJson'];
+  'CreatedAt', 'UpdatedAt', 'ViewsAtStartJson', 'ViewsAtEndJson', 'BankMatchedAt'];
 
 var FEATURE_STATUS = {
   AWAITING: 'Awaiting payment',
@@ -69,6 +69,8 @@ function getFeaturePurchasesSheet() {
     // Additive - appends header cells, moves nothing.
     ensureColumn(sheet, 'ViewsAtStartJson');
     ensureColumn(sheet, 'ViewsAtEndJson');
+    // Admin ticks a paid purchase once the money is seen in the bank account.
+    ensureColumn(sheet, 'BankMatchedAt');
     return sheet;
   }
   sheet = ss.insertSheet('FeaturePurchases');
@@ -281,6 +283,7 @@ function actionListFeaturePurchases(owner) {
       p.storeName = storeNames[r.OwnerId] || r.StoreSlug;
       p.screenshotUrl = r.ScreenshotUrl || '';
       p.ocrNotes = r.OcrNotes || '';
+      p.bankMatchedAt = r.BankMatchedAt || '';
       return p;
     });
   return ok({ purchases: rows });
@@ -312,6 +315,23 @@ function actionSetFeaturePurchaseStatus(owner, body) {
   updateRowFromObject(sheet, row.__row, update);
   invalidateCache([TIPS_CACHE_KEY, PAID_FEATURED_CACHE_KEY]);
   return ok({ purchaseId: row.PurchaseId, status: update.Status });
+}
+
+/**
+ * body.purchaseId, body.matched: boolean. The admin's tick that this payment
+ * was seen arriving in the bank account - the one check no screenshot can
+ * fake. Only paid purchases that went past Awaiting payment can be ticked.
+ */
+function actionSetFeatureBankMatched(owner, body) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var sheet = getFeaturePurchasesSheet();
+  var row = findRowById(sheet, 'PurchaseId', String(body.purchaseId || ''));
+  if (!row) return fail('Purchase not found.');
+  if (Number(row.Amount) === 0) return fail('Free featuring - nothing to match.');
+  if (row.Status === FEATURE_STATUS.AWAITING) return fail('No payment has been uploaded for this purchase yet.');
+  var at = body.matched ? nowIso() : '';
+  updateRowFromObject(sheet, row.__row, { BankMatchedAt: at });
+  return ok({ purchaseId: row.PurchaseId, bankMatchedAt: at });
 }
 
 /* ==================== What's currently featured ==================== */
@@ -538,8 +558,25 @@ function ocrAmountCovers(ocrText, amount) {
   return Math.round((paid - Number(amount)) * 100) >= 0;
 }
 
+// "receipt" is deliberately NOT a success word: our own page says it.
 function ocrHasSuccessWord(ocrText) {
-  return /(successful|completed|confirmed|approved|receipt|success|posted)/i.test(ocrText);
+  return /(successful|completed|confirmed|approved|success|posted)/i.test(ocrText);
+}
+
+/**
+ * A screenshot of Mwakete's own pay page or the drawn example receipt. Both
+ * carry the account, reference and amount, so without this they would pass
+ * every other check. Matches the words those screens show; spacing-blind.
+ */
+function ocrLooksLikeMwaketePage(ocrText) {
+  var t = String(ocrText || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return ['example', 'copypaste', 'screenshotpaymentreceipt', 'uploadpayment', 'payandupload', 'featureyourproducts']
+    .some(function (w) { return t.indexOf(w) !== -1; });
+}
+
+/** Some date on the receipt that ocrTooOld can read. */
+function ocrHasDate(ocrText) {
+  return ocrReceiptDate(ocrText) !== null;
 }
 
 /** The "Transfer Confirmation" / Confirm-and-Cancel screen a bank shows BEFORE sending - not proof of payment. */
@@ -549,17 +586,29 @@ function ocrLooksUnsubmitted(ocrText) {
   return /\bconfirm\b/.test(t) && !/confirmed/.test(t) && /\bcancel\b/.test(t);
 }
 
-function ocrTooOld(ocrText) {
-  var maxHours = Number(PropertiesService.getScriptProperties().getProperty('FEATURE_MAX_PAYMENT_AGE_HOURS') || '72');
+var OCR_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+/** The first date on the receipt: 2026-10-08, 08/10/2026, 8 Oct 2026 or Oct 8, 2026. null if none. */
+function ocrReceiptDate(ocrText) {
   var text = String(ocrText || '');
   var d = null;
-  var iso = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (iso) d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-  if (!d) {
-    var dmy = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-    if (dmy) d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+  var m = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (!d && (m = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/))) d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  var mon = '(' + OCR_MONTHS.join('|') + ')[a-z]*\\.?';
+  if (!d && (m = text.match(new RegExp('\\b(\\d{1,2})\\s*' + mon + ',?\\s*(\\d{4})', 'i')))) {
+    d = new Date(Number(m[3]), OCR_MONTHS.indexOf(m[2].toLowerCase()), Number(m[1]));
   }
-  if (!d || isNaN(d.getTime())) return false; // no date found - more likely an OCR miss than a problem
+  if (!d && (m = text.match(new RegExp('\\b' + mon + '\\s*(\\d{1,2}),?\\s*(\\d{4})', 'i')))) {
+    d = new Date(Number(m[3]), OCR_MONTHS.indexOf(m[1].toLowerCase()), Number(m[2]));
+  }
+  return d && !isNaN(d.getTime()) ? d : null;
+}
+
+function ocrTooOld(ocrText) {
+  var maxHours = Number(PropertiesService.getScriptProperties().getProperty('FEATURE_MAX_PAYMENT_AGE_HOURS') || '72');
+  var d = ocrReceiptDate(ocrText);
+  if (!d) return false; // no date found - handled by the "dated" check, which sends it to a human
   return (Date.now() - d.getTime()) / 3600000 > maxHours;
 }
 
@@ -592,11 +641,17 @@ function decideFeaturePayment(ocrText, purchase, isPhoto) {
     amount: ocrAmountCovers(ocrText, purchase.Amount),
     success: ocrHasSuccessWord(ocrText),
     submitted: !ocrLooksUnsubmitted(ocrText),
-    recent: !ocrTooOld(ocrText)
+    recent: !ocrTooOld(ocrText),
+    dated: ocrHasDate(ocrText),
+    notOurPage: !ocrLooksLikeMwaketePage(ocrText)
   };
   var notes = Object.keys(checks).map(function (k) { return k + ':' + checks[k]; }).join(' ') +
     ' photo:' + !!isPhoto + ' paid:' + ocrPaidAmount(ocrText);
 
+  if (!checks.notOurPage) {
+    return { status: FEATURE_STATUS.REJECTED, notes: notes + ' (Mwakete page or example)',
+      message: 'That is a screenshot of the Mwakete page or the example, not your bank\'s receipt. Please pay in your banking app, then upload the receipt screen it shows.' };
+  }
   if (!checks.submitted) {
     return { status: FEATURE_STATUS.REJECTED, notes: notes,
       message: 'That looks like the screen before you press Confirm in your bank app. Please finish the transfer, then upload the receipt screen that says it was successful.' };
@@ -613,6 +668,11 @@ function decideFeaturePayment(ocrText, purchase, isPhoto) {
     return { status: FEATURE_STATUS.REJECTED, notes: notes,
       message: 'We couldn\'t confirm this payment - the screenshot needs to show ' +
         failed.map(function (k) { return why[k]; }).join(', ') + '. Please check and upload the receipt again.' };
+  }
+  // No readable date: the age check above could not run, so a human looks.
+  if (!checks.dated) {
+    return { status: FEATURE_STATUS.PENDING, notes: notes + ' (no date read)',
+      message: 'Thanks - your payment is waiting for a quick check by Mwakete. Your products will be featured as soon as it is approved.' };
   }
   var autoMax = Number(PropertiesService.getScriptProperties().getProperty('FEATURE_AUTO_APPROVE_MAX') || '20');
   if (Number(purchase.Amount) > autoMax) {

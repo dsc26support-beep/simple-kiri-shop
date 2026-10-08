@@ -60,7 +60,7 @@ var PROTECTED_POST_ACTIONS = [
   'listSellerBadges', 'setSellerBadgeOverride', 'setBadgeConfig', 'recomputeBadges',
   'listWholesalers', 'setWholesaleVerified',
   'startFeaturePurchase', 'listMyFeaturePurchases', 'submitFeaturePayment',
-  'listFeaturePurchases', 'setFeaturePurchaseStatus', 'adminSearch', 'adminStoreAnalytics',
+  'listFeaturePurchases', 'setFeaturePurchaseStatus', 'setFeatureBankMatched', 'adminSearch', 'adminStoreAnalytics',
   'getInventory', 'receiveStock', 'adjustStock', 'updateStockSettings', 'listStockMovements',
   'listInventoryConnections', 'saveInventoryConnection', 'deleteInventoryConnection', 'previewInventoryImport',
   'applyInventoryImport', 'listSyncJobs', 'exportInventoryRows',
@@ -89,7 +89,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'freefeature1-2026-10-08';
+var APP_VERSION = 'freefeature2-2026-10-08';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -492,6 +492,7 @@ function doPost(e) {
         case 'submitFeaturePayment': return jsonOut(actionSubmitFeaturePayment(owner, body));
         case 'listFeaturePurchases': return jsonOut(actionListFeaturePurchases(owner));
         case 'setFeaturePurchaseStatus': return jsonOut(actionSetFeaturePurchaseStatus(owner, body));
+        case 'setFeatureBankMatched': return jsonOut(actionSetFeatureBankMatched(owner, body));
         case 'adminSearch': return jsonOut(actionAdminSearch(owner, body));
         case 'adminStoreAnalytics': return jsonOut(actionAdminStoreAnalytics(owner, body));
         case 'getInventory': return jsonOut(actionGetInventory(owner));

@@ -29,6 +29,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
       else if (a === 'submitFeaturePayment') res = state.submit;
       else if (a === 'listFeaturePurchases') res = { ok: true, purchases: state.admin };
       else if (a === 'setFeaturePurchaseStatus') res = { ok: true };
+      else if (a === 'setFeatureBankMatched') res = { ok: true };
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(res) });
     });
     const page = await ctx.newPage();
@@ -88,11 +89,14 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     shown: !document.getElementById('feature-example').hidden,
     expanded: document.getElementById('feature-example-btn').getAttribute('aria-expanded'),
     svg: [...document.querySelectorAll('#feature-example svg [data-example]')].map((t) => t.textContent),
+    svgText: document.querySelector('#feature-example svg').textContent,
     w: document.querySelector('.feature-example-img').getBoundingClientRect().width,
     steps: document.querySelectorAll('.feature-example-list li').length
   }));
-  ok('tapping ? shows the example, filled with this purchase\'s details', ex.shown && ex.expanded === 'true'
-    && ex.svg.join('|') === 'Mwakete|906149|$0.70|MWFABC234' && ex.steps === 4, JSON.stringify(ex));
+  ok('tapping ? shows the example, with where to pay', ex.shown && ex.expanded === 'true'
+    && ex.svg.join('|') === 'Mwakete|906149' && ex.steps === 4, JSON.stringify(ex));
+  ok('the example never shows this purchase\'s reference or amount, and says EXAMPLE',
+    !/MWFABC234|\$0\.70/.test(ex.svgText) && /EXAMPLE/.test(ex.svgText), ex.svgText.replace(/\s+/g, ' '));
   await page.screenshot({ path: process.env.SHOT_DIR ? process.env.SHOT_DIR + '/feature-example.png' : '/dev/null', fullPage: true }).catch(() => {});
   ok('example fits the phone screen', ex.w > 200 && ex.w <= 300 && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), String(ex.w));
   await page.click('#feature-example-btn');
@@ -213,7 +217,30 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await page.waitForTimeout(500);
   const set = st.calls.find((c) => c.action === 'setFeaturePurchaseStatus');
   ok('Approve calls setFeaturePurchaseStatus', set && set.purchaseId === 'fp1' && set.approve === true, JSON.stringify(set));
+  ok('admin: unmatched paid payments are counted at the top', /2 payments \(\$1\.40\) not yet matched to the bank/.test(await page.textContent('#feature-payments-unmatched')),
+    await page.textContent('#feature-payments-unmatched'));
+  ok('admin: each paid row says it is not matched, with a Seen in bank button',
+    (await page.$$('.feature-payment-row [data-bank="true"]')).length === 2 && /Not yet matched to the bank/.test(await rows[0].textContent()));
+  await page.click('.feature-payment-row [data-purchase-id="fp2"][data-bank="true"]');
+  await page.waitForTimeout(500);
+  const bank = st.calls.find((c) => c.action === 'setFeatureBankMatched');
+  ok('Seen in bank calls setFeatureBankMatched', bank && bank.purchaseId === 'fp2' && bank.matched === true, JSON.stringify(bank));
   ok('no page errors (admin)', st.errors.length === 0, st.errors.join('; '));
+  await ctx.close();
+
+  // admin: matched, free and rejected rows
+  st = { calls: [], admin: [
+    Object.assign({}, AWAITING, { purchaseId: 'm1', status: 'Approved', storeName: 'M', endsAt: ends, bankMatchedAt: new Date().toISOString() }),
+    Object.assign({}, AWAITING, { purchaseId: 'f1', status: 'Approved', storeName: 'F', amount: 0, endsAt: ends, ocrNotes: 'free: first featuring' }),
+    Object.assign({}, AWAITING, { purchaseId: 'r1', status: 'Rejected', storeName: 'R' })] };
+  ({ ctx, page } = await open('/owner/admin.html', st));
+  await page.waitForSelector('.feature-payment-row', { timeout: 6000 }).catch(() => {});
+  const arows = await page.$$('.feature-payment-row');
+  ok('admin: a matched row shows the tick and offers Undo', /✓ Seen in bank/.test(await arows[0].textContent()) && !!(await arows[0].$('[data-bank="false"]')));
+  ok('admin: a free row shows Free and has nothing to match', /Free · ref/.test(await arows[1].textContent()) && !(await arows[1].$('[data-bank]')));
+  ok('admin: a rejected row has nothing to match', !(await arows[2].$('[data-bank]')));
+  ok('admin: all matched -> says so', /All paid featuring is matched/.test(await page.textContent('#feature-payments-unmatched')));
+  ok('no page errors (admin 2)', st.errors.length === 0, st.errors.join('; '));
   await ctx.close();
 
   await browser.close();

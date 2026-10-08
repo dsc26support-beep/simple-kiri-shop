@@ -408,10 +408,34 @@ async function loadFeaturePayments() {
   }
   const list = res.purchases || [];
   statusEl.textContent = list.length ? '' : 'No featuring payments yet.';
+  renderUnmatchedSummary(list);
   listEl.innerHTML = list.map(featurePaymentRowHtml).join('');
   listEl.querySelectorAll('[data-approve]').forEach((btn) => {
     btn.addEventListener('click', () => setFeaturePaymentStatus(btn.dataset.purchaseId, btn.dataset.approve === 'true', btn));
   });
+  listEl.querySelectorAll('[data-bank]').forEach((btn) => {
+    btn.addEventListener('click', () => setFeatureBankMatched(btn.dataset.purchaseId, btn.dataset.bank === 'true', btn));
+  });
+}
+
+// A screenshot can be edited; the bank statement can't. Paid purchases that
+// are live (or waiting) but not yet ticked as seen in account 906149.
+function needsBankMatch(p) {
+  return Number(p.amount) > 0 && (p.status === 'Approved' || p.status === 'Pending review') && !p.bankMatchedAt;
+}
+
+function renderUnmatchedSummary(list) {
+  const el = document.getElementById('feature-payments-unmatched');
+  const todo = list.filter(needsBankMatch);
+  if (!todo.length) {
+    el.textContent = list.some((p) => p.bankMatchedAt) ? 'All paid featuring is matched to the bank.' : '';
+    el.className = 'feature-unmatched';
+    return;
+  }
+  const total = todo.reduce((sum, p) => sum + Number(p.amount), 0);
+  el.textContent = `${todo.length} payment${todo.length === 1 ? '' : 's'} (${formatMoney(total)}) not yet matched to the bank. `
+    + 'Check each reference and amount arrived in the account, then tick "Seen in bank".';
+  el.className = 'feature-unmatched is-todo';
 }
 
 const FEATURE_STATUS_BADGE = { 'Approved': 'status-active', 'Pending review': 'status-pending', 'Rejected': 'status-declined' };
@@ -420,21 +444,31 @@ function featurePaymentRowHtml(p) {
   const when = p.endsAt && p.status === 'Approved' ? ' · until ' + new Date(p.endsAt).toLocaleDateString() : '';
   const canApprove = p.status === 'Pending review' || p.status === 'Rejected';
   const canReject = p.status === 'Pending review' || p.status === 'Approved';
+  const free = Number(p.amount) === 0;
+  const matchable = !free && (p.status === 'Approved' || p.status === 'Pending review');
+  const bankLine = !matchable ? ''
+    : p.bankMatchedAt
+      ? `<div class="helper-text feature-bank-ok">✓ Seen in bank ${escapeHtml(new Date(p.bankMatchedAt).toLocaleDateString())}</div>`
+      : '<div class="helper-text feature-bank-todo">Not yet matched to the bank</div>';
   return `
     <div class="wholesale-row feature-payment-row">
       <div class="wholesale-row-info">
         <strong>${escapeHtml(p.storeName || '')}</strong>
         <span class="status-badge ${FEATURE_STATUS_BADGE[p.status] || 'status-hidden'}">${escapeHtml(p.status)}</span>
         <div class="helper-text">
-          ${escapeHtml(formatMoney(p.amount))} · ref ${escapeHtml(p.reference)} · ${p.days} day${p.days === 1 ? '' : 's'}${escapeHtml(when)}
+          ${free ? 'Free' : escapeHtml(formatMoney(p.amount))} · ref ${escapeHtml(p.reference)} · ${p.days} day${p.days === 1 ? '' : 's'}${escapeHtml(when)}
         </div>
         <div class="helper-text">${escapeHtml((p.productNames || []).join(', '))}</div>
         ${p.ocrNotes ? `<div class="helper-text feature-payment-notes">${escapeHtml(p.ocrNotes)}</div>` : ''}
+        ${bankLine}
         ${p.screenshotUrl ? `<a href="${escapeAttr(p.screenshotUrl)}" target="_blank" rel="noopener">View screenshot</a>` : ''}
       </div>
       <div class="feature-payment-actions">
         ${canApprove ? `<button type="button" class="btn btn-small btn-primary" data-purchase-id="${escapeAttr(p.purchaseId)}" data-approve="true">Approve</button>` : ''}
         ${canReject ? `<button type="button" class="btn btn-small" data-purchase-id="${escapeAttr(p.purchaseId)}" data-approve="false">Reject</button>` : ''}
+        ${matchable ? (p.bankMatchedAt
+          ? `<button type="button" class="btn btn-small btn-light-purple" data-purchase-id="${escapeAttr(p.purchaseId)}" data-bank="false">Undo bank tick</button>`
+          : `<button type="button" class="btn btn-small btn-light-purple" data-purchase-id="${escapeAttr(p.purchaseId)}" data-bank="true">✓ Seen in bank</button>`) : ''}
       </div>
     </div>
   `;
@@ -446,6 +480,19 @@ async function setFeaturePaymentStatus(purchaseId, approve, btn) {
   if (!approve && !window.confirm('Reject this payment? If it was approved, the products stop being featured now.')) return;
   btn.disabled = true;
   const res = await Api.post('setFeaturePurchaseStatus', { token: Auth.getToken(), purchaseId, approve });
+  if (!res.ok) {
+    btn.disabled = false;
+    errorEl.textContent = res.error || 'Could not update that payment.';
+    return;
+  }
+  await loadFeaturePayments();
+}
+
+async function setFeatureBankMatched(purchaseId, matched, btn) {
+  const errorEl = document.getElementById('feature-payments-error');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  const res = await Api.post('setFeatureBankMatched', { token: Auth.getToken(), purchaseId, matched });
   if (!res.ok) {
     btn.disabled = false;
     errorEl.textContent = res.error || 'Could not update that payment.';

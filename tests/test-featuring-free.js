@@ -67,6 +67,21 @@ box.isOwnerAdmin = () => true;
 const admin = box.actionListFeaturePurchases({ OwnerId: 'admin' });
 ok('admin list includes the free ones as Approved $0', admin.ok && admin.purchases.filter((x) => x.amount === 0 && x.status === 'Approved').length === 2, JSON.stringify(admin).slice(0, 300));
 
+/* ---------- admin "Seen in bank" tick ---------- */
+const paidRow = rows().find((r) => Number(r.Amount) === 0.35);
+const freeRow = rows().find((r) => r.OwnerId === 'own_a' && Number(r.Amount) === 0);
+ok('bank tick: not allowed while still Awaiting payment', /No payment has been uploaded/.test(box.actionSetFeatureBankMatched({}, { purchaseId: paidRow.PurchaseId, matched: true }).error || ''));
+box.updateRowFromObject(box.__sheets.FeaturePurchases, box.findRowById(box.__sheets.FeaturePurchases, 'PurchaseId', paidRow.PurchaseId).__row, { Status: 'Approved' });
+res = box.actionSetFeatureBankMatched({}, { purchaseId: paidRow.PurchaseId, matched: true });
+ok('bank tick: an approved paid purchase can be ticked; the time is stored', res.ok && !!res.bankMatchedAt
+  && rows().find((r) => r.PurchaseId === paidRow.PurchaseId).BankMatchedAt === res.bankMatchedAt, JSON.stringify(res));
+ok('bank tick: shows in the admin list', box.actionListFeaturePurchases({}).purchases.find((x) => x.purchaseId === paidRow.PurchaseId).bankMatchedAt === res.bankMatchedAt);
+res = box.actionSetFeatureBankMatched({}, { purchaseId: paidRow.PurchaseId, matched: false });
+ok('bank tick: can be undone', res.ok && rows().find((r) => r.PurchaseId === paidRow.PurchaseId).BankMatchedAt === '');
+ok('bank tick: refused on a free featuring', /nothing to match/.test(box.actionSetFeatureBankMatched({}, { purchaseId: freeRow.PurchaseId, matched: true }).error || ''));
+box.isOwnerAdmin = () => false;
+ok('bank tick: admins only', box.actionSetFeatureBankMatched({}, { purchaseId: paidRow.PurchaseId, matched: true }).error === 'Not authorized');
+
 let f = 0;
 console.log('\n--- free first featuring ---');
 for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e !== '' ? '  [' + e + ']' : ''}`); }

@@ -136,11 +136,13 @@ async function onContinue() {
 /* ---------- step 2: pay + upload ---------- */
 
 // The "?" beside the step 2 heading shows a drawn example of the receipt
-// screen to screenshot, filled in with this purchase's own details.
-function setupExample(p) {
+// screen to screenshot. It shows where to pay, but deliberately not this
+// purchase's reference or amount - so a screenshot of it is no use as a
+// "receipt" (and it says EXAMPLE, which the server check rejects).
+function setupExample() {
   const btn = document.getElementById('feature-example-btn');
   const fig = document.getElementById('feature-example');
-  const values = { name: payment.accountName, number: payment.accountNumber, amount: formatMoney(p.amount), reference: p.reference };
+  const values = { name: payment.accountName, number: payment.accountNumber };
   fig.querySelectorAll('[data-example]').forEach((el) => {
     const v = values[el.dataset.example];
     if (v) el.textContent = v;
@@ -163,7 +165,7 @@ function showPayStep(p) {
     document.getElementById('feature-example-btn').classList.add('hidden');
     document.getElementById('feature-pay-title').textContent = 'Featured for free';
   } else {
-    setupExample(p);
+    setupExample();
   }
   document.getElementById('feature-pay-summary').textContent =
     `${p.productNames.join(', ')} - ${p.days} day${p.days === 1 ? '' : 's'}.`;

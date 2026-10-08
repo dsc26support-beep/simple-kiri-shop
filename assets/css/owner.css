@@ -1028,6 +1028,7 @@ label.is-required::after {
 
 .feature-payment-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
@@ -1671,5 +1672,22 @@ label.is-required::after {
   padding: var(--space-2) var(--space-3);
   background: #e3f4e8;
   border-radius: var(--radius);
+  color: var(--color-success);
+}
+
+/* Admin: paid featuring not yet matched to the bank statement. */
+.feature-unmatched.is-todo {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-gold-soft);
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+
+.feature-bank-todo {
+  color: #8a5a00;
+  font-weight: 600;
+}
+
+.feature-bank-ok {
   color: var(--color-success);
 }
