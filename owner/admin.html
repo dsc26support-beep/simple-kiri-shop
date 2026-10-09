@@ -35,11 +35,28 @@
       <p id="admin-denied" class="hidden">You don't have admin access.</p>
 
       <div id="admin-tools" class="hidden">
+        <!-- Section menu: jumps down this long page. Stays at the top while
+             scrolling; on a phone it scrolls sideways. -->
+        <nav class="admin-jump" aria-label="Admin sections">
+          <ul>
+            <li><a href="#admin-search-heading">Search</a></li>
+            <li><a href="#lr-heading">Listing review</a></li>
+            <li><a href="#feature-payments-heading">Featuring payments</a></li>
+            <li><a href="#featured-now-heading">Featured now</a></li>
+            <li><a href="#feature-store-heading">Feature a store / product</a></li>
+            <li><a href="#wholesale-heading">Wholesalers</a></li>
+            <li><a href="#inv-admin-heading">Inventory</a></li>
+            <li><a href="#mkt-heading">Marketing</a></li>
+            <li><a href="#badges-heading">Seller badges</a></li>
+            <li><a href="#badge-config-heading">Badge settings</a></li>
+          </ul>
+        </nav>
         <section class="dash-section" aria-labelledby="admin-search-heading">
-          <h2 id="admin-search-heading">Find a store or product</h2>
+          <h2 id="admin-search-heading">Search everything</h2>
           <div class="field">
-            <label for="admin-search-input">Store name, product, email or phone</label>
-            <input type="search" id="admin-search-input" autocomplete="off" placeholder="e.g. Bong, rice, 7300…">
+            <label for="admin-search-input">Store, product, order number, payment reference, customer or phone</label>
+            <input type="search" id="admin-search-input" autocomplete="off" placeholder="e.g. Bong, rice, SKS-…, MWF…, 7300…">
+            <p class="helper-text">An exact order number (SKS-…), payment reference (MWF…) or case id (rev_…) opens it straight away.</p>
           </div>
           <p id="admin-search-status" class="helper-text" aria-live="polite"></p>
           <div id="admin-search-results" class="admin-search-results"></div>
@@ -95,7 +112,7 @@
           </details>
         </section>
         <section class="dash-section">
-          <h2>Feature a store</h2>
+          <h2 id="feature-store-heading">Feature a store</h2>
           <div class="field">
             <label for="store-select">Store</label>
             <select id="store-select"><option value="">Choose a store…</option></select>
@@ -206,7 +223,7 @@
         </section>
 
         <section class="dash-section">
-          <h2>Currently featured</h2>
+          <h2 id="featured-now-heading">Currently featured</h2>
           <p id="featured-status" class="helper-text" aria-live="polite"></p>
           <div id="featured-list"></div>
         </section>

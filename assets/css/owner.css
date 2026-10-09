@@ -1792,3 +1792,52 @@ label.is-required::after {
 .card-preview summary { cursor: pointer; color: var(--color-purple); font-weight: 600; padding: var(--space-1) 0; }
 .card-preview-grid { max-width: 200px; pointer-events: auto; }
 .card-preview-grid .product-card-link { pointer-events: none; }
+
+/* ---------- Admin: section menu, wider search (admin.js) ---------- */
+.admin-jump {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 calc(-1 * var(--space-3)) var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+.admin-jump ul {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.admin-jump a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--color-purple);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #fff;
+}
+.admin-jump a:hover { background: var(--color-purple-soft); }
+.admin-jump a[aria-current="true"] { background: var(--color-purple); border-color: var(--color-purple); color: #fff; }
+.admin-jump a:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+/* Headings land below the sticky menu, not under it. */
+#admin-tools h2[id] { scroll-margin-top: 70px; }
+.admin-record { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.3em var(--space-2); margin: var(--space-2) 0; }
+.admin-record dt { color: var(--color-muted); font-size: 0.85rem; }
+.admin-record dd { margin: 0; overflow-wrap: anywhere; }
+.admin-search-results h3 { margin: var(--space-3) 0 var(--space-1); font-size: 1rem; }
+@keyframes admin-flash {
+  0%, 60% { box-shadow: 0 0 0 3px var(--color-gold); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+.admin-flash { animation: admin-flash 2.4s ease-out; border-radius: var(--radius); }
+@media (prefers-reduced-motion: reduce) { .admin-flash { animation: none; outline: 3px solid var(--color-gold); } }

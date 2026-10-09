@@ -20,6 +20,7 @@ async function init() {
   loadWholesalers();
   loadFeaturePayments();
   initAdminSearch();
+  initAdminJump();
   loadInventoryOverview();
   if (typeof initMarketingAdmin === 'function') initMarketingAdmin();   // admin-marketing.js
   if (typeof ListingReviewAdmin !== 'undefined') ListingReviewAdmin.init();   // admin-listing-review.js
@@ -526,11 +527,31 @@ function initAdminSearch() {
     clearTimeout(adminSearchTimer);
     adminSearchTimer = setTimeout(() => runAdminSearch(input.value.trim()), 300);
   });
+  // Enter searches at once - a pasted reference shouldn't wait for the pause.
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    clearTimeout(adminSearchTimer);
+    runAdminSearch(input.value.trim());
+  });
   document.getElementById('admin-search-results').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-owner-id]');
-    if (btn) loadStoreAnalytics(btn.dataset.ownerId, btn.dataset.productId || '');
+    const hit = e.target.closest('.admin-search-hit');
+    if (!hit) return;
+    if (hit.dataset.order) return showOrderHit(hit.dataset.order);
+    if (hit.dataset.payment) return showPaymentHit(hit.dataset.payment);
+    if (hit.dataset.case) return openCaseHit(hit.dataset.case);
+    if (hit.dataset.ownerId) loadStoreAnalytics(hit.dataset.ownerId, hit.dataset.productId || '');
+  });
+  document.getElementById('admin-analytics').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-open-store]');
+    if (btn) loadStoreAnalytics(btn.dataset.openStore, '');
+    const jump = e.target.closest('[data-jump-payment]');
+    if (jump) highlightFeaturePayment(jump.dataset.jumpPayment);
   });
 }
+
+// The last results, so a click can show a record without another request.
+let adminSearchLast = null;
 
 async function runAdminSearch(q) {
   const statusEl = document.getElementById('admin-search-status');
@@ -549,20 +570,129 @@ async function runAdminSearch(q) {
     listEl.innerHTML = '';
     return;
   }
+  adminSearchLast = res;
   const stores = res.stores || [];
   const products = res.products || [];
-  statusEl.textContent = stores.length || products.length ? '' : `Nothing matches "${q}".`;
+  const orders = res.orders || [];
+  const payments = res.payments || [];
+  const cases = res.cases || [];
+  const total = stores.length + products.length + orders.length + payments.length + cases.length;
+  statusEl.textContent = total ? `${total} result${total === 1 ? '' : 's'}${res.phone ? ' for that phone number' : ''}.` : `Nothing matches "${q}".`;
+  const group = (title, items, row) => (items.length ? `<h3>${title} <span class="helper-text">(${items.length})</span></h3>${items.map(row).join('')}` : '');
+  const status = (st) => (st && st !== 'active' ? ' · ' + escapeHtml(st) : '');
   listEl.innerHTML =
-    (stores.length ? `<h3>Stores</h3>${stores.map((s) => `
+    group('Stores', stores, (s) => `
       <button type="button" class="admin-search-hit" data-owner-id="${escapeAttr(s.ownerId)}">
         <strong>${escapeHtml(s.storeName)}</strong>
-        <span class="helper-text">${escapeHtml(s.storeSlug)}${s.status !== 'active' ? ' · ' + escapeHtml(s.status) : ''}</span>
-      </button>`).join('')}` : '') +
-    (products.length ? `<h3>Products</h3>${products.map((p) => `
+        <span class="helper-text">${escapeHtml(s.storeSlug)}${status(s.status)}</span>
+      </button>`) +
+    group('Products', products, (p) => `
       <button type="button" class="admin-search-hit" data-owner-id="${escapeAttr(p.ownerId)}" data-product-id="${escapeAttr(p.productId)}">
         <strong>${escapeHtml(p.name)}</strong>
-        <span class="helper-text">${escapeHtml(p.storeName)}${p.status !== 'active' ? ' · ' + escapeHtml(p.status) : ''}</span>
-      </button>`).join('')}` : '');
+        <span class="helper-text">${escapeHtml(p.storeName)}${status(p.status)}</span>
+      </button>`) +
+    group('Orders', orders, (o) => `
+      <button type="button" class="admin-search-hit" data-order="${escapeAttr(o.orderId)}">
+        <strong>${escapeHtml(o.orderId)}</strong>
+        <span class="helper-text">${escapeHtml([o.customerName, o.storeName, o.status, formatMoney(o.total), String(o.createdAt || '').slice(0, 10)].filter(Boolean).join(' · '))}</span>
+      </button>`) +
+    group('Featuring payments', payments, (p) => `
+      <button type="button" class="admin-search-hit" data-payment="${escapeAttr(p.reference)}">
+        <strong>${escapeHtml(p.reference)}</strong>
+        <span class="helper-text">${escapeHtml([p.storeName, p.status, Number(p.amount) === 0 ? 'Free' : formatMoney(p.amount), String(p.createdAt || '').slice(0, 10)].filter(Boolean).join(' · '))}</span>
+      </button>`) +
+    group('Listing review cases', cases, (c) => `
+      <button type="button" class="admin-search-hit" data-case="${escapeAttr(c.reviewId)}">
+        <strong>${escapeHtml(c.productName || c.reviewId)}</strong>
+        <span class="helper-text">${escapeHtml([c.caseType === 'CATEGORY_REQUEST' ? 'Category request' : 'Listing', c.storeName, c.status, c.severity].filter(Boolean).join(' · '))}</span>
+      </button>`);
+
+  // Shortcut: an exact order number, payment reference or case id opens it.
+  if (res.exact) {
+    statusEl.textContent = `Opened ${res.exact.id}.`;
+    if (res.exact.type === 'order') showOrderHit(res.exact.id);
+    else if (res.exact.type === 'payment') showPaymentHit(res.exact.id);
+    else if (res.exact.type === 'case') openCaseHit(res.exact.id);
+  }
+}
+
+function showRecordPanel(html) {
+  const el = document.getElementById('admin-analytics');
+  el.classList.remove('hidden');
+  el.innerHTML = html;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/** One order: what the admin needs to recognise it, and its store. */
+function showOrderHit(orderId) {
+  const o = adminSearchLast && (adminSearchLast.orders || []).find((x) => x.orderId === orderId);
+  if (!o) return;
+  showRecordPanel(`<div class="admin-analytics-head"><h3>Order ${escapeHtml(o.orderId)}</h3></div>
+    <dl class="admin-record">
+      <dt>Store</dt><dd>${escapeHtml(o.storeName)}</dd>
+      <dt>Customer</dt><dd>${escapeHtml(o.customerName)}${o.customerPhone ? ' · ' + escapeHtml(o.customerPhone) : ''}</dd>
+      <dt>Status</dt><dd>${escapeHtml(o.status)}</dd>
+      <dt>Total</dt><dd>${escapeHtml(formatMoney(o.total))}</dd>
+      <dt>Placed</dt><dd>${escapeHtml(o.createdAt ? new Date(o.createdAt).toLocaleString() : '')}</dd>
+      <dt>Items</dt><dd>${escapeHtml(o.itemsSummary)}</dd>
+    </dl>
+    <p><button type="button" class="btn btn-small" data-open-store="${escapeAttr(o.ownerId)}">Open this store</button></p>`);
+}
+
+/** One featuring payment, with a jump to its row (and its buttons) below. */
+function showPaymentHit(reference) {
+  const p = adminSearchLast && (adminSearchLast.payments || []).find((x) => x.reference === reference);
+  if (!p) return;
+  showRecordPanel(`<div class="admin-analytics-head"><h3>Featuring payment ${escapeHtml(p.reference)}</h3></div>
+    <dl class="admin-record">
+      <dt>Store</dt><dd>${escapeHtml(p.storeName)}</dd>
+      <dt>Status</dt><dd>${escapeHtml(p.status)}</dd>
+      <dt>Amount</dt><dd>${Number(p.amount) === 0 ? 'Free' : escapeHtml(formatMoney(p.amount))}</dd>
+      <dt>Started</dt><dd>${escapeHtml(p.createdAt ? new Date(p.createdAt).toLocaleString() : '')}</dd>
+    </dl>
+    <p><button type="button" class="btn btn-small btn-light-purple" data-jump-payment="${escapeAttr(p.reference)}">Show in Featuring payments</button>
+       <button type="button" class="btn btn-small" data-open-store="${escapeAttr(p.ownerId)}">Open this store</button></p>`);
+}
+
+function highlightFeaturePayment(reference) {
+  const rows = Array.from(document.querySelectorAll('#feature-payments-list > *'));
+  const row = rows.find((r) => r.textContent.indexOf('ref ' + reference) !== -1);
+  const target = row || document.getElementById('feature-payments-heading');
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (row) {
+    row.classList.remove('admin-flash');
+    void row.offsetWidth;
+    row.classList.add('admin-flash');
+  }
+}
+
+function openCaseHit(reviewId) {
+  if (typeof ListingReviewAdmin !== 'undefined') ListingReviewAdmin.openById(reviewId);
+}
+
+/** Section menu: marks the section on screen, so the menu shows where you are. */
+function initAdminJump() {
+  const links = Array.from(document.querySelectorAll('.admin-jump a'));
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  const byId = {};
+  links.forEach((a) => { byId[a.getAttribute('href').slice(1)] = a; });
+  const seen = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      links.forEach((a) => a.removeAttribute('aria-current'));
+      const a = byId[en.target.id];
+      if (a) {
+        a.setAttribute('aria-current', 'true');
+        a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+    });
+  }, { rootMargin: '-50px 0px -65% 0px' });
+  Object.keys(byId).forEach((id) => { const h = document.getElementById(id); if (h) seen.observe(h); });
+  // A tap marks its entry at once, before the scroll settles.
+  links.forEach((a) => a.addEventListener('click', () => {
+    links.forEach((x) => x.removeAttribute('aria-current'));
+    a.setAttribute('aria-current', 'true');
+  }));
 }
 
 async function loadStoreAnalytics(ownerId, productId) {
