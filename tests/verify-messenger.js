@@ -94,18 +94,20 @@ ok('signup label no longer says (Optional)', !/\(Optional\)/i.test(label(login, 
   label(login, 'register-messenger'));
 ok('settings label no longer says (Optional)', !/\(Optional\)/i.test(label(settings, 'contact-messenger')),
   label(settings, 'contact-messenger'));
+// Owner's wording, Oct 2026 (was "Type/Paste Profile Name here").
 ok('signup placeholder is the asked-for wording',
-  /placeholder="Type\/Paste Profile Name here"/.test(field(login, 'register-messenger')),
+  /placeholder="e\.g\. https:\/\/m\.me\/username"/.test(field(login, 'register-messenger')),
   field(login, 'register-messenger'));
 ok('settings placeholder matches it',
-  /placeholder="Type\/Paste Profile Name here"/.test(field(settings, 'contact-messenger')),
+  /placeholder="e\.g\. https:\/\/m\.me\/username"/.test(field(settings, 'contact-messenger')),
   field(settings, 'contact-messenger'));
 ok('signup marks the field required', / required[ >]/.test(field(login, 'register-messenger')),
   field(login, 'register-messenger'));
 ok('settings does NOT, so existing stores can still save',
   !/ required[ >]/.test(field(settings, 'contact-messenger')), field(settings, 'contact-messenger'));
-ok('the helper text talks about a Facebook profile, not a store name',
-  /Facebook profile name/.test(login) && /Facebook profile name/.test(settings));
+// "username", not "profile name" (owner's wording, Oct 2026).
+ok('the helper text talks about a Facebook username, not a store name',
+  /Your Facebook username/.test(login) && /Your Facebook username/.test(settings));
 
 /* ---------- the backend is the one that decides ---------- */
 const auth = fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8');

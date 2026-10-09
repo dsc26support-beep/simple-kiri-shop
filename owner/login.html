@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
 </head>
-<body>
+<body class="owner-login-page">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
@@ -124,8 +124,8 @@
           </div>
           <div class="field">
             <label for="register-messenger">Facebook Messenger</label>
-            <input id="register-messenger" name="messenger" type="text" placeholder="Type/Paste Profile Name here" required>
-            <p class="helper-text">Your Facebook profile name — the part after facebook.com/ when you open your own profile. Pasting the whole link works too. We save it as a Messenger link so customers can message you straight from your store page.</p>
+            <input id="register-messenger" name="messenger" type="text" placeholder="e.g. https://m.me/username" aria-describedby="register-messenger-help" required>
+            <p class="helper-text" id="register-messenger-help">Your Facebook username — the part after facebook.com/ when you open your own profile. Pasting the whole link works too. We save it as a Messenger link so customers can message you straight from your store page.</p>
           </div>
           <p id="register-error" class="form-error" role="alert"></p>
           <p class="helper-text auth-terms-note">By creating a store you agree to the <a href="../terms.html">Terms of Service</a> and the <a href="../privacy.html">Privacy Policy</a>.</p>

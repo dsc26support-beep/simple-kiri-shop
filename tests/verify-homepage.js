@@ -43,6 +43,10 @@ const layout = (page) => page.evaluate(() => {
     orderOk: !!(search && quickActions && stores && trending &&
       search.top < quickActions.top &&
       quickActions.top < stores.top && stores.top < trending.top),
+    // Wider than a phone (Oct 2026, owner request): Popular Stores sits right
+    // under the header, above the search; the rest keeps its order.
+    wideOrderOk: !!(search && quickActions && stores && trending &&
+      stores.top < search.top && search.top < quickActions.top && quickActions.top < trending.top),
     quickActionCount: document.querySelectorAll('.quick-action-item').length,
     // Count-independent: all tiles share one row rather than wrapping,
     // regardless of whether that row happens to need horizontal scroll at
@@ -117,7 +121,7 @@ const layout = (page) => page.evaluate(() => {
   {
     const { ctx, page } = await open(browser, '/index.html', 820, 1100);
     const t = await layout(page);
-    ok('tablet: same hierarchy, not a stretched phone', t.orderOk === true, JSON.stringify(t));
+    ok('tablet: Popular Stores under the header, then search, quick actions, products', t.wideOrderOk === true, JSON.stringify(t));
     ok('tablet: uses the extra width - more product columns than a phone',
       t.gridCols >= 3, String(t.gridCols));
     ok('tablet: bottom nav is hidden above 700px', t.navDisplay === 'none', String(t.navDisplay));
@@ -129,7 +133,7 @@ const layout = (page) => page.evaluate(() => {
   {
     const { ctx, page } = await open(browser, '/index.html', 1366, 900);
     const d = await layout(page);
-    ok('desktop: hierarchy preserved', d.orderOk === true, JSON.stringify(d));
+    ok('desktop: Popular Stores under the header, then search, quick actions, products', d.wideOrderOk === true, JSON.stringify(d));
     ok('desktop: existing sections still there', d.trendingTop !== null);
     ok('desktop: nothing overflows sideways', d.noHorizontalOverflow === true);
     const kept = await page.evaluate(() => ({
@@ -197,9 +201,13 @@ const layout = (page) => page.evaluate(() => {
     // recordProductViews already fired here before this task - it is
     // renderTrendingProducts' own view-tracking call, not something the new
     // sections introduced. The new sections themselves (promo, quick actions,
-    // header ticker) are static: nothing else may appear in this list.
-    ok('and no call for anything else - the new sections stay static',
-      seen.every((a) => a === 'getHomePageData' || a === 'recordProductViews'),
+    // header ticker) are static: nothing else may appear in this list -
+    // except getHeaderAds (Oct 2026, owner request): the header strip became
+    // admin-set adverts, fetched ONCE, when the page is idle, cached 5 minutes
+    // on the server. Exactly one, never before the page's own data.
+    ok('and no call for anything else - only the one idle header-adverts call',
+      seen.every((a) => a === 'getHomePageData' || a === 'recordProductViews' || a === 'getHeaderAds')
+        && seen.filter((a) => a === 'getHeaderAds').length <= 1 && seen.indexOf('getHeaderAds') !== 0,
       JSON.stringify(seen));
     await ctx.close();
   }

@@ -97,6 +97,28 @@ const look = (page, sel) => page.$eval(sel, (b) => {
   ok('phone search button: outlined, magnifier visible (purple on white)', !!disc && disc.bg === WHITE && disc.color === PURPLE, JSON.stringify(disc));
   await ctx.close();
 
+  /* store login page on a computer: no outline, see-through; hover unchanged (Oct 2026) */
+  {
+    const c2 = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const p2 = await c2.newPage();
+    await p2.goto(BASE + '/owner/login.html', { waitUntil: 'load' });
+    const cs = (sel) => p2.$eval(sel, (b) => { const c = getComputedStyle(b); return { bg: c.backgroundColor, border: c.borderTopColor, color: c.color }; });
+    const idle = await cs('#login-submit-btn');
+    ok('store login (computer): Log In has no outline and a see-through background', idle.bg === 'rgba(0, 0, 0, 0)' && idle.border === 'rgba(0, 0, 0, 0)' && idle.color === PURPLE, JSON.stringify(idle));
+    const reg = await p2.$eval('#register-submit-btn', (b) => getComputedStyle(b).backgroundColor);
+    ok('store login (computer): Create Store Account looks the same', reg === 'rgba(0, 0, 0, 0)', reg);
+    await p2.hover('#login-submit-btn');
+    await p2.waitForTimeout(200);
+    ok('store login (computer): hover still fills light purple', (await cs('#login-submit-btn')).bg === SOFT);
+    await c2.close();
+    const c3 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const p3 = await c3.newPage();
+    await p3.goto(BASE + '/owner/login.html', { waitUntil: 'load' });
+    const phone = await p3.$eval('#login-submit-btn', (b) => getComputedStyle(b).borderTopColor);
+    ok('store login (phone): keeps its outline', phone === PURPLE, phone);
+    await c3.close();
+  }
+
   await browser.close();
   let f = 0;
   console.log('\n--- outlined buttons ---');

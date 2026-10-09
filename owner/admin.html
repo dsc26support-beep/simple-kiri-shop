@@ -41,6 +41,7 @@
           <ul>
             <li><a href="#admin-search-heading">Search</a></li>
             <li><a href="#lr-heading">Listing review</a></li>
+            <li><a href="#ha-heading">Header adverts</a></li>
             <li><a href="#feature-payments-heading">Featuring payments</a></li>
             <li><a href="#featured-now-heading">Featured now</a></li>
             <li><a href="#feature-store-heading">Feature a store / product</a></li>
@@ -111,6 +112,42 @@
             </table></div>
           </details>
         </section>
+        <!-- Header adverts (admin-header-ads.js, backend HeaderAds.gs): the
+             homepage strip - red on desktop, yellow on phones. -->
+        <section class="dash-section" aria-labelledby="ha-heading" id="header-ads">
+          <h2 id="ha-heading">Header adverts</h2>
+          <p class="helper-text">Short lines in the homepage header (red on a computer, yellow on a phone). Each slides in from the right, stays 6 seconds, and slides out to the left; tapping it opens its link. With no advert running, the three built-in lines show.</p>
+          <div class="ha-preview" aria-hidden="true"><span id="ha-preview-text">Local Kiribati sellers</span></div>
+          <p id="ha-status" class="helper-text" role="status" aria-live="polite"></p>
+          <ol id="ha-list" class="ha-list"></ol>
+          <form id="ha-form" class="ha-form" novalidate>
+            <h3 id="ha-form-title">Add an advert</h3>
+            <input type="hidden" id="ha-id">
+            <div class="field">
+              <label for="ha-text" class="is-required">Text</label>
+              <input id="ha-text" maxlength="80" autocomplete="off" placeholder="e.g. 20% off rice this week at Teaube">
+              <p class="helper-text"><span id="ha-count">0</span>/80 - short enough to fit on a phone.</p>
+            </div>
+            <div class="field">
+              <label for="ha-store">Link to a store</label>
+              <select id="ha-store"><option value="">Choose a store…</option></select>
+            </div>
+            <div class="field">
+              <label for="ha-link" class="is-required">Link</label>
+              <input id="ha-link" maxlength="500" autocomplete="off" placeholder="store.html?store=bong  or  https://…">
+              <p class="helper-text">A Mwakete page (store.html?store=…, product.html?store=…&amp;product=…, categories.html?category=…) or a full https:// address.</p>
+            </div>
+            <div class="ha-dates">
+              <div class="field"><label for="ha-start">Start date <span class="helper-text">(optional)</span></label><input type="date" id="ha-start"></div>
+              <div class="field"><label for="ha-end">End date <span class="helper-text">(optional)</span></label><input type="date" id="ha-end"></div>
+            </div>
+            <label class="radio-row"><input type="checkbox" id="ha-on" checked> <span>Show it (untick to keep it but not show it)</span></label>
+            <p id="ha-error" class="form-error" role="alert"></p>
+            <button type="submit" class="btn btn-small btn-light-purple" id="ha-save">Save advert</button>
+            <button type="button" class="btn btn-small" id="ha-cancel" hidden>Cancel editing</button>
+          </form>
+        </section>
+
         <section class="dash-section">
           <h2 id="feature-store-heading">Feature a store</h2>
           <div class="field">
@@ -272,6 +309,7 @@
   <script defer src="../assets/js/admin-marketing.min.js"></script>
   <script defer src="../assets/js/listing-rules.min.js"></script>
   <script defer src="../assets/js/admin-listing-review.min.js"></script>
+  <script defer src="../assets/js/admin-header-ads.min.js"></script>
   <script defer src="../assets/js/admin.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

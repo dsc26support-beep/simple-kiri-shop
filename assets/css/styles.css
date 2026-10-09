@@ -196,29 +196,58 @@ header.site-header .container.header-top-row {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-purple);
-  opacity: 0;
-  animation: header-ticker-fade 9s infinite;
+  /* Header adverts (header-ads.js, Oct 2026): a line waits off-screen to the
+     right, slides in, stays still for 6 seconds, then slides out to the left.
+     Without JavaScript only the first line shows, still. */
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.6s ease, visibility 0s linear 0.6s;
 }
 
-.header-ticker-item:nth-child(2) { animation-delay: 3s; }
-.header-ticker-item:nth-child(3) { animation-delay: 6s; }
-
-@keyframes header-ticker-fade {
-  0%, 100% { opacity: 0; }
-  4%, 28% { opacity: 1; }
-  33% { opacity: 0; }
+.header-ticker-item.is-current {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.6s ease, visibility 0s;
 }
 
-/* Reduced motion: the first line is shown, plainly, with no animation at
-   all - same "freeze on the static state" treatment as the cart FAB's
-   flash/blink animations use. */
+.header-ticker-item.is-leaving {
+  transform: translateX(-100%);
+}
+
+/* Parked to the right before sliding in - no animation for that jump. */
+.header-ticker-item.is-ready {
+  transition: none;
+  transform: translateX(100%);
+}
+
+.header-ticker-link {
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.header-ticker-link:hover,
+.header-ticker-link:focus-visible {
+  text-decoration: underline;
+}
+
+.header-ticker-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+/* Reduced motion: lines change in place, without sliding. */
 @media (prefers-reduced-motion: reduce) {
-  .header-ticker-item {
-    animation: none;
-    opacity: 0;
-  }
-  .header-ticker-item:first-child {
-    opacity: 1;
+  .header-ticker-item,
+  .header-ticker-item.is-current,
+  .header-ticker-item.is-leaving {
+    transition: none;
+    transform: none;
   }
 }
 
@@ -246,6 +275,14 @@ header.site-header .container.header-top-row {
     color: #fff;
     font-size: 0.9rem;
     letter-spacing: 0.01em;
+    /* Clear of the logo (left) and the cart / menu (right). */
+    padding: 0 170px;
+  }
+
+  /* The strip lets taps through to the header; only an advert's own link
+     takes them. */
+  .header-ticker .header-ticker-link {
+    pointer-events: auto;
   }
 }
 
@@ -708,6 +745,14 @@ section {
   .home-main > .trending-stores { order: 5; }
   .home-main > .trending-products { order: 6; }
   .home-main > noscript { order: 7; }
+}
+
+/* Popular Stores right under the header on a computer or tablet (owner
+   request, Oct 2026). It is first in index.html, so wider screens - plain
+   block flow above 1024px - already show it first; this keeps it first in the
+   flex order between 601 and 1024px too. Phones keep order 5 above. */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .home-main > .trending-stores { order: 0; }
 }
 
 /* Horizontally scrolling chip strips: the listing-type filter and the popular
@@ -7655,3 +7700,18 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 .option-note:empty { display: none; }
 .option-sku { color: var(--color-muted); font-size: 0.8rem; }
 .option-value.is-conflict { border-style: dashed; color: var(--color-muted); }
+
+/* Store login page on a computer (owner request, Oct 2026): its buttons have
+   no outline and a see-through background; the hover / press colour is the
+   same as every other button. Phones keep the outlined button. */
+@media (min-width: 601px) {
+  .owner-login-page .btn-primary {
+    background: transparent;
+    border-color: transparent;
+  }
+  .owner-login-page .btn-primary:hover,
+  .owner-login-page .btn-primary:focus-visible,
+  .owner-login-page .btn-primary:active {
+    background: var(--color-purple-soft);
+  }
+}

@@ -40,12 +40,28 @@
        rather than read out three times a cycle. Fixed height holds its
        space before the fade-in animation starts, so it costs no CLS. -->
   <div class="header-ticker" aria-hidden="true">
-    <div class="header-ticker-item">Local Kiribati sellers</div>
+    <div class="header-ticker-item is-current">Local Kiribati sellers</div>
     <div class="header-ticker-item">Chat directly with the seller</div>
     <div class="header-ticker-item">Delivery, shipping &amp; pickup options</div>
   </div>
 
   <main id="main" class="home-main page-products">
+    <!-- Alibaba-inspired addition: this is the SAME "Popular Stores" section
+         that used to sit below the product grid, moved up to do the job of a
+         discovery carousel and (see styles.css) made visible on mobile, where
+         it used to be hidden below 600px. No new component, no new data, no
+         new request - getHomePageData already fetches this.
+         First in the page since Oct 2026 (owner request): on a computer it
+         sits right under the header, above the search. Phones keep it below
+         the quick actions via the flex order in styles.css. -->
+    <section class="trending-stores" aria-labelledby="trending-stores-heading">
+      <div class="container">
+        <h2 id="trending-stores-heading">Popular Stores</h2>
+        <p id="trending-stores-status" class="helper-text" role="status">Loading…</p>
+        <div id="trending-stores-list" class="logo-carousel"></div>
+      </div>
+    </section>
+
     <!-- Search first, because that is how someone who knows what they want
          gets there fastest. Everything below is for someone who does not. -->
     <section class="hero">
@@ -96,22 +112,9 @@
           </a>
           <a class="quick-action-item" href="recent.html">
             <span class="quick-action-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4"></path><path d="M3 4v5h5"></path><path d="M12 8v4l3 2"></path></svg></span>
-            <span class="quick-action-label">Recent Views</span>
+            <span class="quick-action-label">Recents</span>
           </a>
         </nav>
-      </div>
-    </section>
-
-    <!-- Alibaba-inspired addition: this is the SAME "Popular Stores" section
-         that used to sit below the product grid, moved up to do the job of a
-         discovery carousel and (see styles.css) made visible on mobile, where
-         it used to be hidden below 600px. No new component, no new data, no
-         new request - getHomePageData already fetches this. -->
-    <section class="trending-stores" aria-labelledby="trending-stores-heading">
-      <div class="container">
-        <h2 id="trending-stores-heading">Popular Stores</h2>
-        <p id="trending-stores-status" class="helper-text" role="status">Loading…</p>
-        <div id="trending-stores-list" class="logo-carousel"></div>
       </div>
     </section>
 
@@ -147,6 +150,7 @@
   <script defer src="assets/js/auth.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
   <script defer src="assets/js/home.min.js"></script>
+  <script defer src="assets/js/header-ads.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>
   <script defer src="assets/js/header-menu.min.js"></script>
   <script defer src="assets/js/bottom-nav.min.js"></script>

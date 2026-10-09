@@ -280,7 +280,7 @@ function actionRegisterOwner(body) {
   // registered before this has none and must still be able to save.
   var messengerLink = messengerStoredValue(messenger);
   if (!messengerLink) {
-    return fail('Enter your Facebook profile name, e.g. your.name or a link to your profile');
+    return fail('Enter your Facebook username, e.g. your.name or a link to your profile');
   }
 
   var lock = LockService.getScriptLock();

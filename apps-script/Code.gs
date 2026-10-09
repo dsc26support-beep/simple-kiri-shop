@@ -75,7 +75,9 @@ var PROTECTED_POST_ACTIONS = [
   'requestCategory', 'listMyReviewCases',
   'listReviewCases', 'getReviewCase', 'reviewCaseAction', 'adminListCategories', 'adminSaveCategory', 'listAuditLog',
   // Per-variant photo galleries (ProductVariants.gs) - owner of the product only.
-  'uploadVariantImage', 'setVariantImages'
+  'uploadVariantImage', 'setVariantImages',
+  // Header adverts (HeaderAds.gs) - every one checks isOwnerAdmin inside.
+  'adminListHeaderAds', 'adminSaveHeaderAd', 'adminReorderHeaderAds', 'adminDeleteHeaderAd'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -95,7 +97,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'adminsearch2-2026-10-09';
+var APP_VERSION = 'username1-2026-10-09';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -239,6 +241,7 @@ function actionCheckSetup() {
   if (typeof listingSaveGate !== 'function') missingFiles.push('ListingReview.gs');
   if (typeof validateProductOptions !== 'function') missingFiles.push('ProductOptions.gs');
   if (typeof prepareVariantSave !== 'function') missingFiles.push('ProductVariants.gs');
+  if (typeof actionGetHeaderAds !== 'function') missingFiles.push('HeaderAds.gs');
   if (typeof sellerBadgeIndex !== 'function') missingFiles.push('Badges.gs');
   if (typeof actionRequestMeeting !== 'function') missingFiles.push('Meetings.gs');
   if (missingFiles.length) {
@@ -390,6 +393,7 @@ function doGet(e) {
       case 'getTips': return jsonOut(markPaidFeatured(actionGetTips(params)));
       case 'listProductReviews': return jsonOut(actionListProductReviews(params));
       case 'listCategories': return jsonOut(actionListCategories());
+      case 'getHeaderAds': return jsonOut(actionGetHeaderAds());
       // Deploy health probe: no auth, no Sheets access, so it answers even on a
       // half-configured project - it can only report the running build or, if
       // absent, prove the deployment is stale.
@@ -551,6 +555,10 @@ function doPost(e) {
         case 'listAuditLog': return jsonOut(actionListAuditLog(owner, body));
         case 'uploadVariantImage': return jsonOut(actionUploadVariantImage(owner, body));
         case 'setVariantImages': return jsonOut(actionSetVariantImages(owner, body));
+        case 'adminListHeaderAds': return jsonOut(actionAdminListHeaderAds(owner));
+        case 'adminSaveHeaderAd': return jsonOut(actionAdminSaveHeaderAd(owner, body));
+        case 'adminReorderHeaderAds': return jsonOut(actionAdminReorderHeaderAds(owner, body));
+        case 'adminDeleteHeaderAd': return jsonOut(actionAdminDeleteHeaderAd(owner, body));
       }
     }
 

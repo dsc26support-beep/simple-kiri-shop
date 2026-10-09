@@ -232,7 +232,7 @@ async function onRegister(e) {
   // the second vendor staring at a filled-in box.
   if (!messenger) {
     errorEl.textContent = messengerEl.value.trim()
-      ? 'That doesn\'t look like a Facebook profile name. Type just the name, e.g. your.name, or paste the link to your profile.'
+      ? 'That doesn\'t look like a Facebook username. Type just the username, e.g. your.name, or paste the link to your profile.'
       : 'Facebook Messenger is required — it\'s how customers message you from your store page.';
     messengerEl.focus();
     return;
