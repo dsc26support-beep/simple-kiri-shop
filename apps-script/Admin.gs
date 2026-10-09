@@ -458,25 +458,103 @@ function actionSetWholesaleVerified(owner, body) {
  * and products by name - every status, closed included, since this is the
  * admin's lookup. At most 20 of each.
  */
+/**
+ * The admin search box: one query across stores, products, orders, featuring
+ * payments and listing-review cases. (Owner request, Oct 2026.)
+ *
+ * SHORTCUTS - an exact reference jumps straight to its record (`exact`):
+ *   SKS-...   an order number        MWF......  a featuring payment reference
+ *   rev_...   a listing-review case
+ * A phone number (5+ digits, spaces/+/- ignored) matches store and customer
+ * phones by digits, so "+686 7300 1234" finds "73001234".
+ *
+ * Admin only. Each list is capped, newest first where it has a date. Customer
+ * details are limited to what the admin needs to recognise an order.
+ */
+var ADMIN_SEARCH_LIMIT = 10;
+
+function adminSearchDigits(v) {
+  return String(v == null ? '' : v).replace(/\D/g, '');
+}
+
 function actionAdminSearch(owner, body) {
   if (!isOwnerAdmin(owner)) return fail('Not authorized');
-  var q = String(body.q || '').trim().toLowerCase();
-  if (q.length < 2) return ok({ stores: [], products: [] });
+  var raw = String(body.q || '').trim().slice(0, 100);
+  var q = raw.toLowerCase();
+  var empty = { stores: [], products: [], orders: [], payments: [], cases: [], exact: null };
+  if (q.length < 2) return ok(empty);
   var has = function (v) { return String(v || '').toLowerCase().indexOf(q) !== -1; };
+  // A phone number: mostly digits, at least 5 of them.
+  var digits = adminSearchDigits(raw);
+  var isPhone = digits.length >= 5 && /^[\d\s+()\-.]+$/.test(raw);
+  var phoneHit = function (v) {
+    var d = adminSearchDigits(v);
+    return isPhone && d.length >= 5 && (d.indexOf(digits) !== -1 || digits.indexOf(d) !== -1);
+  };
+  var newestFirst = function (field) { return function (a, b) { return String(b[field] || '').localeCompare(String(a[field] || '')); }; };
+  var optional = function (name) {
+    var sheet = SpreadsheetApp.getActive().getSheetByName(name);
+    return sheet ? sheetToObjects(sheet) : [];
+  };
+
   var owners = sheetToObjects(getSheet('Owners'));
   var storeNames = {};
   owners.forEach(function (o) { storeNames[o.OwnerId] = o.StoreName; });
+
   var stores = owners
-    .filter(function (o) { return has(o.StoreName) || has(o.StoreSlug) || has(o.Email) || has(o.Phone); })
+    .filter(function (o) { return has(o.StoreName) || has(o.StoreSlug) || has(o.Email) || has(o.Phone) || phoneHit(o.Phone) || phoneHit(o.WhatsApp); })
     .slice(0, 20)
     .map(function (o) { return { ownerId: o.OwnerId, storeName: o.StoreName, storeSlug: o.StoreSlug, status: o.Status }; });
-  var products = sheetToObjects(getSheet('Products'))
-    .filter(function (p) { return has(p.Name); })
+
+  var products = isPhone ? [] : sheetToObjects(getSheet('Products'))
+    .filter(function (p) { return has(p.Name) || String(p.ProductId).toLowerCase() === q; })
     .slice(0, 20)
     .map(function (p) {
       return { productId: p.ProductId, name: p.Name, status: p.Status, ownerId: p.OwnerId, storeName: storeNames[p.OwnerId] || '' };
     });
-  return ok({ stores: stores, products: products });
+
+  var orders = sheetToObjects(getSheet('Orders'))
+    .filter(function (o) { return has(o.OrderId) || has(o.CustomerName) || (!isPhone && has(o.ItemsSummary)) || phoneHit(o.CustomerPhone); })
+    .sort(newestFirst('CreatedAt'))
+    .slice(0, ADMIN_SEARCH_LIMIT)
+    .map(function (o) {
+      return { orderId: o.OrderId, ownerId: o.OwnerId, storeName: storeNames[o.OwnerId] || '', customerName: o.CustomerName,
+        customerPhone: o.CustomerPhone, status: o.Status, total: Number(o.Total) || 0, itemsSummary: String(o.ItemsSummary || '').slice(0, 200),
+        createdAt: o.CreatedAt };
+    });
+
+  var payments = isPhone ? [] : optional('FeaturePurchases')
+    .filter(function (r) { return has(r.Reference) || has(r.ReceiptNo); })
+    .sort(newestFirst('CreatedAt'))
+    .slice(0, ADMIN_SEARCH_LIMIT)
+    .map(function (r) {
+      return { purchaseId: r.PurchaseId, reference: r.Reference, ownerId: r.OwnerId, storeName: storeNames[r.OwnerId] || '',
+        status: r.Status, amount: Number(r.Amount) || 0, createdAt: r.CreatedAt };
+    });
+
+  var cases = isPhone ? [] : optional('Product_Review_Queue')
+    .filter(function (r) { return String(r.ReviewId).toLowerCase() === q || has(r.ProductNameSnapshot) || has(r.ProposedCategoryName) || String(r.ProductId).toLowerCase() === q; })
+    .sort(newestFirst('SubmittedAt'))
+    .slice(0, ADMIN_SEARCH_LIMIT)
+    .map(function (r) {
+      return { reviewId: r.ReviewId, caseType: r.CaseType, productName: r.ProductNameSnapshot || r.ProposedCategoryName || '',
+        storeName: storeNames[r.SellerId] || '', status: r.Status, severity: r.Severity };
+    });
+
+  // Shortcuts: an exact reference jumps straight to its record.
+  var exact = null;
+  if (/^sks-/.test(q)) {
+    var o = orders.filter(function (x) { return String(x.orderId).toLowerCase() === q; })[0];
+    if (o) exact = { type: 'order', id: o.orderId };
+  } else if (/^mwf[a-z0-9]{6}$/.test(q)) {
+    var pmt = payments.filter(function (x) { return String(x.reference).toLowerCase() === q; })[0];
+    if (pmt) exact = { type: 'payment', id: pmt.reference };
+  } else if (/^rev_/.test(q)) {
+    var c = cases.filter(function (x) { return String(x.reviewId).toLowerCase() === q; })[0];
+    if (c) exact = { type: 'case', id: c.reviewId };
+  }
+
+  return ok({ stores: stores, products: products, orders: orders, payments: payments, cases: cases, exact: exact, phone: isPhone });
 }
 
 /** body.ownerId. Everything the admin dashboard shows about one store. */

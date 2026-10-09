@@ -302,5 +302,17 @@ const ListingReviewAdmin = (() => {
     loadRegister().then(load);
   }
 
-  return { init };
+  /** From the admin search: show one case, whatever the filters were. */
+  async function openById(reviewId) {
+    $('lr-status').value = 'all';
+    ['lr-severity', 'lr-issue', 'lr-category', 'lr-seller', 'lr-from', 'lr-to'].forEach((id) => { $(id).value = ''; });
+    $('lr-q').value = reviewId;
+    state.page = 0;
+    state.openId = reviewId;
+    await load();
+    const article = document.querySelector(`.lr-case[data-review-id="${CSS.escape(reviewId)}"]`);
+    if (article) article.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  return { init, openById };
 })();
