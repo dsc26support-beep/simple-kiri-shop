@@ -1841,3 +1841,29 @@ label.is-required::after {
 }
 .admin-flash { animation: admin-flash 2.4s ease-out; border-radius: var(--radius); }
 @media (prefers-reduced-motion: reduce) { .admin-flash { animation: none; outline: 3px solid var(--color-gold); } }
+
+/* ---------- Header adverts (admin-header-ads.js) ---------- */
+.ha-preview {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-3);
+  background: var(--color-red);
+  border-bottom: 4px solid var(--color-gold);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: var(--radius) var(--radius) 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ha-list { list-style: none; padding: 0; margin: var(--space-2) 0; display: grid; gap: var(--space-2); }
+.ha-item { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: var(--space-1); }
+.ha-item.is-idle { opacity: 0.7; }
+.ha-item-text { display: grid; gap: 2px; overflow-wrap: anywhere; }
+.ha-item-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.ha-form { border-top: 1px dashed var(--color-border); padding-top: var(--space-2); }
+.ha-form input:not([type="checkbox"]), .ha-form select { width: 100%; }
+.ha-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); }

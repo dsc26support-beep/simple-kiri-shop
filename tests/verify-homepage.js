@@ -197,9 +197,13 @@ const layout = (page) => page.evaluate(() => {
     // recordProductViews already fired here before this task - it is
     // renderTrendingProducts' own view-tracking call, not something the new
     // sections introduced. The new sections themselves (promo, quick actions,
-    // header ticker) are static: nothing else may appear in this list.
-    ok('and no call for anything else - the new sections stay static',
-      seen.every((a) => a === 'getHomePageData' || a === 'recordProductViews'),
+    // header ticker) are static: nothing else may appear in this list -
+    // except getHeaderAds (Oct 2026, owner request): the header strip became
+    // admin-set adverts, fetched ONCE, when the page is idle, cached 5 minutes
+    // on the server. Exactly one, never before the page's own data.
+    ok('and no call for anything else - only the one idle header-adverts call',
+      seen.every((a) => a === 'getHomePageData' || a === 'recordProductViews' || a === 'getHeaderAds')
+        && seen.filter((a) => a === 'getHeaderAds').length <= 1 && seen.indexOf('getHeaderAds') !== 0,
       JSON.stringify(seen));
     await ctx.close();
   }
