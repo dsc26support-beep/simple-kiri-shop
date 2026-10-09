@@ -1,7 +1,8 @@
-// "Featured" pill on paid-featured products, on each card renderer the
-// storefront uses: browse cards (home/search/tips/similar), the store page's
-// full card, and the categories tile. product.featured comes from
-// markPaidFeatured (Featuring.gs) - tested in test-featuring.js.
+// No "Featured" pill on any product card (owner's call, Oct 2026). Featuring
+// itself stays - product.featured still comes from markPaidFeatured
+// (Featuring.gs, tested in test-featuring.js) - only the label is gone, on
+// every card renderer: browse cards (home/search/tips/similar), the store
+// page's full card, and the categories tile.
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const P = (featured) => ({ productId: featured ? 'p1' : 'p2', name: featured ? 'Rice' : 'Flour', storeSlug: 's', storeName: 'Store',
@@ -26,10 +27,9 @@ const P = (featured) => ({ productId: featured ? 'p1' : 'p2', name: featured ? '
   await page.waitForSelector('#tips-products .product-card', { timeout: 6000 });
   const tips = await page.$$eval('#tips-products .product-card', (cards) => cards.map((c) => ({
     name: c.querySelector('.product-name').textContent.trim(), badge: !!c.querySelector('.featured-badge') })));
-  ok('tips: featured product shows the pill', tips.find((t) => /Rice/.test(t.name)).badge === true, JSON.stringify(tips));
-  ok('tips: other product does not', tips.find((t) => /Flour/.test(t.name)).badge === false);
-  const style = await page.$eval('.featured-badge', (b) => ({ text: b.textContent, w: b.getBoundingClientRect().width, fs: getComputedStyle(b).fontSize }));
-  ok('pill says "Featured" and stays small', style.text === 'Featured' && style.w < 90 && parseFloat(style.fs) <= 12, JSON.stringify(style));
+  ok('tips: featured product still shows', tips.some((t) => /Rice/.test(t.name)), JSON.stringify(tips));
+  ok('tips: no card has a pill', tips.every((t) => t.badge === false), JSON.stringify(tips));
+  ok('tips: no "Featured" text on any card', await page.$$eval('#tips-products .product-card', (cs) => cs.every((c) => !/Featured/.test(c.textContent))));
   await page.screenshot({ path: process.env.SHOT || '/dev/null', fullPage: false }).catch(() => {});
 
   // Store page full card.
@@ -37,18 +37,22 @@ const P = (featured) => ({ productId: featured ? 'p1' : 'p2', name: featured ? '
   await page.waitForFunction(() => typeof renderProductCard === 'function', null, { timeout: 6000 });
   const store = await page.evaluate(([a, b]) => [renderProductCard(a, { storeSlug: 's' }), renderProductCard(b, { storeSlug: 's' })]
     .map((h) => h.includes('featured-badge')), [P(true), P(false)]);
-  ok('store page card: pill only on the featured product', store[0] === true && store[1] === false, JSON.stringify(store));
+  ok('store page card: no pill, featured or not', store[0] === false && store[1] === false, JSON.stringify(store));
+  const kinds = await page.evaluate((p) => ['service', 'rental'].map((t) => renderProductCard(Object.assign({}, p, { listingType: t }), { storeSlug: 's' }).includes('featured-badge')), P(true));
+  ok('store page service and rental cards: no pill', kinds.every((k) => k === false), JSON.stringify(kinds));
 
   // Categories tile.
   await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
   await page.waitForFunction(() => typeof renderCategoryTile === 'function', null, { timeout: 6000 });
   const tiles = await page.evaluate(([a, b]) => [renderCategoryTile(a), renderCategoryTile(b)].map((h) => h.includes('featured-badge')), [P(true), P(false)]);
-  ok('categories tile: pill only on the featured product', tiles[0] === true && tiles[1] === false, JSON.stringify(tiles));
-  ok('a product with no featured field (old cache) shows no pill', await page.evaluate(() => featuredBadgeHtml({ name: 'x' }) === ''));
+  ok('categories tile: no pill, featured or not', tiles[0] === false && tiles[1] === false, JSON.stringify(tiles));
+  const browse = await page.evaluate((p) => ['product', 'service', 'rental'].map((t) => renderBrowseProductCard(Object.assign({}, p, { listingType: t, sellerBadges: ['verified'] })).includes('featured-badge')), P(true));
+  ok('browse cards (product, service, rental, verified seller): no pill', browse.every((k) => k === false), JSON.stringify(browse));
+  ok('the old pill helper is gone', await page.evaluate(() => typeof featuredBadgeHtml === 'undefined'));
   ok('no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();
-  let f = 0; console.log('\n--- "Featured" pill on product cards ---');
+  let f = 0; console.log('\n--- No "Featured" pill on product cards ---');
   for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e ? '  [' + e + ']' : ''}`); }
   console.log(`\n${R.length - f}/${R.length} passed`);
   process.exit(f ? 1 : 0);

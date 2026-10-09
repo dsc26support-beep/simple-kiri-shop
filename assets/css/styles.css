@@ -6324,28 +6324,6 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   display: none;
 }
 
-/* "Featured" pill on a paid-featured product's card (featuredBadgeHtml in
-   helpers.js). Gold, to match the existing highlight colour, and small enough
-   not to compete with the name. */
-.featured-badge {
-  display: inline-block;
-  align-self: flex-start;
-  margin: 0 0 var(--space-1);
-  padding: 0.1em 0.55em;
-  border-radius: 999px;
-  border: 1px solid var(--color-gold);
-  background: var(--color-gold-soft);
-  color: var(--color-ink);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.5;
-}
-
-.category-tile .featured-badge {
-  margin-top: var(--space-1);
-}
-
 /* ==========================================================================
    Help Centre (help.html)
 
@@ -7461,12 +7439,6 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   font-size: 0.68rem;
 }
 
-.product-card-meta .featured-badge {
-  margin: 0;
-  padding: 0 0.45em;
-  font-size: 0.68rem;
-}
-
 /* Verified on its own row at the bottom of a product card. */
 .product-card-verified {
   display: flex;
@@ -7474,12 +7446,6 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   align-items: center;
   gap: 3px 5px;
   font-size: 0.75rem;
-}
-
-.product-card-verified .featured-badge {
-  margin: 0;
-  padding: 0 0.45em;
-  font-size: 0.68rem;
 }
 
 .product-card-verified .seller-badges {
