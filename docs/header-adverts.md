@@ -85,5 +85,5 @@ shown.
    `HeaderAds.gs`.
 2. Re-paste `Code.gs`.
 3. **Deploy → New version.**
-4. `?action=getVersion` should show `headerads1-2026-10-09`, and
+4. `?action=getVersion` should show `username1-2026-10-09` (or later), and
    `?action=checkSetup` should show `"missingFiles":[]`.
