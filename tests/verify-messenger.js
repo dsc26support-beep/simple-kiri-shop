@@ -105,10 +105,8 @@ ok('signup marks the field required', / required[ >]/.test(field(login, 'registe
   field(login, 'register-messenger'));
 ok('settings does NOT, so existing stores can still save',
   !/ required[ >]/.test(field(settings, 'contact-messenger')), field(settings, 'contact-messenger'));
-// The explanation now lives on messenger-help.html (Oct 2026); the forms link to it.
 ok('the helper text talks about a Facebook profile, not a store name',
-  /Help me find my profile name/.test(login) && /Help me find my profile name/.test(settings)
-    && /Facebook <strong>profile name<\/strong>/.test(fs.readFileSync(REPO + 'messenger-help.html', 'utf8')));
+  /Facebook profile name/.test(login) && /Facebook profile name/.test(settings));
 
 /* ---------- the backend is the one that decides ---------- */
 const auth = fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8');
