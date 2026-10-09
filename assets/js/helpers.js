@@ -544,12 +544,9 @@ function cardIsVerified(product) {
   return typeof renderSellerBadges === 'function' && (product.sellerBadges || []).indexOf('verified') !== -1;
 }
 
-// When the seller is verified AND the product is featured, Featured joins
-// Verified on that bottom row (owner's call); otherwise Featured stays on
-// the place row.
 function cardVerifiedRow(product) {
   if (!cardIsVerified(product)) return '';
-  return `<div class="product-card-verified">${renderSellerBadges(['verified'], { size: 'chip', interactive: false })}${featuredBadgeHtml(product)}<span class="seller-badges card-badge-spill"></span></div>`;
+  return `<div class="product-card-verified">${renderSellerBadges(['verified'], { size: 'chip', interactive: false })}<span class="seller-badges card-badge-spill"></span></div>`;
 }
 
 /**
@@ -607,12 +604,6 @@ function fitOneCardBadges(card) {
   }
 }
 
-// "Featured" pill for a product a seller is currently paying to feature
-// (Featuring.gs markPaidFeatured sets product.featured). Text, not an icon, so
-// it reads the same to a screen reader.
-function featuredBadgeHtml(product) {
-  return product && product.featured ? '<span class="featured-badge">Featured</span>' : '';
-}
 
 // The products behind the cards on this page, so the card's cart button
 // (card-cart.js) can add the right variant without a request. Keyed by store
@@ -910,7 +901,7 @@ function renderBrowseProductCard(product, opts) {
         ${opts.compact ? '' : cardSwatchesHtml(product)}
         ${renderStars(product.rating, product.reviewCount)}
         ${opts.compact ? '' : `<div class="product-card-meta">
-          <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}${cardIsVerified(product) ? '' : featuredBadgeHtml(product)}
+          <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}
         </div>
         ${cardVerifiedRow(product)}`}
       </div>

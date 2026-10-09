@@ -89,13 +89,12 @@ const cart = (page, slug) => page.evaluate((s) => JSON.parse(localStorage.getIte
     const both = mk({ sellerBadges: ['verified'], featured: true });
     const onlyF = mk({ sellerBadges: [], featured: true });
     return {
-      bothRow: !!both.querySelector('.product-card-verified .seller-badge--verified') && !!both.querySelector('.product-card-verified .featured-badge'),
-      bothNotOnPlace: !both.querySelector('.product-card-meta .featured-badge'),
-      onlyFeaturedOnPlace: !!onlyF.querySelector('.product-card-meta .featured-badge') && !onlyF.querySelector('.product-card-verified')
+      verifiedRow: !!both.querySelector('.product-card-verified .seller-badge--verified'),
+      noPill: !both.querySelector('.featured-badge') && !onlyF.querySelector('.featured-badge')
     };
   });
-  ok('Verified + Featured share the bottom row when both exist', vf.bothRow && vf.bothNotOnPlace, JSON.stringify(vf));
-  ok('Featured alone stays on the place row', vf.onlyFeaturedOnPlace, JSON.stringify(vf));
+  ok('a featured product from a verified seller keeps its Verified row', vf.verifiedRow, JSON.stringify(vf));
+  ok('no "Featured" pill on a featured product (owner\'s call, Oct 2026)', vf.noPill, JSON.stringify(vf));
   ok('no Verified row for a seller who isn\'t verified', await page.evaluate(() => {
     const box = document.createElement('div');
     box.innerHTML = renderBrowseProductCard({ productId: 'nv', name: 'N', storeSlug: 's', storeName: 'S', variants: [{ variantId: 'v', label: 'a', price: 1 }], sellerBadges: ['recommended'] });
