@@ -69,6 +69,14 @@
             </select>
             <p class="helper-text">Products go in the cart. Rentals and services are requested by date. You can change this later.</p>
           </div>
+          <!-- Product options (owner-product-options.js). Products only:
+               rentals and services keep their list of rates below. -->
+          <fieldset class="field product-type-field" id="product-type-field" hidden>
+            <legend>How is it sold?</legend>
+            <label class="radio-row"><input type="radio" name="productType" value="single"> <span><strong>Single product</strong> - one price, one stock count (e.g. bottled water)</span></label>
+            <label class="radio-row"><input type="radio" name="productType" value="options"> <span><strong>Product with options</strong> - colours, sizes or your own (e.g. a T-shirt, rice in 1kg / 5kg)</span></label>
+            <label class="radio-row" id="ptype-list-label" hidden><input type="radio" name="productType" value="list"> <span><strong>List of varieties</strong> - how this listing was set up before options existed</span></label>
+          </fieldset>
           <div class="field">
             <!-- "Category", not "What type is it?" - the field above now
                  offers the TYPES (Product / Rental / Service), so two fields
@@ -120,7 +128,36 @@
             </select>
           </div>
 
-          <div class="field">
+          <div class="field" id="single-fields" hidden>
+            <div class="single-grid">
+              <div><label for="single-price" class="is-required">Price</label><input id="single-price" type="number" min="0" step="0.01" inputmode="decimal"></div>
+              <div><label for="single-stock">Stock <span class="helper-text">(blank = unlimited)</span></label><input id="single-stock" type="number" min="0" step="1" inputmode="numeric"></div>
+              <div><label for="single-sku">SKU <span class="helper-text">(optional)</span></label><input id="single-sku" maxlength="60"></div>
+            </div>
+            <div id="single-photos"></div>
+          </div>
+
+          <div class="field options-editor" id="options-editor" hidden>
+            <p class="helper-text">Add only the options this product really has - Colour, Size, or your own, such as Package Size or Design. None is required.</p>
+            <div id="option-types"></div>
+            <p class="options-add-row">
+              <button type="button" id="add-colour-btn" class="btn btn-small">+ Colour</button>
+              <button type="button" id="add-size-btn" class="btn btn-small">+ Size</button>
+              <button type="button" id="add-option-btn" class="btn btn-small">+ Another option</button>
+            </p>
+            <p><button type="button" id="generate-variants-btn" class="btn btn-small btn-light-purple">Make the combinations</button></p>
+            <p id="options-status" class="helper-text" role="status" aria-live="polite"></p>
+            <div class="vg-tools">
+              <div><label for="vg-filter">Find</label><input id="vg-filter" type="search" placeholder="e.g. Red"></div>
+              <div><label for="bulk-price">Price</label><input id="bulk-price" type="number" min="0" step="0.01" inputmode="decimal"></div>
+              <div><label for="bulk-stock">Stock</label><input id="bulk-stock" type="number" min="0" step="1" inputmode="numeric"></div>
+              <div><button type="button" id="bulk-apply-btn" class="btn btn-small">Apply to ticked rows</button></div>
+            </div>
+            <p class="helper-text">New combinations start with the price and stock above. Untick <strong>a combination</strong> you don't sell - it can't be ordered.</p>
+            <div id="variant-grid" class="variant-grid"></div>
+          </div>
+
+          <div class="field" id="varieties-block">
             <!-- Visually removed: the "Variety" and "Price" labels on the rows
                  below already say what this block is, so the heading only
                  repeated itself. Kept in the markup as sr-only because it is
@@ -152,6 +189,11 @@
             <button type="button" id="remove-photo2-btn" class="btn btn-small">Remove second photo</button>
           </div>
 
+          <details class="card-preview" id="card-preview">
+            <summary>Preview the shopper's card</summary>
+            <div id="card-preview-slot" class="card-preview-slot"></div>
+          </details>
+
           <p id="product-form-error" class="form-error" role="alert"></p>
           <button type="submit" id="save-product-btn" class="btn btn-primary btn-save">Save Product</button>
           <button type="button" id="cancel-product-btn" class="btn">Cancel</button>
@@ -169,6 +211,8 @@
   <script defer src="../assets/js/unsaved-guard.min.js"></script>
   <script defer src="../assets/js/listing-rules.min.js"></script>
   <script defer src="../assets/js/owner-listing-check.min.js"></script>
+  <script defer src="../assets/js/product-options.min.js"></script>
+  <script defer src="../assets/js/owner-product-options.min.js"></script>
   <script defer src="../assets/js/owner-products.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

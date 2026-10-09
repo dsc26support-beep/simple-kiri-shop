@@ -34,7 +34,8 @@ const GOOD = JSON.parse(JSON.stringify(REQUIRED_TABS));
 // in empty leaves its functions undefined, which is what this catches.
 // ListingRules.gs / ListingReview.gs joined with the listing checks.
 const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitReview',
-                     'sellerBadgeIndex', 'actionRequestMeeting', 'validateListing', 'listingSaveGate'];
+                     'sellerBadgeIndex', 'actionRequestMeeting', 'validateListing', 'listingSaveGate',
+                     'validateProductOptions', 'prepareVariantSave'];   // + product options (Oct 2026)
 
 let pass = 0, fail = 0;
 const t = (n, c, extra) => { if (c) { pass++; console.log('PASS  ' + n); } else { fail++; console.log('FAIL  ' + n + (extra ? '  [' + extra + ']' : '')); } };

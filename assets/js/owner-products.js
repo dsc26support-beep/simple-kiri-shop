@@ -53,6 +53,7 @@ function onListingTypeChange() {
   const type = document.getElementById('product-listing-type').value;
   fillCategoryOptions(type, document.getElementById('product-category').value);
   updateVarietyLabels();
+  ProductOptionsEditor.setListingType(type);
 }
 
 // Food & Groceries is wholesale-only for new listings (Products.gs enforces the
@@ -108,6 +109,8 @@ async function init() {
   document.getElementById('owner-product-list').addEventListener('click', onListClick);
   document.getElementById('products-load-more').addEventListener('click', onLoadMore);
   wireListingCheck();
+  ProductOptionsEditor.init();
+  document.getElementById('card-preview').addEventListener('toggle', renderCardPreview);
 
   await loadProducts();
 }
@@ -129,7 +132,7 @@ function listingInputFromForm() {
     categoryId: document.getElementById('product-category').value,
     subcategoryId: document.getElementById('product-subcategory').value,
     listingType: document.getElementById('product-listing-type').value || 'product',
-    optionLabels: Array.from(document.querySelectorAll('#variant-rows .variant-label')).map((i) => i.value),
+    optionLabels: Array.from(document.querySelectorAll('#variant-rows .variant-label')).map((i) => i.value).concat(ProductOptionsEditor.labels()),
     allowInactive: listingAllowInactive
   };
 }
@@ -376,8 +379,9 @@ function openForm(product, opts) {
     // way to add one any more.
     showPhoto2(duplicate ? '' : product.imageUrl2);
     const activeVariants = product.variants.filter((v) => v.status === 'active');
-    if (activeVariants.length === 0) addVariantRow();
+    if (activeVariants.length === 0 || product.productType) addVariantRow();
     else activeVariants.forEach((v) => addVariantRow(duplicate ? Object.assign({}, v, { variantId: '' }) : v));
+    ProductOptionsEditor.load(product, { duplicate });
   } else {
     heading.textContent = 'Add Product';
     document.getElementById('product-id').value = '';
@@ -392,6 +396,7 @@ function openForm(product, opts) {
     preview.classList.add('hidden');
     showPhoto2('');
     addVariantRow();
+    ProductOptionsEditor.load(null);
   }
 
   updateVarietyLabels();
@@ -607,6 +612,18 @@ function validateProductForm() {
     return false;
   }
 
+  // Single products and products with options are checked by their editor.
+  if (ProductOptionsEditor.mode !== 'list') {
+    const p = ProductOptionsEditor.payload();
+    if (p.error) {
+      const control = p.focus ? document.getElementById(p.focus) : null;
+      if (control) showFieldError(control, p.error);
+      else document.getElementById('product-form-error').textContent = p.error;
+      return false;
+    }
+    return { editor: p };
+  }
+
   const rows = Array.from(document.querySelectorAll('#variant-rows .variant-row'));
   if (rows.length === 0) {
     showFieldError(document.getElementById('add-variant-btn'), 'Add at least one variety (e.g. a size or pack) with a price.');
@@ -653,8 +670,10 @@ async function onSaveProduct(e, flags) {
   const errorEl = document.getElementById('product-form-error');
   errorEl.textContent = '';
 
-  const variants = validateProductForm();
-  if (!variants) return;
+  const checked = validateProductForm();
+  if (!checked) return;
+  const editor = Array.isArray(checked) ? null : checked.editor;
+  const variants = editor ? editor.variants : checked;
 
   const productId = document.getElementById('product-id').value || undefined;
   const payload = {
@@ -674,6 +693,18 @@ async function onSaveProduct(e, flags) {
     payload.sellerNote = flags.sellerNote || '';
   }
   if (flags.acknowledgeWarnings) payload.acknowledgeWarnings = true;
+  if (editor) {
+    payload.productType = editor.productType;
+    if (editor.options) payload.options = editor.options;
+  } else if (payload.listingType === 'product' && document.querySelector('input[name="productType"][value="list"]:checked')) {
+    payload.productType = 'list';
+  }
+  // Creating or switching off combinations of an existing product is said
+  // out loud first - nothing is deleted, but the seller should know.
+  if (editor && productId && !flags.confirmedPlan) {
+    const summary = ProductOptionsEditor.changeSummary(payload);
+    if (summary && !confirm('Saving will change the combinations:\n\n' + summary + '\n\nContinue?')) return;
+  }
 
   // Only sent when the vendor actually asked to clear it. updateProduct keeps
   // the existing value when imageUrl2 is undefined and clears it when the key
@@ -711,6 +742,17 @@ async function onSaveProduct(e, flags) {
   // a retry (clicking Save Product again without reopening the form) must go
   // through updateProduct against this id, never createProduct a second time.
   document.getElementById('product-id').value = res.productId;
+
+  // Photos chosen for combinations that didn't exist yet go up now.
+  if (editor) {
+    setSaveProductBusy(saveBtn, 'Uploading photos');
+    const failed = await ProductOptionsEditor.uploadPending(res);
+    if (failed.length) {
+      errorEl.textContent = 'Product saved, but some photos did not upload: ' + failed.join('; ') + '. Open the photos again to retry.';
+      setSaveProductIdle(saveBtn);
+      return;
+    }
+  }
 
   // A brand-new product lands past the END of append order (a new Sheet row
   // is always appended, never inserted at the front), at position
@@ -764,4 +806,22 @@ async function onSaveProduct(e, flags) {
   } else if (res.notes && res.notes.length) {
     statusEl.textContent = 'Saved. ' + res.notes.map((n) => n.message).join(' ');
   }
+}
+
+/** The shopper's card for what is in the form now (nothing is saved). */
+function renderCardPreview() {
+  const details = document.getElementById('card-preview');
+  if (!details.open) return;
+  const slot = document.getElementById('card-preview-slot');
+  const preview = document.getElementById('image-preview');
+  const base = {
+    productId: 'preview', storeSlug: 'preview', storeName: document.getElementById('store-name-label').textContent,
+    name: document.getElementById('product-name').value.trim() || 'Product name',
+    category: document.getElementById('product-category').value || 'other', listingType: document.getElementById('product-listing-type').value || 'product',
+    imageUrl: preview && !preview.classList.contains('hidden') && /^https?:/.test(preview.src) ? preview.src : '',
+    variants: Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((row, i) => ({ variantId: 'p' + i,
+      label: row.querySelector('.variant-label').value, price: Number(row.querySelector('.variant-price').value) || 0, stockQty: null }))
+  };
+  slot.innerHTML = '<div class="card-preview-grid">' + renderBrowseProductCard(ProductOptionsEditor.previewProduct(base), { compact: false }) + '</div>' +
+    '<p class="helper-text">Preview only - the link and cart button don\u2019t work here.</p>';
 }

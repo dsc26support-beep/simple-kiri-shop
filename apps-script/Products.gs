@@ -102,6 +102,43 @@ function listingTypeOf(p) {
   return 'product';
 }
 
+/* ---------- Options and variant photos: read helpers (ProductVariants.gs writes them) ---------- */
+
+function parseJsonSafe(raw, fallback) {
+  if (raw === '' || raw === null || raw === undefined) return fallback;
+  try { var v = JSON.parse(raw); return v === null ? fallback : v; } catch (e) { return fallback; }
+}
+
+function productOptionsOf(p) {
+  var opts = parseJsonSafe(p && p.OptionsJson, []);
+  return Array.isArray(opts) ? opts : [];
+}
+
+function variantValuesOf(v) {
+  var vals = parseJsonSafe(v && v.OptionValuesJson, {});
+  return vals && typeof vals === 'object' && !Array.isArray(vals) ? vals : {};
+}
+
+function variantImagesOf(v) {
+  var imgs = parseJsonSafe(v && v.ImagesJson, []);
+  return Array.isArray(imgs) ? imgs.filter(function (i) { return i && i.url; }) : [];
+}
+
+function productTypeOfRow(p) {
+  var t = String((p && p.ProductType) || '');
+  return t === 'single' || t === 'options' ? t : '';
+}
+
+/** Extra variant fields: option values and photo URLs (never storage file ids). */
+function publicVariantExtras(out, v) {
+  var vals = variantValuesOf(v);
+  if (Object.keys(vals).length) out.values = vals;
+  var imgs = variantImagesOf(v);
+  if (imgs.length) out.images = imgs.map(function (i) { return i.url; });
+  if (v.SKU) out.sku = String(v.SKU);
+  return out;
+}
+
 function deliveryCostOf(rawCost) {
   return rawCost === '' || rawCost == null ? null : Number(rawCost);
 }
@@ -113,14 +150,14 @@ function deliveryCostOf(rawCost) {
  * re-deriving it from a blank string on every page.
  */
 function publicVariantFields(v) {
-  return {
+  return publicVariantExtras({
     variantId: v.VariantId,
     label: v.Label,
     price: Number(v.Price),
     // What a shopper can still buy: physical minus units held by open orders
     // (Inventory.gs availableOf). null = not tracked.
     stockQty: availableOf(v)
-  };
+  }, v);
 }
 
 /**
@@ -334,6 +371,9 @@ function getTopProductsCached() {
           description: p.Description,
           category: categoryIdOf(p.Category),
       listingType: listingTypeOfRow(p),
+          // Options (ProductVariants.gs) - omitted for older listings.
+          productType: productTypeOfRow(p) || undefined,
+          options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           storeSlug: owner.StoreSlug,
@@ -561,6 +601,9 @@ function actionSearchProducts(params) {
           description: p.Description,
           category: categoryIdOf(p.Category),
       listingType: listingTypeOfRow(p),
+          // Options (ProductVariants.gs) - omitted for older listings.
+          productType: productTypeOfRow(p) || undefined,
+          options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           storeSlug: owner.StoreSlug,
@@ -650,6 +693,9 @@ function actionListProducts(params) {
           description: p.Description,
           category: categoryIdOf(p.Category),
       listingType: listingTypeOfRow(p),
+          // Options (ProductVariants.gs) - omitted for older listings.
+          productType: productTypeOfRow(p) || undefined,
+          options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
           variants: productVariants,
@@ -715,7 +761,8 @@ function actionListOwnerProducts(owner, body) {
     var productVariants = variants
       .filter(function (v) { return v.ProductId === p.ProductId && v.Status !== 'deleted'; })
       .map(function (v) {
-        return { variantId: v.VariantId, label: v.Label, price: Number(v.Price), sku: v.SKU, stockQty: v.StockQty, status: v.Status };
+        return { variantId: v.VariantId, label: v.Label, price: Number(v.Price), sku: v.SKU, stockQty: v.StockQty, status: v.Status,
+          values: variantValuesOf(v), images: variantImagesOf(v).map(function (i) { return { id: i.id, url: i.url }; }) };
       });
     return {
       productId: p.ProductId,
@@ -727,6 +774,8 @@ function actionListOwnerProducts(owner, body) {
       imageUrl2: p.ImageUrl2,
       status: p.Status,
       subcategoryId: String(p.SubcategoryId || ''),
+      productType: productTypeOfRow(p),
+      options: productOptionsOf(p),
       requestedStatus: String(p.RequestedStatus || ''),
       review: cases[p.ProductId] || null,
       sortOrder: p.SortOrder,
@@ -784,7 +833,9 @@ function actionCreateOrUpdateProduct(owner, body) {
   var listingInput = {
     name: name, description: String(body.description || ''), categoryId: category, subcategoryId: subcategoryId, listingType: listingType,
     attributes: cleanListingAttributes(body.attributes),
-    optionLabels: (Array.isArray(body.variants) ? body.variants : []).map(function (v) { return String((v && v.label) || '').slice(0, 100); })
+    optionLabels: body.productType === 'options' && Array.isArray(body.options)
+      ? [].concat.apply([], body.options.map(function (o) { return (o && Array.isArray(o.values) ? o.values : []).map(function (v) { return String((v && v.label) || '').slice(0, 60); }); }))
+      : (Array.isArray(body.variants) ? body.variants : []).map(function (v) { return String((v && v.label) || '').slice(0, 100); })
   };
   var gate = listingSaveGate(owner, body, priorRow, listingInput);
   if (gate.stop) return gate.stop;
@@ -826,9 +877,23 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
 
     // Stock can't be set below what open orders already hold (Inventory.gs).
     // Checked before anything is written, so a refused save changes nothing.
-    var reservedErr = stockBelowReservedError(owner, body.variants, sheetToObjects(variantsSheet));
+    var allVariantRows = sheetToObjects(variantsSheet);
+    var reservedErr = stockBelowReservedError(owner, body.variants, allVariantRows);
     if (reservedErr) return fail(reservedErr);
     var stockMoves = [];
+
+    // Single products and products with options (ProductVariants.gs) are
+    // validated in full here, before the product row is touched - a refused
+    // save writes nothing. null = an older "list of varieties", handled below.
+    var priorProductRow = isUpdate ? findRowById(productsSheet, 'ProductId', body.productId) : null;
+    var variantPlan = prepareVariantSave(owner, body, priorProductRow,
+      isUpdate ? allVariantRows.filter(function (v) { return v.ProductId === body.productId; }) : []);
+    if (variantPlan && variantPlan.error) {
+      var refused = fail(variantPlan.error);
+      if (variantPlan.field) refused.field = variantPlan.field;
+      if (variantPlan.index !== undefined) refused.variantIndex = variantPlan.index;
+      return refused;
+    }
 
     if (isUpdate) {
       var existing = findRowById(productsSheet, 'ProductId', body.productId);
@@ -876,8 +941,18 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
       });
     }
 
-    var incoming = Array.isArray(body.variants) ? body.variants : [];
-    var existingVariants = sheetToObjects(variantsSheet).filter(function (v) { return v.ProductId === productId; });
+    var savedVariants = null;
+    if (variantPlan) {
+      var applied = applyVariantSave(owner, productId, variantPlan, variantsSheet, productsSheet);
+      stockMoves = applied.stockMoves;
+      savedVariants = applied.variants;
+    } else if (priorProductRow && productTypeOfRow(priorProductRow)) {
+      // Switched back to a plain list of varieties.
+      updateRowFromObject(productsSheet, findRowById(productsSheet, 'ProductId', productId).__row, { ProductType: '', OptionsJson: '' });
+    }
+
+    var incoming = variantPlan ? [] : (Array.isArray(body.variants) ? body.variants : []);
+    var existingVariants = variantPlan ? [] : sheetToObjects(variantsSheet).filter(function (v) { return v.ProductId === productId; });
     var keptVariantIds = {};
 
     incoming.forEach(function (v) {
@@ -957,6 +1032,9 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
     invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
     return ok({
       productId: productId,
+      // For a product with options: which VariantId each combination got, so
+      // the form can upload photos chosen before the first save.
+      variants: savedVariants || undefined,
       held: gate.mode === 'hold',
       reviewId: reviewId,
       // Tips (recommended details) and any warning the seller saved past.

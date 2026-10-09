@@ -7479,3 +7479,179 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   font-weight: 600;
   text-align: left;
 }
+
+/* ---------- Photo carousels and colour swatches (product options, Oct 2026) ----------
+   Manual only: arrows, swipe, a counter. The card's stretched link sits at
+   z-index 1, so every control here is above it and is never a navigation. */
+.carousel {
+  position: relative;
+}
+.carousel-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-track .carousel-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  min-width: 0;
+}
+.carousel-slide.is-broken {
+  visibility: hidden;
+}
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-purple);
+  font-size: 1.4rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 3px;
+  cursor: pointer;
+}
+.carousel-prev { left: 6px; }
+.carousel-next { right: 6px; }
+.carousel-btn:disabled { opacity: 0; pointer-events: none; }
+.carousel-btn:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 1px; }
+.carousel-count {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(26, 26, 26, 0.65);
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  pointer-events: none;
+}
+.carousel--card .carousel-btn { width: 32px; height: 32px; font-size: 1.2rem; }
+.carousel-thumbs {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  padding: var(--space-1) 0;
+}
+.carousel-thumb {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+  cursor: pointer;
+}
+.carousel-thumb.is-current { border-color: var(--color-purple); }
+.carousel-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.card-swatches {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.card-swatch {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--color-border);
+  background: var(--swatch, var(--color-bg-alt));
+  color: var(--color-ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  position: relative;
+}
+.card-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--color-purple); }
+.card-swatch:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+/* Sold out: a diagonal line through the swatch, still tappable to see it. */
+.card-swatch.is-soldout::after,
+.option-value.is-soldout::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+  transform: rotate(45deg);
+}
+.card-swatch-note {
+  position: relative;
+  z-index: 2;
+  min-height: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+.card-swatch-note:empty { display: none; }
+.card-soldout {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fdeeed;
+  color: var(--color-danger);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Product page option picker (product-options-ui.js). */
+.option-picker { display: grid; gap: var(--space-2); margin: var(--space-2) 0; }
+.option-group { border: 0; padding: 0; margin: 0; }
+.option-group legend { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+.option-group legend .option-chosen { font-weight: 400; color: var(--color-muted); }
+.option-values { display: flex; flex-wrap: wrap; gap: 6px; }
+.option-value {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-ink);
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.option-value[aria-pressed="true"] { border: 2px solid var(--color-purple); padding: 3px 11px; font-weight: 700; }
+.option-value:disabled { color: var(--color-muted-light); border-style: dashed; cursor: not-allowed; }
+.option-value.is-soldout { color: var(--color-muted); }
+.option-value:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.option-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--swatch, var(--color-bg-alt));
+  box-shadow: 0 0 0 1px var(--color-border);
+  flex: 0 0 auto;
+}
+.option-status { margin: 0; font-size: 0.9rem; }
+.option-status .option-stock--out { color: var(--color-danger); font-weight: 700; }
+.option-status .option-stock--low { color: #8a6100; font-weight: 700; }
+.option-note { margin: 0; font-size: 0.85rem; color: #8a6100; }
+.option-note:empty { display: none; }
+.option-sku { color: var(--color-muted); font-size: 0.8rem; }
+.option-value.is-conflict { border-style: dashed; color: var(--color-muted); }
