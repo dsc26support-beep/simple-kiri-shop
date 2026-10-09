@@ -755,6 +755,18 @@ section {
   .home-main > .trending-stores { order: 0; }
 }
 
+/* One extra space (owner request, Oct 2026) on a computer or tablet:
+   between Popular Stores and the search, and between the quick actions
+   (Categories ... Recents) and Trending Products. Added on top of the
+   sections' own padding (their top margins are otherwise 0). Phones keep
+   their spacing. */
+@media (min-width: 601px) {
+  .home-main > .hero,
+  .home-main > .trending-products {
+    margin-top: var(--space-4);
+  }
+}
+
 /* Horizontally scrolling chip strips: the listing-type filter and the popular
    categories on the homepage, and the category bar on the browse page. One
    rule set, because they are the same UX pattern asking two questions.
