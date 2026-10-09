@@ -747,6 +747,14 @@ section {
   .home-main > noscript { order: 7; }
 }
 
+/* Popular Stores right under the header on a computer or tablet (owner
+   request, Oct 2026). It is first in index.html, so wider screens - plain
+   block flow above 1024px - already show it first; this keeps it first in the
+   flex order between 601 and 1024px too. Phones keep order 5 above. */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .home-main > .trending-stores { order: 0; }
+}
+
 /* Horizontally scrolling chip strips: the listing-type filter and the popular
    categories on the homepage, and the category bar on the browse page. One
    rule set, because they are the same UX pattern asking two questions.
@@ -7692,3 +7700,18 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 .option-note:empty { display: none; }
 .option-sku { color: var(--color-muted); font-size: 0.8rem; }
 .option-value.is-conflict { border-style: dashed; color: var(--color-muted); }
+
+/* Store login page on a computer (owner request, Oct 2026): its buttons have
+   no outline and a see-through background; the hover / press colour is the
+   same as every other button. Phones keep the outlined button. */
+@media (min-width: 601px) {
+  .owner-login-page .btn-primary {
+    background: transparent;
+    border-color: transparent;
+  }
+  .owner-login-page .btn-primary:hover,
+  .owner-login-page .btn-primary:focus-visible,
+  .owner-login-page .btn-primary:active {
+    background: var(--color-purple-soft);
+  }
+}

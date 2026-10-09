@@ -53,8 +53,9 @@ const product = (i, name) => ({
   /* ---------- the home link ---------- */
   await go('/index.html');
   const quick = await page.$$eval('.quick-action-strip .quick-action-label', (els) => els.map((e) => e.textContent.trim()));
-  ok('home quick actions: Recent Views is 5th, after Categories, Stores, Rentals, Services',
-    quick.join('|') === 'Categories|Stores|Rentals|Services|Recent Views', quick.join('|'));
+  // Renamed "Recents" (Oct 2026, owner request).
+  ok('home quick actions: Recents is 5th, after Categories, Stores, Rentals, Services',
+    quick.join('|') === 'Categories|Stores|Rentals|Services|Recents', quick.join('|'));
   ok('...and links to recent.html', await page.$eval('.quick-action-strip a:last-child', (a) => a.getAttribute('href')) === 'recent.html');
   const strip = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > innerWidth + 1 }));
   ok('390px: the five-item row does not widen the page', !strip.overflow);

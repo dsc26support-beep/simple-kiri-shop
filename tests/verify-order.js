@@ -45,12 +45,14 @@ const BASE = 'http://127.0.0.1:8099';
     JSON.stringify(mob.t));
 
   const tab = await measure(900, 1200, 'tablet');
-  ok('tablet: search above discovery', tab.t.hero < tab.t.stores, JSON.stringify(tab.t));
+  // Wider than a phone (Oct 2026, owner request): Popular Stores right under
+  // the header, above the search. Phones keep search first (checked above).
+  ok('tablet: Popular Stores under the header, above search', tab.t.stores < tab.t.hero, JSON.stringify(tab.t));
 
   const desk = await measure(1280, 900, 'desktop');
-  ok('desktop: search above discovery (original)', desk.t.hero < desk.t.stores, JSON.stringify(desk.t));
+  ok('desktop: Popular Stores under the header, above search', desk.t.stores < desk.t.hero, JSON.stringify(desk.t));
   ok('desktop: quick actions directly beneath search',
-    desk.t.hero < desk.t.quickActions && desk.t.quickActions < desk.t.stores, JSON.stringify(desk.t));
+    desk.t.hero < desk.t.quickActions && desk.t.quickActions < desk.t.products, JSON.stringify(desk.t));
   ok('desktop: discovery above products',
     desk.t.stores < desk.t.products, JSON.stringify(desk.t));
 
