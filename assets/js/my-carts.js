@@ -94,7 +94,7 @@ async function hydrateStoreNames(slugs) {
     const store = res.store;
 
     const nameEl = document.querySelector(`[data-name-for="${CSS.escape(slug)}"]`);
-    if (nameEl && store.storeName) nameEl.textContent = store.storeName;
+    if (nameEl && store.storeName) nameEl.textContent = shortStoreName(store.storeName);
 
     if (!store.logoUrl) return;
     const slot = document.querySelector(`[data-logo-for="${CSS.escape(slug)}"]`);

@@ -267,7 +267,7 @@ function actionRegisterOwner(body) {
   }
   if (password.length < 8) return fail('Password must be at least 8 characters');
   if (!/^[a-z0-9_.-]{3,40}$/.test(username)) return fail('Username must be 3-40 characters: letters, numbers, . _ -');
-  var storeNameErr = capLength(storeName, 100, 'Store name');
+  var storeNameErr = storeNameTooLong(storeName);
   if (storeNameErr) return storeNameErr;
   var phoneErr = capLength(phone, 30, 'Phone number');
   if (phoneErr) return phoneErr;

@@ -53,7 +53,7 @@ let lastJobs = [];
 async function init() {
   owner = await Auth.guardOwnerAuth();
   if (!owner) return;
-  document.getElementById('store-name-label').textContent = owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
   document.getElementById('sync-file').addEventListener('change', onFile);
   document.getElementById('sync-create-new').addEventListener('change', (e) => {
     document.getElementById('sync-category-field').classList.toggle('hidden', !e.target.checked);

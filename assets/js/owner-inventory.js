@@ -27,7 +27,7 @@ let suppliers = [];
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
-  document.getElementById('store-name-label').textContent = owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
   document.getElementById('inv-search').addEventListener('input', renderList);
   document.querySelectorAll('.inv-chip').forEach((b) => b.addEventListener('click', () => setFilter(b.dataset.filter)));
   document.getElementById('inv-list').addEventListener('click', onListClick);

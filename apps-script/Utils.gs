@@ -304,6 +304,16 @@ function messengerStoredValue(input) {
   return handle ? 'https://m.me/' + handle : '';
 }
 
+// Store names are capped at 22 characters (owner's call, Oct 2026) so they fit
+// on cards and headers. Counted in characters, not UTF-16 units.
+var STORE_NAME_MAX = 22;
+
+/** null if the store name is short enough, else the fail() to return. */
+function storeNameTooLong(name) {
+  if (Array.from(String(name == null ? '' : name).trim()).length <= STORE_NAME_MAX) return null;
+  return fail('Store name must be ' + STORE_NAME_MAX + ' characters or fewer. Please shorten it.');
+}
+
 function capLength(value, maxLen, fieldLabel) {
   var str = String(value == null ? '' : value);
   if (str.length > maxLen) return fail(fieldLabel + ' must be ' + maxLen + ' characters or fewer');

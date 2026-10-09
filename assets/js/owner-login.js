@@ -5,6 +5,7 @@ function init() {
     window.location.href = 'dashboard.html';
     return;
   }
+  attachStoreNameCounter(document.getElementById('register-store-name'));
 
   if (getQueryParam('expired')) {
     document.getElementById('session-message').textContent = 'Your session expired — please log in again.';
@@ -213,6 +214,10 @@ async function onRegister(e) {
   const messenger = messengerStoredValue(messengerEl.value);
   if (messenger) messengerEl.value = messenger;
 
+  if (Array.from(storeName).length > STORE_NAME_MAX) {
+    errorEl.textContent = `Store name must be ${STORE_NAME_MAX} characters or fewer.`;
+    return;
+  }
   if (!email) {
     errorEl.textContent = 'Contact email is required — that\'s where customer orders will be sent.';
     return;

@@ -9,6 +9,42 @@ function formatMoney(amount) {
  * width of a half-width grid card with no slack, and wrapped onto a second
  * line as soon as the numbers grew past two digits.
  */
+// Store names are capped at 22 characters (owner's call, Oct 2026; enforced by
+// the backend, Utils.gs STORE_NAME_MAX). Older, longer names are shown cut with
+// an ellipsis until the store shortens them.
+const STORE_NAME_MAX = 22;
+
+function shortStoreName(name) {
+  const chars = Array.from(String(name == null ? '' : name).trim());
+  return chars.length > STORE_NAME_MAX ? chars.slice(0, STORE_NAME_MAX).join('').trimEnd() + '…' : chars.join('');
+}
+
+/**
+ * The store-name field on Create Store and Settings: stops at 22 characters
+ * and shows "n/22" under it - red, with a note, if an older name is longer.
+ */
+function attachStoreNameCounter(input) {
+  if (!input || input.dataset.nameCounter) return;
+  input.dataset.nameCounter = '1';
+  input.setAttribute('maxlength', String(STORE_NAME_MAX));
+  input.setAttribute('aria-describedby', (input.getAttribute('aria-describedby') || '') + ' ' + input.id + '-count');
+  const out = document.createElement('p');
+  out.id = input.id + '-count';
+  out.className = 'helper-text store-name-count';
+  out.setAttribute('aria-live', 'polite');
+  input.insertAdjacentElement('afterend', out);
+  const update = () => {
+    const n = Array.from(input.value.trim()).length;
+    out.textContent = n > STORE_NAME_MAX
+      ? `${n}/${STORE_NAME_MAX} - please shorten your store name to ${STORE_NAME_MAX} characters.`
+      : `${n}/${STORE_NAME_MAX}`;
+    out.classList.toggle('is-over', n > STORE_NAME_MAX);
+  };
+  input.addEventListener('input', update);
+  update();
+  return update;
+}
+
 function formatPriceLabel(variants) {
   const prices = (variants || []).map((v) => v.price);
   if (prices.length === 0) return '';
@@ -621,13 +657,220 @@ const CART_PLUS_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="no
  * opts.compact (a store's own page): only the text line, price + cart and
  * stars - the place, delivery and badges are already shown once at the top.
  */
+/* ===================== Photo carousels and colour swatches =====================
+ * Product options (Oct 2026). A product with several photos - its own, or one
+ * per colour - shows them in a MANUAL carousel: arrows, swipe (native scroll
+ * snapping), a "1 of 3" counter, never autoplay. Used by the browse cards here
+ * and by the product page (product-options-ui.js), wired by one delegated
+ * listener below, so cards rendered later need no extra wiring.
+ * Colour swatches jump to that colour's photo and say what is in stock in it.
+ */
+const CARD_GALLERY_MAX = 6;
+
+function colourOptionOf(product) {
+  if (!product || product.productType !== 'options') return null;
+  return (product.options || []).filter((o) => o.kind === 'colour')[0] || null;
+}
+
+/** Photos for a card: the product's own first, then each colour's primary photo. [{ url, colourId }] */
+function cardGalleryImages(product) {
+  const out = [];
+  const seen = new Set();
+  const add = (url, colourId) => {
+    if (!url || seen.has(url) || out.length >= CARD_GALLERY_MAX) return;
+    seen.add(url);
+    out.push({ url, colourId: colourId || '' });
+  };
+  const variants = product.variants || [];
+  const colour = colourOptionOf(product);
+  if (colour) {
+    // A colour's own photo leads where the product has none of its own.
+    colour.values.forEach((val) => {
+      const v = variants.filter((x) => x.values && x.values[colour.id] === val.id && x.images && x.images.length)[0];
+      if (v && !product.imageUrl && !out.length) add(v.images[0], val.id);
+    });
+  }
+  add(product.imageUrl);
+  add(product.imageUrl2);
+  if (colour) {
+    colour.values.forEach((val) => {
+      const v = variants.filter((x) => x.values && x.values[colour.id] === val.id && x.images && x.images.length)[0];
+      if (v) add(v.images[0], val.id);
+    });
+  } else {
+    variants.forEach((v) => (v.images || []).forEach((u) => add(u)));
+  }
+  return out;
+}
+
+/** Per colour value: 'available' | 'soldout', for colours that are on sale at all. */
+function colourStates(product, colour) {
+  const out = {};
+  (product.variants || []).forEach((v) => {
+    const id = v.values && v.values[colour.id];
+    if (!id) return;
+    const inStock = v.stockQty == null || v.stockQty > 0;
+    if (inStock) out[id] = 'available';
+    else if (!out[id]) out[id] = 'soldout';
+  });
+  return out;
+}
+
+/** "S, M" - what is in stock in one colour (the other options' values). */
+function inStockWithin(product, colour, valueId) {
+  const labels = [];
+  (product.variants || []).forEach((v) => {
+    if (!v.values || v.values[colour.id] !== valueId) return;
+    if (v.stockQty != null && v.stockQty <= 0) return;
+    const rest = (product.options || []).filter((o) => o.id !== colour.id)
+      .map((o) => { const x = o.values.filter((val) => val.id === v.values[o.id])[0]; return x ? x.label : ''; })
+      .filter(Boolean).join(' / ');
+    if (rest && labels.indexOf(rest) === -1) labels.push(rest);
+  });
+  return labels.join(', ');
+}
+
+function swatchStyle(val) {
+  return val.hex ? ` style="--swatch:${escapeHtml(val.hex)}"` : '';
+}
+
+/**
+ * The carousel markup. images: [{ url, colourId }]. opts.width / opts.sizes
+ * pick the image size; opts.label names the product for screen readers;
+ * opts.thumbs adds thumbnails (product page).
+ */
+function carouselHtml(images, opts) {
+  const label = opts.label || '';
+  const n = images.length;
+  const slides = images.map((im, i) =>
+    `<img class="product-image carousel-slide" src="${escapeHtml(optimizedImageUrl(im.url, opts.width))}"${srcsetAttr(im.url, opts.sizes)} alt="${escapeHtml(label ? 'Photo ' + (i + 1) + ' of ' + n + ', ' + label : '')}" loading="${i === 0 && opts.eager ? 'eager' : 'lazy'}" decoding="async" data-colour="${escapeHtml(im.colourId || '')}">`).join('');
+  if (n < 2) return `<div class="carousel${opts.cls ? ' ' + opts.cls : ''}" data-carousel><div class="carousel-track">${slides}</div></div>`;
+  const thumbs = opts.thumbs
+    ? `<div class="carousel-thumbs">${images.map((im, i) => `<button type="button" class="carousel-thumb${i === 0 ? ' is-current' : ''}" data-go="${i}" aria-label="Show photo ${i + 1} of ${n}"><img src="${escapeHtml(optimizedImageUrl(im.url, IMG_W.thumb))}" alt="" loading="lazy" decoding="async"></button>`).join('')}</div>`
+    : '';
+  return `<div class="carousel${opts.cls ? ' ' + opts.cls : ''}" data-carousel>
+      <div class="carousel-track">${slides}</div>
+      <button type="button" class="carousel-btn carousel-prev" aria-label="Previous photo${label ? ' of ' + escapeHtml(label) : ''}" disabled>‹</button>
+      <button type="button" class="carousel-btn carousel-next" aria-label="Next photo${label ? ' of ' + escapeHtml(label) : ''}">›</button>
+      <span class="carousel-count" aria-live="polite">1 of ${n}</span>
+    </div>${thumbs}`;
+}
+
+function carouselIndex(track) {
+  return track.clientWidth ? Math.round(track.scrollLeft / track.clientWidth) : 0;
+}
+
+function carouselGo(carousel, index) {
+  const track = carousel.querySelector('.carousel-track');
+  if (!track) return;
+  const n = track.children.length;
+  const i = Math.max(0, Math.min(n - 1, index));
+  track.scrollTo({ left: i * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  carouselSync(carousel, i);
+}
+
+/** Counter, arrow states and thumbnails for the photo now showing. */
+function carouselSync(carousel, index) {
+  const track = carousel.querySelector('.carousel-track');
+  if (!track) return;
+  const n = track.children.length;
+  const i = index === undefined ? carouselIndex(track) : index;
+  const count = carousel.querySelector('.carousel-count');
+  if (count && count.textContent !== `${i + 1} of ${n}`) count.textContent = `${i + 1} of ${n}`;
+  const prev = carousel.querySelector('.carousel-prev');
+  const next = carousel.querySelector('.carousel-next');
+  if (prev) prev.disabled = i <= 0;
+  if (next) next.disabled = i >= n - 1;
+  const thumbs = carousel.nextElementSibling && carousel.nextElementSibling.classList.contains('carousel-thumbs') ? carousel.nextElementSibling : null;
+  if (thumbs) thumbs.querySelectorAll('.carousel-thumb').forEach((t, k) => t.classList.toggle('is-current', k === i));
+}
+
+// One delegated listener for every carousel and swatch on the page. Arrow,
+// swatch and thumbnail taps never reach the card's link underneath.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.carousel-btn, .carousel-thumb, .card-swatch');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (btn.classList.contains('carousel-thumb')) {
+    const carousel = btn.parentElement.previousElementSibling;
+    if (carousel) carouselGo(carousel, Number(btn.dataset.go) || 0);
+    return;
+  }
+  if (btn.classList.contains('carousel-btn')) {
+    const carousel = btn.closest('[data-carousel]');
+    const track = carousel.querySelector('.carousel-track');
+    carouselGo(carousel, carouselIndex(track) + (btn.classList.contains('carousel-next') ? 1 : -1));
+    return;
+  }
+  // Colour swatch on a card: show that colour's photo and what is in stock.
+  const card = btn.closest('.product-card');
+  const carousel = card && card.querySelector('[data-carousel]');
+  card.querySelectorAll('.card-swatch').forEach((s) => s.setAttribute('aria-pressed', String(s === btn)));
+  if (carousel) {
+    const slides = Array.from(carousel.querySelectorAll('.carousel-slide'));
+    const at = slides.findIndex((im) => im.dataset.colour === btn.dataset.colour);
+    if (at !== -1) carouselGo(carousel, at);
+  }
+  const note = card.querySelector('.card-swatch-note');
+  if (note) note.textContent = btn.dataset.note || '';
+}, true);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const carousel = e.target.closest && e.target.closest('[data-carousel]');
+  if (!carousel) return;
+  e.preventDefault();
+  carouselGo(carousel, carouselIndex(carousel.querySelector('.carousel-track')) + (e.key === 'ArrowRight' ? 1 : -1));
+});
+
+// A photo that fails to load shows a plain panel, not a broken-image icon.
+document.addEventListener('error', (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains('carousel-slide')) e.target.classList.add('is-broken');
+}, true);
+
+// A swipe moves the track by itself (scroll snapping); keep the counter in step.
+let carouselSyncQueued = null;
+document.addEventListener('scroll', (e) => {
+  const track = e.target && e.target.classList && e.target.classList.contains('carousel-track') ? e.target : null;
+  if (!track || carouselSyncQueued === track) return;
+  carouselSyncQueued = track;
+  requestAnimationFrame(() => { carouselSyncQueued = null; carouselSync(track.parentElement); });
+}, true);
+
+/** Swatches for the colour option of a card, with what is in stock in each. */
+function cardSwatchesHtml(product) {
+  const colour = colourOptionOf(product);
+  if (!colour) return '';
+  const states = colourStates(product, colour);
+  const items = colour.values.filter((v) => states[v.id]).map((v) => {
+    const soldOut = states[v.id] === 'soldout';
+    const within = soldOut ? '' : inStockWithin(product, colour, v.id);
+    const note = soldOut ? `${v.label}: sold out` : `${v.label}: in stock${within ? ' in ' + within : ''}`;
+    return `<button type="button" class="card-swatch${soldOut ? ' is-soldout' : ''}${v.hex ? '' : ' card-swatch--text'}" data-colour="${escapeHtml(v.id)}" data-note="${escapeHtml(note)}" aria-pressed="false" aria-label="${escapeHtml(note)}"${swatchStyle(v)}>${v.hex ? '' : escapeHtml(v.label.charAt(0))}</button>`;
+  });
+  if (!items.length) return '';
+  return `<div class="card-swatches" role="group" aria-label="${escapeHtml(colour.name)}">${items.join('')}</div><p class="card-swatch-note" aria-live="polite"></p>`;
+}
+
+/** True when every variant on sale is out of stock. */
+function allVariantsSoldOut(product) {
+  const vs = product.variants || [];
+  return vs.length > 0 && vs.every((v) => v.stockQty != null && v.stockQty <= 0);
+}
+
 function renderBrowseProductCard(product, opts) {
   opts = opts || {};
   const cardClass = opts.cardClass || '';
   BROWSE_CARD_PRODUCTS.set(browseCardKey(product), product);
 
-  const media = product.imageUrl
+  const gallery = cardGalleryImages(product);
+  const media = gallery.length > 1
+    ? carouselHtml(gallery, { width: IMG_W.card, sizes: IMG_SIZES_CARD, label: product.name, cls: 'carousel--card' })
+    : product.imageUrl
     ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="" loading="lazy" decoding="async">`
+    : gallery.length === 1
+    ? `<img class="product-image" src="${escapeHtml(optimizedImageUrl(gallery[0].url, IMG_W.card))}"${srcsetAttr(gallery[0].url, IMG_SIZES_CARD)} alt="" loading="lazy" decoding="async">`
     : `<div class="placeholder-swatch category-${escapeHtml(categoryIdOf(product.category))}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`;
 
   const href = `product.html?store=${encodeURIComponent(product.storeSlug)}&product=${encodeURIComponent(product.productId)}`;
@@ -663,6 +906,8 @@ function renderBrowseProductCard(product, opts) {
           <strong class="product-price product-price--card">${String(priceText).replace('-', '-<wbr>')}</strong>
           ${cartBtn}
         </div>
+        ${allVariantsSoldOut(product) ? '<span class="card-soldout">Sold out</span>' : ''}
+        ${opts.compact ? '' : cardSwatchesHtml(product)}
         ${renderStars(product.rating, product.reviewCount)}
         ${opts.compact ? '' : `<div class="product-card-meta">
           <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}${cardIsVerified(product) ? '' : featuredBadgeHtml(product)}
@@ -681,7 +926,7 @@ function renderLogoCarouselItem(store) {
   return `
     <a class="logo-carousel-item" href="store.html?store=${encodeURIComponent(store.storeSlug)}">
       ${logo}
-      <span class="logo-carousel-name">${escapeHtml(store.storeName)}</span>
+      <span class="logo-carousel-name">${escapeHtml(shortStoreName(store.storeName))}</span>
     </a>
   `;
 }

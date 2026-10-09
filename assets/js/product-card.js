@@ -113,6 +113,40 @@ function renderProductCard(product, opts) {
     `;
   }
 
+  // Single products and products with options (Oct 2026): a manual photo
+  // gallery, and for options the picker (product-options-ui.js). Nothing is
+  // pre-selected - the hidden variety value stays empty until the shopper has
+  // chosen a combination that can be bought.
+  if ((product.productType === 'options' || product.productType === 'single') && typeof OptionsUI !== 'undefined') {
+    const isOptions = product.productType === 'options';
+    const only = !isOptions ? product.variants[0] : null;
+    const soldOut = only && only.stockQty != null && only.stockQty <= 0;
+    const singleStatus = only
+      ? `<p class="option-status" aria-live="polite">${soldOut ? '<span class="option-stock option-stock--out">Sold out</span>'
+        : only.stockQty != null && only.stockQty <= 5 ? `<span class="option-stock option-stock--low">Only ${only.stockQty} left</span>` : 'In stock'}${only.sku ? ` · <span class="option-sku">SKU ${escapeHtml(only.sku)}</span>` : ''}</p>`
+      : '';
+    return `
+    <article class="product-card product-card--options" data-product-id="${pid}">
+      <div class="pdp-gallery">${OptionsUI.galleryHtml(product, OptionsUI.galleryFor(product, {}))}</div>
+      <div class="product-card-body">
+        ${featuredBadgeHtml(product)}
+        <h3 class="product-name">${nameHtml}</h3>
+        <strong class="product-price">${priceText}</strong>
+        ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
+        ${isOptions ? OptionsUI.pickerHtml(product) : singleStatus}
+        <input type="hidden" id="variety-${pid}" class="variety-select" value="${only && !soldOut ? escapeHtml(only.variantId) : ''}">
+        <div class="product-actions">
+          <label class="sr-only" for="qty-${pid}">Quantity</label>
+          <input id="qty-${pid}" class="qty-input" type="number" min="1" value="1" inputmode="numeric"${only && only.stockQty != null && only.stockQty > 0 ? ` max="${only.stockQty}"` : ''}>
+          <button type="button" class="btn btn-primary add-to-cart-btn" data-product-id="${pid}" data-product-name="${escapeHtml(product.name)}"${isOptions || soldOut ? ' disabled' : ''} aria-describedby="${isOptions ? 'option-status-' + pid : ''}">
+            Add to Cart
+          </button>
+        </div>
+      </div>
+    </article>
+  `;
+  }
+
   return `
     <article class="product-card" data-product-id="${pid}">
       ${media}

@@ -54,7 +54,7 @@ function productRow(p) {
     + recentThumb(p.imageUrl)
     + '<span class="recent-text">'
     + '<span class="recent-name">' + escapeHtml(p.name || 'Product') + '</span>'
-    + '<span class="recent-meta">' + escapeHtml([kind, p.storeName, place].filter(Boolean).join(' · ')) + '</span>'
+    + '<span class="recent-meta">' + escapeHtml([kind, shortStoreName(p.storeName), place].filter(Boolean).join(' · ')) + '</span>'
     + '<span class="recent-when">' + escapeHtml(viewedAgo(p.at)) + '</span>'
     + '</span></a></li>';
 }

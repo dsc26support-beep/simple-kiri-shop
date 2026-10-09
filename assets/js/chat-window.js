@@ -142,7 +142,7 @@ function initChatWindow() {
       store = { storeName: res.store.storeName, logoUrl: res.store.logoUrl };
     }
 
-    vendorStoreName = store.storeName || 'This Store';
+    vendorStoreName = shortStoreName(store.storeName) || 'This Store';
     const nameEl = document.getElementById('chat-window-vendor-name');
     if (nameEl) nameEl.textContent = vendorStoreName;
 

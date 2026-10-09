@@ -9,6 +9,10 @@ document.addEventListener('DOMContentLoaded', init);
 window.GOOGLE_SIGNIN_DEFER = true;
 
 let currentSlug = null;
+let orderRequestId = '';
+function newOrderRequestId() {
+  return (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^A-Za-z0-9_-]/g, '');
+}
 let storeInfo = null;
 
 const CHECKOUT_PROFILE_KEY = 'skiri_checkout_profile';
@@ -53,7 +57,7 @@ async function init() {
   storeInfo = res.store;
   // publicOwnerFields exposes isOpen; share it with the chat window.
   window.__storeOpen = storeInfo.isOpen !== false;
-  document.getElementById('store-name-tagline').textContent = `Checkout — ${storeInfo.storeName}`;
+  document.getElementById('store-name-tagline').textContent = `Checkout — ${shortStoreName(storeInfo.storeName)}`;
 
   if (storeInfo.logoUrl) {
     const logoImg = document.getElementById('store-logo-img');
@@ -523,6 +527,9 @@ async function onSubmit(e) {
 
   const cart = Cart.getCart(currentSlug);
   const payload = {
+    // Same id for a retry of this order (no answer came back), so the server
+    // never places it twice; a new one once it has answered.
+    requestId: orderRequestId || (orderRequestId = newOrderRequestId()),
     storeSlug: currentSlug,
     customerName,
     customerPhone,
@@ -541,6 +548,7 @@ async function onSubmit(e) {
   const hideOverlay = showLoadingOverlay();
 
   const res = await Api.post('createOrder', payload);
+  if (res.ok || !/^Network error/.test(res.error || '')) orderRequestId = '';
 
   hideOverlay();
   submitBtn.disabled = false;

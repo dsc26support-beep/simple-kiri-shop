@@ -46,6 +46,54 @@
           <div id="admin-analytics" class="admin-analytics hidden" aria-live="polite"></div>
         </section>
 
+        <!-- Listing checks review queue + category register (admin-listing-review.js,
+             backend ListingReview.gs). Numbers are counted from the queue rows. -->
+        <section class="dash-section" aria-labelledby="lr-heading" id="listing-review">
+          <h2 id="lr-heading">Listing review</h2>
+          <p class="helper-text">Listings the checks stopped or warned about, and requests for new categories. A held listing is hidden from shoppers until you decide. Approve only publishes a listing that passes the checks; Override and Dismiss need a reason and are logged.</p>
+          <div class="admin-stats" id="lr-metrics" aria-live="polite"></div>
+          <form id="lr-filter-form" class="lr-filters" novalidate>
+            <div class="field"><label for="lr-status">Status</label>
+              <select id="lr-status">
+                <option value="open">Open</option><option value="resolved">Resolved</option><option value="all">All</option>
+                <option value="PENDING">Pending</option><option value="IN_REVIEW">In review</option>
+                <option value="CORRECTION_REQUIRED">Correction requested</option><option value="AWAITING_SELLER">Awaiting seller</option>
+                <option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option>
+                <option value="DISMISSED">Dismissed</option><option value="CLOSED">Closed</option>
+              </select></div>
+            <div class="field"><label for="lr-severity">Severity</label>
+              <select id="lr-severity"><option value="">Any</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+            <div class="field"><label for="lr-issue">Reason</label>
+              <select id="lr-issue">
+                <option value="">Any</option>
+                <option value="NAME_DESCRIPTION_MISMATCH">Name vs description</option>
+                <option value="CATEGORY_NAME_MISMATCH">Name vs category</option>
+                <option value="CATEGORY_DESCRIPTION_MISMATCH">Description vs category</option>
+                <option value="CATEGORY_REQUEST">Category request</option>
+                <option value="CATEGORY_REQUEST_DUPLICATE">Category request (duplicate)</option>
+              </select></div>
+            <div class="field"><label for="lr-category">Category</label><select id="lr-category"><option value="">Any category</option></select></div>
+            <div class="field"><label for="lr-seller">Seller</label><select id="lr-seller"><option value="">Any seller</option></select></div>
+            <div class="field"><label for="lr-from">Submitted from</label><input type="date" id="lr-from"></div>
+            <div class="field"><label for="lr-to">to</label><input type="date" id="lr-to"></div>
+            <div class="field"><label for="lr-period">Resolved count over</label>
+              <select id="lr-period"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></div>
+            <div class="field"><label for="lr-q">Product name or id</label><input type="search" id="lr-q" autocomplete="off"></div>
+            <div class="field"><button type="submit" class="btn btn-small">Search</button></div>
+          </form>
+          <p id="lr-list-status" class="helper-text" role="status" aria-live="polite"></p>
+          <div id="lr-list"></div>
+          <p class="lr-pager"><button type="button" class="btn btn-small" id="lr-prev" disabled>Previous</button><button type="button" class="btn btn-small" id="lr-next" disabled>Next</button></p>
+          <details id="lr-cats-panel">
+            <summary>Categories</summary>
+            <p class="helper-text">Switch a category off rather than deleting it: listings already in it stay where they are, new listings cannot choose it. Keywords are what the checks look for (comma separated; start one with ~ to make it a weak word).</p>
+            <p id="lr-cats-status" class="helper-text" role="status"></p>
+            <div class="admin-table-wrap"><table class="admin-table lr-cats" id="lr-cats">
+              <thead><tr><th scope="col">Category</th><th scope="col">On</th><th scope="col">Listings</th><th scope="col">Keywords</th><th scope="col">Actions</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+          </details>
+        </section>
         <section class="dash-section">
           <h2>Feature a store</h2>
           <div class="field">
@@ -205,6 +253,8 @@
   <script defer src="../assets/js/cookie-consent.min.js"></script>
   <script defer src="../assets/js/auth.min.js"></script>
   <script defer src="../assets/js/admin-marketing.min.js"></script>
+  <script defer src="../assets/js/listing-rules.min.js"></script>
+  <script defer src="../assets/js/admin-listing-review.min.js"></script>
   <script defer src="../assets/js/admin.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

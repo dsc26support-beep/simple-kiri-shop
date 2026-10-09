@@ -85,7 +85,8 @@ function addCardItem(product, variant, btn) {
   Cart.addItem(slug, {
     variantId: variant.variantId,
     productId: product.productId,
-    label: `${product.name} — ${variant.label}`,   // same as the store page's Add to Cart
+    // Same as the product page's Add to Cart: a single product is just its name.
+    label: product.productType === 'single' ? product.name : `${product.name} — ${variant.label}`,
     unitPrice: variant.price,
     qty
   });
@@ -139,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ignore our own changes - the price's font size and the badges that
     // fitCardBadges moves, hides and counts - or this would loop every frame.
     const own = (t) => t.nodeType === 1 && (t.classList.contains('product-price')
-      || !!t.closest('.product-card-meta, .product-card-verified'));
+      || !!t.closest('.product-card-meta, .product-card-verified, [data-carousel], .card-swatches, .card-swatch-note'));
     if (records.every((r) => own(r.target))) return;
     queueCardPriceFit();
   }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });

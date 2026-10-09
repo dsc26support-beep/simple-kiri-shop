@@ -254,7 +254,7 @@ function orderRow(o) {
     <div class="dash-item" data-order-id="${id}">
       <div class="dash-item-main">
         <div class="dash-item-head">
-          <strong class="dash-item-title">${escapeHtml(o.storeName || o.storeSlug || 'Store')}</strong>
+          <strong class="dash-item-title">${escapeHtml(shortStoreName(o.storeName) || o.storeSlug || 'Store')}</strong>
           <strong class="dash-item-amount">${formatMoney(o.total)}</strong>
         </div>
         ${meta ? `<p class="dash-item-meta">${meta}</p>` : ''}
@@ -359,7 +359,7 @@ function renderBookings() {
 function bookingRow(b) {
   const id = escapeHtml(b.bookingId);
   const dates = [b.startDate, b.endDate].filter(Boolean).map(dashDate).filter(Boolean).join(' \u2192 ');
-  const meta = [escapeHtml(b.storeName || b.storeSlug || ''), escapeHtml(dates)]
+  const meta = [escapeHtml(shortStoreName(b.storeName) || b.storeSlug || ''), escapeHtml(dates)]
     .filter(Boolean).join(' · ');
   return `
     <div class="dash-item" data-booking-id="${id}">

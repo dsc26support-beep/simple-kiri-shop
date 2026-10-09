@@ -206,9 +206,23 @@ function actionCreateOrder(body) {
   var notesErr = capLength(body.notes, 2000, 'Notes');
   if (notesErr) return notesErr;
 
+  // Retry safety: the checkout sends one requestId per Place Order. A retry
+  // of the same request (a dropped connection, a double tap) gets the first
+  // answer back - never a second order, never stock reserved twice. Checked
+  // inside the lock, so two copies arriving together cannot both get past it.
+  var orderRequestId = cleanRequestId(body.requestId);
+  var orderCacheKey = orderRequestId ? 'idem:order:' + slug + ':' + orderRequestId : '';
+  var orderCache = CacheService.getScriptCache();
+
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
+    if (orderCacheKey) {
+      var seen = orderCache.get(orderCacheKey);
+      if (seen) {
+        try { var prior = JSON.parse(seen); prior.replayed = true; return prior; } catch (e) { /* fall through */ }
+      }
+    }
     var variantsSheet = getSheet('Variants');
     ensureInventoryColumns(variantsSheet);
     var liveVariants = sheetToObjects(variantsSheet).filter(function (v) {
@@ -227,9 +241,20 @@ function actionCreateOrder(body) {
       var variant = liveVariants.filter(function (v) { return v.VariantId === requestedItems[i].variantId; })[0];
       if (!variant) return fail('One of the items in your cart is no longer available. Please refresh your cart.');
 
-      var qty = Math.max(1, parseInt(requestedItems[i].qty, 10) || 1);
+      var rawQty = requestedItems[i].qty === undefined || requestedItems[i].qty === null || requestedItems[i].qty === '' ? 1 : Number(requestedItems[i].qty);
+      if (!isFinite(rawQty) || rawQty < 1 || Math.floor(rawQty) !== rawQty || rawQty > 10000) {
+        return fail('Please enter a whole-number quantity for every item in your cart.');
+      }
+      var qty = rawQty;
       var product = products.filter(function (p) { return p.ProductId === variant.ProductId; })[0];
+      // A listing that is hidden, held for review or archived can't be bought,
+      // even with a variant id copied from an old cart.
+      if (!product || product.Status !== 'active') return fail('One of the items in your cart is no longer available. Please refresh your cart.');
       var productName = product ? product.Name : 'Item';
+      // What the customer chose, frozen into the order: later renames, price
+      // changes or switched-off options never rewrite it.
+      var chosen = orderOptionSnapshot(product, variant);
+      var lineName = productTypeOfRow(product) === 'single' ? productName : productName + ' - ' + variant.Label;
 
       // Checked and reserved inside this same lock, so two customers racing
       // the same variant can never both succeed past the last unit - the
@@ -249,19 +274,24 @@ function actionCreateOrder(body) {
         stockDecrements.push({ variant: variant, qty: qty, label: productName + ' - ' + variant.Label });
       }
 
-      var unitPrice = Number(variant.Price);
-      var lineTotal = unitPrice * qty;
-      subtotal += lineTotal;
+      // From the sheet, never from the browser; rounded to the cent.
+      var unitPrice = roundMoney(variant.Price);
+      if (!(unitPrice > 0)) return fail('One of the items in your cart is no longer available. Please refresh your cart.');
+      var lineTotal = roundMoney(unitPrice * qty);
+      subtotal = roundMoney(subtotal + lineTotal);
 
-      lineItems.push({
+      var line = {
         productId: variant.ProductId,
         variantId: variant.VariantId,
-        label: productName + ' - ' + variant.Label,
+        label: lineName,
         qty: qty,
         unitPrice: unitPrice,
         lineTotal: lineTotal
-      });
-      summaryParts.push(qty + '× ' + productName + ' ' + variant.Label);
+      };
+      if (variant.SKU) line.sku = String(variant.SKU);
+      if (chosen) line.options = chosen;
+      lineItems.push(line);
+      summaryParts.push(qty + '× ' + lineName);
     }
 
     var eligibleMethods = computeEligibleDeliveryMethods(owner, island, village, subtotal);
@@ -277,7 +307,7 @@ function actionCreateOrder(body) {
     var rawDeliveryCost = deliveryMethod === 'pickPay' ? 0 : owner[DELIVERY_COST_FIELD[deliveryMethod]];
     var shippingNegotiated = deliveryMethod !== 'pickPay' && (rawDeliveryCost === '' || rawDeliveryCost == null);
     var deliveryCost = shippingNegotiated ? 0 : Number(rawDeliveryCost) || 0;
-    var total = subtotal + deliveryCost;
+    var total = roundMoney(subtotal + deliveryCost);
 
     var orderId = generateOrderRef(slug);
     appendRowFromObject(getSheet('Orders'), {
@@ -321,6 +351,13 @@ function actionCreateOrder(body) {
       recordStockMovements(plan.movements || []);
       invalidateCache([storeProductsCacheKey(slug)]);
     }
+    var orderResponse = {
+      ok: true, orderId: orderId, total: total, deliveryMethod: deliveryMethod, deliveryCost: deliveryCost,
+      paymentMethod: paymentMethod, store: publicStoreFields(owner), items: lineItems, emailedSeller: false
+    };
+    // Recorded before the lock is released, so a retry that arrives while the
+    // seller email is still sending already finds this order.
+    if (orderCacheKey) { try { orderCache.put(orderCacheKey, JSON.stringify(orderResponse), 3600); } catch (e) { /* best effort */ } }
   } finally {
     lock.releaseLock();
   }
@@ -339,16 +376,22 @@ function actionCreateOrder(body) {
     );
   }
 
-  return ok({
-    orderId: orderId,
-    total: total,
-    deliveryMethod: deliveryMethod,
-    deliveryCost: deliveryCost,
-    paymentMethod: paymentMethod,
-    store: publicStoreFields(owner),
-    items: lineItems,
-    emailedSeller: emailedSeller
+  orderResponse.emailedSeller = emailedSeller;
+  if (orderCacheKey) { try { orderCache.put(orderCacheKey, JSON.stringify(orderResponse), 3600); } catch (e) { /* best effort */ } }
+  return orderResponse;
+}
+
+/** {"Colour": "Red", "Size": "M"} for a variant of a product with options, else null. */
+function orderOptionSnapshot(product, variant) {
+  if (!product || productTypeOfRow(product) !== 'options') return null;
+  var options = productOptionsOf(product);
+  var values = variantValuesOf(variant);
+  var out = {};
+  options.forEach(function (o) {
+    var v = (o.values || []).filter(function (x) { return x.id === values[o.id]; })[0];
+    if (v) out[o.name] = v.label;
   });
+  return Object.keys(out).length ? out : null;
 }
 
 /**

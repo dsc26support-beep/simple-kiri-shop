@@ -45,6 +45,10 @@ Raw links for every backend file (open, Ctrl+A, Ctrl+C):
 | `InventoryLocations.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/InventoryLocations.gs — **new file**: **+ → Script**, name it `InventoryLocations`, paste. Locations, transfers, suppliers and stock reports for wholesalers and distributors. Creates `Locations`, `LocationStock`, `StockTransfers` and `Suppliers` tabs on first use (owner-approved). |
 | `Marketing.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/Marketing.gs — **new file**: **+ → Script**, name it `Marketing`, paste. Marketing settings, consent, email template and admin actions. |
 | `MarketingEngine.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/MarketingEngine.gs — **new file**: **+ → Script**, name it `MarketingEngine`, paste. Then run **`setupSheets`** once (creates `Campaigns`, `CampaignEvents`, `MarketingPreferences` — owner-approved, new tabs only) and add an **hourly trigger for `runMarketingSweep`**. Off until `MARKETING_ENABLED = true`; dry run until `MARKETING_DRY_RUN = false`. Full steps: [docs/marketing-engine.md](docs/marketing-engine.md#enabling-it). |
+| `ListingRules.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/ListingRules.gs — **new file**: **+ → Script**, name it `ListingRules`, paste. The listing checks (name / description / category). **Every product save needs it** - `checkSetup` reports it if missing. |
+| `ListingReview.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/ListingReview.gs — **new file**: **+ → Script**, name it `ListingReview`, paste. Category register, review queue, audit log. Creates `Categories`, `Product_Review_Queue`, `Audit_Log` tabs and 4 `Products` columns on first use (additive). Details: [docs/listing-review.md](docs/listing-review.md). |
+| `ProductOptions.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/ProductOptions.gs — **new file**: **+ → Script**, name it `ProductOptions`, paste. Option / combination rules. **Every product save needs it.** |
+| `ProductVariants.gs` | https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/ProductVariants.gs — **new file**: **+ → Script**, name it `ProductVariants`, paste. Saving products with options, photos per option. Adds `ProductType`, `OptionsJson` (Products) and `OptionValuesJson`, `ImagesJson`, `CreatedAt`, `UpdatedAt` (Variants) on first use (additive). Details: [docs/product-options.md](docs/product-options.md). |
 
 Browse them all: https://github.com/dsc26support-beep/simple-kiri-shop/tree/main/apps-script
 
@@ -213,3 +217,20 @@ What the automatic check refuses or holds, and why, is described at the top of
 | `FEATURE_BANK_REMINDER_EMAILS` | the `ADMIN_EMAILS` list | Who gets the reminder emails 2 days and 1 day before, and the "stopped" notice (comma-separated). Set by the owner in Script Properties. |
 
 Runs inside the existing hourly reminders trigger - no new trigger to set up.
+
+## Listing checks - Script Properties (optional)
+
+| Property | Default | What it does |
+|---|---|---|
+| `LISTING_REVIEW_NOTIFY` | off | `true` = email `ADMIN_EMAILS` about every new listing-review case. |
+
+Everything else about the listing checks is in [docs/listing-review.md](docs/listing-review.md).
+
+## Product options - Script Properties (optional)
+
+| Property | Default | What it does |
+|---|---|---|
+| `PRODUCT_OPTION_TYPES_MAX` | 3 | Option types per product (1-5). |
+| `PRODUCT_OPTION_VALUES_MAX` | 20 | Values per option (1-50). |
+| `PRODUCT_VARIANTS_MAX` | 100 | Combinations per product (1-250). |
+| `VARIANT_IMAGES_MAX` | 4 | Photos per combination (0-10; 0 = off). |

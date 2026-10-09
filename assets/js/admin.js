@@ -22,6 +22,7 @@ async function init() {
   initAdminSearch();
   loadInventoryOverview();
   if (typeof initMarketingAdmin === 'function') initMarketingAdmin();   // admin-marketing.js
+  if (typeof ListingReviewAdmin !== 'undefined') ListingReviewAdmin.init();   // admin-listing-review.js
 }
 
 async function loadStores() {

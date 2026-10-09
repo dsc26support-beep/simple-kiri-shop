@@ -59,7 +59,7 @@ async function init() {
   storeContact = { phone: res.storePhone || '', whatsapp: res.storeWhatsapp || '',
                    messenger: res.storeMessenger || '' };
 
-  document.getElementById('store-name-tagline').textContent = res.storeName || 'Store';
+  document.getElementById('store-name-tagline').textContent = shortStoreName(res.storeName) || 'Store';
   if (res.storeLogoUrl) {
     const img = document.getElementById('store-logo-img');
     img.src = optimizedImageUrl(res.storeLogoUrl, IMG_W.logo);
@@ -97,6 +97,7 @@ async function init() {
   recordMarketingClickFromUrl();
   wireActions();
   wireGallery();
+  wireOptions();
   if (!window.__storeOpen) {
     // Closed is informational only - same as chat, an order placed now just
     // waits for the owner to come back and process it (see actionCreateOrder
@@ -239,6 +240,25 @@ function wireActions() {
 }
 
 // Thumbnail gallery sync (mirrors store.js) - clicking a thumb scrolls the track.
+/** Products with options: the picker decides which variant (if any) Add to Cart buys. */
+function wireOptions() {
+  if (!product || product.productType !== 'options' || typeof OptionsUI === 'undefined') return;
+  const root = document.querySelector('#product-detail .product-card');
+  const hidden = document.getElementById(`variety-${product.productId}`);
+  const addBtn = root.querySelector('.add-to-cart-btn');
+  const qty = document.getElementById(`qty-${product.productId}`);
+  OptionsUI.wire(product, root, (variant) => {
+    hidden.value = variant ? variant.variantId : '';
+    addBtn.disabled = !variant;
+    if (variant && variant.stockQty != null) {
+      qty.max = String(variant.stockQty);
+      if (Number(qty.value) > variant.stockQty) qty.value = String(variant.stockQty);
+    } else {
+      qty.removeAttribute('max');
+    }
+  });
+}
+
 function wireGallery() {
   document.querySelectorAll('#product-detail .product-gallery-thumb').forEach((thumb) => {
     thumb.addEventListener('click', () => {
@@ -255,7 +275,7 @@ function onAddToCart(btn) {
   const select = document.getElementById(`variety-${product.productId}`);
   const qtyInput = document.getElementById(`qty-${product.productId}`);
   const variant = product.variants.find((v) => v.variantId === select.value);
-  if (!variant) return;
+  if (!variant) return;   // options not all chosen, or not buyable - the button is disabled then
   const requestedQty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
 
   const qty = clampToAvailableStock(slug, variant, requestedQty, product.name);
@@ -265,7 +285,8 @@ function onAddToCart(btn) {
   Cart.addItem(slug, {
     variantId: variant.variantId,
     productId: product.productId,
-    label: `${product.name} — ${variant.label}`,
+    // A single product has nothing to choose, so its line is just its name.
+    label: product.productType === 'single' ? product.name : `${product.name} — ${variant.label}`,
     unitPrice: variant.price,
     qty
   });

@@ -4,8 +4,8 @@
   "private": true,
   "description": "Mwakete - a multi-vendor marketplace for Kiribati. Static site; this package.json exists only for the asset build.",
   "scripts": {
-    "build": "node tools/build-help.js && node tools/build-assets.js",
-    "build:check": "node tools/build-help.js --check && node tools/build-assets.js --check"
+    "build": "node tools/build-help.js && node tools/build-shared.js && node tools/build-assets.js",
+    "build:check": "node tools/build-help.js --check && node tools/build-shared.js --check && node tools/build-assets.js --check"
   },
   "devDependencies": {
     "clean-css": "^5.3.3",

@@ -69,7 +69,13 @@ var PROTECTED_POST_ACTIONS = [
   'adminInventoryOverview',
   // Marketing engine - every one checks isOwnerAdmin inside (Marketing.gs).
   'getMarketingOverview', 'createMarketingCampaign', 'setMarketingCampaignStatus', 'setMarketingPaused',
-  'previewMarketingCampaign', 'getMarketingStats', 'runMarketingGeneration'
+  'previewMarketingCampaign', 'getMarketingStats', 'runMarketingGeneration',
+  // Listing checks + review queue (ListingReview.gs). requestCategory and
+  // listMyReviewCases are the seller's own; the rest check isOwnerAdmin inside.
+  'requestCategory', 'listMyReviewCases',
+  'listReviewCases', 'getReviewCase', 'reviewCaseAction', 'adminListCategories', 'adminSaveCategory', 'listAuditLog',
+  // Per-variant photo galleries (ProductVariants.gs) - owner of the product only.
+  'uploadVariantImage', 'setVariantImages'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -89,7 +95,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'bankmatch1-2026-10-09';
+var APP_VERSION = 'variants1-2026-10-09';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -228,6 +234,11 @@ function actionCheckSetup() {
   if (typeof actionRegisterCustomer !== 'function') missingFiles.push('Customers.gs');
   if (typeof actionGetTips !== 'function') missingFiles.push('Admin.gs');
   if (typeof actionSubmitReview !== 'function') missingFiles.push('Reviews.gs');
+  // Every product save runs these two - a missing one stops ALL product saves.
+  if (typeof validateListing !== 'function') missingFiles.push('ListingRules.gs');
+  if (typeof listingSaveGate !== 'function') missingFiles.push('ListingReview.gs');
+  if (typeof validateProductOptions !== 'function') missingFiles.push('ProductOptions.gs');
+  if (typeof prepareVariantSave !== 'function') missingFiles.push('ProductVariants.gs');
   if (typeof sellerBadgeIndex !== 'function') missingFiles.push('Badges.gs');
   if (typeof actionRequestMeeting !== 'function') missingFiles.push('Meetings.gs');
   if (missingFiles.length) {
@@ -378,6 +389,7 @@ function doGet(e) {
       case 'getHomePageData': return jsonOut(markPaidFeatured(actionGetHomePageData()));
       case 'getTips': return jsonOut(markPaidFeatured(actionGetTips(params)));
       case 'listProductReviews': return jsonOut(actionListProductReviews(params));
+      case 'listCategories': return jsonOut(actionListCategories());
       // Deploy health probe: no auth, no Sheets access, so it answers even on a
       // half-configured project - it can only report the running build or, if
       // absent, prove the deployment is stale.
@@ -529,6 +541,16 @@ function doPost(e) {
         case 'runMarketingGeneration': return jsonOut(actionRunMarketingGeneration(owner));
         case 'setBadgeConfig': return jsonOut(actionSetBadgeConfig(owner, body));
         case 'recomputeBadges': return jsonOut(actionRecomputeBadges(owner));
+        case 'requestCategory': return jsonOut(actionRequestCategory(owner, body));
+        case 'listMyReviewCases': return jsonOut(actionListMyReviewCases(owner));
+        case 'listReviewCases': return jsonOut(actionListReviewCases(owner, body));
+        case 'getReviewCase': return jsonOut(actionGetReviewCase(owner, body));
+        case 'reviewCaseAction': return jsonOut(actionReviewCaseAction(owner, body));
+        case 'adminListCategories': return jsonOut(actionAdminListCategories(owner));
+        case 'adminSaveCategory': return jsonOut(actionAdminSaveCategory(owner, body));
+        case 'listAuditLog': return jsonOut(actionListAuditLog(owner, body));
+        case 'uploadVariantImage': return jsonOut(actionUploadVariantImage(owner, body));
+        case 'setVariantImages': return jsonOut(actionSetVariantImages(owner, body));
       }
     }
 

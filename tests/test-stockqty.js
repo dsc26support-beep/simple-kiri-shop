@@ -41,7 +41,8 @@ ok('negative -> "" (untracked, not a negative shelf)', stockQtyOf(-3) === '');
 ok('fractional -> floored', stockQtyOf(4.9) === 4);
 ok("garbage -> '' (untracked, not a silent 0 that blocks every order)", stockQtyOf('abc') === '');
 
-const { publicVariantFields } = load(['publicVariantFields', 'isStockTracked', 'physicalOf', 'reservedOf', 'availableOf']);
+const { publicVariantFields } = load(['publicVariantFields', 'isStockTracked', 'physicalOf', 'reservedOf', 'availableOf',
+  'publicVariantExtras', 'variantValuesOf', 'variantImagesOf', 'parseJsonSafe']);   // options + variant photos (Oct 2026)
 const v = (StockQty) => ({ VariantId: 'v1', Label: 'Small', Price: '10', StockQty });
 
 ok("StockQty '' -> stockQty null (unlimited)", publicVariantFields(v('')).stockQty === null);

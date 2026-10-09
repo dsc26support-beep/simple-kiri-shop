@@ -41,7 +41,7 @@ async function init() {
     // an older backend still reads as open.
     window.__storeOpen = res.store.isOpen !== false;
 
-    document.getElementById('store-name-tagline').textContent = `Your cart — ${res.store.storeName}`;
+    document.getElementById('store-name-tagline').textContent = `Your cart — ${shortStoreName(res.store.storeName)}`;
     if (res.store.logoUrl) {
       const logoImg = document.getElementById('store-logo-img');
       logoImg.src = optimizedImageUrl(res.store.logoUrl, IMG_W.logo);

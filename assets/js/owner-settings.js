@@ -29,7 +29,7 @@ async function init() {
   if (!owner) return;
   Auth.showWholesalePendingNotice(owner);
 
-  document.getElementById('store-name-label').textContent = owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
 
   renderDeliveryToggleButtons();
   wireDeliveryToggles();
@@ -180,6 +180,9 @@ async function onConfirmEmailChange() {
 
 function fillForm(owner) {
   document.getElementById('store-name').value = owner.storeName || '';
+  // An older name may be over the limit: shown in full here, and the counter
+  // asks for it to be shortened before the next save.
+  attachStoreNameCounter(document.getElementById('store-name'));
   renderContactEmail(owner);
   document.getElementById('contact-phone').value = owner.phone || '';
   document.getElementById('contact-messenger').value = owner.messenger || '';
@@ -366,6 +369,9 @@ function findFirstInvalidSettingsField(village, villageSelectValue) {
   if (!storeNameEl.value.trim()) {
     return { message: 'Store Name is required.', el: storeNameEl };
   }
+  if (Array.from(storeNameEl.value.trim()).length > STORE_NAME_MAX) {
+    return { message: `Store Name must be ${STORE_NAME_MAX} characters or fewer - please shorten it.`, el: storeNameEl };
+  }
 
   const phoneEl = document.getElementById('contact-phone');
   if (!phoneEl.value.trim()) {
@@ -465,7 +471,7 @@ async function onSaveSettings(e) {
 
   UnsavedGuard.markSaved(document.getElementById('settings-form'));
   Auth.saveSession(Auth.getToken(), res.owner);
-  document.getElementById('store-name-label').textContent = res.owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(res.owner.storeName);
   successEl.textContent = 'Settings saved — heading to your dashboard…';
   // A save can only reach here once every required field passes
   // findFirstInvalidSettingsField above, so the profile is complete -

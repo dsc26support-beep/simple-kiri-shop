@@ -175,7 +175,7 @@ function renderStoreCard(store, opts) {
     : `<div class="store-card-logo-placeholder" aria-hidden="true">${escapeHtml(initials(store.storeName))}</div>`;
 
   const location = storeLocationLabel(store.island, store.village);
-  const displayName = location ? `${store.storeName} | ${location}` : store.storeName;
+  const displayName = location ? `${shortStoreName(store.storeName)} | ${location}` : shortStoreName(store.storeName);
 
   return `
     <a class="store-card${resume ? ' store-card--resume' : ''}" data-store-slug="${escapeHtml(store.storeSlug)}" href="store.html?store=${encodeURIComponent(store.storeSlug)}">

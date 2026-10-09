@@ -41,7 +41,7 @@ async function init() {
 
   document.title = res.storeName + ' — Mwakete';
   const location = storeLocationLabel(res.storeIsland, res.storeVillage);
-  document.getElementById('store-name-tagline').textContent = location ? `${res.storeName} | ${location}` : res.storeName;
+  document.getElementById('store-name-tagline').textContent = location ? `${shortStoreName(res.storeName)} | ${location}` : shortStoreName(res.storeName);
 
   if (res.storeLogoUrl) {
     const logoImg = document.getElementById('store-logo-img');

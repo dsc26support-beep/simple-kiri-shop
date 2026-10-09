@@ -29,6 +29,13 @@ Defined once in `assets/js/helpers.js` (`CATEGORIES`) and mirrored as an id list
 in `apps-script/Products.gs` (`CATEGORY_IDS`). `tests/test-taxonomy.js` fails if
 the two drift.
 
+Since October 2026 each category can also have **subcategories**, keywords and
+required/recommended details in the `Categories` sheet (the category register),
+and listings are checked against them on save - see
+[listing-review.md](listing-review.md). The ids above are unchanged. The
+"Accepts" column is now enforced for new listings (it was guidance before);
+an existing listing keeps its type/category pair.
+
 ## Featured is a view, not a category
 
 It heads the browse rail and shows whatever an admin has hand-picked into the
