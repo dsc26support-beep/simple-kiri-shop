@@ -91,7 +91,7 @@ async function init() {
   // Wholesalers and distributors alike (Admin.gs canListFood).
   ownerIsWholesaler = owner.storeType === 'wholesaler' || owner.storeType === 'distributor';
   document.getElementById('food-wholesale-hint').hidden = ownerIsWholesaler;
-  document.getElementById('store-name-label').textContent = owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
 
   document.getElementById('add-product-btn').addEventListener('click', () => openForm(null));
   document.getElementById('cancel-product-btn').addEventListener('click', closeForm);

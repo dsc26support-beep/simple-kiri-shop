@@ -8,7 +8,7 @@ let ordersHasMore = false;
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
-  document.getElementById('store-name-label').textContent = owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
 
   document.getElementById('order-list').addEventListener('change', onStatusChange);
   document.getElementById('orders-load-more').addEventListener('click', onLoadMore);

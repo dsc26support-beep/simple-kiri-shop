@@ -59,7 +59,7 @@ async function init() {
   storeContact = { phone: res.storePhone || '', whatsapp: res.storeWhatsapp || '',
                    messenger: res.storeMessenger || '' };
 
-  document.getElementById('store-name-tagline').textContent = res.storeName || 'Store';
+  document.getElementById('store-name-tagline').textContent = shortStoreName(res.storeName) || 'Store';
   if (res.storeLogoUrl) {
     const img = document.getElementById('store-logo-img');
     img.src = optimizedImageUrl(res.storeLogoUrl, IMG_W.logo);

@@ -53,7 +53,7 @@ async function init() {
   storeInfo = res.store;
   // publicOwnerFields exposes isOpen; share it with the chat window.
   window.__storeOpen = storeInfo.isOpen !== false;
-  document.getElementById('store-name-tagline').textContent = `Checkout — ${storeInfo.storeName}`;
+  document.getElementById('store-name-tagline').textContent = `Checkout — ${shortStoreName(storeInfo.storeName)}`;
 
   if (storeInfo.logoUrl) {
     const logoImg = document.getElementById('store-logo-img');

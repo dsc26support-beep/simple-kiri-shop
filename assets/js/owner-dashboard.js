@@ -29,7 +29,7 @@ async function init() {
   if (!owner) return;
   Auth.showWholesalePendingNotice(owner);
 
-  document.getElementById('store-name-label').textContent = owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
   document.getElementById('welcome-name').textContent = `, ${owner.storeName}`;
   document.getElementById('storefront-link').href = `../store.html?store=${encodeURIComponent(owner.storeSlug)}`;
 

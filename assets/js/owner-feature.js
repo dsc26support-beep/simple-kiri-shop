@@ -18,7 +18,7 @@ let freeNextOn = '';
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
-  document.getElementById('store-name-label').textContent = owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
 
   const statusEl = document.getElementById('feature-status');
   const stop = startLoadingMessage(statusEl);

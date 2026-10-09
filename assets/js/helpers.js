@@ -9,6 +9,42 @@ function formatMoney(amount) {
  * width of a half-width grid card with no slack, and wrapped onto a second
  * line as soon as the numbers grew past two digits.
  */
+// Store names are capped at 22 characters (owner's call, Oct 2026; enforced by
+// the backend, Utils.gs STORE_NAME_MAX). Older, longer names are shown cut with
+// an ellipsis until the store shortens them.
+const STORE_NAME_MAX = 22;
+
+function shortStoreName(name) {
+  const chars = Array.from(String(name == null ? '' : name).trim());
+  return chars.length > STORE_NAME_MAX ? chars.slice(0, STORE_NAME_MAX).join('').trimEnd() + '…' : chars.join('');
+}
+
+/**
+ * The store-name field on Create Store and Settings: stops at 22 characters
+ * and shows "n/22" under it - red, with a note, if an older name is longer.
+ */
+function attachStoreNameCounter(input) {
+  if (!input || input.dataset.nameCounter) return;
+  input.dataset.nameCounter = '1';
+  input.setAttribute('maxlength', String(STORE_NAME_MAX));
+  input.setAttribute('aria-describedby', (input.getAttribute('aria-describedby') || '') + ' ' + input.id + '-count');
+  const out = document.createElement('p');
+  out.id = input.id + '-count';
+  out.className = 'helper-text store-name-count';
+  out.setAttribute('aria-live', 'polite');
+  input.insertAdjacentElement('afterend', out);
+  const update = () => {
+    const n = Array.from(input.value.trim()).length;
+    out.textContent = n > STORE_NAME_MAX
+      ? `${n}/${STORE_NAME_MAX} - please shorten your store name to ${STORE_NAME_MAX} characters.`
+      : `${n}/${STORE_NAME_MAX}`;
+    out.classList.toggle('is-over', n > STORE_NAME_MAX);
+  };
+  input.addEventListener('input', update);
+  update();
+  return update;
+}
+
 function formatPriceLabel(variants) {
   const prices = (variants || []).map((v) => v.price);
   if (prices.length === 0) return '';
@@ -681,7 +717,7 @@ function renderLogoCarouselItem(store) {
   return `
     <a class="logo-carousel-item" href="store.html?store=${encodeURIComponent(store.storeSlug)}">
       ${logo}
-      <span class="logo-carousel-name">${escapeHtml(store.storeName)}</span>
+      <span class="logo-carousel-name">${escapeHtml(shortStoreName(store.storeName))}</span>
     </a>
   `;
 }

@@ -14,7 +14,7 @@ let bookingsHasMore = false;
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
-  document.getElementById('store-name-label').textContent = owner.storeName;
+  document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
 
   document.getElementById('booking-list').addEventListener('change', onStatusChange);
   document.getElementById('bookings-load-more').addEventListener('click', onLoadMore);

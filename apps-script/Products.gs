@@ -923,7 +923,9 @@ function actionUpdateOwnerProfile(owner, body) {
   var update = {};
 
   if (body.storeName !== undefined) {
-    var storeNameErr = capLength(body.storeName, 100, 'Store name');
+    // Also catches a store whose older name is longer than the limit: the next
+    // Settings save must shorten it (nothing in the sheet is changed until then).
+    var storeNameErr = storeNameTooLong(body.storeName);
     if (storeNameErr) return storeNameErr;
     update.StoreName = body.storeName;
   }

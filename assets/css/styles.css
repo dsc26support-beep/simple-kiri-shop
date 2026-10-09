@@ -7467,3 +7467,15 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 .product-card-verified .seller-badges {
   display: contents;
 }
+
+/* The "n/22" under the store-name field (attachStoreNameCounter). */
+.store-name-count {
+  margin: var(--space-1) 0 0;
+  text-align: right;
+}
+
+.store-name-count.is-over {
+  color: var(--color-danger);
+  font-weight: 600;
+  text-align: left;
+}
