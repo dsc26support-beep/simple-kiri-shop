@@ -1,0 +1,605 @@
+/**
+ * Listing checks: does a listing's name, description, category and details
+ * agree with each other? (Owner request, Oct 2026.)
+ *
+ * ONE SOURCE, TWO PLACES. This file is the rules engine for both sides:
+ * the backend runs it on every product save (ListingReview.gs), and
+ * `npm run build` copies it verbatim to assets/js/listing-rules.js so the
+ * seller's form can show the same answer before they press Save. Never edit
+ * the copy - tests/test-listing-rules.js fails if the two differ.
+ * So: plain functions and `var` only, no Apps Script services, no DOM.
+ *
+ * HOW IT DECIDES (deterministic rules, no AI, no probabilities)
+ *   1. Text is normalised: lower case, apostrophes dropped ("children's" ->
+ *      "childrens"), punctuation to spaces, simple plurals folded ("dresses" ->
+ *      "dress"). Keywords get the same treatment, so they match either way.
+ *   2. Each category in the register has keywords and synonyms. A keyword
+ *      matches whole words only - "can" never matches inside "candle". Longer
+ *      phrases are tried first and use up their words, so "water bottle" (a
+ *      container) is never also read as "water" (a drink).
+ *   3. A mention after a comparison or pairing word in the same clause ("better
+ *      than", "goes well with", "instead of", ...) is set aside: "Bottled
+ *      water - goes well with tuna" is about water.
+ *   4. Each category has a `kind` (beverage, canned-food, clothing, ...).
+ *      The rules compare kinds and categories:
+ *        A  name vs description - they describe different kinds of thing.
+ *        B  name vs category    - the name belongs in another category.
+ *        C  description vs category, when the name says nothing either way.
+ *        D  required / recommended details (volume, size, net weight...).
+ *      Plus the integrity checks: the category must exist, be active, take
+ *      this listing type, and a subcategory must belong to its parent.
+ *
+ * SEVERITY - what each level means, not a confidence score:
+ *   high    blocks publishing. Clear evidence: the name names one kind of
+ *           thing and the description or category another, with at least two
+ *           words of evidence (or the name itself).
+ *   medium  a warning. Only one word of evidence, or only a weak word. The
+ *           seller can save anyway; an admin gets a case to look at.
+ *   low     a tip, e.g. a recommended detail is missing. Never blocks.
+ *
+ * "Score" below is only a count of matched words (a phrase of 2+ words counts
+ * 2, a weak word counts 0.5) used to rank suggestions and pick high vs medium.
+ * It is not a probability.
+ *
+ * Images are not analysed (rule E). Nothing is sent to any outside service.
+ */
+
+/* ---------- Starter register ----------
+ * Written to the Categories sheet once by setupListingReview(); after that the
+ * sheet is the source of truth and admins edit it there or on the admin page.
+ * Top-level ids are the existing CATEGORY_IDS (Products.gs / helpers.js) so no
+ * stored product changes. Subcategory ids are new and optional on a product.
+ *
+ * Fields: id, name, parentId ('' = top level), kind, keywords, synonyms,
+ * types (permitted listing types), required / recommended (detail keys, see
+ * LISTING_ATTRIBUTES), alsoIn (other top-level categories where this kind of
+ * thing may also be listed - e.g. a shell necklace under Handicrafts).
+ * A keyword starting with ~ is weak: on its own it only ever gives a warning.
+ */
+var LISTING_ALL_TYPES = ['product', 'rental', 'service'];
+
+var LISTING_CATEGORY_SEED = [
+  // ---- top level (mirrors CATEGORIES in helpers.js) ----
+  { id: 'food', name: 'Food & Groceries', parentId: '', kind: '', types: ['product', 'service'] },
+  { id: 'fashion', name: 'Fashion & Beauty', parentId: '', kind: '', types: ['product', 'service'] },
+  { id: 'electronics', name: 'Electronics & Phones', parentId: '', kind: 'electronics', types: LISTING_ALL_TYPES,
+    keywords: 'phone, mobile phone, smartphone, iphone, samsung galaxy, charger, phone charger, power bank, earphone, headphone, laptop, tablet, television, tv, speaker, usb cable, sim card, smart watch',
+    alsoIn: 'solar' },
+  { id: 'home', name: 'Home & Living', parentId: '', kind: 'furniture', types: LISTING_ALL_TYPES,
+    keywords: 'furniture, mattress, pillow, bed sheet, curtain, sofa, table, chair' },
+  { id: 'building', name: 'Building & Hardware', parentId: '', kind: 'building', types: LISTING_ALL_TYPES,
+    keywords: 'cement, timber, plywood, roofing iron, nail, screw, paint, hammer, drill, padlock, pvc pipe',
+    alsoIn: 'home' },
+  { id: 'vehicles', name: 'Vehicles & Transport', parentId: '', kind: 'vehicle', types: LISTING_ALL_TYPES,
+    keywords: 'car, motorbike, motorcycle, scooter, bicycle, tyre, car battery, truck, van, engine oil' },
+  { id: 'fishing', name: 'Fishing & Marine', parentId: '', kind: 'fishing-gear', types: LISTING_ALL_TYPES,
+    keywords: 'fishing line, fishing rod, fish hook, lure, fishing net, outboard motor, canoe, boat, life jacket, anchor' },
+  { id: 'agriculture', name: 'Agriculture & Local Products', parentId: '', kind: 'produce', types: ['product', 'service'],
+    keywords: 'seedling, fertiliser, fertilizer, breadfruit, pandanus fruit, babai, pumpkin, cabbage, banana, papaya, fresh fish, reef fish, copra',
+    alsoIn: 'food, fishing' },
+  { id: 'handicrafts', name: 'Handicrafts & Souvenirs', parentId: '', kind: 'handicraft', types: ['product'],
+    keywords: 'handicraft, souvenir, woven mat, pandanus mat, woven fan, carving, model canoe, woven basket',
+    alsoIn: 'home, fashion' },
+  { id: 'property', name: 'Property & Accommodation', parentId: '', kind: 'property', types: ['rental', 'service'],
+    keywords: 'house for rent, room for rent, land lease, accommodation, guest house, apartment' },
+  { id: 'services', name: 'Services', parentId: '', kind: '', types: ['service'] },
+  { id: 'education', name: 'Education & Jobs', parentId: '', kind: '', types: ['service'] },
+  { id: 'events', name: 'Events & Travel', parentId: '', kind: '', types: LISTING_ALL_TYPES },
+  { id: 'solar', name: 'Everything Solar', parentId: '', kind: 'solar', types: LISTING_ALL_TYPES,
+    keywords: 'solar panel, solar light, solar lamp, inverter, charge controller, deep cycle battery, solar kit',
+    alsoIn: 'electronics, home, building' },
+  { id: 'hire', name: 'Hire', parentId: '', kind: '', types: ['rental', 'service'] },
+  { id: 'rental', name: 'Rental', parentId: '', kind: '', types: ['rental'] },
+  { id: 'other', name: 'Other', parentId: '', kind: '', types: LISTING_ALL_TYPES },
+
+  // ---- Food & Groceries ----
+  { id: 'food-bottled-water', name: 'Bottled Water', parentId: 'food', kind: 'beverage',
+    keywords: 'water, bottled water, bottle of water, bottles of water, drinking water, spring water, mineral water, purified water',
+    recommended: 'volume' },
+  { id: 'food-soft-drinks', name: 'Soft Drinks', parentId: 'food', kind: 'beverage',
+    keywords: 'soft drink, soda, coke, coca cola, pepsi, fanta, sprite, lemonade, energy drink, fizzy drink',
+    recommended: 'volume' },
+  { id: 'food-juice', name: 'Juice', parentId: 'food', kind: 'beverage',
+    keywords: 'juice, orange juice, apple juice, fruit juice, coconut water, cordial',
+    recommended: 'volume' },
+  { id: 'food-canned-fish', name: 'Canned Fish & Tuna', parentId: 'food', kind: 'canned-food',
+    keywords: 'tuna, canned tuna, tinned tuna, canned fish, tinned fish, fish tin, mackerel, sardine, canned salmon',
+    recommended: 'netQuantity', alsoIn: 'fishing, agriculture' },
+  { id: 'food-canned-meat', name: 'Canned Meat', parentId: 'food', kind: 'canned-food',
+    keywords: 'corned beef, canned meat, tinned meat, spam, luncheon meat, canned chicken',
+    recommended: 'netQuantity' },
+  { id: 'food-canned-other', name: 'Other Canned Foods', parentId: 'food', kind: 'canned-food',
+    keywords: 'canned, tinned, in a can, in a tin, canned food, baked beans, canned fruit, canned vegetable, ~can, ~tin',
+    recommended: 'netQuantity' },
+  { id: 'food-rice-grains', name: 'Rice & Grains', parentId: 'food', kind: 'staple',
+    keywords: 'rice, white rice, brown rice, jasmine rice, flour, oats, noodle, pasta, spaghetti',
+    recommended: 'netQuantity', alsoIn: 'agriculture' },
+  { id: 'food-snacks', name: 'Snacks & Biscuits', parentId: 'food', kind: 'snack',
+    keywords: 'biscuit, cracker, chips, crisps, cookie, chocolate, lolly, candy, snack, cake, doughnut',
+    recommended: 'netQuantity' },
+  { id: 'food-cooking', name: 'Cooking Ingredients', parentId: 'food', kind: 'ingredient',
+    keywords: 'cooking oil, vegetable oil, sugar, salt, soy sauce, curry powder, coconut cream, coconut milk, butter, margarine, baking powder, yeast',
+    recommended: 'netQuantity' },
+
+  // ---- Fashion & Beauty ----
+  { id: 'fashion-women', name: "Women's Clothing", parentId: 'fashion', kind: 'clothing',
+    keywords: 'dress, blouse, skirt, womens, ladies, lavalava, sulu, tibuta, puletasi, mumu, maternity dress, top, leggings',
+    recommended: 'size', alsoIn: 'handicrafts' },
+  { id: 'fashion-children', name: "Children's Clothing", parentId: 'fashion', kind: 'clothing',
+    keywords: 'childrens, kids, kid, baby clothes, toddler, school uniform, girls dress, boys shirt, onesie, romper',
+    recommended: 'size' },
+  { id: 'fashion-men', name: "Men's Clothing", parentId: 'fashion', kind: 'clothing',
+    keywords: 'mens, shirt, t shirt, tshirt, shorts, trousers, pants, jeans, polo, singlet, hoodie, jacket',
+    recommended: 'size' },
+  { id: 'fashion-shoes', name: 'Shoes & Sandals', parentId: 'fashion', kind: 'footwear',
+    keywords: 'shoe, sandal, slipper, jandal, flip flop, sneaker, boot, heels, footwear',
+    recommended: 'size' },
+  { id: 'fashion-jewellery', name: 'Jewellery & Accessories', parentId: 'fashion', kind: 'jewellery',
+    keywords: 'jewellery, jewelry, necklace, earring, bracelet, ring, pendant, anklet, hair clip, brooch, sunglasses, handbag, wallet, watch, ~bag',
+    recommended: 'material', alsoIn: 'handicrafts' },
+
+  // ---- Home & Living (household and daily essentials) ----
+  { id: 'home-cleaning', name: 'Cleaning Supplies', parentId: 'home', kind: 'cleaning',
+    keywords: 'soap powder, washing powder, laundry detergent, detergent, bleach, dishwashing liquid, disinfectant, mop, broom, scrubbing brush',
+    recommended: 'netQuantity' },
+  { id: 'home-kitchenware', name: 'Kitchenware', parentId: 'home', kind: 'kitchenware',
+    keywords: 'pot, frying pan, saucepan, plate, bowl, cup, mug, spoon, fork, knife, kettle, water bottle, drink bottle, flask, chopping board, cooler box, ~pan' },
+  { id: 'home-personal-care', name: 'Personal Care', parentId: 'home', kind: 'personal-care',
+    keywords: 'shampoo, conditioner, toothpaste, toothbrush, body lotion, deodorant, sanitary pad, nappy, diaper, razor, perfume, coconut oil soap, bath soap, body wash',
+    alsoIn: 'fashion' },
+  { id: 'home-storage', name: 'Household Storage', parentId: 'home', kind: 'storage',
+    keywords: 'storage box, storage container, plastic container, water tank, bucket, basket, shelf, laundry basket, drum, jerry can' }
+];
+
+/* ---------- Details (rule D) ----------
+ * A detail counts as present if it is in the seller's attributes object, or
+ * can be read from the name, description or an option label ("600ml",
+ * "Size M", "185g", "sterling silver"). No new form fields are needed.
+ * Mandatory vs recommended is per category, set in the register. By default
+ * nothing is mandatory - the business has not decided to require any detail.
+ */
+var LISTING_ATTRIBUTES = {
+  volume: { label: 'volume (e.g. 600ml or 1.5L)',
+    re: /\b\d+(?:\.\d+)?\s?(?:ml|l|lt|ltr|litre|litres|liter|liters)\b/ },
+  netQuantity: { label: 'net weight or quantity (e.g. 185g, 1kg or 24 pack)',
+    re: /\b\d+(?:\.\d+)?\s?(?:g|gm|gram|grams|kg|kgs|oz|lb|lbs|ml|l|litre|litres|pack|pk|pcs|pieces|tins|cans|x)\b|\bx\s?\d+\b/ },
+  size: { label: 'size (e.g. S, M, L or age 4-5)',
+    re: /\b(?:xxs|xs|s|m|l|xl|xxl|xxxl|[2-6]xl|size|sizes|one size|free size|age|ages|years|yrs|months|mths)\b|\b\d{1,2}\s?(?:y|yr|yrs|years|m)\b/ },
+  material: { label: 'material (e.g. silver, shell or stainless steel)',
+    re: /\b(?:gold|silver|sterling|stainless|steel|brass|copper|shell|pearl|bead|beads|leather|plastic|wood|wooden|cotton|alloy|titanium|plated|coconut|pandanus|resin|glass|fabric)\b/ }
+};
+
+/* ---------- Word guards ----------
+ * Words that change meaning by their neighbour. "water" is a drink, but
+ * "water tank", "water pump" and "waterproof" are not. Checked on the word
+ * right after (next) or right before (prev) the keyword. Extend here.
+ */
+var LISTING_TERM_GUARDS = {
+  water: { next: ['tank', 'pump', 'heater', 'filter', 'proof', 'resistant', 'melon', 'jug', 'bottle', 'cooler', 'dispenser', 'pipe', 'hose', 'container', 'drum', 'bill', 'sport', 'ski'], prev: ['salt', 'sea', 'cold', 'warm', 'hot', 'in', 'with', 'of', 'under', 'by'] },
+  short: { next: ['sleeve', 'sleeved', 'length', 'time', 'dress', 'hair', 'skirt', 'notice', 'drive', 'walk', 'trip'] },
+  phone: { next: ['number', 'no', 'us', 'me', 'or', 'call'], prev: ['by', 'my', 'our', 'via', 'your'] },
+  plate: { prev: ['number', 'licence', 'license'] },
+  chocolate: { next: ['brown', 'colour', 'color', 'coloured', 'colored'] },
+  can: { prev: ['jerry', 'trash', 'rubbish', 'watering', 'you', 'we', 'it', 'i', 'they'], next: ['be', 'do', 'not', 'help', 'deliver', 'order', 'use', 'make', 'also', 'get', 'buy', 'opener'] },
+  tin: { next: ['roof', 'roofing', 'opener', 'sheet'] },
+  top: { prev: ['table', 'laptop', 'bench', 'roof', 'tank', 'bottle'], next: ['up', 'quality', 'seller', 'brand'] },
+  ring: { next: ['road'], prev: ['key', 'o', 'piston', 'boxing'] },
+  watch: { prev: ['to', 'and', 'you', 'we'] },
+  pan: { prev: ['solar'] },
+  pot: { prev: ['plant', 'flower'] },
+  boot: { prev: ['car'] },
+  shirt: {},
+  kid: { next: ['friendly', 'safe'] },
+  kids: { next: ['friendly', 'safe'] },
+  oil: {}
+};
+
+// A mention after one of these, in the same clause, is a comparison or a
+// pairing - not what the listing is.
+var LISTING_ASIDE_CUES = [
+  'better than', 'cheaper than', 'healthier than', 'rather than', 'more than', 'less than', 'than',
+  'instead of', 'unlike', 'compared to', 'compared with', 'alternative to', 'replaces', 'replace',
+  'goes well with', 'go well with', 'goes great with', 'great with', 'perfect with', 'perfect for',
+  'good with', 'nice with', 'serve with', 'pairs with', 'pair with', 'pairs well with', 'enjoy with',
+  'comes with', 'free gift', 'delivered by', 'delivery by', 'sent by', 'shipped by', 'delivery via',
+  'delivered to', 'delivery to', 'pick up from', 'pickup from', 'call', 'text', 'contact', 'message', 'whatsapp', 'suitable for', 'use with', 'fits', 'not', 'no', 'without'
+];
+
+// Top-level categories that describe HOW you get something (or that cover
+// everything), so a name/description can't be "in the wrong one" for a
+// rental or service listing. Products in them are still checked.
+var LISTING_OPEN_CATEGORIES = ['services', 'education', 'hire', 'rental', 'property', 'events'];
+
+// Integrity problems no admin "approve anyway" can override.
+var LISTING_NON_OVERRIDABLE = ['CATEGORY_INVALID', 'SUBCATEGORY_INVALID', 'TYPE_NOT_PERMITTED', 'ATTRIBUTE_REQUIRED'];
+
+/* ---------- Text helpers ---------- */
+
+function listingStem(word) {
+  var w = word;
+  if (w.length <= 3) return w;
+  if (/ies$/.test(w) && w.length > 4) return w.slice(0, -3) + 'y';
+  if (/(ss|us|is)$/.test(w)) return w;
+  if (/(sses|xes|ches|shes)$/.test(w)) return w.slice(0, -2);
+  if (/s$/.test(w)) return w.slice(0, -1);
+  return w;
+}
+
+/** Lower case, apostrophes dropped, everything else not a letter/digit -> space. */
+function listingNormalize(text) {
+  return String(text == null ? '' : text)
+    .toLowerCase()
+    .replace(/[‘’'`]/g, '')
+    .replace(/[^a-z0-9.]+/g, ' ')
+    .replace(/(\D)\.|\.(\D)/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function listingTokens(text) {
+  var n = listingNormalize(text);
+  if (!n) return [];
+  return n.split(' ').map(function (w) { return listingStem(w.replace(/\.$/, '')); }).filter(function (w) { return !!w; });
+}
+
+/** Splits a text into clauses at sentence and list punctuation. */
+function listingClauses(text) {
+  return String(text == null ? '' : text).split(/[.,;:!?\n()–—|/]+|\s-\s/);
+}
+
+function listingSplitList(value) {
+  if (Array.isArray(value)) return value.map(function (s) { return String(s).trim(); }).filter(function (s) { return !!s; });
+  return String(value == null ? '' : value).split(',').map(function (s) { return s.trim(); }).filter(function (s) { return !!s; });
+}
+
+/* ---------- Register ---------- */
+
+/**
+ * Turns register rows (seed shape, or Categories sheet rows already mapped to
+ * this shape by ListingReview.gs) into a lookup the rules use. Inactive rows
+ * stay in the lookup - an existing product may still point at one - but are
+ * never suggested and never accepted for a new choice.
+ */
+function buildListingRegister(rows) {
+  var byId = {};
+  var list = [];
+  (rows || []).forEach(function (r) {
+    if (!r || !r.id) return;
+    var row = {
+      id: String(r.id),
+      name: String(r.name || r.id),
+      parentId: String(r.parentId || ''),
+      kind: String(r.kind || ''),
+      keywords: listingSplitList(r.keywords).concat(listingSplitList(r.synonyms)),
+      types: listingSplitList(r.types && r.types.length ? r.types : LISTING_ALL_TYPES),
+      required: listingSplitList(r.required),
+      recommended: listingSplitList(r.recommended),
+      alsoIn: listingSplitList(r.alsoIn),
+      active: String(r.status || 'active').toLowerCase() !== 'inactive'
+    };
+    byId[row.id] = row;
+    list.push(row);
+  });
+  // Every keyword, as word lists, longest first so phrases win over words.
+  var terms = [];
+  list.forEach(function (row) {
+    if (!row.kind) return;
+    row.keywords.forEach(function (k) {
+      var weak = k.charAt(0) === '~';
+      var words = listingTokens(weak ? k.slice(1) : k);
+      if (words.length) terms.push({ words: words, rowId: row.id, weak: weak, text: weak ? k.slice(1) : k });
+    });
+  });
+  terms.sort(function (a, b) { return b.words.length - a.words.length; });
+  return { byId: byId, list: list, terms: terms };
+}
+
+function listingTopOf(register, id) {
+  var row = register.byId[id];
+  if (!row) return null;
+  return row.parentId ? register.byId[row.parentId] || null : row;
+}
+
+/** "Food & Groceries → Canned Fish & Tuna". */
+function listingCategoryPath(register, id) {
+  var row = register.byId[id];
+  if (!row) return '';
+  var parent = row.parentId ? register.byId[row.parentId] : null;
+  return parent ? parent.name + ' → ' + row.name : row.name;
+}
+
+/* ---------- Matching ---------- */
+
+function listingGuarded(word, prev, next) {
+  var g = Object.prototype.hasOwnProperty.call(LISTING_TERM_GUARDS, word) ? LISTING_TERM_GUARDS[word] : null;
+  if (!g) return false;
+  if (g.next && next && g.next.indexOf(next) !== -1) return true;
+  if (g.prev && prev && g.prev.indexOf(prev) !== -1) return true;
+  return false;
+}
+
+var LISTING_CUE_TOKENS = null;
+function listingCueTokens() {
+  if (!LISTING_CUE_TOKENS) {
+    LISTING_CUE_TOKENS = LISTING_ASIDE_CUES.map(function (c) { return listingTokens(c); })
+      .sort(function (a, b) { return b.length - a.length; });
+  }
+  return LISTING_CUE_TOKENS;
+}
+
+/**
+ * Every keyword hit in a text: [{rowId, kind, text, weak, words, aside}].
+ * `aside` = the hit sits after a comparison/pairing cue in its clause.
+ */
+function listingMatches(register, text) {
+  var hits = [];
+  listingClauses(text).forEach(function (clause, clauseNo) {
+    var toks = listingTokens(clause);
+    if (!toks.length) return;
+    // Where does the aside part of this clause start? (first cue)
+    var asideFrom = toks.length;
+    var cues = listingCueTokens();
+    for (var i = 0; i < toks.length && asideFrom === toks.length; i++) {
+      for (var c = 0; c < cues.length; c++) {
+        var cue = cues[c];
+        var hit = true;
+        for (var j = 0; j < cue.length; j++) { if (toks[i + j] !== cue[j]) { hit = false; break; } }
+        if (hit) { asideFrom = i + cue.length; break; }
+      }
+    }
+    var used = [];
+    register.terms.forEach(function (t) {
+      for (var p = 0; p + t.words.length <= toks.length; p++) {
+        var match = true;
+        for (var q = 0; q < t.words.length; q++) {
+          if (used[p + q] || toks[p + q] !== t.words[q]) { match = false; break; }
+        }
+        if (!match) continue;
+        if (t.words.length === 1 && listingGuarded(t.words[0], toks[p - 1], toks[p + 1])) continue;
+        for (var u = 0; u < t.words.length; u++) used[p + u] = true;
+        var row = register.byId[t.rowId];
+        hits.push({ rowId: t.rowId, kind: row.kind, text: t.text, weak: t.weak, words: t.words.length, aside: p >= asideFrom, order: clauseNo * 10000 + p });
+      }
+    });
+  });
+  return hits;
+}
+
+function listingHitScore(h) {
+  if (h.weak) return 0.5;
+  return h.words > 1 ? 2 : 1;
+}
+
+/** {kind: score} and {rowId: score} over the non-aside hits. */
+function listingTally(hits) {
+  var kinds = {}, rows = {}, firstText = {}, firstAt = {};
+  hits.forEach(function (h) {
+    if (h.aside) return;
+    kinds[h.kind] = (kinds[h.kind] || 0) + listingHitScore(h);
+    rows[h.rowId] = (rows[h.rowId] || 0) + listingHitScore(h);
+    // The words to quote back: the earliest strong mention of each kind.
+    var at = h.order + (h.weak ? 1e6 : 0);
+    if (firstAt[h.kind] === undefined || at < firstAt[h.kind]) { firstAt[h.kind] = at; firstText[h.kind] = h.text; }
+  });
+  return { kinds: kinds, rows: rows, firstText: firstText };
+}
+
+/** Is row `rowId` a fit for the chosen category + subcategory? */
+function listingRowFits(register, rowId, categoryId, subcategoryId) {
+  var row = register.byId[rowId];
+  if (!row) return false;
+  var top = listingTopOf(register, rowId);
+  if (top && top.id === categoryId) {
+    if (!subcategoryId || !row.parentId || row.id === subcategoryId) return true;
+    // A sibling of the same kind is fine: "shirt" under Children's Clothing.
+    var sub = register.byId[subcategoryId];
+    return !!(sub && sub.kind && sub.kind === row.kind);
+  }
+  if (row.alsoIn.indexOf(categoryId) !== -1) return true;
+  if (top && top.alsoIn.indexOf(categoryId) !== -1) return true;
+  return false;
+}
+
+// Catch-all subcategories ("Other Canned Foods") are suggested after a more
+// specific one: "tuna in a can" should point at Canned Fish & Tuna first.
+var LISTING_CATCH_ALL = ['food-canned-other'];
+
+/** Best-first category suggestions from a row tally, active rows only. */
+function listingSuggestFrom(register, rowScores, max) {
+  var rank = function (id) { return rowScores[id] - (LISTING_CATCH_ALL.indexOf(id) !== -1 ? 1.5 : 0); };
+  return Object.keys(rowScores)
+    .filter(function (id) { var r = register.byId[id]; var t = listingTopOf(register, id); return r && r.active && t && t.active; })
+    .sort(function (a, b) { return rank(b) - rank(a); })
+    .slice(0, max || 3);
+}
+
+function listingSuggestion(register, rowId) {
+  var row = register.byId[rowId];
+  var top = listingTopOf(register, rowId);
+  return {
+    categoryId: top ? top.id : rowId,
+    subcategoryId: row && row.parentId ? row.id : '',
+    path: listingCategoryPath(register, rowId)
+  };
+}
+
+function listingQuote(text, max) {
+  var t = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+  return t.length > (max || 40) ? t.slice(0, (max || 40) - 1) + '…' : t;
+}
+
+function listingKindsMax(kinds) {
+  var best = 0;
+  Object.keys(kinds).forEach(function (k) { if (kinds[k] > best) best = kinds[k]; });
+  return best;
+}
+
+/* ---------- The engine ---------- */
+
+/**
+ * input: { name, description, categoryId, subcategoryId, listingType,
+ *          attributes: {key: value}, optionLabels: [..],
+ *          allowInactive: [ids already on this product],
+ *          keepType: true when the product already had this category AND
+ *                    listing type - the type list was only guidance before
+ *                    these checks, so an older listing is not refused for it }
+ * Returns:
+ *   { mismatch, severity: 'none'|'low'|'medium'|'high', blocked,
+ *     reviewRequired, canSubmitForReview, overridable,
+ *     issues: [{ code, rule, severity, message, blocking }],
+ *     rulesTriggered: [codes], suggestions: [{categoryId, subcategoryId, path}] }
+ */
+function validateListing(input, register) {
+  input = input || {};
+  var issues = [];
+  var suggestionIds = [];
+  var name = String(input.name || '');
+  var description = String(input.description || '');
+  var categoryId = String(input.categoryId || '');
+  var subcategoryId = String(input.subcategoryId || '');
+  var listingType = String(input.listingType || 'product');
+  var allowInactive = input.allowInactive || [];
+
+  function add(code, rule, severity, message) {
+    issues.push({ code: code, rule: rule, severity: severity, message: message, blocking: severity === 'high' });
+  }
+
+  // ---- integrity ----
+  var cat = register.byId[categoryId];
+  var catUsable = cat && !cat.parentId && (cat.active || allowInactive.indexOf(categoryId) !== -1);
+  if (!catUsable) {
+    add('CATEGORY_INVALID', 'integrity', 'high', 'Please choose a category from the list.');
+  } else if (cat.types.indexOf(listingType) === -1 && !input.keepType) {
+    add('TYPE_NOT_PERMITTED', 'integrity', 'high',
+      cat.name + ' does not take ' + (listingType === 'product' ? 'products' : listingType + 's') + '. Choose another category or change what you are offering.');
+  }
+  var sub = subcategoryId ? register.byId[subcategoryId] : null;
+  if (subcategoryId && (!sub || sub.parentId !== categoryId || !(sub.active || allowInactive.indexOf(subcategoryId) !== -1))) {
+    add('SUBCATEGORY_INVALID', 'integrity', 'high', 'That subcategory is not part of the category you chose. Please pick it again.');
+    sub = null;
+    subcategoryId = '';
+  }
+
+  var nameHits = listingMatches(register, name);
+  var descHits = listingMatches(register, description);
+  var nameT = listingTally(nameHits);
+  var descT = listingTally(descHits);
+  var nameKinds = Object.keys(nameT.kinds);
+  var descKinds = Object.keys(descT.kinds);
+  var nameQuote = listingQuote(name);
+
+  // ---- A: name vs description ----
+  if (nameKinds.length && descKinds.length) {
+    var shared = nameKinds.filter(function (k) { return descKinds.indexOf(k) !== -1; });
+    if (!shared.length) {
+      var nameStrong = nameKinds.some(function (k) { return nameT.kinds[k] >= 1; });
+      var descScore = listingKindsMax(descT.kinds);
+      var topDescKind = descKinds.sort(function (a, b) { return descT.kinds[b] - descT.kinds[a]; })[0];
+      var said = descT.firstText[topDescKind];
+      add('NAME_DESCRIPTION_MISMATCH', 'A', nameStrong && descScore >= 2 ? 'high' : 'medium',
+        'Possible product mismatch. Your product name says ‘' + nameQuote + '’, but your description refers to ' + said +
+        '. Please correct the product details or choose a suitable category.');
+      suggestionIds = suggestionIds.concat(listingSuggestFrom(register, descT.rows, 2), listingSuggestFrom(register, nameT.rows, 2));
+    }
+  }
+
+  var openForType = LISTING_OPEN_CATEGORIES.indexOf(categoryId) !== -1 && listingType !== 'product';
+  var checkPlacement = catUsable && !openForType && categoryId !== 'other';
+
+  // ---- B: name vs category ----
+  if (checkPlacement && nameKinds.length) {
+    var nameRows = Object.keys(nameT.rows);
+    var fits = nameRows.some(function (id) { return listingRowFits(register, id, categoryId, subcategoryId); });
+    if (!fits) {
+      var strongName = nameRows.some(function (id) { return nameT.rows[id] >= 1; });
+      var best = listingSuggestFrom(register, nameT.rows, 1)[0] || nameRows[0];
+      add('CATEGORY_NAME_MISMATCH', 'B', strongName ? 'high' : 'medium',
+        'Your product name ‘' + nameQuote + '’ looks like ' + listingCategoryPath(register, best) +
+        ', not ' + listingCategoryPath(register, subcategoryId || categoryId) + '. Please choose a suitable category.');
+      suggestionIds = suggestionIds.concat(listingSuggestFrom(register, nameT.rows, 3));
+    }
+  }
+
+  // ---- C: description vs category (only when the name is silent) ----
+  if (checkPlacement && !nameKinds.length && descKinds.length) {
+    var descRows = Object.keys(descT.rows);
+    var descFits = descRows.some(function (id) { return listingRowFits(register, id, categoryId, subcategoryId); });
+    if (!descFits) {
+      var bestD = listingSuggestFrom(register, descT.rows, 1)[0] || descRows[0];
+      var dKind = register.byId[bestD] ? register.byId[bestD].kind : '';
+      add('CATEGORY_DESCRIPTION_MISMATCH', 'C', listingKindsMax(descT.kinds) >= 2 ? 'high' : 'medium',
+        'Your description talks about ' + (descT.firstText[dKind] || 'something') + ', which belongs in ' +
+        listingCategoryPath(register, bestD) + ', not ' + listingCategoryPath(register, subcategoryId || categoryId) + '.');
+      suggestionIds = suggestionIds.concat(listingSuggestFrom(register, descT.rows, 3));
+    }
+  }
+
+  // ---- D: details ----
+  var detailRow = sub || (catUsable ? cat : null);
+  if (detailRow && listingType === 'product') {
+    var haystack = listingNormalize([name, description].concat(input.optionLabels || []).join(' . '));
+    var attrs = input.attributes || {};
+    var has = function (key) {
+      if (attrs[key] !== undefined && String(attrs[key]).trim() !== '') return true;
+      var def = LISTING_ATTRIBUTES[key];
+      return !!(def && def.re.test(haystack));
+    };
+    detailRow.required.forEach(function (key) {
+      if (!has(key)) add('ATTRIBUTE_REQUIRED', 'D', 'high', 'Please add the ' + (LISTING_ATTRIBUTES[key] ? LISTING_ATTRIBUTES[key].label : key) +
+        ' - put it in the name, the description or an option.');
+    });
+    detailRow.recommended.forEach(function (key) {
+      if (detailRow.required.indexOf(key) !== -1 || has(key)) return;
+      add('ATTRIBUTE_RECOMMENDED', 'D', 'low', 'Tip: shoppers look for the ' + (LISTING_ATTRIBUTES[key] ? LISTING_ATTRIBUTES[key].label : key) + '.');
+    });
+  }
+
+  // ---- result ----
+  var order = { none: 0, low: 1, medium: 2, high: 3 };
+  var severity = 'none';
+  issues.forEach(function (i) { if (order[i.severity] > order[severity]) severity = i.severity; });
+  var blocked = issues.some(function (i) { return i.blocking; });
+  var codes = [];
+  issues.forEach(function (i) { if (codes.indexOf(i.code) === -1) codes.push(i.code); });
+  var hardStop = issues.some(function (i) { return i.blocking && LISTING_NON_OVERRIDABLE.indexOf(i.code) !== -1; });
+  var mismatch = codes.some(function (c) { return /MISMATCH$/.test(c); });
+
+  var seen = {};
+  var suggestions = [];
+  suggestionIds.forEach(function (id) {
+    var s = listingSuggestion(register, id);
+    var key = s.categoryId + '/' + s.subcategoryId;
+    if (seen[key] || !s.path) return;
+    if (s.categoryId === categoryId && (s.subcategoryId === subcategoryId || !s.subcategoryId)) return;
+    seen[key] = true;
+    suggestions.push(s);
+  });
+
+  return {
+    mismatch: mismatch,
+    severity: severity,
+    blocked: blocked,
+    // A blocked listing an admin could still clear (a mismatch the seller
+    // disputes). Missing details and broken categories are the seller's to fix.
+    reviewRequired: blocked && !hardStop,
+    canSubmitForReview: blocked && !hardStop,
+    overridable: !hardStop,
+    issues: issues,
+    rulesTriggered: codes,
+    suggestions: suggestions.slice(0, 4)
+  };
+}
+
+/**
+ * What an admin approved, so a later edit that changes nothing material (a
+ * price, a photo) is not blocked again - and any change to the name,
+ * description or category is checked from scratch.
+ */
+function listingFingerprintText(input) {
+  return [listingNormalize(input.name), listingNormalize(input.description), String(input.categoryId || ''), String(input.subcategoryId || '')].join('|');
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { validateListing: validateListing, buildListingRegister: buildListingRegister, LISTING_CATEGORY_SEED: LISTING_CATEGORY_SEED,
+    listingTokens: listingTokens, listingNormalize: listingNormalize, listingCategoryPath: listingCategoryPath, listingFingerprintText: listingFingerprintText };
+}

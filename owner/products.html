@@ -83,6 +83,35 @@
             </select>
             <p id="food-wholesale-hint" class="helper-text" hidden>Food &amp; Groceries is for wholesaler and distributor stores only.</p>
           </div>
+          <!-- Listing checks (owner-listing-check.js). Optional finer category,
+               filled from the category register; hidden when a category has none. -->
+          <div class="field" id="subcategory-field" hidden>
+            <label for="product-subcategory">Subcategory</label>
+            <select id="product-subcategory"><option value="">Choose one (optional)…</option></select>
+          </div>
+          <div id="listing-check" class="listing-check" aria-live="polite" hidden></div>
+          <details id="category-request" class="category-request">
+            <summary>Can't find a suitable category? Request a new one</summary>
+            <div class="field">
+              <label for="cr-name" class="is-required">Category name</label>
+              <input id="cr-name" maxlength="40" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="cr-parent">It belongs under</label>
+              <select id="cr-parent"><option value="">Not sure</option></select>
+            </div>
+            <div class="field">
+              <label for="cr-explanation" class="is-required">What would go in it?</label>
+              <textarea id="cr-explanation" maxlength="500" rows="2"></textarea>
+            </div>
+            <div class="field">
+              <label for="cr-examples" class="is-required">Example products</label>
+              <input id="cr-examples" maxlength="300" placeholder="e.g. baby formula, infant cereal">
+            </div>
+            <p id="cr-status" class="helper-text" role="status"></p>
+            <button type="button" id="cr-send" class="btn btn-small">Send request</button>
+            <p class="helper-text">An admin checks every request. Meanwhile, choose the closest category above.</p>
+          </details>
           <div class="field">
             <label for="product-status">Status</label>
             <select id="product-status">
@@ -138,6 +167,8 @@
   <script defer src="../assets/js/auth.min.js"></script>
   <script defer src="../assets/js/owner-nav.min.js"></script>
   <script defer src="../assets/js/unsaved-guard.min.js"></script>
+  <script defer src="../assets/js/listing-rules.min.js"></script>
+  <script defer src="../assets/js/owner-listing-check.min.js"></script>
   <script defer src="../assets/js/owner-products.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

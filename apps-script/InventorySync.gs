@@ -652,15 +652,30 @@ function applyImportPlan(owner, plan, ctx, meta) {
     }
   });
 
-  var created = 0;
+  var created = 0, held = 0;
   if (plan.newProducts.length) {
     var productsSheet = getSheet('Products');
     ensureColumn(productsSheet, 'ListingType');
+    ['RequestedStatus', 'ReviewId'].forEach(function (h) { ensureColumn(productsSheet, h); });
+    var register = getListingRegister();
     plan.newProducts.forEach(function (np) {
       var productId = newId('prod');
+      // Listing checks (ListingRules.gs): an imported name that clearly does
+      // not belong in the chosen category is created held, with a case for an
+      // admin, rather than going live.
+      var input = { name: np.name, description: '', categoryId: np.category, subcategoryId: '', listingType: 'product',
+        optionLabels: np.items.map(function (it) { return it.fields.variantLabel || ''; }) };
+      var check = validateListing(input, register);
+      var hold = check.blocked && check.overridable;
       appendRowFromObject(productsSheet, { ProductId: productId, OwnerId: owner.OwnerId, StoreSlug: owner.StoreSlug, Name: np.name,
         Description: '', Category: np.category, ListingType: 'product', ImageUrl: '', ImageFileId: '', ImageUrl2: '', ImageFileId2: '',
-        Status: 'active', SortOrder: 0, CreatedAt: now, UpdatedAt: now });
+        Status: hold ? 'review' : 'active', RequestedStatus: hold ? 'active' : '', SortOrder: 0, CreatedAt: now, UpdatedAt: now });
+      if (hold) {
+        var reviewId = upsertListingCase(owner, productId, input, check, { disputed: false, role: 'import', sellerNote: 'Created by an inventory import' });
+        var row = findRowById(productsSheet, 'ProductId', productId);
+        if (row) updateRowFromObject(productsSheet, row.__row, { ReviewId: reviewId });
+        held++;
+      }
       np.items.forEach(function (it) {
         var f = it.fields;
         var variantId = newId('var');
@@ -681,7 +696,7 @@ function applyImportPlan(owner, plan, ctx, meta) {
   }
   recordStockMovements(moves);
   invalidateCache([storeProductsCacheKey(owner.StoreSlug), storeListCacheKey(), topProductsCacheKey()]);
-  return { updated: plan.updates.length, created: created };
+  return { updated: plan.updates.length, created: created, held: held };
 }
 
 function recordSyncJob(owner, job) {

@@ -65,6 +65,8 @@ function fillCategoryOptions(listingType, keepId) {
   const list = activeCategories().filter((c) => {
     if (c.id === 'other') return keepId === 'other';
     if (c.id === 'food' && !ownerIsWholesaler && keepId !== 'food') return false;
+    // Switched off in the category register (admin) - kept only for a listing already in it.
+    if (!ListingCheck.isActive(c.id) && c.id !== keepId) return false;
     return !listingType || c.types.indexOf(listingType) !== -1;
   });
   select.innerHTML = '<option value="" disabled' + (previous ? '' : ' selected') + '>Choose a category…</option>' +
@@ -105,8 +107,134 @@ async function init() {
   document.getElementById('remove-photo2-btn').addEventListener('click', onRemovePhoto2);
   document.getElementById('owner-product-list').addEventListener('click', onListClick);
   document.getElementById('products-load-more').addEventListener('click', onLoadMore);
+  wireListingCheck();
 
   await loadProducts();
+}
+
+/* ---------- Listing checks (owner-listing-check.js) ---------- */
+
+// One id per Save attempt. Re-sent unchanged when a request got no answer
+// (a dropped connection), so the backend can tell a retry from a new save and
+// never creates the product twice. Replaced once an answer arrives.
+let saveRequestId = '';
+function newSaveRequestId() {
+  return (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^A-Za-z0-9_-]/g, '');
+}
+
+function listingInputFromForm() {
+  return {
+    name: document.getElementById('product-name').value,
+    description: document.getElementById('product-description').value,
+    categoryId: document.getElementById('product-category').value,
+    subcategoryId: document.getElementById('product-subcategory').value,
+    listingType: document.getElementById('product-listing-type').value || 'product',
+    optionLabels: Array.from(document.querySelectorAll('#variant-rows .variant-label')).map((i) => i.value),
+    allowInactive: listingAllowInactive
+  };
+}
+// The category the product already had, so an edit isn't flagged for a
+// category that was switched off after it was filed.
+let listingAllowInactive = [];
+
+function wireListingCheck() {
+  const recheck = () => ListingCheck.schedule(listingInputFromForm);
+  ['product-name', 'product-description'].forEach((id) => document.getElementById(id).addEventListener('input', recheck));
+  document.getElementById('variant-rows').addEventListener('input', recheck);
+  document.getElementById('product-category').addEventListener('change', () => {
+    ListingCheck.fillSubcategories(document.getElementById('product-category').value, '');
+    recheck();
+  });
+  document.getElementById('product-subcategory').addEventListener('change', recheck);
+  document.getElementById('product-listing-type').addEventListener('change', recheck);
+  document.getElementById('listing-check').addEventListener('click', onListingCheckClick);
+  document.getElementById('cr-send').addEventListener('click', onRequestCategory);
+
+  // The live register replaces the built-in starter list when it arrives.
+  ListingCheck.load().then(() => {
+    document.getElementById('cr-parent').innerHTML = ListingCheck.parentOptionsHtml();
+    if (document.getElementById('product-form-section').classList.contains('hidden')) return;
+    const cat = document.getElementById('product-category').value;
+    fillCategoryOptions(document.getElementById('product-listing-type').value, cat);
+    ListingCheck.fillSubcategories(cat, document.getElementById('product-subcategory').value);
+  });
+  document.getElementById('cr-parent').innerHTML = ListingCheck.parentOptionsHtml();
+}
+
+function onListingCheckClick(e) {
+  const apply = e.target.closest('[data-apply-category]');
+  if (apply) {
+    const cat = apply.dataset.applyCategory;
+    const sub = apply.dataset.applySub;
+    const select = document.getElementById('product-category');
+    fillCategoryOptions(document.getElementById('product-listing-type').value, cat);
+    if (!Array.from(select.options).some((o) => o.value === cat)) {
+      ListingCheck.render({ issues: [{ severity: 'medium', message: cat === 'food' && !ownerIsWholesaler
+        ? 'Food & Groceries is for wholesaler and distributor stores only.'
+        : 'That category does not take this kind of listing - change "What are you offering?" first.' }], suggestions: [] });
+      return;
+    }
+    select.value = cat;
+    ListingCheck.fillSubcategories(cat, sub);
+    ListingCheck.render(ListingCheck.check(listingInputFromForm()));
+    return;
+  }
+  if (e.target.closest('#listing-submit-review')) {
+    const note = document.getElementById('listing-review-note');
+    onSaveProduct(null, { submitForReview: true, sellerNote: note ? note.value.trim() : '' });
+  } else if (e.target.closest('#listing-save-anyway')) {
+    onSaveProduct(null, { acknowledgeWarnings: true });
+  }
+}
+
+async function onRequestCategory() {
+  const status = document.getElementById('cr-status');
+  const btn = document.getElementById('cr-send');
+  const payload = {
+    token: Auth.getToken(),
+    proposedName: document.getElementById('cr-name').value.trim(),
+    parentId: document.getElementById('cr-parent').value,
+    explanation: document.getElementById('cr-explanation').value.trim(),
+    examples: document.getElementById('cr-examples').value.trim(),
+    productId: document.getElementById('product-id').value || '',
+    requestId: btn.dataset.requestId || (btn.dataset.requestId = newSaveRequestId())
+  };
+  if (!payload.proposedName || !payload.explanation || !payload.examples) {
+    status.textContent = 'Please fill in the name, what would go in it, and an example.';
+    return;
+  }
+  btn.disabled = true;
+  status.textContent = 'Sending…';
+  const res = await Api.post('requestCategory', payload);
+  btn.disabled = false;
+  if (!res.ok) {
+    status.textContent = res.error || 'Could not send the request.';
+    if (!/^Network error/.test(res.error || '')) delete btn.dataset.requestId;
+    return;
+  }
+  delete btn.dataset.requestId;
+  status.textContent = res.message || 'Sent. An admin will look at it.';
+  ['cr-name', 'cr-explanation', 'cr-examples'].forEach((id) => { document.getElementById(id).value = ''; });
+}
+
+const REVIEW_OPEN = ['PENDING', 'IN_REVIEW', 'AWAITING_SELLER', 'CORRECTION_REQUIRED'];
+
+/** One line under a product in the list, when a check or an admin has something to say. */
+function reviewLineHtml(p) {
+  const r = p.review;
+  if (p.status === 'review') {
+    const why = r && r.status === 'CORRECTION_REQUIRED' && r.adminMessage
+      ? 'An admin asks you to correct it: ' + r.adminMessage
+      : 'Waiting for an admin to check it. Not visible to shoppers yet.';
+    return `<p class="listing-review-line listing-review-line--held">${escapeHtml(why)}</p>`;
+  }
+  if (r && r.status === 'REJECTED' && r.adminMessage && p.status === 'hidden') {
+    return `<p class="listing-review-line listing-review-line--held">${escapeHtml('Not approved: ' + r.adminMessage + ' Edit and save it to try again.')}</p>`;
+  }
+  if (r && r.status === 'CORRECTION_REQUIRED' && r.adminMessage) {
+    return `<p class="listing-review-line">${escapeHtml('Please correct: ' + r.adminMessage)}</p>`;
+  }
+  return '';
 }
 
 /**
@@ -154,8 +282,9 @@ function renderList() {
           ${media}
           <div class="row-info">
             <strong>${escapeHtml(p.name)}</strong>
-            <span class="status-badge status-${escapeHtml(p.status)}">${escapeHtml(p.status)}</span>
+            <span class="status-badge status-${escapeHtml(p.status)}">${escapeHtml(p.status === 'review' ? 'in review' : p.status)}</span>
             <div class="helper-text">${priceRange}</div>
+            ${reviewLineHtml(p)}
           </div>
           <div class="row-actions">
             <button type="button" class="btn btn-small" data-action="edit">Edit</button>
@@ -232,8 +361,10 @@ function openForm(product, opts) {
     document.getElementById('product-listing-type').value = type;
     // A duplicate is a new listing, and new listings never get "Other" - an
     // old product still filed there makes the seller choose a real one.
+    listingAllowInactive = duplicate ? [] : [existing, product.subcategoryId || ''];
     fillCategoryOptions(type, duplicate ? '' : existing);
     document.getElementById('product-category').value = existing;
+    ListingCheck.fillSubcategories(existing, product.subcategoryId || '');
     document.getElementById('product-status').value = product.status || 'active';
     if (product.imageUrl && !duplicate) {
       preview.src = optimizedImageUrl(product.imageUrl, IMG_W.card);
@@ -253,8 +384,10 @@ function openForm(product, opts) {
     document.getElementById('product-name').value = '';
     document.getElementById('product-description').value = '';
     document.getElementById('product-listing-type').value = '';
+    listingAllowInactive = [];
     fillCategoryOptions('', '');   // a new listing never gets Other
     document.getElementById('product-category').value = '';
+    ListingCheck.fillSubcategories('', '');
     document.getElementById('product-status').value = 'active';
     preview.classList.add('hidden');
     showPhoto2('');
@@ -263,6 +396,12 @@ function openForm(product, opts) {
 
   updateVarietyLabels();
   updateDescriptionCount();
+  saveRequestId = newSaveRequestId();
+  // An existing listing is checked straight away, so a seller opening one an
+  // admin flagged sees why without having to type first.
+  ListingCheck.forget();
+  ListingCheck.render({ issues: [], suggestions: [] });
+  if (product) ListingCheck.schedule(listingInputFromForm);
   UnsavedGuard.watch(document.getElementById('product-form'), { skipWhenHidden: true });
   section.scrollIntoView({ behavior: 'smooth' });
 }
@@ -506,8 +645,11 @@ function validateProductForm() {
   return variants;
 }
 
-async function onSaveProduct(e) {
-  e.preventDefault();
+// flags (from the listing-check panel): submitForReview + sellerNote, or
+// acknowledgeWarnings - only ever sent after the backend refused a plain Save.
+async function onSaveProduct(e, flags) {
+  if (e) e.preventDefault();
+  flags = flags || {};
   const errorEl = document.getElementById('product-form-error');
   errorEl.textContent = '';
 
@@ -521,10 +663,17 @@ async function onSaveProduct(e) {
     name: document.getElementById('product-name').value.trim(),
     description: document.getElementById('product-description').value.trim(),
     category: document.getElementById('product-category').value,
+    subcategoryId: document.getElementById('product-subcategory').value,
     listingType: document.getElementById('product-listing-type').value,
     status: document.getElementById('product-status').value,
-    variants
+    variants,
+    requestId: saveRequestId
   };
+  if (flags.submitForReview) {
+    payload.submitForReview = true;
+    payload.sellerNote = flags.sellerNote || '';
+  }
+  if (flags.acknowledgeWarnings) payload.acknowledgeWarnings = true;
 
   // Only sent when the vendor actually asked to clear it. updateProduct keeps
   // the existing value when imageUrl2 is undefined and clears it when the key
@@ -537,12 +686,26 @@ async function onSaveProduct(e) {
 
   const action = productId ? 'updateProduct' : 'createProduct';
   const res = await Api.post(action, payload);
+  // An answer came back: the next Save is a new request. Only a request that
+  // never got one (no connection) is retried under the same id.
+  if (res.ok || !/^Network error/.test(res.error || '')) saveRequestId = newSaveRequestId();
 
   if (!res.ok) {
-    errorEl.textContent = res.error || 'Could not save this product.';
+    if (res.validation) {
+      // The listing checks said no (or warned). Explain, suggest, and offer
+      // the next step; nothing was saved.
+      errorEl.textContent = res.needsCorrection ? res.error : 'Not saved yet - see the note above the Save button.';
+      ListingCheck.remember(listingInputFromForm());
+      ListingCheck.render(res.validation, { canSubmitForReview: !!res.canSubmitForReview, canSaveAnyway: !!res.canSaveAnyway });
+      document.getElementById('listing-check').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } else {
+      errorEl.textContent = res.error || 'Could not save this product.';
+    }
     setSaveProductIdle(saveBtn);
     return;
   }
+  ListingCheck.forget();
+  ListingCheck.render({ issues: [], suggestions: [] });
 
   // Set as soon as the product itself exists, win or lose on the photo below -
   // a retry (clicking Save Product again without reopening the form) must go
@@ -594,4 +757,11 @@ async function onSaveProduct(e) {
   UnsavedGuard.markSaved(document.getElementById('product-form'));
   closeForm();
   await loadProducts(reloadOpts);
+  // Said after the list reload, which rewrites this same line.
+  const statusEl = document.getElementById('products-status');
+  if (res.held) {
+    statusEl.textContent = 'Saved and sent for review. It stays hidden from shoppers until an admin checks it.';
+  } else if (res.notes && res.notes.length) {
+    statusEl.textContent = 'Saved. ' + res.notes.map((n) => n.message).join(' ');
+  }
 }

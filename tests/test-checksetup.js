@@ -32,8 +32,9 @@ const GOOD = JSON.parse(JSON.stringify(REQUIRED_TABS));
 // One probe per .gs file checkSetup reports on. Badges.gs joined the list when
 // seller badges landed, Meetings.gs when meeting requests did; a file pasted
 // in empty leaves its functions undefined, which is what this catches.
+// ListingRules.gs / ListingReview.gs joined with the listing checks.
 const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitReview',
-                     'sellerBadgeIndex', 'actionRequestMeeting'];
+                     'sellerBadgeIndex', 'actionRequestMeeting', 'validateListing', 'listingSaveGate'];
 
 let pass = 0, fail = 0;
 const t = (n, c, extra) => { if (c) { pass++; console.log('PASS  ' + n); } else { fail++; console.log('FAIL  ' + n + (extra ? '  [' + extra + ']' : '')); } };
