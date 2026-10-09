@@ -7500,7 +7500,7 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   min-width: 0;
 }
 .carousel-slide.is-broken {
-  visibility: hidden;
+  opacity: 0;   /* the panel's background shows instead of a broken-image icon */
 }
 .carousel-btn {
   position: absolute;

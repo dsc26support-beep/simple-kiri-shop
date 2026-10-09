@@ -83,8 +83,7 @@ async function setup(browser, handler) {
   ok('...and re-checks at once: still blocked, now because the name says water', /description refers to tuna/.test(panel)
     && /‘Water’ looks like Food & Groceries → Bottled Water/.test(panel), panel);
 
-  await page.fill('.variant-label', 'Can');
-  await page.fill('.variant-price', '2');
+  await page.fill('#single-price', '2');   // a new product is a Single product (product options, Oct 2026)
   await page.click('#save-product-btn');
   await page.waitForTimeout(400);
   const create1 = posted.filter((p) => p.action === 'createProduct').pop();

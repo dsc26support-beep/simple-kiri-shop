@@ -58,7 +58,9 @@ const OWNER = {
 
   // Open the "add a product" form.
   await page.evaluate(() => { if (typeof openForm === 'function') openForm(); });
-  await page.waitForSelector('#variant-rows .variant-row', { timeout: 6000 });
+  // Attached, not visible: a new PRODUCT now starts as a Single product (Oct
+  // 2026), so the variety rows are hidden until it is a rental or service.
+  await page.waitForSelector('#variant-rows .variant-row', { timeout: 6000, state: 'attached' });
 
   // ---------- the heading ----------
   const heading = await page.evaluate(() => {
@@ -119,7 +121,8 @@ const OWNER = {
     asService.placeholder === 'e.g. Car Wash start price', asService.placeholder);
 
   // Switching type must relabel rows that already exist, not just new ones.
-  await page.selectOption('#product-listing-type', 'product');
+  // Added while a service (a new product hides the rows - it is a Single
+  // product since Oct 2026), then switched to rental.
   await page.click('#add-variant-btn');
   await page.selectOption('#product-listing-type', 'rental');
   const allRows = await page.evaluate(() => [...document.querySelectorAll('#variant-rows .variant-label')]

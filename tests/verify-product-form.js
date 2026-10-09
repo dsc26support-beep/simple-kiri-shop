@@ -54,7 +54,10 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
 
   await pg.click('#save-product-btn'); await pg.waitForTimeout(200);
   ok('next: listing type', (await errFor('#product-listing-type')).invalid === 'true');
-  await pg.selectOption('#product-listing-type', 'product');
+  // A service: since product options (Oct 2026) a new PRODUCT starts as a
+  // Single product with its own price field (verify-product-options.js); the
+  // row-by-row varieties checked below are the rentals' and services' list.
+  await pg.selectOption('#product-listing-type', 'service');
   await pg.click('#save-product-btn'); await pg.waitForTimeout(200);
   ok('next: category', (await errFor('#product-category')).invalid === 'true');
   const firstCat = await pg.$eval('#product-category', (s) => [...s.options].find((o) => o.value).value);
