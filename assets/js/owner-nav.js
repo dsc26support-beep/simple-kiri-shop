@@ -12,16 +12,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // One-shot on page load (not polled) - matches owner-dashboard.js's own
   // metrics, which also load once rather than staying live. messages.html
   // itself has the richer, actually-live polling for the active inbox.
-  // The sidebar's Messages count shares this one request.
+  // Fetched only where it always was (the dashboard). The sidebar shows the
+  // same count on other pages from this tab's memory - no extra request.
   const badge = document.getElementById('nav-messages-badge');
   const token = Auth.getToken();
-  if (token && (badge || document.body.classList.contains('owner-shell'))) {
+  if (badge && token) {
     Api.post('getUnreadCount', { token }).then((res) => {
-      if (res.ok && res.unreadCount > 0 && badge) {
+      if (res.ok && res.unreadCount > 0) {
         badge.textContent = res.unreadCount;
         badge.classList.remove('hidden');
       }
-      if (typeof SellerShell !== 'undefined') SellerShell.setBadge('messages', res.ok ? res.unreadCount : 0);
+      if (res.ok) {
+        try { sessionStorage.setItem('skiri_seller_unread', String(res.unreadCount || 0)); } catch (e) { /* private mode */ }
+        if (typeof SellerShell !== 'undefined') SellerShell.setBadge('messages', res.unreadCount);
+      }
     });
   }
 });
@@ -140,4 +144,9 @@ const SellerShell = (() => {
   return { build, setBadge };
 })();
 
-document.addEventListener('DOMContentLoaded', () => SellerShell.build());
+document.addEventListener('DOMContentLoaded', () => {
+  SellerShell.build();
+  let known = 0;
+  try { known = Number(sessionStorage.getItem('skiri_seller_unread')) || 0; } catch (e) { /* private mode */ }
+  if (known) SellerShell.setBadge('messages', known);
+});
