@@ -357,6 +357,14 @@ for (let i = 0; i < 25; i++) box.actionUploadTxEvidence({ side: 'buyer', token: 
 r = box.actionUploadTxEvidence({ side: 'buyer', token: 'ctok-b', orderId: f, category: 'other', dataBase64: Buffer.from(png(999, 777)).toString('base64'), mimeType: 'image/png' });
 ok('files: too many uploads in a short time are slowed down', !r.ok && r.rateLimited);
 
+r = box.actionUploadTxEvidence({ side: 'buyer', orderId: f, category: 'payment', dataBase64: 'x'.repeat(100), mimeType: 'image/png' });
+ok('files: without a session, the upload is refused before the file is read', !r.ok && r.authRequired === true);
+const g1 = order().orderId, g2 = order().orderId;
+r = buyer('actionSendTxMessage', { orderId: g1, text: 'first order', requestId: 'shared-req-0001' });
+const r2 = buyer('actionSendTxMessage', { orderId: g2, text: 'second order', requestId: 'shared-req-0001' });
+ok('retries: the same requestId on another order is a new request, not a replay', r.ok && r2.ok && !r2.replayed
+  && box.__sheets.TxEvents.objects().some((e) => e.OrderId === g2 && e.Body === 'second order'));
+
 /* ==================== Payment flags ==================== */
 const p1 = order().orderId, p2 = order().orderId;
 const shot = png(1080, 2000);

@@ -702,7 +702,9 @@ function runTxWrite(body, name, fn) {
     ctxOrder = ctx.order;
     ctx.queue = queue;
     ctx.requestId = cleanRequestId(body.requestId);
-    result = idempotentResult('tx:' + name + ':' + ctx.actor.type + ':' + ctx.actor.id, body.requestId, function () {
+    // Scoped to the person AND the order, so a reused requestId can never
+    // replay one order's answer on another.
+    result = idempotentResult('tx:' + name + ':' + ctx.actor.type + ':' + ctx.actor.id + ':' + ctx.order.OrderId, body.requestId, function () {
       var stale = txStale(ctx.state, body);
       if (stale) return stale;
       return fn(ctx);
@@ -1049,6 +1051,9 @@ function actionSendTxMessage(body) {
  * first record - never a duplicate.
  */
 function actionUploadTxEvidence(body) {
+  // Session first: an anonymous request never gets as far as decoding a file.
+  var who = resolveTxActor(body);
+  if (who.error) return txFail(who.error, who.auth ? { authRequired: true } : null);
   var cfg = txConfig();
   var category = String((body && body.category) || 'other');
   if (!TX_EVIDENCE_CATEGORIES[category]) return fail('Choose what the file shows.');
