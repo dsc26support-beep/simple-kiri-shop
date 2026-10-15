@@ -462,7 +462,7 @@ function renderOrderReview() {
       (line) => `
       <div class="cart-line">
         <div class="cart-line-info">${line.qty} × ${escapeHtml(line.label)}</div>
-        <strong>${formatMoney(line.unitPrice * line.qty)}</strong>
+        <strong>${formatMoney(Cart.lineTotal(line))}</strong>
       </div>
     `
     )
@@ -578,9 +578,9 @@ async function onSubmit(e) {
 }
 
 function buildSummaryText(orderRef, payload, cart, total, deliveryCost) {
-  const lines = cart.map((l) => `- ${l.qty} x ${l.label} = ${formatMoney(l.unitPrice * l.qty)}`).join('\n');
+  const lines = cart.map((l) => `- ${l.qty} x ${l.label} = ${formatMoney(Cart.lineTotal(l))}`).join('\n');
   const deliveryLabel = payload.deliveryMethod ? DELIVERY_ICON_LABELS[payload.deliveryMethod] : '';
-  const subtotal = cart.reduce((sum, l) => sum + l.unitPrice * l.qty, 0);
+  const subtotal = cart.reduce((sum, l) => sum + Cart.lineTotal(l), 0);
   const deliveryCostLine = deliveryCost != null ? `Delivery Cost: ${deliveryCost === 0 ? 'Free' : formatMoney(deliveryCost)}\n` : '';
 
   return `${storeInfo.storeName} - New Order

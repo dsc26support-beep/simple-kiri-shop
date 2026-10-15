@@ -92,15 +92,16 @@ function render() {
   itemsEl.innerHTML = cart
     .map(
       (line) => `
-      <div class="cart-line" data-variant-id="${escapeHtml(line.variantId)}">
+      <div class="cart-line${hasBulk(line) ? ' cart-line--bulk' : ''}" data-variant-id="${escapeHtml(line.variantId)}">
         <div class="cart-line-info">
           <strong>${escapeHtml(line.label)}</strong><br>
-          <span class="helper-text">${formatMoney(line.unitPrice)} each</span>
+          <span class="helper-text cart-line-price">${linePriceHtml(line)}</span>
         </div>
         <label class="sr-only" for="qty-${escapeHtml(line.variantId)}">Quantity for ${escapeHtml(line.label)}</label>
-        <input id="qty-${escapeHtml(line.variantId)}" class="cart-line-qty" type="number" min="1" value="${line.qty}" inputmode="numeric">
-        <strong class="cart-line-total">${formatMoney(line.unitPrice * line.qty)}</strong>
+        <input id="qty-${escapeHtml(line.variantId)}" class="cart-line-qty" type="number" min="${Cart.minQtyOf(line)}" value="${line.qty}" inputmode="numeric">
+        <strong class="cart-line-total">${formatMoney(Cart.lineTotal(line))}</strong>
         <button type="button" class="btn btn-danger btn-small" data-action="remove">Remove</button>
+        ${hasBulk(line) ? `<p class="helper-text cart-line-bulk">${escapeHtml(lineBulkNotes(line))}</p>` : ''}
       </div>
     `
     )
@@ -108,6 +109,29 @@ function render() {
 
   document.getElementById('cart-total').textContent = formatMoney(Cart.getTotal(currentSlug));
   liveEl.textContent = `${Cart.getItemCount(currentSlug)} item(s) in your cart.`;
+}
+
+// "$16.50 each - Bulk price" (wholesale stores). A line without bulk prices
+// reads exactly as before.
+function linePriceHtml(line) {
+  const unit = Cart.unitPriceOf(line);
+  let html = `${formatMoney(unit)} each`;
+  if (unit < Number(line.unitPrice)) html += ` <span class="cart-bulk-tag">Bulk price</span> <s class="cart-normal-price">${formatMoney(line.unitPrice)}</s>`;
+  return html;
+}
+
+function hasBulk(line) {
+  return (Array.isArray(line.tiers) && line.tiers.length > 0) || Cart.minQtyOf(line) > 1;
+}
+
+// The next cheaper step and the minimum, on their own full-width row so a
+// narrow phone doesn't squeeze them into the item's column.
+function lineBulkNotes(line) {
+  const parts = [];
+  const next = Cart.nextTierOf(line);
+  if (next) parts.push(`Buy ${Number(next.minQty)}+ for ${formatMoney(next.price)} each`);
+  if (Cart.minQtyOf(line) > 1) parts.push(`Minimum order ${Cart.minQtyOf(line)}`);
+  return parts.join(' · ');
 }
 
 function onCartClick(e) {
@@ -131,11 +155,18 @@ function onCartInput(e) {
 
   const line = e.target.closest('.cart-line');
   const variantId = line.dataset.variantId;
+  // Below a minimum order mid-typing ("1" on the way to "12"): wait for the
+  // commit, which raises it to the minimum.
+  const current = Cart.getCart(currentSlug).find((l) => l.variantId === variantId);
+  if (current && qty < Cart.minQtyOf(current)) return;
   const updatedCart = Cart.updateQty(currentSlug, variantId, qty);
   const updatedLine = updatedCart.find((l) => l.variantId === variantId);
   if (!updatedLine) return;
 
-  line.querySelector('.cart-line-total').textContent = formatMoney(updatedLine.unitPrice * updatedLine.qty);
+  line.querySelector('.cart-line-total').textContent = formatMoney(Cart.lineTotal(updatedLine));
+  line.querySelector('.cart-line-price').innerHTML = linePriceHtml(updatedLine);
+  const notes = line.querySelector('.cart-line-bulk');
+  if (notes) notes.textContent = lineBulkNotes(updatedLine);
   document.getElementById('cart-total').textContent = formatMoney(Cart.getTotal(currentSlug));
   document.getElementById('cart-live').textContent = `${Cart.getItemCount(currentSlug)} item(s) in your cart.`;
 }

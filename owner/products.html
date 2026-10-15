@@ -23,8 +23,6 @@
       <nav class="owner-nav" aria-label="Store owner">
         <ul>
           <li><a href="../index.html">Home</a></li>
-          <li><a href="dashboard.html">Dashboard</a></li>
-          <li><a href="settings.html">Settings</a></li>
           <li><a href="#" id="logout-link">Log Out</a></li>
         </ul>
       </nav>
@@ -34,7 +32,7 @@
   <main id="main" class="owner-main">
     <div class="container">
       <h1>Your Products</h1>
-      <p><button type="button" id="add-product-btn" class="btn btn-primary">+ Add New Product</button> <a href="inventory.html" class="btn btn-light-purple" id="inventory-link">Inventory</a> <a href="feature.html" class="btn btn-light-purple" id="feature-products-link">Feature products (5c/day)</a></p>
+      <p><button type="button" id="add-product-btn" class="btn btn-primary">+ Add New Product</button></p>
       <p id="products-status" class="helper-text" role="status"></p>
       <div id="owner-product-list" class="owner-product-list"></div>
       <p class="load-more-row"><button type="button" id="products-load-more" class="btn btn-small hidden">Load More Products</button></p>
@@ -134,6 +132,7 @@
               <div><label for="single-stock">Stock <span class="helper-text">(blank = unlimited)</span></label><input id="single-stock" type="number" min="0" step="1" inputmode="numeric"></div>
               <div><label for="single-sku">SKU <span class="helper-text">(optional)</span></label><input id="single-sku" maxlength="60"></div>
             </div>
+            <div id="single-wholesale" class="wp-host" hidden></div>
             <div id="single-photos"></div>
           </div>
 

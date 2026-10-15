@@ -97,6 +97,7 @@ async function init() {
   recordMarketingClickFromUrl();
   wireActions();
   wireGallery();
+  wireBulkPrices();
   wireOptions();
   if (!window.__storeOpen) {
     // Closed is informational only - same as chat, an order placed now just
@@ -249,6 +250,7 @@ function wireOptions() {
   const qty = document.getElementById(`qty-${product.productId}`);
   OptionsUI.wire(product, root, (variant) => {
     hidden.value = variant ? variant.variantId : '';
+    renderBulkPrices(variant);
     addBtn.disabled = !variant;
     if (variant && variant.stockQty != null) {
       qty.max = String(variant.stockQty);
@@ -257,6 +259,54 @@ function wireOptions() {
       qty.removeAttribute('max');
     }
   });
+}
+
+/**
+ * Wholesale bulk prices and minimum order for the chosen variant (only sent
+ * by the backend when the store has them switched on). Built in the same task
+ * as the card, so it never pushes the page down later.
+ */
+function wireBulkPrices() {
+  if (!product || !product.variants.some((v) => (v.tiers && v.tiers.length) || v.minQty > 1)) return;
+  const panel = document.createElement('div');
+  panel.id = 'pdp-bulk';
+  panel.className = 'pdp-bulk';
+  panel.setAttribute('aria-live', 'polite');
+  document.getElementById('product-detail').appendChild(panel);
+  const select = document.getElementById(`variety-${product.productId}`);
+  const current = () => product.variants.find((v) => select && v.variantId === select.value) || null;
+  if (select && product.productType !== 'options') select.addEventListener('change', () => renderBulkPrices(current()));
+  renderBulkPrices(product.productType === 'options' ? null : current());
+}
+
+function renderBulkPrices(variant) {
+  const panel = document.getElementById('pdp-bulk');
+  if (!panel) return;
+  const qty = document.getElementById(`qty-${product.productId}`);
+  const min = variant && variant.minQty > 1 ? variant.minQty : 1;
+  if (qty) {
+    qty.min = String(min);
+    if ((parseInt(qty.value, 10) || 1) < min) qty.value = String(min);
+  }
+  const tiers = variant && Array.isArray(variant.tiers) ? variant.tiers : [];
+  if (!variant || (!tiers.length && min <= 1)) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+    return;
+  }
+  panel.hidden = false;
+  const rows = [{ from: 1, to: tiers.length ? tiers[0].minQty - 1 : null, price: variant.price }]
+    .concat(tiers.map((t, i) => ({ from: t.minQty, to: tiers[i + 1] ? tiers[i + 1].minQty - 1 : null, price: t.price })))
+    .filter((r) => r.to === null || r.to >= min)
+    .map((r) => Object.assign(r, { from: Math.max(r.from, min) }));
+  panel.innerHTML = `
+    <h2 class="pdp-bulk-title">Bulk prices</h2>
+    ${tiers.length ? `<table class="pdp-bulk-table">
+      <thead><tr><th scope="col">Quantity</th><th scope="col">Price each</th></tr></thead>
+      <tbody>${rows.map((r) => `<tr><td>${r.to === null ? `${r.from}+` : r.from === r.to ? `${r.from}` : `${r.from}–${r.to}`}</td><td>${escapeHtml(formatMoney(r.price))}</td></tr>`).join('')}</tbody>
+    </table>` : ''}
+    ${min > 1 ? `<p class="pdp-bulk-min">Minimum order: <strong>${min}</strong></p>` : ''}
+    <p class="helper-text">The price is worked out from how many you order, in your cart and at checkout.</p>`;
 }
 
 function wireGallery() {
@@ -281,6 +331,7 @@ function onAddToCart(btn) {
   const qty = clampToAvailableStock(slug, variant, requestedQty, product.name);
   if (qty === null) return;
   if (qty < requestedQty) window.alert(`Only ${qty} left of ${product.name} (${variant.label}) - added ${qty} to your cart.`);
+  else if (qty > requestedQty) window.alert(`The minimum order for ${product.name} (${variant.label}) is ${variant.minQty} - added ${qty} to your cart.`);
 
   Cart.addItem(slug, {
     variantId: variant.variantId,
@@ -288,7 +339,9 @@ function onAddToCart(btn) {
     // A single product has nothing to choose, so its line is just its name.
     label: product.productType === 'single' ? product.name : `${product.name} — ${variant.label}`,
     unitPrice: variant.price,
-    qty
+    qty,
+    tiers: variant.tiers,
+    minQty: variant.minQty
   });
   showAddingToCartState(btn);
   if (typeof updateBottomNavCartBadge === 'function') updateBottomNavCartBadge();

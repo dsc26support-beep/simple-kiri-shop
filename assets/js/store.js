@@ -330,7 +330,9 @@ function wireProductEvents() {
       productId: product.productId,
       label: `${product.name} — ${variant.label}`,
       unitPrice: variant.price,
-      qty
+      qty,
+      tiers: variant.tiers,
+      minQty: variant.minQty
     });
 
     showAddingToCartState(btn);
@@ -339,7 +341,9 @@ function wireProductEvents() {
     const feedback = document.getElementById('cart-feedback');
     feedback.textContent = qty < requestedQty
       ? `Only ${qty} left of ${product.name} (${variant.label}) - added ${qty} to your cart.`
-      : `Added ${qty} × ${product.name} (${variant.label}) to your cart.`;
+      : qty > requestedQty
+        ? `Minimum order is ${variant.minQty} - added ${qty} × ${product.name} (${variant.label}) to your cart.`
+        : `Added ${qty} × ${product.name} (${variant.label}) to your cart.`;
     setTimeout(() => {
       feedback.textContent = '';
     }, 4000);

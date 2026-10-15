@@ -58,7 +58,7 @@ All days are Kiribati calendar days (UTC+12).
 
 **Gaps:** these don't exist in the backend. They are documented and not faked.
 
-- **Wholesale price tiers and minimum order quantities.** No schema exists for them. The smallest extension is a `PriceTiersJson` field on a variant, validated in `ProductVariants.gs`, with prices applied in `actionCreateOrder`. This changes order pricing, so it needs owner approval.
+- **Wholesale price tiers and minimum order quantities.** ~~No schema exists for them.~~ **Built** after owner approval ("Build wholesale tiers"): `PriceTiersJson` / `MinOrderQty` on a variant, priced in `actionCreateOrder`. Off until `WHOLESALE_TIERS=on`. See [wholesale-pricing.md](wholesale-pricing.md).
 - **Commissions and payouts.** Mwakete does not take payments, so there is nothing to show.
 - **Drivers and delivery administration.** This needs a new account type, job assignment, location sharing and proof of delivery: a new subsystem and a product decision (see §6).
 - **Customer favourites ("saved products").** `my-carts.html` holds saved carts on the device; there is no account-level favourites list.
@@ -79,7 +79,7 @@ All days are Kiribati calendar days (UTC+12).
 | 3 | Retailer, wholesaler and distributor dashboard: real KPIs, sales chart, recent orders, attention list, quick actions, wholesale panel | Done in this PR |
 | 4 | Admin overview at the top of `owner/admin.html`: orders, confirmed sales, stores, customers, a work queue, top stores with CSV export, recent orders and stock alerts. Uses one `getAdminOverview` endpoint. | Done (see §8) |
 | 5 | Customer dashboard: summary cards, "needs you" from order rooms, Buy again, shortcuts | Done (see §9) |
-| 6 | Driver and delivery admin | **Waiting for an owner decision.** No delivery backend exists. |
+| 6 | Driver and delivery admin | Done. The owner said to pick what is best for Mwakete; see `docs/deliveries.md`. |
 | 7–8 | Accessibility, performance, regression and deploy prep for each stage | Continuous |
 
 ## 7. Stage 2–3 record

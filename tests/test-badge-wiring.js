@@ -80,6 +80,8 @@ function ctx(extra) {
     publicStoreFields: (o) => ({ storeName: o.StoreName, storeSlug: o.StoreSlug }),
     productRatingIndex: () => ({}),
     unavailableProductIdsToday: () => ({}),
+    // ProductVariants.gs isn't loaded here: no store has wholesale bulk prices.
+    bulkPricingOn: () => false,
     getOwnerBySlug: (slug) => OWNERS.filter((o) => o.StoreSlug === slug)[0] || null,
     // The thing under test: it must be called ONCE per response.
     sellerBadgeIndex: () => { counts.badgeIndex++; return (extra && extra.badges) || BADGES; }

@@ -28,6 +28,7 @@ async function init() {
   if (typeof ListingReviewAdmin !== 'undefined') ListingReviewAdmin.init();   // admin-listing-review.js
   if (typeof HeaderAdsAdmin !== 'undefined') HeaderAdsAdmin.init();   // admin-header-ads.js
   if (typeof TxAdmin !== 'undefined') TxAdmin.init();                 // admin-tx.js
+  if (typeof DeliveriesAdmin !== 'undefined') DeliveriesAdmin.init(); // admin-deliveries.js
 }
 
 async function loadStores() {

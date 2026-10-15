@@ -54,7 +54,12 @@ var PUBLIC_POST_ACTIONS = [
   'getTxRoom', 'sendTxMessage', 'uploadTxEvidence', 'getTxEvidence',
   'txSubmitPayment', 'txVerifyPayment', 'txChecklist', 'txMarkReady', 'txDispatch', 'txMarkDelivered', 'txHandover',
   'txConfirmReceipt', 'txOpenDispute', 'txRespondDispute', 'txCancel', 'txRecordRefund', 'txConfirmRefund',
-  'adminTxDispute', 'adminTxException', 'adminTxCorrectReceipt', 'adminTxComplete', 'adminTxHold', 'adminTxNote', 'adminTxRedactEvidence'
+  'adminTxDispute', 'adminTxException', 'adminTxCorrectReceipt', 'adminTxComplete', 'adminTxHold', 'adminTxNote', 'adminTxRedactEvidence',
+  // Drivers and delivery jobs (Deliveries.gs). Driver actions check the
+  // customer session and the approved driver record inside; the tx* ones go
+  // through the order room's own checks (runTxWrite).
+  'driverApply', 'getDriverHome', 'driverSetAvailable', 'driverAcceptJob', 'driverUpdateJob', 'driverUploadProof', 'driverShareLocation',
+  'txRequestDriver', 'txCancelDriverJob', 'txMarkDriverPaid'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -89,7 +94,9 @@ var PROTECTED_POST_ACTIONS = [
   // Order rooms admin lists and settings (Transactions.gs) - isOwnerAdmin inside.
   'adminListTxDisputes', 'adminGetTxConfig', 'adminSaveTxConfig',
   // Dashboard summaries (Dashboards.gs) - read-only, the session's own rows.
-  'getSellerDashboard', 'getAdminOverview'
+  'getSellerDashboard', 'getAdminOverview',
+  // Deliveries admin (Deliveries.gs) - isOwnerAdmin inside.
+  'adminListDeliveries', 'adminSetDriverStatus'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -109,7 +116,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'customerdash1-2026-10-15';
+var APP_VERSION = 'bulkprices1-2026-10-15';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -259,6 +266,7 @@ function actionCheckSetup() {
   // createOrder and the Orders page call into it - a missing file stops checkout.
   if (typeof txOnOrderCreated !== 'function') missingFiles.push('Transactions.gs');
   if (typeof actionGetSellerDashboard !== 'function') missingFiles.push('Dashboards.gs');
+  if (typeof actionDriverApply !== 'function') missingFiles.push('Deliveries.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -498,6 +506,16 @@ function doPost(e) {
         case 'adminTxHold': return jsonOut(actionAdminTxHold(body));
         case 'adminTxNote': return jsonOut(actionAdminTxNote(body));
         case 'adminTxRedactEvidence': return jsonOut(actionAdminTxRedactEvidence(body));
+        case 'driverApply': return jsonOut(actionDriverApply(body));
+        case 'getDriverHome': return jsonOut(actionGetDriverHome(body));
+        case 'driverSetAvailable': return jsonOut(actionDriverSetAvailable(body));
+        case 'driverAcceptJob': return jsonOut(actionDriverAcceptJob(body));
+        case 'driverUpdateJob': return jsonOut(actionDriverUpdateJob(body));
+        case 'driverUploadProof': return jsonOut(actionDriverUploadProof(body));
+        case 'driverShareLocation': return jsonOut(actionDriverShareLocation(body));
+        case 'txRequestDriver': return jsonOut(actionTxRequestDriver(body));
+        case 'txCancelDriverJob': return jsonOut(actionTxCancelDriverJob(body));
+        case 'txMarkDriverPaid': return jsonOut(actionTxMarkDriverPaid(body));
       }
     }
 
@@ -603,6 +621,8 @@ function doPost(e) {
         case 'adminSaveTxConfig': return jsonOut(actionAdminSaveTxConfig(owner, body));
         case 'getSellerDashboard': return jsonOut(actionGetSellerDashboard(owner, body));
         case 'getAdminOverview': return jsonOut(actionGetAdminOverview(owner, body));
+        case 'adminListDeliveries': return jsonOut(actionAdminListDeliveries(owner, body));
+        case 'adminSetDriverStatus': return jsonOut(actionAdminSetDriverStatus(owner, body));
       }
     }
 

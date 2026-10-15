@@ -149,8 +149,8 @@ function deliveryCostOf(rawCost) {
  * so the frontend can tell "no limit" apart from "zero left" without
  * re-deriving it from a blank string on every page.
  */
-function publicVariantFields(v) {
-  return publicVariantExtras({
+function publicVariantFields(v, owner) {
+  var out = publicVariantExtras({
     variantId: v.VariantId,
     label: v.Label,
     price: Number(v.Price),
@@ -158,6 +158,15 @@ function publicVariantFields(v) {
     // (Inventory.gs availableOf). null = not tracked.
     stockQty: availableOf(v)
   }, v);
+  // Bulk prices and minimum order: only sent when they are what the order
+  // will actually charge (bulkPricingOn) - never a price the shopper won't get.
+  if (owner && bulkPricingOn(owner)) {
+    var tiers = priceTiersOf(v);
+    if (tiers.length) out.tiers = tiers;
+    var minQty = minOrderQtyOf(v);
+    if (minQty > 1) out.minQty = minQty;
+  }
+  return out;
 }
 
 /**
@@ -364,7 +373,7 @@ function getTopProductsCached() {
         var owner = ownersById[p.OwnerId];
         var productVariants = variants
           .filter(function (v) { return v.ProductId === p.ProductId; })
-          .map(publicVariantFields);
+          .map(function (v) { return publicVariantFields(v, owner); });
         var product = {
           productId: p.ProductId,
           name: p.Name,
@@ -594,7 +603,7 @@ function actionSearchProducts(params) {
         var owner = ownersById[p.OwnerId];
         var productVariants = variants
           .filter(function (v) { return v.ProductId === p.ProductId; })
-          .map(publicVariantFields);
+          .map(function (v) { return publicVariantFields(v, owner); });
         var product = {
           productId: p.ProductId,
           name: p.Name,
@@ -686,7 +695,7 @@ function actionListProducts(params) {
       .map(function (p) {
         var productVariants = variants
           .filter(function (v) { return v.ProductId === p.ProductId; })
-          .map(publicVariantFields);
+          .map(function (v) { return publicVariantFields(v, owner); });
         var product = {
           productId: p.ProductId,
           name: p.Name,
@@ -762,7 +771,8 @@ function actionListOwnerProducts(owner, body) {
       .filter(function (v) { return v.ProductId === p.ProductId && v.Status !== 'deleted'; })
       .map(function (v) {
         return { variantId: v.VariantId, label: v.Label, price: Number(v.Price), sku: v.SKU, stockQty: v.StockQty, status: v.Status,
-          values: variantValuesOf(v), images: variantImagesOf(v).map(function (i) { return { id: i.id, url: i.url }; }) };
+          values: variantValuesOf(v), images: variantImagesOf(v).map(function (i) { return { id: i.id, url: i.url }; }),
+          tiers: priceTiersOf(v), minQty: minOrderQtyOf(v) };
       });
     return {
       productId: p.ProductId,
@@ -783,7 +793,8 @@ function actionListOwnerProducts(owner, body) {
     };
   });
 
-  return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length });
+  // bulkPricing tells the form whether to offer bulk prices at all.
+  return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length, bulkPricing: bulkPricingOn(owner) });
 }
 
 function actionCreateOrUpdateProduct(owner, body) {

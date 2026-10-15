@@ -202,7 +202,22 @@ const OrderRoom = (function () {
       ${r.readyInfo && r.readyInfo.instructions ? `<p class="helper-text">Collection: ${esc(r.readyInfo.instructions)}${r.readyInfo.when ? ' · ' + esc(r.readyInfo.when) : ''}</p>` : ''}
       ${r.dispatchInfo ? `<p class="helper-text">Sent ${esc(r.dispatchInfo.date)} by ${esc(r.dispatchInfo.method)}${r.dispatchInfo.tracking ? ' · tracking ' + esc(r.dispatchInfo.tracking) : ''}</p>` : ''}
       ${sub}${flags}${buyerBlock}${legacy}
-      ${r.hold && r.hold.on ? `<p class="tx-flag">On hold: ${esc(r.hold.reason)}</p>` : ''}`;
+      ${r.hold && r.hold.on ? `<p class="tx-flag">On hold: ${esc(r.hold.reason)}</p>` : ''}
+      ${deliveryHtml(r.delivery)}`;
+  }
+
+  /** Mwakete driver panel (Deliveries.gs): status, driver, last shared location. */
+  function deliveryHtml(d) {
+    if (!d || !d.status) return '';
+    const loc = d.location ? `<a href="${esc(d.location.link)}" target="_blank" rel="noopener">See the driver on the map</a>
+      <span class="helper-text">(shared ${esc(when(d.location.at))}${d.location.accuracy ? ', within about ' + esc(d.location.accuracy) + ' m' : ''})</span>` : '';
+    return `<div class="tx-delivery" role="group" aria-label="Mwakete driver">
+      <strong>Mwakete driver: ${esc(d.statusLabel)}</strong>
+      ${d.driverName ? `<br>${esc(d.driverName)}${d.vehicle ? ' · ' + esc(d.vehicle) : ''}${d.driverPhone ? ` · <a href="tel:${esc(d.driverPhone)}">${esc(d.driverPhone)}</a>` : ''}` : ''}
+      ${d.fee !== undefined ? `<br><span class="helper-text">Fee ${formatMoney(d.fee)}, paid by the seller${d.feePaid ? ' - marked paid' : ''}</span>` : ''}
+      ${d.failReason ? `<br><span class="helper-text">Reason: ${esc(d.failReason)}</span>` : ''}
+      ${loc ? '<br>' + loc : ''}
+    </div>`;
   }
 
   function flagText(f) {
@@ -233,7 +248,7 @@ const OrderRoom = (function () {
     confirmReceipt: 'Confirm receipt', openDispute: 'Report a problem', respondDispute: 'Reply about the problem', cancel: 'Cancel order',
     recordRefund: 'Record refund sent', confirmRefund: 'Refund arrived', adminDispute: 'Review problem', adminException: 'Waive a requirement',
     adminHold: 'Hold files', adminCorrectReceipt: 'Correct receipt answer', adminComplete: 'Complete without buyer', adminNote: 'Admin note',
-    adminReopen: 'Reopen problem'
+    adminReopen: 'Reopen problem', requestDriver: 'Request a Mwakete driver', cancelDriverJob: 'Cancel driver job', markDriverPaid: 'I paid the driver'
   };
   const PRIMARY = ['submitPayment', 'verifyPayment', 'checklist', 'markReady', 'dispatch', 'handover', 'confirmReceipt', 'respondDispute', 'recordRefund', 'adminDispute'];
 
@@ -284,7 +299,7 @@ const OrderRoom = (function () {
   function eventHtml(e) {
     const mine = e.byLabel === 'You';
     const system = e.by === 'system';
-    const kindLabel = { message: '', system: 'Automatic message', evidence: 'File added', payment: 'Payment', fulfilment: 'Goods',
+    const kindLabel = { message: '', system: 'Automatic message', evidence: 'File added', payment: 'Payment', fulfilment: e.by === 'driver' ? 'Delivery' : 'Goods',
       receipt: 'Receipt', dispute: 'Problem', status: 'Order', note: 'Admin note' }[e.kind] || '';
     const cls = ['tx-event', 'tx-event--' + e.kind, mine ? 'is-mine' : '', system ? 'is-system' : '', e.audience ? 'is-private' : ''].join(' ');
     const files = (e.evidence || []).map(fileHtml).join('');
@@ -638,7 +653,14 @@ const OrderRoom = (function () {
     adminHold: () => `${check('f-hold', 'Keep this order’s files beyond the normal retention time')}${field('f-reason', 'Reason', area('f-reason', 'maxlength="300"'))}`,
     adminCorrectReceipt: () => field('f-reason', 'Why set the buyer’s answer aside? (it stays in the history)', area('f-reason', 'maxlength="500"')),
     adminComplete: () => field('f-reason', 'Why complete without the buyer’s confirmation?', area('f-reason', 'maxlength="500"')),
-    adminNote: () => field('f-text', 'Note (only admins see it)', area('f-text', 'maxlength="1500"'))
+    adminNote: () => field('f-text', 'Note (only admins see it)', area('f-text', 'maxlength="1500"')),
+    requestDriver: () => `
+      <p class="helper-text">An approved independent driver in ${esc((room.delivery && room.delivery.areas || []).join(', '))} collects from you and delivers. You pay the driver this fee directly - Mwakete does not handle the money. The driver sees the buyer's name, phone and village once they accept.</p>
+      ${field('f-fee', 'Fee you will pay the driver ($)', '<input id="f-fee" type="number" min="0" max="500" step="0.5" inputmode="decimal">')}
+      ${field('f-pickup', 'Where the driver collects the goods', area('f-pickup', 'maxlength="300"'))}
+      ${field('f-notes', 'Notes for the driver (optional)', area('f-notes', 'maxlength="300"'), 'For example: fragile, call on arrival.')}`,
+    cancelDriverJob: () => field('f-reason', 'Why cancel the driver job?', area('f-reason', 'maxlength="300"')),
+    markDriverPaid: () => check('f-paid', 'I have paid the driver the agreed fee')
   };
 
   let formQueue = [];
@@ -696,6 +718,9 @@ const OrderRoom = (function () {
       case 'adminHold': return { hold: on('f-hold'), reason: val('f-reason') };
       case 'adminCorrectReceipt': case 'adminComplete': return { reason: val('f-reason') };
       case 'adminNote': return { text: val('f-text') };
+      case 'requestDriver': return { fee: val('f-fee'), pickup: val('f-pickup'), notes: val('f-notes') };
+      case 'cancelDriverJob': return { reason: val('f-reason') };
+      case 'markDriverPaid': return { confirmPaid: on('f-paid') };
       default: return {};
     }
   }
@@ -705,7 +730,8 @@ const OrderRoom = (function () {
     markDelivered: 'txMarkDelivered', handover: 'txHandover', confirmReceipt: 'txConfirmReceipt', openDispute: 'txOpenDispute',
     respondDispute: 'txRespondDispute', cancel: 'txCancel', recordRefund: 'txRecordRefund', confirmRefund: 'txConfirmRefund',
     adminDispute: 'adminTxDispute', adminReopen: 'adminTxDispute', adminException: 'adminTxException', adminHold: 'adminTxHold',
-    adminCorrectReceipt: 'adminTxCorrectReceipt', adminComplete: 'adminTxComplete', adminNote: 'adminTxNote'
+    adminCorrectReceipt: 'adminTxCorrectReceipt', adminComplete: 'adminTxComplete', adminNote: 'adminTxNote',
+    requestDriver: 'txRequestDriver', cancelDriverJob: 'txCancelDriverJob', markDriverPaid: 'txMarkDriverPaid'
   };
 
   function confirmText(action, payload) {

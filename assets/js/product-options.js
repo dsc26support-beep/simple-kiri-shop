@@ -243,8 +243,84 @@ function variantForSelection(options, variants, picked) {
   return (variants || []).filter(function (v) { return optionComboKey(v.values, options) === key; })[0] || null;
 }
 
+/* ==================== Bulk prices and minimum order (wholesale) ==================== */
+/*
+ * Owner decision, Oct 2026: wholesaler and distributor stores can set cheaper
+ * prices for bigger quantities, and a minimum order, per variant.
+ *   Variants.PriceTiersJson  [{ minQty: 10, price: 16.5 }, { minQty: 50, price: 15 }]
+ *                            Variants.Price is the price below the first tier.
+ *   Variants.MinOrderQty     blank = no minimum; otherwise a whole number 2+.
+ * The order total is always worked out on the server (Orders.gs) with
+ * tierUnitPrice below; the browser uses the same function only to show it.
+ */
+var PRICE_TIER_LIMITS = { tiers: 5, qtyMax: 10000, priceMax: 1000000 };
+
+function tierCents(n) { return Math.round(Number(n) * 100) / 100; }
+
+function tierWholeQty(n, lo) {
+  return typeof n === 'number' && isFinite(n) && Math.floor(n) === n && n >= lo && n <= PRICE_TIER_LIMITS.qtyMax;
+}
+
+/**
+ * Checks the bulk prices a seller entered against the normal price.
+ * raw: [{ minQty, price }] (strings or numbers); fully blank rows are dropped.
+ * Returns { ok: true, tiers } sorted by quantity, or { ok: false, error }.
+ * Each tier needs a bigger quantity AND a lower price than the one before,
+ * and every tier is below the normal price - a "bulk price" never costs more.
+ */
+function normalizePriceTiers(raw, basePrice, label) {
+  var what = label || 'this item';
+  if (raw === undefined || raw === null || raw === '') return { ok: true, tiers: [] };
+  if (!Array.isArray(raw)) return { ok: false, error: 'Bulk prices for ' + what + ' could not be read.' };
+  var rows = raw.filter(function (t) {
+    return t && !(String(t.minQty == null ? '' : t.minQty).trim() === '' && String(t.price == null ? '' : t.price).trim() === '');
+  });
+  if (rows.length > PRICE_TIER_LIMITS.tiers) return { ok: false, error: 'Up to ' + PRICE_TIER_LIMITS.tiers + ' bulk prices for ' + what + '.' };
+  var base = Number(basePrice);
+  var tiers = [];
+  for (var i = 0; i < rows.length; i++) {
+    var q = Number(String(rows[i].minQty).trim());
+    var pRaw = String(rows[i].price == null ? '' : rows[i].price).trim();
+    var p = Number(pRaw);
+    if (!tierWholeQty(q, 2)) return { ok: false, error: 'Each bulk price for ' + what + ' needs a whole-number quantity of 2 or more.' };
+    if (pRaw === '' || !isFinite(p) || p <= 0 || p > PRICE_TIER_LIMITS.priceMax) return { ok: false, error: 'Enter a bulk price above 0 for ' + q + '+ of ' + what + '.' };
+    tiers.push({ minQty: q, price: tierCents(p) });
+  }
+  tiers.sort(function (a, b) { return a.minQty - b.minQty; });
+  for (var j = 0; j < tiers.length; j++) {
+    if (j > 0 && tiers[j].minQty === tiers[j - 1].minQty) return { ok: false, error: 'Two bulk prices for ' + what + ' start at ' + tiers[j].minQty + '.' };
+    if (!(tiers[j].price < base)) return { ok: false, error: 'The bulk price for ' + tiers[j].minQty + '+ of ' + what + ' must be lower than the normal price.' };
+    if (j > 0 && !(tiers[j].price < tiers[j - 1].price)) return { ok: false, error: 'Bulk prices for ' + what + ' must go down as the quantity goes up.' };
+  }
+  return { ok: true, tiers: tiers };
+}
+
+/** Minimum order: blank or 1 = none (''), otherwise a whole number 2+. */
+function normalizeMinOrderQty(raw, label) {
+  var s = String(raw == null ? '' : raw).trim();
+  if (s === '' || s === '1') return { ok: true, value: '' };
+  var n = Number(s);
+  if (!tierWholeQty(n, 1)) return { ok: false, error: 'The minimum order for ' + (label || 'this item') + ' must be a whole number from 1 to ' + PRICE_TIER_LIMITS.qtyMax + '.' };
+  return { ok: true, value: n };
+}
+
+/**
+ * The price of one unit when qty units are bought: the last tier the quantity
+ * reaches, else the normal price. Never more than the normal price, even if
+ * the normal price was lowered after the tiers were set.
+ */
+function tierUnitPrice(basePrice, tiers, qty) {
+  var base = tierCents(basePrice);
+  var price = base;
+  (tiers || []).forEach(function (t) {
+    if (t && Number(qty) >= Number(t.minQty) && Number(t.price) > 0) price = tierCents(t.price);
+  });
+  return Math.min(price, base);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { validateProductOptions: validateProductOptions, optionComboKey: optionComboKey, optionComboLabel: optionComboLabel,
     generateOptionCombinations: generateOptionCombinations, planVariantChanges: planVariantChanges, optionValueStates: optionValueStates,
-    variantForSelection: variantForSelection, countOptionCombinations: countOptionCombinations, PRODUCT_OPTION_LIMITS: PRODUCT_OPTION_LIMITS };
+    variantForSelection: variantForSelection, countOptionCombinations: countOptionCombinations, PRODUCT_OPTION_LIMITS: PRODUCT_OPTION_LIMITS,
+    normalizePriceTiers: normalizePriceTiers, normalizeMinOrderQty: normalizeMinOrderQty, tierUnitPrice: tierUnitPrice, PRICE_TIER_LIMITS: PRICE_TIER_LIMITS };
 }

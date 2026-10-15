@@ -64,14 +64,22 @@ function formatPriceLabel(variants) {
  * time regardless of whatever made it into the cart.
  */
 function clampToAvailableStock(storeSlug, variant, requestedQty, productName) {
-  if (variant.stockQty == null) return requestedQty;
   const alreadyInCart = (Cart.getCart(storeSlug).find((l) => l.variantId === variant.variantId) || {}).qty || 0;
+  // A wholesale minimum order (variant.minQty) raises the first add to it:
+  // tapping + on a "minimum 10" item adds 10.
+  const minQty = Number(variant.minQty) > 1 ? Number(variant.minQty) : 1;
+  const wanted = Math.max(requestedQty, minQty - alreadyInCart);
+  if (variant.stockQty == null) return wanted;
   const available = variant.stockQty - alreadyInCart;
   if (available <= 0) {
     window.alert(`Sorry, ${productName} (${variant.label}) is out of stock.`);
     return null;
   }
-  return Math.min(requestedQty, available);
+  if (alreadyInCart + available < minQty) {
+    window.alert(`Sorry, only ${available} left of ${productName} (${variant.label}) - fewer than the minimum order of ${minQty}.`);
+    return null;
+  }
+  return Math.min(wanted, available);
 }
 
 // .product-price is `white-space: nowrap`, so a price that's too wide for
