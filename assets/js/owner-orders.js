@@ -49,6 +49,20 @@ function statusClass(status) {
   return 'status-' + status.toLowerCase().replace(/\s+/g, '-');
 }
 
+/**
+ * The order room link (Transactions.gs): o.room is null when rooms are off
+ * for this store. An order placed while rooms were on (flow 'v1') is managed
+ * in its room, so it gets no status dropdown - the server refuses that change
+ * anyway; the dropdown stays for every other order.
+ */
+function roomLink(o) {
+  if (!o.room) return '';
+  const href = `../order-room.html?order=${encodeURIComponent(o.orderId)}&as=seller`;
+  const unread = o.room.unread > 0 ? ` <span class="order-room-badge" aria-label="${o.room.unread} new">${o.room.unread}</span>` : '';
+  const stage = o.room.stage ? `<span class="order-room-stage${o.room.dispute ? ' order-room-problem' : ''}">${escapeHtml(o.room.stage)}</span>` : '';
+  return `<p><a class="btn btn-small order-room-link" href="${href}">Open order room${unread}</a>${stage}</p>`;
+}
+
 function render() {
   const listEl = document.getElementById('order-list');
   listEl.innerHTML = ownerOrders
@@ -56,6 +70,7 @@ function render() {
       const options = STATUS_OPTIONS.map(
         (s) => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${s}</option>`
       ).join('');
+      const inRoom = o.room && o.room.flow === 'v1';
       return `
         <article class="order-card" data-order-id="${escapeHtml(o.orderId)}">
           <div class="order-card-header">
@@ -63,9 +78,10 @@ function render() {
               <strong>${escapeHtml(o.orderId)}</strong>
               <span class="status-badge ${statusClass(o.status)}">${escapeHtml(o.status)}</span>
             </div>
-            <label class="sr-only" for="status-${escapeHtml(o.orderId)}">Update status for order ${escapeHtml(o.orderId)}</label>
-            <select id="status-${escapeHtml(o.orderId)}" class="order-status-select" style="width:auto; min-height:36px;">${options}</select>
+            ${inRoom ? '' : `<label class="sr-only" for="status-${escapeHtml(o.orderId)}">Update status for order ${escapeHtml(o.orderId)}</label>
+            <select id="status-${escapeHtml(o.orderId)}" class="order-status-select" style="width:auto; min-height:36px;">${options}</select>`}
           </div>
+          ${roomLink(o)}
           <dl>
             <dt>Customer</dt><dd>${escapeHtml(o.customerName)}</dd>
             <dt>Phone</dt><dd>${escapeHtml(o.customerPhone)}</dd>

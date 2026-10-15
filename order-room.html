@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Private page: never indexed, never cached by the service worker (it
+       only handles same-origin files, and this page's data comes from the
+       Apps Script origin after a sign-in check). -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Order room — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.min.css">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
+</head>
+<body class="tx-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-top-row">
+      <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
+        <img src="assets/img/favicon.svg" alt="" class="header-logo-mark"><span class="header-wordmark" aria-hidden="true">wakete</span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a id="tx-back-link" href="customer-dashboard.html">My orders</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="tx-main">
+    <div class="container tx-container">
+      <h1 id="tx-title">Order room</h1>
+      <p id="tx-status" class="helper-text" role="status" aria-live="polite">Loading…</p>
+
+      <!-- Shown when there is no valid session for the chosen side. -->
+      <section id="tx-signin" class="dash-section tx-signin" hidden>
+        <p id="tx-signin-text">Please sign in to see this order.</p>
+        <a id="tx-signin-link" class="btn btn-primary" href="customer-login.html">Sign in</a>
+      </section>
+
+      <div id="tx-body" hidden>
+        <section class="dash-section tx-summary" aria-labelledby="tx-summary-heading">
+          <h2 id="tx-summary-heading" class="sr-only">Order summary</h2>
+          <div id="tx-summary"></div>
+        </section>
+
+        <section id="tx-dispute" class="tx-dispute" hidden aria-live="polite"></section>
+
+        <section class="dash-section tx-next" aria-labelledby="tx-next-heading">
+          <h2 id="tx-next-heading">Next steps</h2>
+          <p id="tx-next-hint" class="helper-text"></p>
+          <div id="tx-action-buttons" class="tx-action-buttons"></div>
+          <div id="tx-action-panel" class="tx-action-panel"></div>
+        </section>
+
+        <section class="dash-section tx-chat" aria-labelledby="tx-chat-heading">
+          <h2 id="tx-chat-heading">Messages and records</h2>
+          <p class="helper-text tx-offplatform">Keep messages, receipts and photos about this order here. Messages sent outside Mwakete may not be
+            available to Mwakete if there is a problem. Mwakete does not hold payments.</p>
+          <p class="load-more-row"><button type="button" id="tx-older" class="btn btn-small" hidden>Show earlier messages</button></p>
+          <ol id="tx-timeline" class="tx-timeline" aria-label="Messages and records, oldest first"></ol>
+          <form id="tx-composer" class="tx-composer" novalidate>
+            <label for="tx-message" class="sr-only">Message</label>
+            <textarea id="tx-message" rows="2" maxlength="2000" placeholder="Write a message about this order"></textarea>
+            <div class="tx-composer-row">
+              <label class="btn btn-small tx-attach">
+                <span>Add photo or PDF</span>
+                <input id="tx-composer-files" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple class="sr-only">
+              </label>
+              <button type="submit" class="btn btn-primary btn-small">Send</button>
+            </div>
+            <ul id="tx-composer-uploads" class="tx-uploads" aria-live="polite"></ul>
+            <p id="tx-composer-error" class="form-error" role="alert"></p>
+          </form>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script defer src="assets/js/config.min.js"></script>
+  <script defer src="assets/js/api.min.js"></script>
+  <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/auth.min.js"></script>
+  <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/order-room.min.js"></script>
+</body>
+</html>

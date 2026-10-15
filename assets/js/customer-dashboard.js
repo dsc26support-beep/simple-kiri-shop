@@ -262,9 +262,18 @@ function orderRow(o) {
           ${statusPill(o.status)}
           ${dashActions(o.archived, o.canEdit, o.canArchive, 'order', id)}
         </div>
+        ${orderRoomLink(o)}
         <p class="dash-item-error form-error" id="order-error-${id}" role="alert"></p>
       </div>
     </div>`;
+}
+
+/** Link to the order's room (Transactions.gs) - only when rooms are on for that store. */
+function orderRoomLink(o) {
+  if (!o.room) return '';
+  const unread = o.room.unread > 0 ? ` <span class="order-room-badge" aria-label="${o.room.unread} new">${o.room.unread}</span>` : '';
+  const stage = o.room.stage ? `<span class="order-room-stage${o.room.dispute ? ' order-room-problem' : ''}">${escapeHtml(o.room.stage)}</span>` : '';
+  return `<p class="dash-item-room"><a class="btn btn-small order-room-link" href="order-room.html?order=${encodeURIComponent(o.orderId)}&amp;as=buyer">Order room: payment, messages, receipt${unread}</a>${stage}</p>`;
 }
 
 /**

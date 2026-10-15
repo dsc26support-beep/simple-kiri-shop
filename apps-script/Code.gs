@@ -46,7 +46,15 @@ var PUBLIC_POST_ACTIONS = [
   'setCustomerOrderArchived', 'setCustomerBookingArchived',
   // Reviews: submitReview does its own customer auth internally (a review
   // requires a signed-in customer), same pattern as the account actions above.
-  'submitReview'
+  'submitReview',
+  // Order rooms (Transactions.gs). Each serves the buyer (customer session),
+  // the seller (owner session) or an admin from one action, so like chat they
+  // do their own auth: resolveTxActor checks the session named by body.side,
+  // then every action re-checks access to the order itself.
+  'getTxRoom', 'sendTxMessage', 'uploadTxEvidence', 'getTxEvidence',
+  'txSubmitPayment', 'txVerifyPayment', 'txChecklist', 'txMarkReady', 'txDispatch', 'txMarkDelivered', 'txHandover',
+  'txConfirmReceipt', 'txOpenDispute', 'txRespondDispute', 'txCancel', 'txRecordRefund', 'txConfirmRefund',
+  'adminTxDispute', 'adminTxException', 'adminTxCorrectReceipt', 'adminTxComplete', 'adminTxHold', 'adminTxNote', 'adminTxRedactEvidence'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -77,7 +85,9 @@ var PROTECTED_POST_ACTIONS = [
   // Per-variant photo galleries (ProductVariants.gs) - owner of the product only.
   'uploadVariantImage', 'setVariantImages',
   // Header adverts (HeaderAds.gs) - every one checks isOwnerAdmin inside.
-  'adminListHeaderAds', 'adminSaveHeaderAd', 'adminReorderHeaderAds', 'adminDeleteHeaderAd'
+  'adminListHeaderAds', 'adminSaveHeaderAd', 'adminReorderHeaderAds', 'adminDeleteHeaderAd',
+  // Order rooms admin lists and settings (Transactions.gs) - isOwnerAdmin inside.
+  'adminListTxDisputes', 'adminGetTxConfig', 'adminSaveTxConfig'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -97,7 +107,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'username1-2026-10-09';
+var APP_VERSION = 'orderrooms1-2026-10-15';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -244,6 +254,8 @@ function actionCheckSetup() {
   if (typeof actionGetHeaderAds !== 'function') missingFiles.push('HeaderAds.gs');
   if (typeof sellerBadgeIndex !== 'function') missingFiles.push('Badges.gs');
   if (typeof actionRequestMeeting !== 'function') missingFiles.push('Meetings.gs');
+  // createOrder and the Orders page call into it - a missing file stops checkout.
+  if (typeof txOnOrderCreated !== 'function') missingFiles.push('Transactions.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -459,6 +471,30 @@ function doPost(e) {
         case 'unsubscribeMarketing': return jsonOut(actionUnsubscribeMarketing(body));
         case 'recordMarketingClick': return jsonOut(actionRecordMarketingClick(body));
         case 'submitReview': return jsonOut(actionSubmitReview(body));
+        case 'getTxRoom': return jsonOut(actionGetTxRoom(body));
+        case 'sendTxMessage': return jsonOut(actionSendTxMessage(body));
+        case 'uploadTxEvidence': return jsonOut(actionUploadTxEvidence(body));
+        case 'getTxEvidence': return jsonOut(actionGetTxEvidence(body));
+        case 'txSubmitPayment': return jsonOut(actionTxSubmitPayment(body));
+        case 'txVerifyPayment': return jsonOut(actionTxVerifyPayment(body));
+        case 'txChecklist': return jsonOut(actionTxChecklist(body));
+        case 'txMarkReady': return jsonOut(actionTxMarkReady(body));
+        case 'txDispatch': return jsonOut(actionTxDispatch(body));
+        case 'txMarkDelivered': return jsonOut(actionTxMarkDelivered(body));
+        case 'txHandover': return jsonOut(actionTxHandover(body));
+        case 'txConfirmReceipt': return jsonOut(actionTxConfirmReceipt(body));
+        case 'txOpenDispute': return jsonOut(actionTxOpenDispute(body));
+        case 'txRespondDispute': return jsonOut(actionTxRespondDispute(body));
+        case 'txCancel': return jsonOut(actionTxCancel(body));
+        case 'txRecordRefund': return jsonOut(actionTxRecordRefund(body));
+        case 'txConfirmRefund': return jsonOut(actionTxConfirmRefund(body));
+        case 'adminTxDispute': return jsonOut(actionAdminTxDispute(body));
+        case 'adminTxException': return jsonOut(actionAdminTxException(body));
+        case 'adminTxCorrectReceipt': return jsonOut(actionAdminTxCorrectReceipt(body));
+        case 'adminTxComplete': return jsonOut(actionAdminTxComplete(body));
+        case 'adminTxHold': return jsonOut(actionAdminTxHold(body));
+        case 'adminTxNote': return jsonOut(actionAdminTxNote(body));
+        case 'adminTxRedactEvidence': return jsonOut(actionAdminTxRedactEvidence(body));
       }
     }
 
@@ -559,6 +595,9 @@ function doPost(e) {
         case 'adminSaveHeaderAd': return jsonOut(actionAdminSaveHeaderAd(owner, body));
         case 'adminReorderHeaderAds': return jsonOut(actionAdminReorderHeaderAds(owner, body));
         case 'adminDeleteHeaderAd': return jsonOut(actionAdminDeleteHeaderAd(owner, body));
+        case 'adminListTxDisputes': return jsonOut(actionAdminListTxDisputes(owner, body));
+        case 'adminGetTxConfig': return jsonOut(actionAdminGetTxConfig(owner));
+        case 'adminSaveTxConfig': return jsonOut(actionAdminSaveTxConfig(owner, body));
       }
     }
 
