@@ -78,7 +78,7 @@ All days are Kiribati calendar days (UTC+12).
 | 2 | Shared components; seller sidebar on computers, tab bar and drawer on phones, on every owner page including admin | Done in this PR |
 | 3 | Retailer, wholesaler and distributor dashboard: real KPIs, sales chart, recent orders, attention list, quick actions, wholesale panel | Done in this PR |
 | 4 | Admin overview at the top of `owner/admin.html`: orders, confirmed sales, stores, customers, a work queue, top stores with CSV export, recent orders and stock alerts. Uses one `getAdminOverview` endpoint. | Done (see §8) |
-| 5 | Customer dashboard: KPI strip, recent orders with room stage, reorder, support links | Planned |
+| 5 | Customer dashboard: summary cards, "needs you" from order rooms, Buy again, shortcuts | Done (see §9) |
 | 6 | Driver and delivery admin | **Waiting for an owner decision.** No delivery backend exists. |
 | 7–8 | Accessibility, performance, regression and deploy prep for each stage | Continuous |
 
@@ -151,3 +151,39 @@ It counts:
 **Deploy:**
 1. Update `Dashboards.gs` and `Code.gs`, then deploy a new version.
 2. `?action=getVersion` should show `adminoverview1-2026-10-15`.
+
+## 9. Stage 5 record: customer dashboard
+
+The changes to `customer-dashboard.html` add to what was there; the profile, orders, bookings and marketing opt-in all stay as they were.
+
+**New on the page:**
+- **Greeting:** "Hello, ‹first name›".
+- **Four summary cards:**
+  - **Active orders,** which filters the list below when tapped.
+  - **Need you,** which counts orders where the order room is waiting for the buyer to send payment details, confirm receipt or confirm a refund. Tapping it filters the list.
+  - **Completed** orders.
+  - **Saved carts on this device.**
+- **Every figure comes from the order list the page already loads,** so there is no extra request. The box reserves its height up front, so the orders below never move when the numbers arrive.
+- **On each order row:** "Needs you: …" in plain words, next to the order-room link.
+- **Buy again** on completed and cancelled orders. It puts the same items back in that store's cart on this device and opens the cart. Prices and stock are checked again on the server at checkout, so an old price is never charged.
+- **Shortcuts:** Browse stores, My carts, Recents, Help & support.
+- **A plain note** that payment goes directly to each store, and that the order room is the place to send payment details, confirm receipt or report a problem.
+
+**Backend.** The buyer's order list now carries `room.todo` (`submitPayment`, `confirmReceipt`, `confirmRefund` or empty). It is worked out in `txSummariesFor` with the same `txNextActions` rules the room itself uses.
+
+**Not built (gaps):**
+- **Account-level favourites:** carts on the device are what exists today.
+- **Saved delivery addresses:** checkout remembers the last address on the device only.
+- **Separate receipts page:** the order room shows the full order summary.
+
+**Tests:**
+- `tests/verify-customer-dashboard.js`: 15/15, in the browser against the real backend. It covers:
+  - the counts, and that another customer's orders never appear;
+  - the filters;
+  - Buy again;
+  - no sideways scroll from 320 to 768px;
+  - no layout shift when the numbers arrive.
+
+**Deploy:**
+1. Update `Transactions.gs` and `Code.gs`, then deploy a new version.
+2. `?action=getVersion` should show `customerdash1-2026-10-15`.

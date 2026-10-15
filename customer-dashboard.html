@@ -58,6 +58,23 @@
         <a class="btn btn-outline dash-store-link" id="store-link" href="owner/dashboard.html">My Store</a>
       </div>
 
+      <!-- Summary (Oct 2026 dashboard modernisation): counted from the same
+           order list the page already loads - no extra request. The box keeps
+           its height while loading so nothing below it moves. -->
+      <section class="cust-summary" aria-labelledby="cust-summary-h">
+        <h2 id="cust-summary-h" class="cust-hello"><span id="cust-hello">Hello</span></h2>
+        <div class="kpi-grid cust-kpis">
+          <button type="button" class="kpi-card" data-filter="active"><span class="kpi-label">Active orders</span><strong class="kpi-value" id="cust-kpi-active">–</strong><span class="kpi-sub">On their way to you</span></button>
+          <button type="button" class="kpi-card" data-filter="todo"><span class="kpi-label">Need you</span><strong class="kpi-value" id="cust-kpi-todo">–</strong><span class="kpi-sub" id="cust-kpi-todo-sub">Tap to see what to do</span></button>
+          <button type="button" class="kpi-card" data-filter="Fulfilled"><span class="kpi-label">Completed</span><strong class="kpi-value" id="cust-kpi-done">–</strong><span class="kpi-sub">Received orders</span></button>
+          <a class="kpi-card" href="my-carts.html"><span class="kpi-label">Saved carts</span><strong class="kpi-value" id="cust-kpi-carts">–</strong><span class="kpi-sub">On this device</span></a>
+        </div>
+        <nav class="cust-quick" aria-label="Shortcuts">
+          <a href="stores.html">Browse stores</a><a href="my-carts.html">My carts</a><a href="recent.html">Recents</a><a href="help.html">Help &amp; support</a>
+        </nav>
+        <p class="helper-text cust-paynote">Payment is arranged directly with each store - Mwakete never holds your money. Open an order's room to send payment details, confirm receipt or report a problem.</p>
+      </section>
+
       <section class="dash-section dash-section--profile">
         <h2>Profile</h2>
         <div id="profile-view">
@@ -125,6 +142,7 @@
   <script defer src="assets/js/auth.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
   <script defer src="assets/js/unsaved-guard.min.js"></script>
+  <script defer src="assets/js/cart.min.js"></script>
   <script defer src="assets/js/customer-dashboard.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>
   <script defer src="assets/js/bottom-nav.min.js"></script>

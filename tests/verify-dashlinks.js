@@ -225,11 +225,15 @@ const linkInfo = (page) => page.evaluate(() => {
     const guilty = await sourcesOf(page);
     ok('revealing My Store moves nothing: it is never a layout-shift source',
       guilty.length === 0, JSON.stringify(guilty));
-    // Proof the instrument works on this page at all - something did shift, so
-    // an empty result above means "not this element", not "nothing observed".
-    ok('(and the page did record shifts, so that is a real answer)',
-      (await page.evaluate(() => window.__cls)) > 0,
-      String(await page.evaluate(() => window.__cls)));
+    // Proof the instrument works on this page at all, so an empty result above
+    // means "not this element", not "nothing observed". Since the account
+    // summary (Oct 2026) reserves its space, the page itself may record no
+    // shift at all - so move something on purpose and check it is seen.
+    const before = await page.evaluate(() => window.__cls);
+    await page.evaluate(() => { const d = document.createElement('div'); d.style.height = '80px'; document.querySelector('main .container').prepend(d); });
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => window.__cls);
+    ok('(and the instrument does record shifts on this page, so that is a real answer)', after > before, before + ' -> ' + after);
     await ctx.close();
 
     const seller = await openDash(browser, { ok: true, hasStore: false }, { sellerToken: true });

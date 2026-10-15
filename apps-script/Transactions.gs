@@ -2007,7 +2007,15 @@ function txSummariesFor(orders, viewer) {
     if (!s) return;
     var d = s.OpenDisputeId ? disputes[s.OpenDisputeId] || null : null;
     var read = viewer === 'buyer' ? Number(s.ReadBuyerSeq) || 0 : Number(s.ReadSellerSeq) || 0;
-    out[o.OrderId] = { flow: s.Flow, stage: txStageLabel(o, s, d), unread: Math.max(0, (Number(s.LastSeq) || 0) - read), dispute: !!d };
+    var entry = { flow: s.Flow, stage: txStageLabel(o, s, d), unread: Math.max(0, (Number(s.LastSeq) || 0) - read), dispute: !!d };
+    // What the BUYER has to do next, from the same rules the room uses - for
+    // the customer dashboard's "needs you" list.
+    if (viewer === 'buyer') {
+      var acts = txNextActions('buyer', o, s, d, []);
+      entry.todo = acts.indexOf('confirmReceipt') !== -1 ? 'confirmReceipt' : acts.indexOf('submitPayment') !== -1 && s.PaymentState !== 'submitted' ? 'submitPayment'
+        : acts.indexOf('confirmRefund') !== -1 ? 'confirmRefund' : '';
+    }
+    out[o.OrderId] = entry;
   });
   return out;
 }

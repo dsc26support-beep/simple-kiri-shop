@@ -7840,3 +7840,14 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 }
 .dash-panel-title { margin: 0 0 var(--space-2); font-size: 1rem; }
 .admin-overview .dash-grid { margin-top: var(--space-2); }
+
+/* Customer dashboard summary (customer-dashboard.html). Reserves its height
+   up front so the orders below never move when the numbers arrive. */
+.cust-summary { margin: var(--space-3) 0; }
+.cust-hello { margin: 0 0 var(--space-2); font-size: 1.3rem; }
+.cust-kpis { margin: 0 0 var(--space-2); }
+.cust-kpis .kpi-card { font: inherit; text-align: left; cursor: pointer; min-height: 104px; }
+.cust-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0; }
+.cust-quick a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-3); border-radius: 999px; background: var(--color-purple-soft); color: var(--color-purple); font-weight: 600; text-decoration: none; }
+.cust-paynote { margin: 0; }
+.dash-buy-again { margin-left: var(--space-1); }

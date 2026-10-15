@@ -7,6 +7,10 @@ async function init() {
   if (!currentCustomer) return; // guard already redirected
 
   renderProfile();
+  const first = String(currentCustomer.name || '').trim().split(/\s+/)[0];
+  document.getElementById('cust-hello').textContent = first ? `Hello, ${first}` : 'Hello';
+  document.querySelectorAll('.cust-kpis [data-filter]').forEach((b) => b.addEventListener('click', () => showOrders(b.dataset.filter)));
+  document.getElementById('orders-list').addEventListener('click', onBuyAgain);
   document.getElementById('customer-logout').addEventListener('click', onLogout);
   document.getElementById('profile-edit-btn').addEventListener('click', () => toggleProfileEdit(true));
   document.getElementById('profile-cancel').addEventListener('click', () => toggleProfileEdit(false));
@@ -186,6 +190,55 @@ async function loadOrders(opts) {
   renderOrders();
 }
 
+/* ---------- Summary (Oct 2026 dashboard modernisation) ----------
+ * Counted from the order list already on the page - no extra request. "Need
+ * you" comes from the order room (room.todo, decided on the server by the
+ * same rules the room uses), so it only counts real next steps. */
+const TODO_TEXT = {
+  submitPayment: 'send your payment details',
+  confirmReceipt: 'confirm you received it, or report a problem',
+  confirmRefund: 'confirm the refund arrived'
+};
+
+function isActiveOrder(o) { return !o.archived && o.status !== 'Fulfilled' && o.status !== 'Cancelled'; }
+
+function renderSummary() {
+  const live = allOrders.filter((o) => !o.archived);
+  const todo = live.filter((o) => o.room && o.room.todo);
+  document.getElementById('cust-kpi-active').textContent = live.filter(isActiveOrder).length;
+  document.getElementById('cust-kpi-todo').textContent = todo.length;
+  document.getElementById('cust-kpi-done').textContent = live.filter((o) => o.status === 'Fulfilled').length;
+  document.getElementById('cust-kpi-carts').textContent = typeof cartStoreSlugs === 'function' ? cartStoreSlugs().length : 0;
+  document.getElementById('cust-kpi-todo-sub').textContent = todo.length ? 'Tap to see what to do' : 'Nothing waiting for you';
+}
+
+const SUMMARY_FILTERS = { active: 'Active', todo: 'Needs you' };
+
+/** A summary card was tapped: show those orders in the list below. */
+function showOrders(key) {
+  ordersFilter = SUMMARY_FILTERS[key] || key;
+  renderOrderFilters();
+  renderOrders();
+  document.querySelector('.dash-section--orders').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * "Buy again": the order's items go back into that store's cart on this
+ * device, then the cart opens. Prices and stock are checked again by the
+ * server at checkout (actionCreateOrder), so an old price is never charged.
+ */
+function onBuyAgain(e) {
+  const btn = e.target.closest('[data-buy-again]');
+  if (!btn) return;
+  const o = allOrders.find((x) => x.orderId === btn.dataset.buyAgain);
+  if (!o || !Array.isArray(o.items) || !o.items.length || typeof Cart === 'undefined') return;
+  o.items.forEach((l) => {
+    if (!l || !l.variantId) return;
+    Cart.addItem(o.storeSlug, { variantId: l.variantId, productId: l.productId, label: l.label, unitPrice: Number(l.unitPrice) || 0, qty: Number(l.qty) || 1 });
+  });
+  window.location.href = 'cart.html?store=' + encodeURIComponent(o.storeSlug);
+}
+
 // Only the statuses this customer actually has, so the row never fills with
 // tabs that lead nowhere. Archived is offered once there is something in it,
 // or once they have archived something this session.
@@ -196,7 +249,9 @@ function renderOrderFilters() {
     if (o.status && present.indexOf(o.status) === -1) present.push(o.status);
   });
   const hasArchived = archivedOrdersLoaded ? allOrders.some((o) => o.archived) : true;
-  renderFilters('orders-filters', ['All'].concat(present, hasArchived ? [ARCHIVED] : []),
+  // A summary card's filter shows as its own tab while it is the one in use.
+  const summary = Object.values(SUMMARY_FILTERS).indexOf(ordersFilter) !== -1 ? [ordersFilter] : [];
+  renderFilters('orders-filters', ['All'].concat(summary, present, hasArchived ? [ARCHIVED] : []),
     ordersFilter, (v) => {
       ordersFilter = v;
       // Archived rows are not in the default payload, so the first visit to
@@ -213,10 +268,13 @@ function renderOrderFilters() {
 function visibleOrders() {
   if (ordersFilter === ARCHIVED) return allOrders.filter((o) => o.archived);
   const live = allOrders.filter((o) => !o.archived);
+  if (ordersFilter === 'Active') return live.filter(isActiveOrder);
+  if (ordersFilter === 'Needs you') return live.filter((o) => o.room && o.room.todo);
   return ordersFilter === 'All' ? live : live.filter((o) => o.status === ordersFilter);
 }
 
 function renderOrders() {
+  renderSummary();
   const statusEl = document.getElementById('orders-status');
   const listEl = document.getElementById('orders-list');
   const rows = visibleOrders();
@@ -268,12 +326,15 @@ function orderRow(o) {
     </div>`;
 }
 
-/** Link to the order's room (Transactions.gs) - only when rooms are on for that store. */
+/** Link to the order's room (Transactions.gs) - only when rooms are on for that store - and "Buy again". */
 function orderRoomLink(o) {
-  if (!o.room) return '';
+  const again = Array.isArray(o.items) && o.items.length && (o.status === 'Fulfilled' || o.status === 'Cancelled')
+    ? `<button type="button" class="btn btn-small dash-buy-again" data-buy-again="${escapeHtml(o.orderId)}">Buy again</button>` : '';
+  if (!o.room) return again ? `<p class="dash-item-room">${again}</p>` : '';
   const unread = o.room.unread > 0 ? ` <span class="order-room-badge" aria-label="${o.room.unread} new">${o.room.unread}</span>` : '';
-  const stage = o.room.stage ? `<span class="order-room-stage${o.room.dispute ? ' order-room-problem' : ''}">${escapeHtml(o.room.stage)}</span>` : '';
-  return `<p class="dash-item-room"><a class="btn btn-small order-room-link" href="order-room.html?order=${encodeURIComponent(o.orderId)}&amp;as=buyer">Order room: payment, messages, receipt${unread}</a>${stage}</p>`;
+  const todo = o.room.todo ? `<strong>Needs you: ${escapeHtml(TODO_TEXT[o.room.todo] || '')}.</strong> ` : '';
+  const stage = o.room.stage || todo ? `<span class="order-room-stage${o.room.dispute ? ' order-room-problem' : ''}">${todo}${escapeHtml(o.room.stage || '')}</span>` : '';
+  return `<p class="dash-item-room"><a class="btn btn-small order-room-link" href="order-room.html?order=${encodeURIComponent(o.orderId)}&amp;as=buyer">Order room: payment, messages, receipt${unread}</a> ${again}${stage}</p>`;
 }
 
 /**
