@@ -30,6 +30,8 @@ const box = makeBox({
 box.ContentService = { createTextOutput: (s) => ({ s, setMimeType() { return this; } }), MimeType: { JSON: 'json' } };
 box.__props.WHOLESALE_TIERS = 'on';
 const fresh = () => { Object.keys(box.__cache).forEach((k) => delete box.__cache[k]); box.WHOLESALE_TIERS_MEMO = null; };
+const SHOT = process.env.SHOT_DIR || '';
+const shot = async (p, name, sel) => { if (!SHOT) return; const el = sel ? await p.$(sel) : null; await (el || p).screenshot({ path: `${SHOT}/${name}.png` }); };
 const rice = () => box.__sheets.Variants.objects().find((v) => v.VariantId === 'v_rice');
 
 (async () => {
@@ -77,6 +79,7 @@ const rice = () => box.__sheets.Variants.objects().find((v) => v.VariantId === '
     await p.textContent('#product-form-error'));
   await p.fill('#single-wholesale .wp-tier[data-i="1"] .wp-price', '15');
   ok('phone 390: the open form has no sideways scroll', (await over(p)) <= 1);
+  await shot(p, 'seller-wholesale-prices', '#single-fields');
   await p.setViewportSize({ width: 320, height: 800 });
   ok('phone 320: the open form has no sideways scroll', (await over(p)) <= 1, String(await over(p)));
   await p.click('#save-product-btn');
@@ -116,6 +119,7 @@ const rice = () => box.__sheets.Variants.objects().find((v) => v.VariantId === '
   const qty = await p.evaluate(() => { const q = document.getElementById('qty-p_rice'); return q ? [q.value, q.min] : null; });
   ok('product page: quantity starts at the minimum', qty && qty[0] === '10' && qty[1] === '10', JSON.stringify(qty));
   ok('product page 390: no sideways scroll', (await over(p)) <= 1);
+  await shot(p, 'product-bulk-prices', '#product-detail');
   await p.click('.add-to-cart-btn');
   await p.waitForTimeout(400);
   const line = await p.evaluate(() => JSON.parse(localStorage.getItem('skiri_cart_whole') || '[]')[0]);
@@ -127,10 +131,11 @@ const rice = () => box.__sheets.Variants.objects().find((v) => v.VariantId === '
   await p.goto(BASE + '/cart.html?store=whole', { waitUntil: 'load' });
   await p.waitForSelector('.cart-line', { timeout: 10000 });
   ok('cart: "$16.50 each · Bulk price" with the normal price struck through', /\$16\.50 each Bulk price \$18\.00/.test((await p.textContent('.cart-line-price')).replace(/\s+/g, ' ')), await p.textContent('.cart-line-price'));
-  ok('cart: offers the next step ("Buy 50+ for $15.00 each") and the minimum', /Buy 50\+ for \$15\.00 each/.test(await p.textContent('.cart-line-price')) && /Minimum order 10/.test(await p.textContent('.cart-line-price')));
+  ok('cart: offers the next step ("Buy 50+ for $15.00 each") and the minimum', /Buy 50\+ for \$15\.00 each · Minimum order 10/.test(await p.textContent('.cart-line-bulk')), await p.textContent('.cart-line-bulk'));
   ok('cart: total 10 × $16.50 = $165.00', (await p.textContent('#cart-total')).trim() === '$165.00', await p.textContent('#cart-total'));
   await p.fill('.cart-line-qty', '50');
   await p.waitForTimeout(200);
+  await shot(p, 'cart-bulk-price', '#cart-content');
   ok('cart: typing 50 reprices live to $750.00', (await p.textContent('#cart-total')).trim() === '$750.00' && (await p.textContent('.cart-line-total')).trim() === '$750.00', await p.textContent('#cart-total'));
   await p.fill('.cart-line-qty', '3');
   await p.press('.cart-line-qty', 'Enter');

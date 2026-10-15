@@ -92,7 +92,7 @@ function render() {
   itemsEl.innerHTML = cart
     .map(
       (line) => `
-      <div class="cart-line" data-variant-id="${escapeHtml(line.variantId)}">
+      <div class="cart-line${hasBulk(line) ? ' cart-line--bulk' : ''}" data-variant-id="${escapeHtml(line.variantId)}">
         <div class="cart-line-info">
           <strong>${escapeHtml(line.label)}</strong><br>
           <span class="helper-text cart-line-price">${linePriceHtml(line)}</span>
@@ -101,6 +101,7 @@ function render() {
         <input id="qty-${escapeHtml(line.variantId)}" class="cart-line-qty" type="number" min="${Cart.minQtyOf(line)}" value="${line.qty}" inputmode="numeric">
         <strong class="cart-line-total">${formatMoney(Cart.lineTotal(line))}</strong>
         <button type="button" class="btn btn-danger btn-small" data-action="remove">Remove</button>
+        ${hasBulk(line) ? `<p class="helper-text cart-line-bulk">${escapeHtml(lineBulkNotes(line))}</p>` : ''}
       </div>
     `
     )
@@ -110,12 +111,23 @@ function render() {
   liveEl.textContent = `${Cart.getItemCount(currentSlug)} item(s) in your cart.`;
 }
 
-// "$16.50 each - bulk price", the next cheaper step and the minimum order
-// (wholesale stores). A line without bulk prices reads exactly as before.
+// "$16.50 each - Bulk price" (wholesale stores). A line without bulk prices
+// reads exactly as before.
 function linePriceHtml(line) {
   const unit = Cart.unitPriceOf(line);
-  const parts = [`${formatMoney(unit)} each`];
-  if (unit < Number(line.unitPrice)) parts[0] += ` <span class="cart-bulk-tag">Bulk price</span> <s class="cart-normal-price">${formatMoney(line.unitPrice)}</s>`;
+  let html = `${formatMoney(unit)} each`;
+  if (unit < Number(line.unitPrice)) html += ` <span class="cart-bulk-tag">Bulk price</span> <s class="cart-normal-price">${formatMoney(line.unitPrice)}</s>`;
+  return html;
+}
+
+function hasBulk(line) {
+  return (Array.isArray(line.tiers) && line.tiers.length > 0) || Cart.minQtyOf(line) > 1;
+}
+
+// The next cheaper step and the minimum, on their own full-width row so a
+// narrow phone doesn't squeeze them into the item's column.
+function lineBulkNotes(line) {
+  const parts = [];
   const next = Cart.nextTierOf(line);
   if (next) parts.push(`Buy ${Number(next.minQty)}+ for ${formatMoney(next.price)} each`);
   if (Cart.minQtyOf(line) > 1) parts.push(`Minimum order ${Cart.minQtyOf(line)}`);
@@ -153,6 +165,8 @@ function onCartInput(e) {
 
   line.querySelector('.cart-line-total').textContent = formatMoney(Cart.lineTotal(updatedLine));
   line.querySelector('.cart-line-price').innerHTML = linePriceHtml(updatedLine);
+  const notes = line.querySelector('.cart-line-bulk');
+  if (notes) notes.textContent = lineBulkNotes(updatedLine);
   document.getElementById('cart-total').textContent = formatMoney(Cart.getTotal(currentSlug));
   document.getElementById('cart-live').textContent = `${Cart.getItemCount(currentSlug)} item(s) in your cart.`;
 }

@@ -7895,5 +7895,9 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   color: var(--color-ink);
   font-size: 0.75rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 .cart-normal-price { color: var(--color-muted); }
+.cart-line--bulk { flex-wrap: wrap; }
+.cart-line-bulk { flex-basis: 100%; margin: 0; }
+.cart-line-bulk:empty { display: none; }
