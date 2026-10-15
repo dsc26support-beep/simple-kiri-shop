@@ -58,7 +58,7 @@ All days are Kiribati calendar days (UTC+12).
 
 **Gaps:** these don't exist in the backend. They are documented and not faked.
 
-- **Wholesale price tiers and minimum order quantities.** No schema exists for them. The smallest extension is a `PriceTiersJson` field on a variant, validated in `ProductVariants.gs`, with prices applied in `actionCreateOrder`. This changes order pricing, so it needs owner approval.
+- **Wholesale price tiers and minimum order quantities.** ~~No schema exists for them.~~ **Built** after owner approval ("Build wholesale tiers"): `PriceTiersJson` / `MinOrderQty` on a variant, priced in `actionCreateOrder`. Off until `WHOLESALE_TIERS=on`. See [wholesale-pricing.md](wholesale-pricing.md).
 - **Commissions and payouts.** Mwakete does not take payments, so there is nothing to show.
 - **Drivers and delivery administration.** This needs a new account type, job assignment, location sharing and proof of delivery: a new subsystem and a product decision (see §6).
 - **Customer favourites ("saved products").** `my-carts.html` holds saved carts on the device; there is no account-level favourites list.

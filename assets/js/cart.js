@@ -19,14 +19,54 @@ const Cart = (function () {
     localStorage.setItem(storageKey(storeSlug), JSON.stringify(cart));
   }
 
-  // item: { variantId, productId, label, unitPrice, qty }
+  // Wholesale stores (owner decision, Oct 2026): a line may carry
+  //   tiers  [{ minQty, price }] - cheaper prices for bigger quantities
+  //   minQty the minimum order (absent = 1)
+  // straight from the listing. unitPrice stays the normal price. This is only
+  // what the shopper SEES - the server prices the order itself, with the same
+  // rule (tierUnitPrice in ProductOptions.gs; tests/test-wholesale-tiers.js
+  // checks the two agree).
+  function minQtyOf(line) {
+    const n = Number(line && line.minQty);
+    return n > 1 && Math.floor(n) === n ? n : 1;
+  }
+
+  function unitPriceOf(line) {
+    const base = Math.round(Number(line.unitPrice) * 100) / 100;
+    let price = base;
+    (Array.isArray(line.tiers) ? line.tiers : []).forEach((t) => {
+      if (t && Number(line.qty) >= Number(t.minQty) && Number(t.price) > 0) price = Math.round(Number(t.price) * 100) / 100;
+    });
+    return Math.min(price, base);
+  }
+
+  function lineTotal(line) {
+    return Math.round(unitPriceOf(line) * line.qty * 100) / 100;
+  }
+
+  // The next cheaper price the shopper could reach, or null: "Buy 50+ for $15.00 each".
+  function nextTierOf(line) {
+    const tiers = Array.isArray(line.tiers) ? line.tiers : [];
+    return tiers.find((t) => t && Number(t.minQty) > Number(line.qty) && Number(t.price) < unitPriceOf(line)) || null;
+  }
+
+  // item: { variantId, productId, label, unitPrice, qty, tiers?, minQty? }
+  // A line never sits below its minimum order: adding 1 of a "minimum 10"
+  // item puts 10 in the cart.
   function addItem(storeSlug, item) {
     const cart = getCart(storeSlug);
     const existing = cart.find((line) => line.variantId === item.variantId);
     if (existing) {
       existing.qty += item.qty;
+      // The listing's latest bulk prices win over what the line was added with.
+      if (item.tiers !== undefined || item.minQty !== undefined) {
+        existing.tiers = item.tiers;
+        existing.minQty = item.minQty;
+        existing.unitPrice = item.unitPrice;
+      }
+      existing.qty = Math.max(existing.qty, minQtyOf(existing));
     } else {
-      cart.push(item);
+      cart.push(Object.assign({}, item, { qty: Math.max(item.qty, minQtyOf(item)) }));
     }
     saveCart(storeSlug, cart);
     return cart;
@@ -38,7 +78,7 @@ const Cart = (function () {
       cart = cart.filter((line) => line.variantId !== variantId);
     } else {
       cart.forEach((line) => {
-        if (line.variantId === variantId) line.qty = qty;
+        if (line.variantId === variantId) line.qty = Math.max(qty, minQtyOf(line));
       });
     }
     saveCart(storeSlug, cart);
@@ -54,7 +94,7 @@ const Cart = (function () {
   }
 
   function getTotal(storeSlug) {
-    return getCart(storeSlug).reduce((sum, line) => sum + line.unitPrice * line.qty, 0);
+    return getCart(storeSlug).reduce((sum, line) => sum + lineTotal(line), 0);
   }
 
   function getItemCount(storeSlug) {
@@ -72,5 +112,5 @@ const Cart = (function () {
     return Object.keys(ids).length;
   }
 
-  return { getCart, addItem, updateQty, removeItem, clearCart, getTotal, getItemCount, getDistinctProductCount };
+  return { getCart, addItem, updateQty, removeItem, clearCart, getTotal, getItemCount, getDistinctProductCount, unitPriceOf, lineTotal, minQtyOf, nextTierOf };
 })();

@@ -236,6 +236,14 @@ function actionCreateOrder(body) {
     // Only variants with tracked stock need a write-back below - everything
     // else (StockQty blank) is unlimited and untouched.
     var stockDecrements = [];
+    // Bulk prices and minimums go by the whole quantity of a variant in this
+    // order, even if it arrives split over two lines.
+    var bulk = bulkPricingOn(owner);
+    var qtyByVariant = {};
+    requestedItems.forEach(function (it) {
+      var q = it && (it.qty === undefined || it.qty === null || it.qty === '') ? 1 : Number(it && it.qty);
+      if (it && isFinite(q)) qtyByVariant[it.variantId] = (qtyByVariant[it.variantId] || 0) + q;
+    });
 
     for (var i = 0; i < requestedItems.length; i++) {
       var variant = liveVariants.filter(function (v) { return v.VariantId === requestedItems[i].variantId; })[0];
@@ -255,6 +263,10 @@ function actionCreateOrder(body) {
       // changes or switched-off options never rewrite it.
       var chosen = orderOptionSnapshot(product, variant);
       var lineName = productTypeOfRow(product) === 'single' ? productName : productName + ' - ' + variant.Label;
+      var variantQty = qtyByVariant[variant.VariantId] || qty;
+      if (bulk && variantQty < minOrderQtyOf(variant)) {
+        return fail('The minimum order for ' + lineName + ' is ' + minOrderQtyOf(variant) + '. Please raise the quantity in your cart.');
+      }
 
       // Checked and reserved inside this same lock, so two customers racing
       // the same variant can never both succeed past the last unit - the
@@ -275,8 +287,10 @@ function actionCreateOrder(body) {
       }
 
       // From the sheet, never from the browser; rounded to the cent.
-      var unitPrice = roundMoney(variant.Price);
-      if (!(unitPrice > 0)) return fail('One of the items in your cart is no longer available. Please refresh your cart.');
+      var basePrice = roundMoney(variant.Price);
+      if (!(basePrice > 0)) return fail('One of the items in your cart is no longer available. Please refresh your cart.');
+      // Bulk price for the quantity bought (wholesale stores only) - never above the normal price.
+      var unitPrice = bulk ? tierUnitPrice(basePrice, priceTiersOf(variant), variantQty) : basePrice;
       var lineTotal = roundMoney(unitPrice * qty);
       subtotal = roundMoney(subtotal + lineTotal);
 
@@ -290,6 +304,9 @@ function actionCreateOrder(body) {
       };
       if (variant.SKU) line.sku = String(variant.SKU);
       if (chosen) line.options = chosen;
+      // Frozen like the options: the order shows it was a bulk price, and
+      // what the normal price was, even if the seller changes either later.
+      if (unitPrice < basePrice) { line.bulkPrice = true; line.normalPrice = basePrice; }
       lineItems.push(line);
       summaryParts.push(qty + '× ' + lineName);
     }

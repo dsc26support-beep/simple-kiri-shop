@@ -54,7 +54,7 @@ Admin → **Deliveries & drivers** shows:
 The backend deploy is manual:
 1. Add a new file `Deliveries` and paste `apps-script/Deliveries.gs`.
 2. Update `Code.gs` and `Transactions.gs`, then deploy a new version.
-3. `?action=getVersion` should show `deliveries1-2026-10-15`, and `checkSetup` should show `missingFiles: []`.
+3. `?action=getVersion` should show `deliveries1-2026-10-15` (or any later version, e.g. `bulkprices1-2026-10-15`), and `checkSetup` should show `missingFiles: []`.
 
 Script Properties:
 

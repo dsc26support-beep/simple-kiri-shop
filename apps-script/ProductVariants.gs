@@ -44,6 +44,50 @@ function variantImagesMax() {
   return raw === null || raw === '' || isNaN(n) ? 4 : Math.max(0, Math.min(10, Math.floor(n)));
 }
 
+/* ==================== Bulk prices and minimum order ==================== */
+
+/**
+ * Bulk prices are live for a store only when Script Property WHOLESALE_TIERS
+ * is 'on' (default off) AND the store is a wholesaler or distributor. When
+ * either stops being true, saved tiers stay in the sheet untouched but are
+ * neither shown nor charged - every shopper pays the normal price again.
+ */
+var WHOLESALE_TIERS_MEMO = null; // read once per request: listings call this per variant
+function bulkPricingOn(owner) {
+  if (!isBulkSeller(owner)) return false;
+  if (WHOLESALE_TIERS_MEMO === null) {
+    WHOLESALE_TIERS_MEMO = String(PropertiesService.getScriptProperties().getProperty('WHOLESALE_TIERS') || '').toLowerCase() === 'on';
+  }
+  return WHOLESALE_TIERS_MEMO;
+}
+
+/** The variant's saved bulk prices, re-checked: anything malformed reads as none. */
+function priceTiersOf(v) {
+  var raw = parseJsonSafe(v && v.PriceTiersJson, []);
+  var checked = normalizePriceTiers(raw, v && v.Price, 'this item');
+  return checked.ok ? checked.tiers : [];
+}
+
+/** The variant's minimum order, 1 when none is set. */
+function minOrderQtyOf(v) {
+  var checked = normalizeMinOrderQty(v && v.MinOrderQty);
+  return checked.ok && checked.value ? checked.value : 1;
+}
+
+/**
+ * Validates the bulk fields of one row being saved. Returns { error } or
+ * { tiersJson, minQty } ready to write. Rows sent without the fields (an
+ * older cached page) return {} - the saved values are left as they are.
+ */
+function prepareBulkFields(raw, price, label) {
+  if (!raw || (raw.tiers === undefined && raw.minQty === undefined)) return {};
+  var tiers = normalizePriceTiers(raw.tiers, price, label);
+  if (!tiers.ok) return { error: tiers.error };
+  var min = normalizeMinOrderQty(raw.minQty, label);
+  if (!min.ok) return { error: min.error };
+  return { tiersJson: tiers.tiers.length ? JSON.stringify(tiers.tiers) : '', minQty: min.value };
+}
+
 /** Money is stored to the cent - never a float like 12.300000001. */
 function roundMoney(n) {
   return Math.round(Number(n) * 100) / 100;
@@ -80,6 +124,9 @@ function prepareVariantSave(owner, body, prior, existingVariants) {
   if (body.listingType && body.listingType !== 'product') return { error: 'Options and single prices are for products. Rentals and services use a list of rates.' };
 
   var mine = existingVariants.filter(function (v) { return v.OwnerId === owner.OwnerId && v.Status !== 'deleted'; });
+  // Bulk fields are only read for stores that have bulk pricing; anyone else
+  // sending them is ignored, and their saved values are left alone.
+  var bulk = bulkPricingOn(owner);
   var incoming = Array.isArray(body.variants) ? body.variants : [];
 
   if (type === 'single') {
@@ -93,10 +140,13 @@ function prepareVariantSave(owner, body, prior, existingVariants) {
     var keep = one.variantId ? mine.filter(function (v) { return v.VariantId === one.variantId; })[0] : null;
     if (one.variantId && !keep) return { error: 'This product changed since you opened it. Please reload and try again.' };
     if (!keep) keep = mine.filter(function (v) { return v.Status === 'active'; })[0] || null;
+    var oneBulk = bulk ? prepareBulkFields(one, one.price, 'this product') : {};
+    if (oneBulk.error) return { error: oneBulk.error };
     return {
       type: 'single', options: [],
       rows: [{ variant: keep, values: {}, label: keep ? (keep.Label || 'Standard') : 'Standard', active: true,
-        price: roundMoney(one.price), stockQty: one.stockQty, sku: String(one.sku || '').trim() }],
+        price: roundMoney(one.price), stockQty: one.stockQty, sku: String(one.sku || '').trim(),
+        tiersJson: oneBulk.tiersJson, minQty: oneBulk.minQty }],
       disable: mine.filter(function (v) { return v.Status === 'active' && (!keep || v.VariantId !== keep.VariantId); })
     };
   }
@@ -134,8 +184,12 @@ function prepareVariantSave(owner, body, prior, existingVariants) {
     }
     var existing = pr.variantId ? byId[pr.variantId] : null;
     var priceOk = !variantPriceError(raw.price, pr.label);
+    // A switched-off combination keeps whatever bulk prices it had.
+    var rowBulk = bulk && pr.active ? prepareBulkFields(raw, raw.price, pr.label) : {};
+    if (rowBulk.error) return { error: rowBulk.error, index: i };
     rows.push({ variant: existing, values: pr.values, label: pr.label, active: pr.active,
-      price: priceOk ? roundMoney(raw.price) : (existing ? existing.Price : ''), stockQty: raw.stockQty, sku: sku, key: pr.key });
+      price: priceOk ? roundMoney(raw.price) : (existing ? existing.Price : ''), stockQty: raw.stockQty, sku: sku, key: pr.key,
+      tiersJson: rowBulk.tiersJson, minQty: rowBulk.minQty });
   }
   return { type: 'options', options: options, rows: rows,
     disable: plan.disabled.map(function (d) { return byId[d.variantId]; }).filter(function (v) { return !!v; }) };
@@ -151,6 +205,11 @@ function applyVariantSave(owner, productId, plan, variantsSheet, productsSheet) 
   var productRow = findRowById(productsSheet, 'ProductId', productId);
   updateRowFromObject(productsSheet, productRow.__row, { ProductType: plan.type, OptionsJson: plan.type === 'options' ? JSON.stringify(plan.options) : '' });
 
+  // The two bulk columns are added on the first save that carries them, so
+  // stores without bulk pricing never change the sheet.
+  var writesBulk = plan.rows.some(function (r) { return r.tiersJson !== undefined; });
+  if (writesBulk) ['PriceTiersJson', 'MinOrderQty'].forEach(function (h) { ensureColumn(variantsSheet, h); });
+
   var now = nowIso();
   var stockMoves = [];
   var out = [];
@@ -162,6 +221,10 @@ function applyVariantSave(owner, productId, plan, variantsSheet, productsSheet) 
       OptionValuesJson: plan.type === 'options' ? JSON.stringify(r.values) : '',
       UpdatedAt: now
     };
+    if (r.tiersJson !== undefined) {
+      fields.PriceTiersJson = r.tiersJson;
+      fields.MinOrderQty = r.minQty;
+    }
     if (r.variant) {
       updateRowFromObject(variantsSheet, r.variant.__row, fields);
       var move = productFormStockMove(r.variant, stock, owner.OwnerId);

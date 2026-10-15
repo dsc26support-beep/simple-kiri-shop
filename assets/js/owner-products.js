@@ -258,6 +258,8 @@ async function loadProducts(opts) {
     return;
   }
   ownerProducts = res.products;
+  // Wholesale prices: only offered when the backend says this store has them.
+  ProductOptionsEditor.setWholesale(!!res.bulkPricing);
   productsHasMore = !!res.hasMore;
   productsTotal = res.total;
   statusEl.textContent = ownerProducts.length === 0 ? 'You have no products yet — add your first one above.' : `${ownerProducts.length} of ${res.total} product(s) shown.`;

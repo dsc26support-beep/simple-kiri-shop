@@ -17,12 +17,18 @@ const ProductOptionsEditor = (() => {
   let single = null;           // the one row of a single product
   let loaded = null;           // the product as opened (null = new)
   let photoMax = 4;
+  let wholesaleOn = false;     // listOwnerProducts.bulkPricing: wholesaler/distributor with WHOLESALE_TIERS on
 
   const rid = (p) => p + '_' + Math.random().toString(36).slice(2, 10);
   const keyOf = (values) => (options.length ? optionComboKey(values, options) : '');
 
   function blankRow(values) {
-    return { variantId: '', values: values || {}, active: true, price: '', stockQty: '', sku: '', images: [], pending: [] };
+    return { variantId: '', values: values || {}, active: true, price: '', stockQty: '', sku: '', images: [], pending: [], tiers: [], minQty: '' };
+  }
+
+  // Saved tiers/minimum from listOwnerProducts, as the editor holds them.
+  function wholesaleOf(v) {
+    return { tiers: (v.tiers || []).map((t) => ({ minQty: t.minQty, price: t.price })), minQty: v.minQty > 1 ? v.minQty : '' };
   }
 
   /* ---------- mode ---------- */
@@ -89,13 +95,13 @@ const ProductOptionsEditor = (() => {
         const key = optionComboKey(values, options);
         if (!key) return;
         rows.set(key, Object.assign(blankRow(values), { variantId: opts && opts.duplicate ? '' : v.variantId, active: v.status === 'active',
-          price: v.price, stockQty: v.stockQty === '' || v.stockQty == null ? '' : v.stockQty, sku: v.sku || '', images: opts && opts.duplicate ? [] : (v.images || []) }));
+          price: v.price, stockQty: v.stockQty === '' || v.stockQty == null ? '' : v.stockQty, sku: v.sku || '', images: opts && opts.duplicate ? [] : (v.images || []) }, wholesaleOf(v)));
       });
       mode = 'options';
     } else if (product && product.productType === 'single') {
       const v = (product.variants || []).filter((x) => x.status === 'active')[0] || product.variants[0] || {};
       single = Object.assign(blankRow({}), { variantId: opts && opts.duplicate ? '' : v.variantId, price: v.price, stockQty: v.stockQty === '' || v.stockQty == null ? '' : v.stockQty,
-        sku: v.sku || '', images: opts && opts.duplicate ? [] : (v.images || []) });
+        sku: v.sku || '', images: opts && opts.duplicate ? [] : (v.images || []) }, wholesaleOf(v));
       mode = 'single';
     } else if (product) {
       mode = 'list';           // an older listing stays a list until the seller converts it
@@ -123,6 +129,96 @@ const ProductOptionsEditor = (() => {
     $('single-price').value = s.price === '' || s.price == null ? '' : s.price;
     $('single-stock').value = s.stockQty === '' || s.stockQty == null ? '' : s.stockQty;
     $('single-sku').value = s.sku || '';
+    drawWholesale();
+  }
+
+  /* ---------- wholesale prices (bulk tiers + minimum order) ---------- */
+  // Only for stores the backend says have them (wholesaler/distributor with
+  // the WHOLESALE_TIERS switch on). The rules are normalizePriceTiers /
+  // normalizeMinOrderQty from product-options.js; the backend checks again.
+
+  function setWholesale(on) {
+    wholesaleOn = !!on;
+    drawWholesale();
+    if (mode === 'options') renderGrid();
+  }
+
+  function wholesaleHtml(r, label) {
+    const rowsHtml = r.tiers.map((t, i) => `<li class="wp-tier" data-i="${i}">
+        <label>From <input class="wp-qty" type="number" min="2" step="1" inputmode="numeric" value="${escapeHtml(String(t.minQty ?? ''))}" aria-label="Quantity for bulk price ${i + 1} of ${escapeHtml(label)}"></label>
+        <label>Price each <input class="wp-price" type="number" min="0.01" step="0.01" inputmode="decimal" value="${escapeHtml(String(t.price ?? ''))}" aria-label="Bulk price ${i + 1} of ${escapeHtml(label)}"></label>
+        <button type="button" class="btn btn-small btn-danger wp-remove" aria-label="Remove bulk price ${i + 1}">Remove</button>
+      </li>`).join('');
+    return `<fieldset class="wp-panel"><legend>Wholesale prices <span class="helper-text">(optional)</span></legend>
+      <p class="helper-text">Cheaper prices for bigger orders of <strong>${escapeHtml(label)}</strong>. Below the first quantity, the normal price applies.</p>
+      <ul class="wp-list">${rowsHtml}</ul>
+      ${r.tiers.length < PRICE_TIER_LIMITS.tiers ? '<button type="button" class="btn btn-small wp-add">+ Add a bulk price</button>' : ''}
+      <label class="wp-min">Minimum order <input class="wp-minqty" type="number" min="1" step="1" inputmode="numeric" placeholder="none" value="${escapeHtml(String(r.minQty ?? ''))}" aria-label="Minimum order for ${escapeHtml(label)} (blank = none)"></label>
+    </fieldset>`;
+  }
+
+  /** Draws the editor into host for row r and keeps r in step with it. */
+  function drawWholesalePanel(host, r, label, onCount) {
+    host.innerHTML = wholesaleHtml(r, label);
+    host.oninput = (e) => {
+      const li = e.target.closest('.wp-tier');
+      if (li && e.target.classList.contains('wp-qty')) r.tiers[Number(li.dataset.i)].minQty = e.target.value;
+      if (li && e.target.classList.contains('wp-price')) r.tiers[Number(li.dataset.i)].price = e.target.value;
+      if (e.target.classList.contains('wp-minqty')) r.minQty = e.target.value;
+      markDirty();
+      if (onCount) onCount();
+    };
+    host.onclick = (e) => {
+      if (e.target.closest('.wp-add')) {
+        r.tiers.push({ minQty: '', price: '' });
+        drawWholesalePanel(host, r, label, onCount);
+        const q = host.querySelectorAll('.wp-qty');
+        if (q.length) q[q.length - 1].focus();
+      } else if (e.target.closest('.wp-remove')) {
+        r.tiers.splice(Number(e.target.closest('.wp-tier').dataset.i), 1);
+        drawWholesalePanel(host, r, label, onCount);
+      } else return;
+      markDirty();
+      if (onCount) onCount();
+    };
+  }
+
+  function drawWholesale() {
+    const host = $('single-wholesale');
+    if (!host) return;
+    host.hidden = !wholesaleOn;
+    if (!wholesaleOn) { host.innerHTML = ''; return; }
+    single = single || blankRow({});
+    drawWholesalePanel(host, single, 'this product');
+  }
+
+  function wholesaleCount(r) {
+    const n = r.tiers.filter((t) => String(t.minQty ?? '').trim() !== '' || String(t.price ?? '').trim() !== '').length;
+    const min = Number(r.minQty) > 1;
+    return n || min ? [n ? `${n} price${n > 1 ? 's' : ''}` : '', min ? `min ${Number(r.minQty)}` : ''].filter(Boolean).join(', ') : 'Add';
+  }
+
+  function toggleWholesale(tr, r, btn) {
+    const open = tr.nextElementSibling && tr.nextElementSibling.classList.contains('vg-wp-row');
+    document.querySelectorAll('#variant-grid .vg-wp-row, #variant-grid .vg-photo-row').forEach((x) => x.remove());
+    document.querySelectorAll('#variant-grid .vg-wholesale, #variant-grid .vg-photos').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    if (open) return;
+    btn.setAttribute('aria-expanded', 'true');
+    const panel = document.createElement('tr');
+    panel.className = 'vg-wp-row';
+    panel.innerHTML = '<td colspan="7"></td>';
+    tr.after(panel);
+    drawWholesalePanel(panel.querySelector('td'), r, optionComboLabel(r.values, options), () => { btn.textContent = wholesaleCount(r); });
+  }
+
+  /** The bulk fields for one row of the save, or { error }. */
+  function wholesalePayload(r, label) {
+    if (!wholesaleOn) return {};
+    const tiers = normalizePriceTiers(r.tiers, r.price, label);
+    if (!tiers.ok) return { error: tiers.error };
+    const min = normalizeMinOrderQty(r.minQty, label);
+    if (!min.ok) return { error: min.error };
+    return { tiers: tiers.tiers, minQty: min.value };
   }
 
   /* ---------- options editor ---------- */
@@ -240,7 +336,7 @@ const ProductOptionsEditor = (() => {
     const filter = ($('vg-filter').value || '').toLowerCase();
     const list = Array.from(rows.entries());
     $('variant-grid').innerHTML = list.length ? `<table class="vg-table">
-      <thead><tr><th scope="col"><span class="sr-only">On sale</span><input type="checkbox" id="vg-all" aria-label="Select all for bulk changes"></th><th scope="col">Combination</th><th scope="col">Price</th><th scope="col">Stock</th><th scope="col">SKU</th><th scope="col">Photos</th></tr></thead>
+      <thead><tr><th scope="col"><span class="sr-only">On sale</span><input type="checkbox" id="vg-all" aria-label="Select all for bulk changes"></th><th scope="col">Combination</th><th scope="col">Price</th><th scope="col">Stock</th><th scope="col">SKU</th><th scope="col">Photos</th>${wholesaleOn ? '<th scope="col">Wholesale</th>' : ''}</tr></thead>
       <tbody>${list.map(([key, r], i) => {
         const label = optionComboLabel(r.values, options);
         const hide = filter && label.toLowerCase().indexOf(filter) === -1;
@@ -251,6 +347,7 @@ const ProductOptionsEditor = (() => {
           <td><input class="vg-stock" type="number" min="0" step="1" inputmode="numeric" placeholder="∞" value="${escapeHtml(String(r.stockQty ?? ''))}" aria-label="Stock of ${escapeHtml(label)} (blank = unlimited)"></td>
           <td><input class="vg-sku" maxlength="60" value="${escapeHtml(r.sku || '')}" aria-label="SKU of ${escapeHtml(label)}"></td>
           <td><button type="button" class="btn btn-small vg-photos" aria-expanded="false">${r.images.length + r.pending.length || 'Add'}</button></td>
+          ${wholesaleOn ? `<td><button type="button" class="btn btn-small vg-wholesale" aria-expanded="false" aria-label="Wholesale prices of ${escapeHtml(label)}">${escapeHtml(wholesaleCount(r))}</button></td>` : ''}
         </tr>`;
       }).join('')}</tbody></table>` : '<p class="helper-text">Add options and values above, then press <strong>Make the combinations</strong>.</p>';
   }
@@ -271,6 +368,12 @@ const ProductOptionsEditor = (() => {
   function onGridClick(e) {
     if (e.target.id === 'vg-all') {
       document.querySelectorAll('#variant-grid .vg-row:not([hidden]) .vg-pick').forEach((c) => { c.checked = e.target.checked; });
+      return;
+    }
+    const wbtn = e.target.closest('.vg-wholesale');
+    if (wbtn) {
+      const tr = wbtn.closest('.vg-row');
+      toggleWholesale(tr, rows.get(tr.dataset.key), wbtn);
       return;
     }
     const btn = e.target.closest('.vg-photos');
@@ -299,13 +402,13 @@ const ProductOptionsEditor = (() => {
 
   function togglePhotos(tr, r, btn) {
     const open = tr.nextElementSibling && tr.nextElementSibling.classList.contains('vg-photo-row');
-    document.querySelectorAll('#variant-grid .vg-photo-row').forEach((x) => x.remove());
-    document.querySelectorAll('#variant-grid .vg-photos').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    document.querySelectorAll('#variant-grid .vg-photo-row, #variant-grid .vg-wp-row').forEach((x) => x.remove());
+    document.querySelectorAll('#variant-grid .vg-photos, #variant-grid .vg-wholesale').forEach((b) => b.setAttribute('aria-expanded', 'false'));
     if (open) return;
     btn.setAttribute('aria-expanded', 'true');
     const panel = document.createElement('tr');
     panel.className = 'vg-photo-row';
-    panel.innerHTML = '<td colspan="6"></td>';
+    panel.innerHTML = `<td colspan="${wholesaleOn ? 7 : 6}"></td>`;
     tr.after(panel);
     drawPhotoPanel(panel.querySelector('td'), r, optionComboLabel(r.values, options), () => { btn.textContent = r.images.length + r.pending.length || 'Add'; });
   }
@@ -408,7 +511,9 @@ const ProductOptionsEditor = (() => {
       const price = Number(single.price);
       if (single.price === '' || !(price > 0)) return { error: 'Enter a price greater than zero.', focus: 'single-price' };
       if (single.stockQty !== '' && !/^\d+$/.test(String(single.stockQty))) return { error: 'Stock is a whole number, 0 or more (blank = unlimited).', focus: 'single-stock' };
-      return { productType: 'single', variants: [{ variantId: single.variantId || undefined, price, stockQty: single.stockQty === '' ? '' : Number(single.stockQty), sku: single.sku }] };
+      const ws = wholesalePayload(single, 'this product');
+      if (ws.error) return { error: ws.error };
+      return { productType: 'single', variants: [Object.assign({ variantId: single.variantId || undefined, price, stockQty: single.stockQty === '' ? '' : Number(single.stockQty), sku: single.sku }, ws)] };
     }
     const checked = validateProductOptions(options, PRODUCT_OPTION_LIMITS);
     if (!checked.ok) return { error: checked.error };
@@ -420,8 +525,10 @@ const ProductOptionsEditor = (() => {
       const label = optionComboLabel(r.values, options);
       if (r.active && !(Number(r.price) > 0)) return { error: `Enter a price above 0 for ${label} (or switch it off).` };
       if (String(r.stockQty) !== '' && !/^\d+$/.test(String(r.stockQty))) return { error: `Stock for ${label} must be a whole number, 0 or more (blank = unlimited).` };
-      list.push({ variantId: r.variantId || undefined, values: r.values, active: r.active, price: r.price === '' ? '' : Number(r.price),
-        stockQty: String(r.stockQty) === '' ? '' : Number(r.stockQty), sku: String(r.sku || '').trim() });
+      const ws = r.active ? wholesalePayload(r, label) : {};
+      if (ws.error) return { error: ws.error };
+      list.push(Object.assign({ variantId: r.variantId || undefined, values: r.values, active: r.active, price: r.price === '' ? '' : Number(r.price),
+        stockQty: String(r.stockQty) === '' ? '' : Number(r.stockQty), sku: String(r.sku || '').trim() }, ws));
     }
     if (!list.some((r) => r.active)) return { error: 'Switch on at least one combination you sell.' };
     return { productType: 'options', options: checked.options, variants: list };
@@ -499,9 +606,9 @@ const ProductOptionsEditor = (() => {
       document.querySelectorAll('#variant-grid .vg-row').forEach((tr) => {
         tr.hidden = !!f && tr.querySelector('.vg-label').textContent.toLowerCase().indexOf(f) === -1;
       });
-      document.querySelectorAll('#variant-grid .vg-photo-row').forEach((x) => x.remove());
+      document.querySelectorAll('#variant-grid .vg-photo-row, #variant-grid .vg-wp-row').forEach((x) => x.remove());
     });
   }
 
-  return { init, load, setListingType, payload, changeSummary, uploadPending, labels, previewProduct, get mode() { return mode; } };
+  return { init, load, setListingType, setWholesale, payload, changeSummary, uploadPending, labels, previewProduct, get mode() { return mode; } };
 })();

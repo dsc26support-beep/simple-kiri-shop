@@ -88,7 +88,10 @@ function addCardItem(product, variant, btn) {
     // Same as the product page's Add to Cart: a single product is just its name.
     label: product.productType === 'single' ? product.name : `${product.name} — ${variant.label}`,
     unitPrice: variant.price,
-    qty
+    qty,
+    // Wholesale bulk prices / minimum order, when the store has them.
+    tiers: variant.tiers,
+    minQty: variant.minQty
   });
   if (typeof updateHeaderCartBadge === 'function') updateHeaderCartBadge();
   if (btn) {
@@ -97,7 +100,7 @@ function addCardItem(product, variant, btn) {
   }
   const option = product.variants.length > 1 ? ` (${variant.label})` : '';
   const where = product.storeName ? `your ${product.storeName} cart` : 'your cart';
-  announceCardCart(`Added 1 × ${product.name}${option} to ${where}.`);
+  announceCardCart(`Added ${qty} × ${product.name}${option} to ${where}.`);
   document.dispatchEvent(new CustomEvent('cart:added', { detail: { storeSlug: slug, productId: product.productId, distinctBefore } }));
 }
 
