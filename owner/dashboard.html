@@ -31,10 +31,18 @@
     </div>
   </div>
 
-  <main id="main" class="owner-main">
+  <main id="main" class="owner-main dash-main">
     <div class="container">
-      <h1>Welcome<span id="welcome-name"></span></h1>
-      <p><a id="storefront-link" href="#" target="_blank" rel="noopener">View my public storefront →</a></p>
+      <div class="dash-pagehead">
+        <div>
+          <h1><span id="dash-greeting">Welcome</span><span id="welcome-name"></span></h1>
+          <p class="helper-text">Here is what is happening with your store. Figures come from your orders and stock.</p>
+        </div>
+        <div class="dash-pagehead-side">
+          <span id="dash-store-type" class="dash-type-pill" hidden></span>
+          <a id="storefront-link" class="btn btn-small" href="#" target="_blank" rel="noopener">View my public storefront →</a>
+        </div>
+      </div>
       <p id="admin-link-wrap" class="hidden"><a href="admin.html">Admin — Tips →</a></p>
 
       <div class="store-status-toggle-row">
@@ -46,28 +54,81 @@
         <span class="helper-text" id="store-status-toggle-hint"></span>
       </div>
 
-      <div class="dashboard-cards">
-        <div class="dashboard-card">
-          <span class="metric" id="metric-products">–</span>
-          <span>Active Products</span>
-        </div>
-        <div class="dashboard-card">
-          <span class="metric" id="metric-orders">–</span>
-          <span>Total Orders</span>
-        </div>
-        <div class="dashboard-card">
-          <span class="metric" id="metric-pending">–</span>
-          <span>Pending Payment</span>
-        </div>
-      </div>
+      <p id="dash-status" class="helper-text" role="status" aria-live="polite"></p>
 
-      <div class="dashboard-quick-links">
-        <button type="button" class="btn btn-light-purple" data-href="products.html" data-label="Products">Products</button>
-        <button type="button" class="btn btn-light-purple" data-href="inventory.html" data-label="Inventory">Inventory</button>
-        <button type="button" class="btn btn-light-purple" data-href="orders.html" data-label="Orders">Orders <span id="nav-orders-badge" class="nav-unread-badge hidden" aria-label="orders needing attention">0</span></button>
-        <button type="button" class="btn btn-light-purple" data-href="bookings.html" data-label="Bookings">Bookings <span id="nav-bookings-badge" class="nav-unread-badge hidden" aria-label="bookings needing attention">0</span></button>
-        <button type="button" class="btn btn-light-purple" data-href="messages.html" data-label="Messages">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden" aria-label="unread messages">0</span></button>
-        <button type="button" class="btn btn-light-purple" data-href="feature.html" data-label="Feature products">Feature products</button>
+      <!-- KPI cards: filled from getSellerDashboard (Dashboards.gs). Dashes
+           until the real numbers arrive - never placeholder figures. -->
+      <section class="kpi-grid" aria-label="Store summary">
+        <a class="kpi-card" href="orders.html">
+          <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg></span>
+          <span class="kpi-label">Orders today</span>
+          <strong class="kpi-value" id="kpi-orders-today">–</strong>
+          <span class="kpi-sub" id="kpi-orders-sub">&nbsp;</span>
+        </a>
+        <a class="kpi-card" href="orders.html">
+          <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/></svg></span>
+          <span class="kpi-label">Confirmed sales today</span>
+          <strong class="kpi-value" id="kpi-sales-today">–</strong>
+          <span class="kpi-sub" id="kpi-sales-sub">&nbsp;</span>
+        </a>
+        <a class="kpi-card" href="inventory.html">
+          <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 3 7.5v9L12 21l9-4.5v-9z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></span>
+          <span class="kpi-label">Low or out of stock</span>
+          <strong class="kpi-value" id="kpi-low-stock">–</strong>
+          <span class="kpi-sub" id="kpi-stock-sub">&nbsp;</span>
+        </a>
+        <a class="kpi-card" href="orders.html">
+          <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5"/><path d="M10.3 3.8 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.8a2 2 0 0 0-3.4 0z"/></svg></span>
+          <span class="kpi-label">Orders needing action</span>
+          <strong class="kpi-value" id="kpi-needs-action">–</strong>
+          <span class="kpi-sub" id="kpi-action-sub">&nbsp;</span>
+        </a>
+      </section>
+
+      <div class="dash-grid">
+        <section class="dash-panel dash-panel--chart" aria-labelledby="sales-heading">
+          <div class="dash-panel-head">
+            <h2 id="sales-heading">Sales overview</h2>
+            <label class="sr-only" for="dash-period">Period</label>
+            <select id="dash-period" class="dash-select">
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+            </select>
+          </div>
+          <p class="helper-text" id="sales-total"></p>
+          <div id="sales-chart" class="sales-chart" role="img" aria-label="Confirmed sales per day"></div>
+          <table class="sr-only" id="sales-table"><caption>Confirmed sales and orders per day</caption><thead><tr><th scope="col">Day</th><th scope="col">Confirmed sales</th><th scope="col">Orders</th></tr></thead><tbody></tbody></table>
+        </section>
+
+        <section class="dash-panel dash-panel--orders" aria-labelledby="recent-heading">
+          <div class="dash-panel-head">
+            <h2 id="recent-heading">Recent orders</h2>
+            <a href="orders.html" class="dash-viewall">View all →</a>
+          </div>
+          <div id="recent-orders"><p class="helper-text">Loading…</p></div>
+        </section>
+
+        <section class="dash-panel dash-panel--actions" aria-labelledby="quick-heading">
+          <h2 id="quick-heading">Quick actions</h2>
+          <div class="dashboard-quick-links">
+            <button type="button" class="btn btn-light-purple" data-href="products.html" data-label="Products">Products</button>
+            <button type="button" class="btn btn-light-purple" data-href="inventory.html" data-label="Inventory">Inventory</button>
+            <button type="button" class="btn btn-light-purple" data-href="orders.html" data-label="Orders">Orders <span id="nav-orders-badge" class="nav-unread-badge hidden" aria-label="orders needing attention">0</span></button>
+            <button type="button" class="btn btn-light-purple" data-href="bookings.html" data-label="Bookings">Bookings <span id="nav-bookings-badge" class="nav-unread-badge hidden" aria-label="bookings needing attention">0</span></button>
+            <button type="button" class="btn btn-light-purple" data-href="messages.html" data-label="Messages">Messages <span id="nav-messages-badge" class="nav-unread-badge hidden" aria-label="unread messages">0</span></button>
+            <button type="button" class="btn btn-light-purple" data-href="feature.html" data-label="Feature products">Feature products</button>
+          </div>
+        </section>
+
+        <section class="dash-panel dash-panel--alerts" aria-labelledby="alerts-heading">
+          <h2 id="alerts-heading">Needs your attention</h2>
+          <ul id="dash-alerts" class="dash-alerts"><li class="helper-text">Loading…</li></ul>
+        </section>
+
+        <section class="dash-panel dash-panel--wholesale" id="dash-wholesale" aria-labelledby="wholesale-heading" hidden>
+          <h2 id="wholesale-heading">Wholesale</h2>
+          <dl id="dash-wholesale-facts" class="dash-facts"></dl>
+        </section>
       </div>
     </div>
   </main>

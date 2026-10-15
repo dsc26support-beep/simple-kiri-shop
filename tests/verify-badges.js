@@ -11,6 +11,13 @@ function mock(ctx, { orders, bookings, unread }) {
     else if (action === 'listOwnerOrders') body = { ok: true, total: orders.length, hasMore: false, orders };
     else if (action === 'listOwnerBookings') body = { ok: true, total: bookings.length, hasMore: false, bookings };
     else if (action === 'getUnreadCount') body = { ok: true, unreadCount: unread };
+    // The dashboard now asks the server for its counts in one request
+    // (Dashboards.gs getSellerDashboard) - same numbers, computed server-side.
+    else if (action === 'getSellerDashboard') body = { ok: true, period: 7, storeType: 'retailer', series: [], recentOrders: [], lowStock: [], problems: [], wholesale: null,
+      kpis: { ordersToday: 0, ordersYesterday: 0, salesToday: 0, salesYesterday: 0, lowStock: 0, outOfStock: 0, openProblems: 0, roomUnread: 0,
+        pendingPayment: orders.filter((o) => o.status === 'Pending Payment').length, needsAction: orders.filter((o) => o.status === 'Pending Payment').length,
+        activeProducts: 0, heldProducts: 0, reviewWaiting: 0, periodSales: 0, periodOrders: orders.length,
+        bookingsPending: bookings.filter((b) => b.status === 'Pending').length } };
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
 }

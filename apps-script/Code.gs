@@ -87,7 +87,9 @@ var PROTECTED_POST_ACTIONS = [
   // Header adverts (HeaderAds.gs) - every one checks isOwnerAdmin inside.
   'adminListHeaderAds', 'adminSaveHeaderAd', 'adminReorderHeaderAds', 'adminDeleteHeaderAd',
   // Order rooms admin lists and settings (Transactions.gs) - isOwnerAdmin inside.
-  'adminListTxDisputes', 'adminGetTxConfig', 'adminSaveTxConfig'
+  'adminListTxDisputes', 'adminGetTxConfig', 'adminSaveTxConfig',
+  // Dashboard summaries (Dashboards.gs) - read-only, the session's own rows.
+  'getSellerDashboard'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -107,7 +109,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'orderrooms1-2026-10-15';
+var APP_VERSION = 'dashboards1-2026-10-15';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -256,6 +258,7 @@ function actionCheckSetup() {
   if (typeof actionRequestMeeting !== 'function') missingFiles.push('Meetings.gs');
   // createOrder and the Orders page call into it - a missing file stops checkout.
   if (typeof txOnOrderCreated !== 'function') missingFiles.push('Transactions.gs');
+  if (typeof actionGetSellerDashboard !== 'function') missingFiles.push('Dashboards.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -598,6 +601,7 @@ function doPost(e) {
         case 'adminListTxDisputes': return jsonOut(actionAdminListTxDisputes(owner, body));
         case 'adminGetTxConfig': return jsonOut(actionAdminGetTxConfig(owner));
         case 'adminSaveTxConfig': return jsonOut(actionAdminSaveTxConfig(owner, body));
+        case 'getSellerDashboard': return jsonOut(actionGetSellerDashboard(owner, body));
       }
     }
 
