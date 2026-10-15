@@ -593,9 +593,15 @@ function actionListCustomerOrders(body) {
   try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
 
   var cacheKey = 'v1:custorders:' + customer.CustomerId + ':' + (body.includeArchived === true ? 'all' : 'live');
-  return getCached(cacheKey, CUSTOMER_LIST_CACHE_TTL_SECONDS, function () {
+  var res = getCached(cacheKey, CUSTOMER_LIST_CACHE_TTL_SECONDS, function () {
     return buildCustomerOrders(customer, body);
   });
+  // driversOpen: the dashboard shows "Drive with Mwakete" only once drivers
+  // are switched on (DELIVERY_JOBS). Added outside the cache so switching it
+  // takes effect at once. typeof guard: a backend missing Deliveries.gs must
+  // never break the customer's order list.
+  if (res && res.ok) res.driversOpen = typeof deliveriesEnabled === 'function' && deliveriesEnabled();
+  return res;
 }
 
 function buildCustomerOrders(customer, body) {

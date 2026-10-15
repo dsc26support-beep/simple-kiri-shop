@@ -57,6 +57,12 @@ const call = (b) => { try { return box.doPost({ postData: { contents: b } }).s; 
 
   let { ctx, p } = await open(1280);
   ok('greets the customer by first name', (await p.textContent('#cust-hello')) === 'Hello, Tia');
+  ok('"Drive with Mwakete" stays hidden while drivers are switched off', await p.evaluate(() => { const a = document.getElementById('cust-drive-link'); return !!a && a.hidden && a.offsetParent === null; }));
+  await ctx.close();
+  box.__props.DELIVERY_JOBS = 'on';
+  ({ ctx, p } = await open(1280));
+  ok('...and shows once DELIVERY_JOBS is on', await p.evaluate(() => { const a = document.getElementById('cust-drive-link'); return !a.hidden && a.offsetParent !== null; }), JSON.parse(call(JSON.stringify({ action: 'listCustomerOrders', token: 'ctok-b' }))).driversOpen);
+  delete box.__props.DELIVERY_JOBS;
   const k = await p.evaluate(() => ['cust-kpi-active', 'cust-kpi-todo', 'cust-kpi-done', 'cust-kpi-carts'].map((id) => document.getElementById(id).textContent.trim()));
   ok('summary from the customer\'s own orders: 2 active, 2 need you, 1 completed, 1 saved cart', k.join('|') === '2|2|1|1', k.join('|'));
   ok('another customer\'s order never appears', !(await p.textContent('#orders-list')).includes('O-ZED'));
