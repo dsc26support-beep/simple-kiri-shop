@@ -37,7 +37,8 @@ const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitRev
                      'sellerBadgeIndex', 'actionRequestMeeting', 'validateListing', 'listingSaveGate',
                      'validateProductOptions', 'prepareVariantSave', 'actionGetHeaderAds',   // + product options (Oct 2026)
                      'txOnOrderCreated',    // + order rooms (Oct 2026)
-                     'actionGetSellerDashboard'];   // + dashboards (Oct 2026)
+                     'actionGetSellerDashboard',    // + dashboards (Oct 2026)
+                     'actionDriverApply'];   // + drivers (Oct 2026)
 
 let pass = 0, fail = 0;
 const t = (n, c, extra) => { if (c) { pass++; console.log('PASS  ' + n); } else { fail++; console.log('FAIL  ' + n + (extra ? '  [' + extra + ']' : '')); } };

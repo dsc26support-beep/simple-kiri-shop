@@ -43,6 +43,7 @@
             <li><a href="#admin-search-heading">Search</a></li>
             <li><a href="#lr-heading">Listing review</a></li>
             <li><a href="#txa-heading">Order problems</a></li>
+            <li><a href="#dlv-heading">Deliveries &amp; drivers</a></li>
             <li><a href="#ha-heading">Header adverts</a></li>
             <li><a href="#feature-payments-heading">Featuring payments</a></li>
             <li><a href="#featured-now-heading">Featured now</a></li>
@@ -182,6 +183,20 @@
               <button type="submit" class="btn btn-small btn-light-purple" id="txc-save">Save settings</button>
             </form>
           </details>
+        </section>
+        <!-- Deliveries & drivers (admin-deliveries.js, backend Deliveries.gs). -->
+        <section class="dash-section" aria-labelledby="dlv-heading" id="deliveries">
+          <h2 id="dlv-heading">Deliveries &amp; drivers</h2>
+          <p id="dlv-mode" class="helper-text"></p>
+          <div class="kpi-grid" id="dlv-counts" aria-label="Delivery summary"></div>
+          <h3>Drivers</h3>
+          <p class="helper-text">Approve a driver only after you have spoken to them. Rejecting or suspending needs a reason - the driver sees it.</p>
+          <div id="dlv-drivers"></div>
+          <div class="dash-panel-head"><h3>Delivery jobs</h3>
+            <label class="sr-only" for="dlv-filter">Show</label>
+            <select id="dlv-filter" class="dash-select"><option value="active">Active</option><option value="problems">Failed or stuck</option><option value="delivered">Delivered</option><option value="all">All</option></select></div>
+          <p id="dlv-status" class="helper-text" role="status" aria-live="polite"></p>
+          <div id="dlv-jobs"></div>
         </section>
         <!-- Header adverts (admin-header-ads.js, backend HeaderAds.gs): the
              homepage strip - red on desktop, yellow on phones. -->
@@ -385,6 +400,7 @@
   <script defer src="../assets/js/admin-tx.min.js"></script>
   <script defer src="../assets/js/dash-ui.min.js"></script>
   <script defer src="../assets/js/admin-overview.min.js"></script>
+  <script defer src="../assets/js/admin-deliveries.min.js"></script>
   <script defer src="../assets/js/admin.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

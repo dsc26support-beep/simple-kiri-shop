@@ -79,7 +79,7 @@ All days are Kiribati calendar days (UTC+12).
 | 3 | Retailer, wholesaler and distributor dashboard: real KPIs, sales chart, recent orders, attention list, quick actions, wholesale panel | Done in this PR |
 | 4 | Admin overview at the top of `owner/admin.html`: orders, confirmed sales, stores, customers, a work queue, top stores with CSV export, recent orders and stock alerts. Uses one `getAdminOverview` endpoint. | Done (see §8) |
 | 5 | Customer dashboard: summary cards, "needs you" from order rooms, Buy again, shortcuts | Done (see §9) |
-| 6 | Driver and delivery admin | **Waiting for an owner decision.** No delivery backend exists. |
+| 6 | Driver and delivery admin | Done. The owner said to pick what is best for Mwakete; see `docs/deliveries.md`. |
 | 7–8 | Accessibility, performance, regression and deploy prep for each stage | Continuous |
 
 ## 7. Stage 2–3 record

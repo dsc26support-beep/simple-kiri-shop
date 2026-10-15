@@ -7851,3 +7851,22 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 .cust-quick a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-3); border-radius: 999px; background: var(--color-purple-soft); color: var(--color-purple); font-weight: 600; text-decoration: none; }
 .cust-paynote { margin: 0; }
 .dash-buy-again { margin-left: var(--space-1); }
+.tx-delivery { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--color-purple-soft); }
+/* Driver page (driver.html) */
+.driver-container { max-width: 760px; }
+.driver-online { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-2) 0 var(--space-3); font-weight: 700; }
+.driver-main .dash-panel { margin-top: var(--space-3); }
+.drv-job { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
+.drv-job .btn { min-height: 44px; }
+.drv-fee { margin: var(--space-1) 0 var(--space-2); font-weight: 700; }
+.drv-fail { margin-top: var(--space-2); }
+.drv-fail summary { cursor: pointer; color: var(--color-danger); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.drv-switch { position: relative; width: 56px; height: 30px; flex: 0 0 auto; border-radius: 999px; border: none; cursor: pointer; padding: 0; background: var(--color-muted); transition: background-color 0.18s ease; }
+.drv-switch.is-open { background: var(--color-success); }
+.drv-switch:disabled { opacity: 0.6; cursor: default; }
+.drv-switch:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.drv-switch-knob { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transition: transform 0.18s ease; }
+.drv-switch.is-open .drv-switch-knob { transform: translateX(26px); }
+#drv-online-hint { flex-basis: 100%; }
+@media (prefers-reduced-motion: reduce) { .drv-switch, .drv-switch-knob { transition: none; } }
+.dlv-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-1); }

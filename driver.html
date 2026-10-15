@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Drive with Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.min.css">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
+</head>
+<body class="driver-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-top-row">
+      <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
+        <img src="assets/img/favicon.svg" alt="" class="header-logo-mark"><span class="header-wordmark" aria-hidden="true">wakete</span>
+      </a>
+      <nav class="site-nav" aria-label="Main"><ul><li><a href="customer-dashboard.html">My account</a></li></ul></nav>
+    </div>
+  </header>
+
+  <main id="main" class="driver-main">
+    <div class="container driver-container">
+      <h1>Drive with Mwakete</h1>
+      <p id="drv-status" class="helper-text" role="status" aria-live="polite">Loading…</p>
+
+      <section id="drv-signin" class="dash-section" hidden>
+        <p>Sign in with your Mwakete account to drive or to see your jobs.</p>
+        <a class="btn btn-primary" href="customer-login.html?next=driver.html">Sign in</a>
+      </section>
+
+      <section id="drv-closed" class="dash-section" hidden>
+        <p>Driving for Mwakete is not open yet. Please check back soon.</p>
+      </section>
+
+      <section id="drv-apply" class="dash-section" hidden aria-labelledby="drv-apply-h">
+        <h2 id="drv-apply-h">Apply to drive</h2>
+        <p class="helper-text">Independent drivers deliver orders for Mwakete sellers. Each job shows the fee the seller will pay you directly - Mwakete does not hold or pay money. A Mwakete admin approves every driver.</p>
+        <form id="drv-apply-form" novalidate>
+          <div class="field"><label for="drv-name">Your name</label><input id="drv-name" maxlength="80" autocomplete="name"></div>
+          <div class="field"><label for="drv-phone">Phone</label><input id="drv-phone" type="tel" maxlength="30" autocomplete="tel"><p class="helper-text">Buyers and sellers call this number about a job you accept.</p></div>
+          <div class="field"><label for="drv-vehicle">Vehicle</label><select id="drv-vehicle"></select></div>
+          <div class="field"><label for="drv-area">Area</label><select id="drv-area"></select></div>
+          <div class="field tx-check"><input id="drv-agree" type="checkbox"><label for="drv-agree">I will handle goods with care, record pickup and delivery honestly, keep buyers' details private, and only share my location while on a job.</label></div>
+          <p id="drv-apply-error" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary">Apply</button>
+        </form>
+      </section>
+
+      <section id="drv-wait" class="dash-section" hidden><p id="drv-wait-text"></p></section>
+
+      <div id="drv-app" hidden>
+        <div class="driver-online">
+          <span id="drv-online-label">Offline</span>
+          <button type="button" id="drv-online" class="drv-switch" role="switch" aria-checked="false" aria-label="Online to receive jobs"><span class="drv-switch-knob" aria-hidden="true"></span></button>
+          <span class="helper-text" id="drv-online-hint">Go online to see new jobs in your area.</span>
+        </div>
+        <div class="kpi-grid" aria-label="Your deliveries">
+          <div class="kpi-card"><span class="kpi-label">Active jobs</span><strong class="kpi-value" id="drv-k-active">–</strong></div>
+          <div class="kpi-card"><span class="kpi-label">Delivered</span><strong class="kpi-value" id="drv-k-done">–</strong></div>
+          <div class="kpi-card"><span class="kpi-label">Fees earned</span><strong class="kpi-value" id="drv-k-fees">–</strong></div>
+          <div class="kpi-card"><span class="kpi-label">Marked paid by sellers</span><strong class="kpi-value" id="drv-k-paid">–</strong></div>
+        </div>
+        <section class="dash-panel" aria-labelledby="drv-mine-h"><h2 id="drv-mine-h">My active jobs</h2><div id="drv-mine"></div></section>
+        <section class="dash-panel" aria-labelledby="drv-open-h"><h2 id="drv-open-h">Available jobs</h2><div id="drv-open"></div></section>
+        <section class="dash-panel" aria-labelledby="drv-hist-h"><h2 id="drv-hist-h">Past jobs</h2><div id="drv-hist"></div></section>
+      </div>
+    </div>
+  </main>
+
+  <script defer src="assets/js/config.min.js"></script>
+  <script defer src="assets/js/api.min.js"></script>
+  <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/driver.min.js"></script>
+</body>
+</html>

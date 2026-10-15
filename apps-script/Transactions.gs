@@ -809,6 +809,7 @@ function txMaybeComplete(ctx, actor) {
 function txActorLabel(viewer, actorType) {
   if (actorType === 'system') return 'Mwakete';
   if (actorType === 'admin') return 'Mwakete review';
+  if (actorType === 'driver') return 'Driver';
   if (actorType === viewer) return 'You';
   return actorType === 'buyer' ? 'Buyer' : 'Seller';
 }
@@ -984,6 +985,17 @@ function actionGetTxRoom(body) {
   view.exceptionKeys = viewer === 'admin' ? String(cfg['exceptions.allowed']).split(',').filter(Boolean) : undefined;
   view.isParty = txIsParty(ctx.actor, order);
   view.actions = txNextActions(viewer, order, state, dispute, records);
+  // Mwakete drivers (Deliveries.gs): the delivery panel and its steps.
+  view.delivery = typeof deliveryRoomView === 'function' ? deliveryRoomView(order, state, viewer) : null;
+  if (view.delivery) {
+    if (view.delivery.canRequest) view.actions.push('requestDriver');
+    if (view.delivery.canCancel) view.actions.push('cancelDriverJob');
+    if (view.delivery.canMarkPaid) view.actions.push('markDriverPaid');
+    if (view.delivery.status && DELIVERY_JOB_ACTIVE.indexOf(view.delivery.status) !== -1) {
+      // While a driver is booked, the driver records pickup and delivery.
+      view.actions = view.actions.filter(function (a) { return a !== 'dispatch' && a !== 'markDelivered'; });
+    }
+  }
   if (viewer === 'admin' && view.dispute && view.dispute.status === 'resolved') view.actions.push('adminReopen');
   if (viewer === 'admin' && view.isParty) {
     view.actions = view.actions.filter(function (a) { return ['adminDispute', 'adminException', 'adminCorrectReceipt', 'adminComplete', 'cancel', 'adminReopen'].indexOf(a) === -1; });
@@ -1376,6 +1388,9 @@ function actionTxDispatch(body) {
     var f = String(ctx.state.FulfilmentState || '');
     if (f === '') return txFail('Check the goods against the order first.', { requirement: 'checklist' });
     if (['preparing', 'ready_dispatch'].indexOf(f) === -1) return txFail('This order has already been sent.');
+    if (typeof activeDeliveryJob === 'function' && activeDeliveryJob(ctx.order.OrderId)) {
+      return txFail('A Mwakete driver is booked for this order - the driver records the pickup. Cancel the driver job first to send it another way.');
+    }
     var d = (body && body.dispatch) || {};
     var dateErr = txDateError(d.date, ctx.order);
     if (dateErr) return txFail(dateErr);
@@ -1725,6 +1740,14 @@ function actionAdminTxDispute(body) {
 
 function txCancelInternal(ctx, reason) {
   var prevStatus = String(ctx.order.Status);
+  // A driver job that has not collected the goods ends with the order.
+  if (typeof activeDeliveryJob === 'function') {
+    var dj = activeDeliveryJob(ctx.order.OrderId);
+    if (dj && dj.Status !== 'picked_up') {
+      var djRow = findRowById(deliveryJobsSheet(), 'JobId', dj.JobId);
+      saveJob(djRow, { Status: 'cancelled', ClosedAt: nowIso(), FailReason: 'cancelled: order cancelled', Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '' });
+    }
+  }
   var st = txSetOrderStatus(ctx, 'Cancelled');
   if (!st.ok) return st;
   var refundDue = ctx.state.PaymentState === 'verified';
