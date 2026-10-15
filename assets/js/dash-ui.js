@@ -1,0 +1,60 @@
+// Shared dashboard drawing (seller dashboard, admin overview). Pure DOM
+// strings from data the server already computed - no chart library, no
+// requests of its own.
+const DashUI = (() => {
+  const label = (d) => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+
+  /** "▲ 20% vs yesterday ($10.00)" - plain words when there is nothing to compare. */
+  function change(now, before, money) {
+    if (!before && !now) return 'Nothing yesterday either';
+    if (!before) return 'None yesterday';
+    const diff = now - before;
+    const pct = Math.round((diff / before) * 100);
+    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '';
+    return `${arrow} ${Math.abs(pct)}% vs yesterday (${money ? formatMoney(before) : before})`.trim();
+  }
+
+  /**
+   * Line chart of confirmed sales per day into `el`, with the same numbers in
+   * an accessible table body `tbody` (screen readers read the table).
+   */
+  function salesChart(el, tbody, series) {
+    tbody.innerHTML = series.map((s) => `<tr><td>${escapeHtml(label(s.day))}</td><td>${formatMoney(s.sales)}</td><td>${s.orders}</td></tr>`).join('');
+    const max = Math.max(...series.map((s) => s.sales), 0);
+    if (!max) { el.innerHTML = '<p class="dash-empty">No confirmed sales in this period yet.</p>'; return; }
+    const W = 600, H = 200, padL = 48, padB = 26, padT = 10;
+    const step = (W - padL - 10) / Math.max(1, series.length - 1);
+    const y = (v) => padT + (H - padT - padB) * (1 - v / max);
+    const pts = series.map((s, i) => [padL + i * step, y(s.sales)]);
+    const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const area = line + ` L${pts[pts.length - 1][0].toFixed(1)} ${H - padB} L${padL} ${H - padB} Z`;
+    const every = series.length > 10 ? 5 : 1;
+    const ticks = [0, 0.5, 1].map((f) => `<text x="${padL - 6}" y="${y(max * f) + 4}" text-anchor="end">${formatMoney(max * f).replace('.00', '')}</text>
+      <line x1="${padL}" x2="${W - 10}" y1="${y(max * f)}" y2="${y(max * f)}" class="grid"/>`).join('');
+    const xs = series.map((s, i) => (i % every === 0 || i === series.length - 1 ? `<text x="${pts[i][0]}" y="${H - 6}" text-anchor="middle">${escapeHtml(label(s.day))}</text>` : '')).join('');
+    const dots = series.length <= 10 ? pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5"/>`).join('') : '';
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${ticks}<path class="area" d="${area}"/><path class="line" d="${line}"/>${dots}${xs}</svg>`;
+  }
+
+  function statusPill(status) {
+    const cls = 'status-badge status-' + String(status || '').toLowerCase().replace(/\s+/g, '-');
+    return `<span class="${cls}">${escapeHtml(status)}</span>`;
+  }
+
+  /** A CSV download built in the page from rows already on screen. */
+  function downloadCsv(filename, header, rows) {
+    const cell = (v) => {
+      let s = String(v == null ? '' : v);
+      if (/^[=+\-@]/.test(s)) s = "'" + s; // never a formula when opened in a spreadsheet
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const csv = [header].concat(rows).map((r) => r.map(cell).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  return { change, salesChart, statusPill, downloadCsv };
+})();

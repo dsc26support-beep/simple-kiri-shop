@@ -89,7 +89,7 @@ var PROTECTED_POST_ACTIONS = [
   // Order rooms admin lists and settings (Transactions.gs) - isOwnerAdmin inside.
   'adminListTxDisputes', 'adminGetTxConfig', 'adminSaveTxConfig',
   // Dashboard summaries (Dashboards.gs) - read-only, the session's own rows.
-  'getSellerDashboard'
+  'getSellerDashboard', 'getAdminOverview'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -109,7 +109,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'dashboards1-2026-10-15';
+var APP_VERSION = 'customerdash1-2026-10-15';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -602,6 +602,7 @@ function doPost(e) {
         case 'adminGetTxConfig': return jsonOut(actionAdminGetTxConfig(owner));
         case 'adminSaveTxConfig': return jsonOut(actionAdminSaveTxConfig(owner, body));
         case 'getSellerDashboard': return jsonOut(actionGetSellerDashboard(owner, body));
+        case 'getAdminOverview': return jsonOut(actionGetAdminOverview(owner, body));
       }
     }
 

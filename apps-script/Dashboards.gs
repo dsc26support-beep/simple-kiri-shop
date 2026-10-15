@@ -132,3 +132,102 @@ function actionGetSellerDashboard(owner, body) {
     }
   });
 }
+
+/* ==================== Platform admin overview ==================== */
+
+/**
+ * Admin only (isOwnerAdmin; a seller session is refused and logged). The
+ * whole marketplace at a glance, from the same rows every other admin tool
+ * reads. Deliberately no customer names, phones or addresses: order lines
+ * carry the reference, store, total and status - admin search is the place to
+ * look a person up. body.days: 7 (default) or 30.
+ */
+function actionGetAdminOverview(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'getAdminOverview');
+  var period = Number(body && body.days) === 30 ? 30 : 7;
+  var now = Date.now();
+  var today = headerAdToday(now), yesterday = headerAdToday(now - 86400000);
+  var days = dashLastDays(period, now);
+  var since = days[0];
+
+  var owners = sheetToObjects(getSheet('Owners'));
+  var stores = owners.filter(function (o) { return (o.Status === 'active' || o.Status === 'standby') && !isOwnerAdmin(o) && !isAdminNamedStore(o); });
+  var storeById = {};
+  owners.forEach(function (o) { storeById[o.OwnerId] = o; });
+  var orders = sheetToObjects(getSheet('Orders')).filter(function (o) { var s = storeById[o.OwnerId]; return s && !isOwnerAdmin(s); });
+  var summary = summariseSellerOrders(orders, days, today, yesterday);
+
+  // Top stores by confirmed sales in the period.
+  var byStore = {};
+  orders.forEach(function (o) {
+    var d = dashDayOf(o.CreatedAt);
+    if (d < since || d > today) return;
+    var b = byStore[o.OwnerId] || (byStore[o.OwnerId] = { ownerId: o.OwnerId, orders: 0, sales: 0 });
+    b.orders++;
+    if (DASH_CONFIRMED_STATUSES.indexOf(String(o.Status)) !== -1) b.sales = roundMoney(b.sales + (Number(o.Total) || 0));
+  });
+  var top = Object.keys(byStore).map(function (k) { return byStore[k]; })
+    .sort(function (a, b) { return b.sales - a.sales || b.orders - a.orders; }).slice(0, 8)
+    .map(function (b) { var s = storeById[b.ownerId] || {}; return { storeName: s.StoreName || '', storeSlug: s.StoreSlug || '', storeType: storeTypeOf(s), orders: b.orders, sales: b.sales }; });
+
+  // Sellers and customers.
+  var newStores = stores.filter(function (s) { var d = dashDayOf(s.CreatedAt); return d && d >= since; }).length;
+  var types = { retailer: 0, wholesaler: 0, distributor: 0 };
+  stores.forEach(function (s) { types[storeTypeOf(s)]++; });
+  var unverifiedBulk = stores.filter(function (s) { return storeTypeOf(s) !== 'retailer' && String(s.WholesaleVerified) !== 'true'; }).length;
+  var customers = dashRows('Customers');
+  var newCustomers = customers.filter(function (c) { var d = dashDayOf(c.CreatedAt); return d && d >= since; }).length;
+
+  // Work waiting on an admin.
+  var feature = dashRows('FeaturePurchases');
+  var featurePending = feature.filter(function (r) { return r.Status === FEATURE_STATUS.PENDING; }).length;
+  var featureUnmatched = feature.filter(function (r) { return r.Status === FEATURE_STATUS.APPROVED && !r.BankMatchedAt; }).length;
+  var reviewOpen = dashRows('Product_Review_Queue').filter(function (r) { return REVIEW_OPEN_STATUSES.indexOf(String(r.Status)) !== -1; }).length;
+  var disputes = dashRows('TxDisputes');
+  var openDisputes = disputes.filter(function (d) { return typeof TX_DISPUTE_OPEN !== 'undefined' && TX_DISPUTE_OPEN.indexOf(String(d.Status)) !== -1; });
+  var refundsDue = dashRows('TxState').filter(function (s) { return s.RefundState === 'due'; }).length;
+  var staleUnpaid = orders.filter(function (o) {
+    return String(o.Status) === 'Pending Payment' && now - new Date(o.CreatedAt).getTime() > 3 * 86400000;
+  }).length;
+
+  // Stock across the marketplace (tracked varieties of live listings only).
+  var liveProducts = {};
+  dashRows('Products').forEach(function (p) { if (p.Status === 'active') liveProducts[p.ProductId] = true; });
+  var stockByStore = {};
+  var outTotal = 0, lowTotal = 0;
+  dashRows('Variants').forEach(function (v) {
+    if (v.Status !== 'active' || !liveProducts[v.ProductId]) return;
+    var h = stockHealthOf(v);
+    if (h !== 'out' && h !== 'low') return;
+    if (h === 'out') outTotal++; else lowTotal++;
+    var s = stockByStore[v.OwnerId] || (stockByStore[v.OwnerId] = { out: 0, low: 0 });
+    s[h]++;
+  });
+  var stockStores = Object.keys(stockByStore).map(function (id) {
+    var s = storeById[id] || {};
+    return { storeName: s.StoreName || '', storeSlug: s.StoreSlug || '', out: stockByStore[id].out, low: stockByStore[id].low };
+  }).sort(function (a, b) { return b.out - a.out || b.low - a.low; }).slice(0, 5);
+
+  orders.sort(function (a, b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); });
+  var recent = orders.slice(0, 8).map(function (o) {
+    var s = storeById[o.OwnerId] || {};
+    return { orderId: o.OrderId, storeName: s.StoreName || '', total: o.Total, status: o.Status, createdAt: o.CreatedAt,
+      problem: openDisputes.some(function (d) { return d.OrderId === o.OrderId; }) };
+  });
+
+  return ok({
+    today: today, period: period,
+    kpis: Object.assign(summary.kpis, {
+      activeStores: stores.length, newStores: newStores, storeTypes: types, customers: customers.length, newCustomers: newCustomers
+    }),
+    series: summary.series,
+    work: {
+      featurePending: featurePending, featureUnmatched: featureUnmatched, reviewOpen: reviewOpen, openDisputes: openDisputes.length,
+      refundsDue: refundsDue, staleUnpaid: staleUnpaid, unverifiedBulk: unverifiedBulk
+    },
+    stock: { out: outTotal, low: lowTotal, stores: stockStores },
+    topStores: top,
+    recentOrders: recent,
+    roomsMode: typeof txMode === 'function' ? txMode() : 'off'
+  });
+}

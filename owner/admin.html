@@ -39,6 +39,7 @@
              scrolling; on a phone it scrolls sideways. -->
         <nav class="admin-jump" aria-label="Admin sections">
           <ul>
+            <li><a href="#ov-heading">Overview</a></li>
             <li><a href="#admin-search-heading">Search</a></li>
             <li><a href="#lr-heading">Listing review</a></li>
             <li><a href="#txa-heading">Order problems</a></li>
@@ -53,6 +54,50 @@
             <li><a href="#badge-config-heading">Badge settings</a></li>
           </ul>
         </nav>
+        <!-- Platform overview (admin-overview.js, backend Dashboards.gs
+             getAdminOverview): every figure counted on the server from the
+             real rows. Dashes until they arrive - never sample numbers. -->
+        <section class="dash-section admin-overview" aria-labelledby="ov-heading" id="overview">
+          <div class="dash-panel-head">
+            <h2 id="ov-heading">Overview</h2>
+            <label class="sr-only" for="ov-period">Period</label>
+            <select id="ov-period" class="dash-select"><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select>
+          </div>
+          <p id="ov-status" class="helper-text" role="status" aria-live="polite"></p>
+          <div class="kpi-grid" aria-label="Marketplace summary">
+            <div class="kpi-card"><span class="kpi-label">Orders today</span><strong class="kpi-value" id="ov-orders">–</strong><span class="kpi-sub" id="ov-orders-sub">&nbsp;</span></div>
+            <div class="kpi-card"><span class="kpi-label">Confirmed sales today (all stores)</span><strong class="kpi-value" id="ov-sales">–</strong><span class="kpi-sub" id="ov-sales-sub">&nbsp;</span></div>
+            <div class="kpi-card"><span class="kpi-label">Active stores</span><strong class="kpi-value" id="ov-stores">–</strong><span class="kpi-sub" id="ov-stores-sub">&nbsp;</span></div>
+            <div class="kpi-card"><span class="kpi-label">Customer accounts</span><strong class="kpi-value" id="ov-customers">–</strong><span class="kpi-sub" id="ov-customers-sub">&nbsp;</span></div>
+          </div>
+          <div class="dash-grid">
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Confirmed sales per day</h3>
+              <p class="helper-text" id="ov-period-total"></p>
+              <div id="ov-chart" class="sales-chart" role="img" aria-label="Confirmed sales per day across all stores"></div>
+              <div class="sr-only"><table id="ov-chart-table"><caption>Confirmed sales and orders per day, all stores</caption><thead><tr><th scope="col">Day</th><th scope="col">Confirmed sales</th><th scope="col">Orders</th></tr></thead><tbody></tbody></table></div>
+            </div>
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Waiting for an admin</h3>
+              <ul id="ov-work" class="dash-alerts"><li class="helper-text">Loading…</li></ul>
+            </div>
+            <div class="dash-panel">
+              <div class="dash-panel-head"><h3 class="dash-panel-title">Top stores this period</h3>
+                <button type="button" class="btn btn-small" id="ov-export">Download CSV</button></div>
+              <div id="ov-top"></div>
+            </div>
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Recent orders</h3>
+              <div id="ov-recent"></div>
+            </div>
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Stock alerts</h3>
+              <div id="ov-stock"></div>
+            </div>
+          </div>
+          <p class="helper-text">Not shown, because Mwakete does not have them: commissions and payouts (buyers pay sellers directly) and delivery monitoring (no driver service yet).</p>
+        </section>
+
         <section class="dash-section" aria-labelledby="admin-search-heading">
           <h2 id="admin-search-heading">Search everything</h2>
           <div class="field">
@@ -338,6 +383,8 @@
   <script defer src="../assets/js/admin-listing-review.min.js"></script>
   <script defer src="../assets/js/admin-header-ads.min.js"></script>
   <script defer src="../assets/js/admin-tx.min.js"></script>
+  <script defer src="../assets/js/dash-ui.min.js"></script>
+  <script defer src="../assets/js/admin-overview.min.js"></script>
   <script defer src="../assets/js/admin.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>
