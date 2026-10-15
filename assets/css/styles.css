@@ -7731,7 +7731,7 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 .tx-reqs { list-style: none; padding: 0; margin: var(--space-2) 0; }
 .tx-req { padding: var(--space-1) var(--space-2); border-radius: 6px; margin-bottom: var(--space-1); font-size: 0.92rem; }
 .tx-req.is-required { background: #fdf0ef; }
-.tx-req.is-recommended { background: var(--color-blue-soft); }
+.tx-req.is-recommended { background: var(--color-purple-soft); }
 .tx-req.is-waived { background: var(--color-bg-alt); }
 .tx-files-label { display: block; font-weight: 700; margin-bottom: var(--space-1); }
 .tx-attach { position: relative; cursor: pointer; min-height: 44px; }
@@ -7744,7 +7744,7 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 .tx-timeline { list-style: none; padding: 0; margin: 0 0 var(--space-3); max-height: 70vh; overflow-y: auto; }
 .tx-event { margin: var(--space-2) 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--color-bg-alt); max-width: 92%; }
 .tx-event.is-mine { margin-left: auto; background: var(--color-purple-soft); }
-.tx-event.is-system { max-width: 100%; background: var(--color-blue-soft); border-left: 4px solid var(--color-blue); }
+.tx-event.is-system { max-width: 100%; background: var(--color-gold-soft); border-left: 4px solid var(--color-purple); }
 .tx-event--payment, .tx-event--fulfilment, .tx-event--receipt, .tx-event--status { border-left: 4px solid var(--color-purple-light); }
 .tx-event--dispute { border-left: 4px solid var(--color-danger); }
 .tx-event--note { border-left: 4px solid var(--color-muted); }
