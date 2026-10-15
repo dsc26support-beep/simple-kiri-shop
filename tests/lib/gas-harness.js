@@ -73,6 +73,7 @@ function makeBox(tabs, opts) {
   const cache = {};
   const props = {};
   const mail = [];
+  const drive = { n: 0, files: {}, folders: {} };
   const box = {
     console, JSON, Math, Date, Number, String, Object, Array, Boolean, RegExp, Error, parseInt, parseFloat, isNaN, encodeURIComponent, decodeURIComponent,
     SpreadsheetApp: { getActive: () => ss, getActiveSpreadsheet: () => ss,
@@ -90,6 +91,7 @@ function makeBox(tabs, opts) {
       sleep() {},
       base64Decode: (s) => Array.from(Buffer.from(s, 'base64')),
       base64Encode: (b) => Buffer.from(b).toString('base64'),
+      newBlob: (bytes, type, name) => ({ getBytes: () => Array.from(bytes), getContentType: () => type, getName: () => name }),
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (alg, data) => Array.from(crypto.createHash('sha256').update(typeof data === 'string' ? data : Buffer.from(data)).digest()).map((b) => (b > 127 ? b - 256 : b))
     },
@@ -97,7 +99,20 @@ function makeBox(tabs, opts) {
     Logger: { log() {} },
     Session: { getActiveUser: () => ({ getEmail: () => 'admin@x.com' }), getScriptTimeZone: () => 'Pacific/Tarawa' },
     UrlFetchApp: { fetch: () => { throw new Error('UrlFetchApp not stubbed'); } },
-    __sheets: sheets, __props: props, __mail: mail, __cache: cache, __external: external
+    // In-memory Drive: files are private unless setSharing is called (recorded).
+    DriveApp: (() => {
+      const make = (id, blob) => ({ id, blob, trashed: false, sharing: null,
+        getId() { return id; }, getBlob() { return blob; }, getUrl() { return 'https://drive.example/' + id; },
+        setTrashed(t) { this.trashed = !!t; }, setSharing(a, p) { this.sharing = [a, p]; } });
+      const folder = (fid) => ({ getId: () => fid, createFile: (blob) => { const id = 'file_' + (++drive.n); drive.files[id] = make(id, blob); drive.files[id].folder = fid; return drive.files[id]; } });
+      return {
+        createFolder: (name) => { const fid = 'folder_' + (++drive.n); drive.folders[fid] = name; return folder(fid); },
+        getFolderById: (fid) => { if (!drive.folders[fid]) throw new Error('No folder'); return folder(fid); },
+        getFileById: (id) => { const f = drive.files[id]; if (!f || f.trashed) throw new Error('No item with the given ID could be found'); return f; },
+        Access: { ANYONE_WITH_LINK: 'ANYONE_WITH_LINK' }, Permission: { VIEW: 'VIEW' }
+      };
+    })(),
+    __sheets: sheets, __props: props, __mail: mail, __cache: cache, __external: external, __drive: drive
   };
   vm.createContext(box);
   fs.readdirSync(DIR).filter((f) => f.endsWith('.gs')).sort().forEach((f) => {

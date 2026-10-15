@@ -1,0 +1,72 @@
+// Admin: order rooms (backend Transactions.gs) - the problem reports to review
+// and the order room settings. Every decision is made in the order room
+// itself (order-room.html?as=admin), where the server checks again that the
+// admin is not a party to the order. Settings are validated and audited on
+// the server; this page only shows them.
+const TxAdmin = (() => {
+  const $ = (id) => document.getElementById(id);
+  let settings = [];
+
+  async function loadDisputes() {
+    $('txa-status').textContent = 'Loading…';
+    const res = await Api.post('adminListTxDisputes', { token: Auth.getToken(), status: $('txa-filter').value });
+    if (!res.ok) { $('txa-status').textContent = res.error || 'Could not load problem reports.'; return; }
+    const modeText = { off: 'Order rooms are OFF (Script Property TX_ROOMS).', pilot: 'Order rooms are on for pilot stores only (TX_PILOT_STORES).', on: 'Order rooms are ON for every store.' }[res.mode] || '';
+    $('txa-mode').textContent = modeText;
+    const list = res.disputes || [];
+    $('txa-status').textContent = list.length ? `${list.length} problem report(s).` : 'No problem reports here.';
+    $('txa-list').innerHTML = list.map((d) => `<li class="txa-item">
+      <a href="../order-room.html?order=${encodeURIComponent(d.orderId)}&amp;as=admin"><strong>${escapeHtml(d.orderId)}</strong></a>
+      · ${escapeHtml(d.storeName || '')} · ${escapeHtml(d.category)}
+      <br><span class="helper-text">${escapeHtml(d.statusLabel)}${d.outcome ? ' - ' + escapeHtml(d.outcome) : ''} · reported by the ${escapeHtml(d.openedBy)}
+      · ${escapeHtml(new Date(d.createdAt).toLocaleDateString())} · ${formatMoney(d.total)}${d.yours ? ' · <strong>you are a party - another admin must decide</strong>' : ''}</span></li>`).join('');
+  }
+
+  function openRoom(e) {
+    e.preventDefault();
+    const id = $('txa-order').value.trim();
+    if (!id) return;
+    location.href = '../order-room.html?order=' + encodeURIComponent(id) + '&as=admin';
+  }
+
+  async function loadConfig() {
+    const res = await Api.post('adminGetTxConfig', { token: Auth.getToken() });
+    if (!res.ok) { $('txc-status').textContent = res.error || 'Could not load the settings.'; return; }
+    settings = res.settings || [];
+    $('txc-fields').innerHTML = settings.map((s, i) => {
+      const id = 'txc-' + i;
+      let input;
+      if (s.type === 'enum') input = `<select id="${id}">${s.values.map((v) => `<option value="${escapeHtml(v)}" ${String(v) === String(s.value) ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}</select>`;
+      else if (s.type === 'number') input = `<input id="${id}" type="number" min="${s.min}" max="${s.max}" value="${escapeHtml(s.value)}">`;
+      else if (s.type === 'text') input = `<textarea id="${id}" rows="3" maxlength="600">${escapeHtml(s.value)}</textarea>`;
+      else input = `<input id="${id}" type="text" maxlength="500" value="${escapeHtml(s.value)}">`;
+      return `<div class="field"><label for="${id}">${escapeHtml(s.label)}</label>${input}
+        <p class="helper-text">${escapeHtml(s.key)} · default: ${escapeHtml(String(s.def).slice(0, 80))}${String(s.def).length > 80 ? '…' : ''}</p></div>`;
+    }).join('');
+    $('txc-status').textContent = '';
+  }
+
+  async function saveConfig(e) {
+    e.preventDefault();
+    const values = {};
+    settings.forEach((s, i) => { const v = $('txc-' + i).value; if (String(v) !== String(s.value)) values[s.key] = v; });
+    if (!Object.keys(values).length) { $('txc-status').textContent = 'Nothing changed.'; return; }
+    $('txc-save').disabled = true;
+    const res = await Api.post('adminSaveTxConfig', { token: Auth.getToken(), values });
+    $('txc-save').disabled = false;
+    if (!res.ok) { $('txc-status').textContent = res.error || 'Not saved.'; return; }
+    $('txc-status').textContent = 'Saved. Each change is recorded in the audit log.';
+    await loadConfig();
+  }
+
+  function init() {
+    if (!$('tx-disputes')) return;
+    $('txa-filter').addEventListener('change', loadDisputes);
+    $('txa-open').addEventListener('submit', openRoom);
+    $('txc-form').addEventListener('submit', saveConfig);
+    $('txc-details').addEventListener('toggle', () => { if ($('txc-details').open && !settings.length) loadConfig(); });
+    loadDisputes();
+  }
+
+  return { init };
+})();

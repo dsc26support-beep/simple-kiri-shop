@@ -610,6 +610,7 @@ function buildCustomerOrders(customer, body) {
       return includeArchived || !isCustomerArchived(o);
     });
   orders.sort(function (a, b) { return new Date(b.CreatedAt) - new Date(a.CreatedAt); });
+  var tx = typeof txSummariesFor === 'function' ? txSummariesFor(orders, 'buyer') : {};
 
   var out = orders.map(function (o) {
     var items = [];
@@ -634,7 +635,9 @@ function buildCustomerOrders(customer, body) {
       // page never has to guess - and never becomes the thing deciding.
       archived: isCustomerArchived(o),
       canEdit: orderIsEditable(o),
-      canArchive: orderIsArchivable(o)
+      canArchive: orderIsArchivable(o),
+      // Order room summary, or null when rooms are off for this store.
+      room: typeof txRoomAvailable === 'function' && txRoomAvailable(o) ? (tx[o.OrderId] || { flow: 'none' }) : null
     };
   });
   return ok({ orders: out });

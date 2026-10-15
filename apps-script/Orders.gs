@@ -335,6 +335,9 @@ function actionCreateOrder(body) {
       CreatedAt: nowIso(),
       UpdatedAt: nowIso()
     });
+    // Opens the order room when rooms are switched on for this store
+    // (Transactions.gs). Never fails the order.
+    if (typeof txOnOrderCreated === 'function') txOnOrderCreated({ OrderId: orderId, StoreSlug: slug, Status: 'Pending Payment' });
 
     if (body.customerEmail) markAbandonedCartConverted(slug, body.customerEmail, orderId);
 
@@ -409,6 +412,7 @@ function actionListOwnerOrders(owner, body) {
   var limit = clampPageSize(body.limit, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE);
   var offset = Math.max(0, Number(body.offset) || 0);
   var orders = allOrders.slice(offset, offset + limit);
+  var tx = typeof txSummariesFor === 'function' ? txSummariesFor(orders, 'seller') : {};
 
   var result = orders.map(function (o) {
     var items = [];
@@ -430,7 +434,9 @@ function actionListOwnerOrders(owner, body) {
       itemsSummary: o.ItemsSummary,
       total: o.Total,
       status: o.Status,
-      createdAt: o.CreatedAt
+      createdAt: o.CreatedAt,
+      // Order room summary, or null when rooms are off for this store.
+      room: typeof txRoomAvailable === 'function' && txRoomAvailable(o) ? (tx[o.OrderId] || { flow: 'none' }) : null
     };
   });
 
@@ -448,6 +454,10 @@ function actionUpdateOrderStatus(owner, body) {
     var sheet = getSheet('Orders');
     var existing = findRowById(sheet, 'OrderId', body.orderId);
     if (!existing || existing.OwnerId !== owner.OwnerId) return fail('Order not found');
+    // An order using the order room, or with an open problem report, is not
+    // changed from this dropdown (Transactions.gs).
+    var roomGuard = typeof txGuardLegacyStatusChange === 'function' ? txGuardLegacyStatusChange(existing, body.status) : null;
+    if (roomGuard) return roomGuard;
     if (existing.Status !== body.status) {
       var stock = applyOrderStatusStock(owner, existing, body.status);
       if (!stock.ok) return stock; // stock unchanged, status unchanged

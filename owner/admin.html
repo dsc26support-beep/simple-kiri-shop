@@ -41,6 +41,7 @@
           <ul>
             <li><a href="#admin-search-heading">Search</a></li>
             <li><a href="#lr-heading">Listing review</a></li>
+            <li><a href="#txa-heading">Order problems</a></li>
             <li><a href="#ha-heading">Header adverts</a></li>
             <li><a href="#feature-payments-heading">Featuring payments</a></li>
             <li><a href="#featured-now-heading">Featured now</a></li>
@@ -110,6 +111,31 @@
               <thead><tr><th scope="col">Category</th><th scope="col">On</th><th scope="col">Listings</th><th scope="col">Keywords</th><th scope="col">Actions</th></tr></thead>
               <tbody></tbody>
             </table></div>
+          </details>
+        </section>
+        <!-- Order rooms (admin-tx.js, backend Transactions.gs): problem
+             reports to review, and the order room settings. Decisions are
+             made inside each order room (order-room.html?as=admin). -->
+        <section class="dash-section" aria-labelledby="txa-heading" id="tx-disputes">
+          <h2 id="txa-heading">Order problems</h2>
+          <p id="txa-mode" class="helper-text"></p>
+          <p class="helper-text">Problems buyers and sellers report in an order room. Open one to see the order, the messages, the payment and delivery records and every photo, then ask for information or record a decision with reasons. Mwakete does not hold payments, so a refund is recorded only when the seller says it was sent and the buyer confirms it arrived.</p>
+          <div class="field"><label for="txa-filter">Show</label>
+            <select id="txa-filter" style="width:auto"><option value="open">Open problems</option><option value="resolved">Resolved</option><option value="all">All</option></select></div>
+          <p id="txa-status" class="helper-text" role="status" aria-live="polite"></p>
+          <ul id="txa-list" class="txa-list"></ul>
+          <form id="txa-open" class="field" novalidate>
+            <label for="txa-order">Open any order room by order reference</label>
+            <input id="txa-order" maxlength="64" autocomplete="off" placeholder="e.g. BONG-20261015-1234">
+            <button type="submit" class="btn btn-small">Open</button>
+          </form>
+          <details id="txc-details">
+            <summary>Order room settings (evidence rules, limits, retention, messages)</summary>
+            <form id="txc-form" novalidate>
+              <div id="txc-fields"></div>
+              <p id="txc-status" class="helper-text" role="status" aria-live="polite"></p>
+              <button type="submit" class="btn btn-small btn-light-purple" id="txc-save">Save settings</button>
+            </form>
           </details>
         </section>
         <!-- Header adverts (admin-header-ads.js, backend HeaderAds.gs): the
@@ -310,6 +336,7 @@
   <script defer src="../assets/js/listing-rules.min.js"></script>
   <script defer src="../assets/js/admin-listing-review.min.js"></script>
   <script defer src="../assets/js/admin-header-ads.min.js"></script>
+  <script defer src="../assets/js/admin-tx.min.js"></script>
   <script defer src="../assets/js/admin.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>
