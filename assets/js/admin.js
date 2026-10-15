@@ -9,6 +9,8 @@ async function init() {
     return;
   }
   document.getElementById('admin-tools').classList.remove('hidden');
+  // First, so the overview at the top of the page starts loading at once.
+  if (typeof AdminOverview !== 'undefined') AdminOverview.init();     // admin-overview.js
 
   await loadStores();
   document.getElementById('feature-store-btn').addEventListener('click', onFeatureStore);

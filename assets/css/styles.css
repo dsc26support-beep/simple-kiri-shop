@@ -7838,3 +7838,5 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 @media (min-width: 641px) {
   .dash-table td[data-label="Total"], .dash-table td[data-label="Order"] a { white-space: nowrap; }
 }
+.dash-panel-title { margin: 0 0 var(--space-2); font-size: 1rem; }
+.admin-overview .dash-grid { margin-top: var(--space-2); }

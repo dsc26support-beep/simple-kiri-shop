@@ -65,7 +65,8 @@ async function loadSummary(days) {
   const stopLoading = startLoadingMessage(statusEl);
   const res = await Api.post('getSellerDashboard', { token: Auth.getToken(), days });
   stopLoading();
-  if (!res.ok) {
+  // An answer without figures (an old backend, a proxy page) is a failure too.
+  if (!res.ok || !res.kpis) {
     statusEl.innerHTML = 'Your store summary could not be loaded. <button type="button" class="btn btn-small" id="dash-retry">Try again</button>';
     document.getElementById('dash-retry').addEventListener('click', () => loadSummary(days));
     document.getElementById('recent-orders').innerHTML = '';
@@ -80,20 +81,11 @@ async function loadSummary(days) {
   renderWholesale(res.storeType, res.wholesale);
 }
 
-function change(now, before, money) {
-  if (!before && !now) return 'Nothing yesterday either';
-  if (!before) return 'None yesterday';
-  const diff = now - before;
-  const pct = Math.round((diff / before) * 100);
-  const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '';
-  return `${arrow} ${Math.abs(pct)}% vs yesterday (${money ? formatMoney(before) : before})`.trim();
-}
-
 function renderKpis(k, period) {
   document.getElementById('kpi-orders-today').textContent = k.ordersToday;
-  document.getElementById('kpi-orders-sub').textContent = change(k.ordersToday, k.ordersYesterday, false);
+  document.getElementById('kpi-orders-sub').textContent = DashUI.change(k.ordersToday, k.ordersYesterday, false);
   document.getElementById('kpi-sales-today').textContent = formatMoney(k.salesToday);
-  document.getElementById('kpi-sales-sub').textContent = change(k.salesToday, k.salesYesterday, true);
+  document.getElementById('kpi-sales-sub').textContent = DashUI.change(k.salesToday, k.salesYesterday, true);
   document.getElementById('kpi-low-stock').textContent = k.lowStock + k.outOfStock;
   const stockSub = document.getElementById('kpi-stock-sub');
   stockSub.textContent = k.outOfStock ? `${k.outOfStock} out of stock - action needed` : k.lowStock ? 'Running low - reorder soon' : 'Stock looks healthy';
@@ -109,34 +101,8 @@ function renderKpis(k, period) {
   document.getElementById('sales-total').textContent = `${formatMoney(k.periodSales)} confirmed from ${k.periodOrders} order(s) in the last ${period} days. Orders count as sales once you confirm payment.`;
 }
 
-/** A small inline SVG line chart - no chart library, a few hundred bytes. */
 function renderChart(series) {
-  const el = document.getElementById('sales-chart');
-  const tbody = document.querySelector('#sales-table tbody');
-  const label = (d) => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-  tbody.innerHTML = series.map((s) => `<tr><td>${escapeHtml(label(s.day))}</td><td>${formatMoney(s.sales)}</td><td>${s.orders}</td></tr>`).join('');
-  const max = Math.max(...series.map((s) => s.sales), 0);
-  if (!max) {
-    el.innerHTML = '<p class="dash-empty">No confirmed sales in this period yet.</p>';
-    return;
-  }
-  const W = 600, H = 200, padL = 48, padB = 26, padT = 10;
-  const step = (W - padL - 10) / Math.max(1, series.length - 1);
-  const y = (v) => padT + (H - padT - padB) * (1 - v / max);
-  const pts = series.map((s, i) => [padL + i * step, y(s.sales)]);
-  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
-  const area = line + ` L${pts[pts.length - 1][0].toFixed(1)} ${H - padB} L${padL} ${H - padB} Z`;
-  const every = series.length > 10 ? 5 : 1;
-  const ticks = [0, 0.5, 1].map((f) => `<text x="${padL - 6}" y="${y(max * f) + 4}" text-anchor="end">${formatMoney(max * f).replace('.00', '')}</text>
-    <line x1="${padL}" x2="${W - 10}" y1="${y(max * f)}" y2="${y(max * f)}" class="grid"/>`).join('');
-  const xs = series.map((s, i) => (i % every === 0 || i === series.length - 1 ? `<text x="${pts[i][0]}" y="${H - 6}" text-anchor="middle">${escapeHtml(label(s.day))}</text>` : '')).join('');
-  const dots = series.length <= 10 ? pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5"/>`).join('') : '';
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${ticks}<path class="area" d="${area}"/><path class="line" d="${line}"/>${dots}${xs}</svg>`;
-}
-
-function statusPillHtml(status) {
-  const cls = 'status-badge status-' + String(status || '').toLowerCase().replace(/\s+/g, '-');
-  return `<span class="${cls}">${escapeHtml(status)}</span>`;
+  DashUI.salesChart(document.getElementById('sales-chart'), document.querySelector('#sales-table tbody'), series);
 }
 
 function renderRecent(list) {
@@ -149,7 +115,7 @@ function renderRecent(list) {
       <td data-label="Order"><a href="${link(o)}">${escapeHtml(o.orderId)}</a><span class="dash-table-sub">${escapeHtml(new Date(o.createdAt).toLocaleDateString())}</span></td>
       <td data-label="Customer">${escapeHtml(o.customerName)}<span class="dash-table-sub">${escapeHtml(o.itemsSummary || '')}</span></td>
       <td data-label="Total">${formatMoney(o.total)}</td>
-      <td data-label="Status">${statusPillHtml(o.status)}${o.problem ? ' <span class="status-badge status-problem">Problem reported</span>' : ''}${o.stage && !o.problem ? `<span class="dash-table-sub">${escapeHtml(o.stage)}</span>` : ''}</td>
+      <td data-label="Status">${DashUI.statusPill(o.status)}${o.problem ? ' <span class="status-badge status-problem">Problem reported</span>' : ''}${o.stage && !o.problem ? `<span class="dash-table-sub">${escapeHtml(o.stage)}</span>` : ''}</td>
     </tr>`).join('')}</tbody></table>`;
 }
 

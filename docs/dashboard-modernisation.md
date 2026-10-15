@@ -77,7 +77,7 @@ All days are Kiribati calendar days (UTC+12).
 | 1 | Audit (this file) | Done |
 | 2 | Shared components; seller sidebar on computers, tab bar and drawer on phones, on every owner page including admin | Done in this PR |
 | 3 | Retailer, wholesaler and distributor dashboard: real KPIs, sales chart, recent orders, attention list, quick actions, wholesale panel | Done in this PR |
-| 4 | Admin overview: orders, confirmed sales, sellers, customers, payments to verify, problems, listing queue, stock alerts. Needs one `getAdminOverview` endpoint. | Next |
+| 4 | Admin overview at the top of `owner/admin.html`: orders, confirmed sales, stores, customers, a work queue, top stores with CSV export, recent orders and stock alerts. Uses one `getAdminOverview` endpoint. | Done (see §8) |
 | 5 | Customer dashboard: KPI strip, recent orders with room stage, reorder, support links | Planned |
 | 6 | Driver and delivery admin | **Waiting for an owner decision.** No delivery backend exists. |
 | 7–8 | Accessibility, performance, regression and deploy prep for each stage | Continuous |
@@ -110,3 +110,44 @@ All days are Kiribati calendar days (UTC+12).
 The dashboard shows a "could not be loaded — Try again" state until the backend is deployed. Nothing else on the page depends on it.
 
 **Rollback:** revert the merge commit and redeploy the previous Apps Script version. No data is written by this stage.
+
+## 8. Stage 4 record: admin overview
+
+**Backend.** `Dashboards.gs` `actionGetAdminOverview` is admin-only (`isOwnerAdmin`). A seller who calls it is refused and the attempt is logged. It is read-only and covers the 7 or 30 days chosen.
+
+It counts:
+- **Orders and confirmed sales**, today vs yesterday, plus the daily series. Paid and Fulfilled orders only; the admin's own test store is left out.
+- **Active stores:** active and standby, split into retailer, wholesaler and distributor, plus new stores in the period.
+- **Customer accounts,** and new accounts in the period.
+- **Waiting for an admin:**
+  - featuring payments to review;
+  - approved featuring payments not yet ticked "seen in bank";
+  - open listing cases;
+  - open order problems;
+  - refunds due;
+  - wholesaler or distributor stores waiting for a verification call;
+  - orders unpaid for more than 3 days.
+- **Top 8 stores** by confirmed sales.
+- **The 8 newest orders:** reference, store, total, status and a problem flag. **No customer names, phones, emails or addresses** are included; admin search is where to look a person up.
+- **Stock alerts** across live listings.
+
+**Frontend.**
+- "Overview" is now the first section of `owner/admin.html` and the first item in the section menu. It is drawn by `assets/js/admin-overview.js`.
+- Each work-queue line links to its admin section.
+- The top-stores table can be downloaded as CSV. The CSV is built in the page, and cells are protected against spreadsheet formulas.
+- A failed load shows "Try again" with no figures.
+- `assets/js/dash-ui.js` now holds the chart, the vs-yesterday wording, status pills and the CSV export, shared by both dashboards.
+
+**Not shown,** because Mwakete doesn't have them, and the page says so:
+- commissions and payouts (buyers pay sellers directly);
+- delivery monitoring (stage 6 decision).
+
+**Fix found while testing.** The screen-reader table behind each chart widened the page on 320px phones. It is now wrapped in a hidden container, on both dashboards.
+
+**Tests:**
+- `tests/test-admin-overview.js`: 14/14
+- `tests/verify-admin-overview.js` (browser against the real backend): 14/14
+
+**Deploy:**
+1. Update `Dashboards.gs` and `Code.gs`, then deploy a new version.
+2. `?action=getVersion` should show `adminoverview1-2026-10-15`.
