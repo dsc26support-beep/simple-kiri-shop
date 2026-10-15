@@ -173,6 +173,11 @@ ok('a suspended driver can no longer act', box.actionAdminSetDriverStatus(A, { d
   && !dan('actionDriverSetAvailable', { available: true }).ok && dan('actionGetDriverHome', {}).driver.note === 'Late twice');
 ok('every driver step is in the audit log', ['DRIVER_APPLIED', 'DRIVER_APPROVED', 'DELIVERY_REQUESTED', 'DELIVERY_ACCEPTED', 'DELIVERY_PICKED_UP', 'DELIVERY_DELIVERED', 'DELIVERY_FAILED', 'DELIVERY_FEE_PAID', 'DRIVER_SUSPENDED']
   .every((x) => box.__sheets.Audit_Log.objects().some((y) => y.Action === x)));
+{ const keep = box.__props.DELIVERY_JOBS;
+  ok('customer order list says drivers are open (dashboard shows "Drive with Mwakete")', box.actionListCustomerOrders({ token: 'c-b' }).driversOpen === true);
+  box.__props.DELIVERY_JOBS = 'off';
+  ok('...and closed straight away when switched off, even with the list cached', box.actionListCustomerOrders({ token: 'c-b' }).driversOpen === false);
+  box.__props.DELIVERY_JOBS = keep; }
 ok('checkSetup probes Deliveries.gs', box.actionCheckSetup().missingFiles.indexOf('Deliveries.gs') === -1);
 
 let fails = 0;

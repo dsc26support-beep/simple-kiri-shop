@@ -185,6 +185,10 @@ async function loadOrders(opts) {
     return;
   }
   if (includeArchived) archivedOrdersLoaded = true;
+  // Hidden until the backend says drivers are switched on (an older backend
+  // sends nothing, so it stays hidden).
+  const drive = document.getElementById('cust-drive-link');
+  if (drive) drive.hidden = res.driversOpen !== true;
   allOrders = res.orders || [];
   renderOrderFilters();
   renderOrders();

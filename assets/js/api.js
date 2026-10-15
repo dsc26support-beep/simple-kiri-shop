@@ -44,6 +44,18 @@ const Api = (function () {
     return promise;
   }
 
+  // The website can go live a few minutes before the matching backend is
+  // deployed. The backend router then answers "Unknown action: x" - shown to a
+  // shopper that's meaningless, so it becomes a plain "being updated" message.
+  // `outdated: true` lets a page tell it apart if it needs to.
+  const UPDATING = 'This part of Mwakete is being updated. Please try again in a little while.';
+  function friendly(res) {
+    if (res && res.ok === false && /^Unknown action: /.test(String(res.error || ''))) {
+      return Object.assign({}, res, { error: UPDATING, outdated: true });
+    }
+    return res;
+  }
+
   function assertConfigured() {
     if (!APP_CONFIG.APPS_SCRIPT_URL || APP_CONFIG.APPS_SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
       throw new Error('This shop is not connected yet. Ask the site owner to finish setup (see README.md).');
@@ -62,7 +74,7 @@ const Api = (function () {
     return share('GET ' + href, async () => {
       try {
         const res = await fetch(href, { method: 'GET' });
-        return await res.json();
+        return friendly(await res.json());
       } catch (err) {
         return { ok: false, error: 'Network error - please check your connection and try again.' };
       }
@@ -79,7 +91,7 @@ const Api = (function () {
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: body
         });
-        return await res.json();
+        return friendly(await res.json());
       } catch (err) {
         return { ok: false, error: 'Network error - please check your connection and try again.' };
       }
