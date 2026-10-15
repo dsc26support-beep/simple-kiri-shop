@@ -1867,3 +1867,57 @@ label.is-required::after {
 .ha-form { border-top: 1px dashed var(--color-border); padding-top: var(--space-2); }
 .ha-form input:not([type="checkbox"]), .ha-form select { width: 100%; }
 .ha-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); }
+
+/* ==========================================================================
+   Seller shell (owner-nav.js SellerShell): sidebar on a computer, bottom
+   tab bar + drawer on phones and tablets. Brand purple - the colour the
+   store-owner top bar has always used - from the shared tokens.
+   ========================================================================== */
+.seller-sidebar {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 1005; width: 240px;
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3) var(--space-2); background: var(--color-purple); color: #fff;
+  overflow-y: auto; transform: translateX(-100%); transition: transform 0.2s ease, width 0.2s ease;
+}
+.seller-sidebar svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.seller-sidebar-brand { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); font-weight: 700; font-size: 1.15rem; }
+.seller-sidebar-brand small { display: block; font-size: 0.72rem; font-weight: 400; opacity: 0.85; }
+.seller-sidebar-collapse { margin-left: auto; background: transparent; border: 0; color: #fff; cursor: pointer; padding: 6px; border-radius: 8px; display: none; }
+.seller-sidebar-links { display: flex; flex-direction: column; gap: 2px; }
+.seller-link { position: relative; display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius); color: #fff; text-decoration: none; font-weight: 600; }
+.seller-link:hover { background: rgba(255, 255, 255, 0.12); }
+.seller-link.is-active { background: var(--color-purple-light); }
+.seller-link:focus-visible, .seller-tab:focus-visible, .seller-sidebar-collapse:focus-visible, .seller-sidebar-store:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
+.seller-nav-badge { margin-left: auto; min-width: 1.4em; padding: 0 0.4em; border-radius: 999px; background: var(--color-red); color: #fff; font-size: 0.75rem; text-align: center; }
+.seller-sidebar-store { margin-top: auto; display: block; padding: var(--space-2) var(--space-3); border-radius: var(--radius); border: 1px solid rgba(255, 255, 255, 0.3); color: #fff; text-decoration: none; }
+.seller-sidebar-store strong, .seller-sidebar-store small { display: block; }
+.seller-sidebar-store small { opacity: 0.85; font-size: 0.75rem; }
+.seller-drawer-open .seller-sidebar { transform: none; box-shadow: 0 0 40px rgba(0, 0, 0, 0.35); }
+.seller-scrim { position: fixed; inset: 0; z-index: 1004; background: rgba(0, 0, 0, 0.4); }
+
+.seller-tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1003; display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--color-bg); border-top: 1px solid var(--color-border); padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.seller-tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px;
+  color: var(--color-muted); text-decoration: none; font-size: 0.72rem; background: transparent; border: 0; font-family: inherit; cursor: pointer; }
+.seller-tab svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.seller-tab.is-active { color: var(--color-purple); font-weight: 700; }
+.seller-tab .seller-nav-badge { position: absolute; top: 4px; left: 55%; margin: 0; }
+body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0)); }
+
+@media (min-width: 1024px) {
+  .seller-sidebar { transform: none; }
+  .seller-sidebar-collapse { display: inline-flex; }
+  .seller-tabbar, .seller-scrim { display: none; }
+  body.has-seller-shell { padding-bottom: 0; padding-left: 240px; }
+  body.has-seller-shell.seller-collapsed { padding-left: 76px; }
+  .seller-collapsed .seller-sidebar { width: 76px; }
+  .seller-collapsed .seller-link-label, .seller-collapsed .seller-sidebar-label, .seller-collapsed .seller-sidebar-store { display: none; }
+  .seller-collapsed .seller-sidebar-brand { flex-direction: column; padding: 0 0 var(--space-2); }
+  .seller-collapsed .seller-sidebar-collapse svg { transform: rotate(180deg); }
+  .seller-collapsed .seller-link { justify-content: center; padding: 0; }
+  .seller-collapsed .seller-nav-badge { position: absolute; top: 4px; right: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .seller-sidebar { transition: none; } }
+@media print { .seller-sidebar, .seller-tabbar { display: none; } body.has-seller-shell { padding: 0; } }
