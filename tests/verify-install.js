@@ -23,7 +23,9 @@ const BASE = 'http://127.0.0.1:8099';
     return ctx;
   }
 
-  // 1. Mobile: button visible; sits above chat FAB on store.html
+  // 1. Mobile: the "App Install" tab - right edge, words rotated bottom to
+  //    top, level with the homepage's Categories ... Recents row, floating
+  //    there while the page scrolls; same height on other pages (Oct 2026).
   {
     const ctx = await newCtx({ viewport: { width: 390, height: 800 } });
     const page = await ctx.newPage();
@@ -35,7 +37,21 @@ const BASE = 'http://127.0.0.1:8099';
     const visible = await page.$eval('.install-fab', el => getComputedStyle(el).display !== 'none').catch(() => false);
     ok('mobile home: install button visible', visible);
     const label = await page.$eval('.install-fab', el => el.textContent.trim()).catch(() => '');
-    ok('button labelled Install', /Install/.test(label), label);
+    ok('tab reads "App Install", no arrow icon', label === 'App Install' && !(await page.$('.install-fab svg')), label);
+    const home = await page.evaluate(() => {
+      const f = document.querySelector('.install-fab'); const r = f.getBoundingClientRect();
+      const q = document.querySelector('.quick-action-strip').getBoundingClientRect();
+      return { right: Math.round(innerWidth - r.right), mid: r.top + r.height / 2, row: q.top + q.height / 2, tall: r.height > r.width,
+        wm: getComputedStyle(f).writingMode, tf: getComputedStyle(f).transform };
+    });
+    ok('flush with the right edge, taller than wide', home.right === 0 && home.tall, JSON.stringify(home));
+    ok('level with the Categories ... Recents row', Math.abs(home.mid - home.row) <= 2, JSON.stringify(home));
+    // vertical-rl turned half a turn = reads bottom to top.
+    ok('words rotated to read bottom to top', home.wm === 'vertical-rl' && /matrix\(-1, .*-1, 0, 0\)/.test(home.tf), JSON.stringify(home));
+    await page.evaluate(() => { const s = document.createElement('div'); s.style.height = '3000px'; document.body.appendChild(s); window.scrollTo(0, 800); });
+    await page.waitForTimeout(150);
+    const after = await page.evaluate(() => { const r = document.querySelector('.install-fab').getBoundingClientRect(); return r.top + r.height / 2; });
+    ok('stays at that height on screen while scrolling', Math.abs(after - home.mid) <= 1, after + ' vs ' + home.mid);
     await page.close();
 
     const sp = await ctx.newPage();
@@ -45,10 +61,10 @@ const BASE = 'http://127.0.0.1:8099';
     const geo = await sp.evaluate(() => {
       const f = document.querySelector('.install-fab').getBoundingClientRect();
       const c = document.querySelector('.chat-fab-btn').getBoundingClientRect();
-      return { fabBottom: f.bottom, chatTop: c.top, fabRight: Math.round(innerWidth - f.right), chatRight: Math.round(innerWidth - c.right) };
+      return { fabBottom: f.bottom, chatTop: c.top, fabRight: Math.round(innerWidth - f.right), mid: f.top + f.height / 2 };
     });
-    ok('store: install sits ABOVE chat fab', geo.fabBottom <= geo.chatTop + 1, JSON.stringify(geo));
-    ok('store: right-aligned like chat fab', Math.abs(geo.fabRight - geo.chatRight) <= 2, JSON.stringify(geo));
+    ok('store: clear of the chat button', geo.fabBottom <= geo.chatTop - 8, JSON.stringify(geo));
+    ok('store: same place as on the homepage (right edge, same height)', geo.fabRight === 0 && Math.abs(geo.mid - home.mid) <= 2, JSON.stringify(geo) + ' home ' + home.mid);
     await sp.close();
     await ctx.close();
   }

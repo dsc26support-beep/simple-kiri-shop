@@ -174,12 +174,14 @@
 })();
 
 // ---------------------------------------------------------------------------
-// Custom "Install" button (mobile & tablet only).
+// Custom "App Install" button (mobile & tablet only).
 //
 // Instead of leaving install to the browser's fleeting native prompt, we
 // suppress that prompt (preventDefault on beforeinstallprompt), stash it, and
-// surface our own small Install pill in the lower-right, just above the chat
-// FAB. It shows on every page load while the app isn't installed, and hides
+// surface our own "App Install" tab: a yellow tab on the right edge, words
+// rotated to read bottom to top, floating level with the homepage's
+// Categories ... Recents row (owner request, Oct 2026). It stays at that
+// height on screen while the page scrolls, on every page. It shows on every page load while the app isn't installed, and hides
 // itself after a minute. On Android Chromium the button fires the real install
 // prompt; on iOS (no programmatic install) it shows Add-to-Home-Screen
 // instructions. Kept independent of the service-worker block above so it still
@@ -190,6 +192,9 @@
   var CHAT_FAB_HEIGHT = 56; // keep in sync with .chat-fab-btn height in styles.css
 
   var INSTALLED_KEY = 'skiri_pwa_installed';
+  // Screen height of the tab, measured on the homepage and reused elsewhere
+  // so it sits in the same place on every page.
+  var TOP_KEY = 'skiri_install_top';
 
   var deferredPrompt = null;
   // Remember a prior install so the button stays hidden on later browser reloads,
@@ -264,20 +269,37 @@
     btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'install-fab';
-    btn.setAttribute('aria-label', 'Install this app');
+    btn.setAttribute('aria-label', 'Install the Mwakete app');
     btn.style.setProperty('--chat-fab-height', CHAT_FAB_HEIGHT + 'px');
-    btn.innerHTML =
-      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M5 21h14"></path></svg>' +
-      '<span>Install</span>';
+    btn.innerHTML = '<span>App Install</span>';
     btn.addEventListener('click', onInstallClick);
     document.body.appendChild(btn);
+    placeButton();
     return btn;
+  }
+
+  // Level with the middle of the Categories ... Recents row, as it sits at
+  // the top of the homepage. Other pages reuse that height (or the CSS
+  // default before the homepage has been seen).
+  function placeButton() {
+    var row = document.querySelector('.quick-action-strip');
+    var top = null;
+    if (row) {
+      var r = row.getBoundingClientRect();
+      var h = btn.offsetHeight || 110;
+      top = Math.round(r.top + (window.scrollY || 0) + r.height / 2 - h / 2);
+      try { localStorage.setItem(TOP_KEY, String(top)); } catch (e) {}
+    } else {
+      try { top = Number(localStorage.getItem(TOP_KEY)) || null; } catch (e) {}
+    }
+    // On the root, so the hint beside the tab lines up with it too.
+    if (top) document.documentElement.style.setProperty('--install-top', Math.max(40, Math.min(top, window.innerHeight - 160)) + 'px');
   }
 
   function showButton() {
     if (installed || isStandalone() || !isMobileOrTablet()) return;
     buildButton().classList.add('is-visible');
+    placeButton();
     if (hideTimer) clearTimeout(hideTimer);
     hideTimer = setTimeout(hideButton, HIDE_MS);
   }

@@ -1177,37 +1177,42 @@ footer.site-footer .copyright {
   font-size: 0.875rem;
 }
 
-/* Custom PWA "Install" pill, injected by register-sw.js on mobile & tablet.
-   Sits in the lower-right, stacked just above the 56px chat FAB (or the same
-   slot on pages with no chat button). Hidden until JS adds .is-visible, and
-   never shown on desktop (the min-width guard below), matching the JS gate. */
+/* Custom PWA "App Install" tab, injected by register-sw.js on mobile & tablet
+   (owner request, Oct 2026): a yellow tab flush with the right edge, words
+   rotated to read bottom to top, floating level with the homepage's
+   Categories ... Recents row (--install-top, set by register-sw.js; the
+   default is where that row sits on a phone). Fixed, so it stays at that
+   height while the page scrolls. Hidden until JS adds .is-visible, and never
+   shown on desktop (the min-width guard below), matching the JS gate. */
 .install-fab {
   position: fixed;
-  right: max(var(--space-3), env(safe-area-inset-right));
-  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
+  top: var(--install-top, 222px);
+  right: 0;
   z-index: 1001;
   display: none;
   align-items: center;
-  gap: var(--space-2);
-  padding: 0.5em 1em;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  min-width: 36px;
+  padding: 0.9em 0.45em;
   border: 0;
-  border-radius: 999px;
+  /* Rotated half a turn, so these are the corners on the screen's inner
+     (left) side; the right side stays flush with the edge. */
+  border-radius: 0 10px 10px 0;
   background: var(--color-gold);
   color: var(--color-ink);
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .install-fab.is-visible {
   display: inline-flex;
-}
-
-.install-fab svg {
-  width: 18px;
-  height: 18px;
 }
 
 @media (min-width: 1025px) {
@@ -1217,13 +1222,13 @@ footer.site-footer .copyright {
 }
 
 /* Instruction popover shown when there's no programmatic install (iOS, or a
-   browser with no captured prompt) - anchored above the Install pill. */
+   browser with no captured prompt) - beside the App Install tab, to its left. */
 .install-hint {
   position: fixed;
-  right: max(var(--space-3), env(safe-area-inset-right));
-  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2) + 3rem);
+  top: var(--install-top, 222px);
+  right: 48px;
   z-index: 1002;
-  max-width: min(18rem, calc(100vw - 2 * var(--space-3)));
+  max-width: min(18rem, calc(100vw - 64px));
   padding: var(--space-2) var(--space-3);
   border-radius: 12px;
   background: var(--color-ink);
@@ -4403,16 +4408,6 @@ body.has-header-menu header.site-header > .container:first-of-type {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
   }
 
-  /* The Install pill (and its hint) stack above the chat button, so they rise
-     by the same bar height. Without this the chat button was lifted but the
-     pill wasn't, and on store pages it sat on top of the chat button. */
-  body.has-bottom-nav .install-fab {
-    bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
-  }
-
-  body.has-bottom-nav .install-hint {
-    bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2) + 3rem);
-  }
 
 }
 
