@@ -178,7 +178,13 @@ header.site-header .container.header-top-row {
    window) lands at a different point in global time purely from its
    animation-delay, with no JS and no step/content changes to coordinate. */
 .header-ticker {
-  position: relative;
+  /* Owner request (Oct 2026): the red header scrolls away, the yellow strip
+     stays pinned to the top of the screen. Sticky (not fixed) so it keeps
+     its own place in the page - nothing jumps when scrolling starts. Above
+     cards and badges, below the FAB, chat, drawers and dialogs (1000+). */
+  position: sticky;
+  top: 0;
+  z-index: 10;
   height: 28px;
   overflow: hidden;
   background: var(--color-gold);
@@ -283,6 +289,21 @@ header.site-header .container.header-top-row {
      takes them. */
   .header-ticker .header-ticker-link {
     pointer-events: auto;
+  }
+  /* Homepage (owner request, Oct 2026): here the adverts live in the red
+     header, so the whole red header stays on top while the page scrolls.
+     The header is the first thing on the page, so sticky and top-of-page are
+     the same place - the lines can be fixed to it. Below the FAB, chat,
+     drawers and dialogs (1001+); the header's menu panel opens inside it. */
+  body.home-page header.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  body.home-page .header-ticker {
+    position: fixed;
+    z-index: 1000;
   }
 }
 
