@@ -186,8 +186,9 @@ async function measureCLS(browser, path, opts) {
     ok('owner: everything else stays', got.length === 5 && got[0] === 'Tips' && got[4] === 'My Account', got.join(' | '));
     const chooser = await page.$('#header-menu-panel [data-login-chooser]');
     ok('owner without customer account gets the login chooser', !!chooser);
-    await page.click('#header-menu-btn');
-    await page.click('#header-menu-panel [data-login-chooser]');
+    // Above 700px My Account is a word in the header (Oct 2026), so the
+    // chooser opens from there; the menu's copy is the phone one.
+    await page.click('.header-bar-links [data-login-chooser]');
     await page.waitForTimeout(80);
     ok('chooser opens and offers both logins', await page.evaluate(() => {
       const el = document.getElementById('login-chooser');
@@ -275,31 +276,32 @@ async function measureCLS(browser, path, opts) {
     await page.waitForTimeout(60);
     ok('outside click closes', await page.$eval('#header-menu-panel', (p) => p.hidden === true));
 
-    // Arrow keys walk the list, from the button and inside the panel.
+    // Arrow keys walk the list, from the button and inside the panel (visible
+    // items: above 700px Tips and My Account are in the header, not the menu).
     await page.focus('#header-menu-btn');
     await page.keyboard.press('ArrowDown');
     ok('ArrowDown on the button opens onto the first item', await page.evaluate(() =>
       !document.getElementById('header-menu-panel').hidden &&
-      document.activeElement === document.querySelector('#header-menu-panel .header-menu-item')));
+      document.activeElement === document.querySelector('#header-menu-panel .header-menu-item:not(.header-menu-item--in-bar)')));
     await page.keyboard.press('ArrowDown');
     ok('ArrowDown moves down', await page.evaluate(() =>
-      document.activeElement === document.querySelectorAll('#header-menu-panel .header-menu-item')[1]));
+      document.activeElement === document.querySelectorAll('#header-menu-panel .header-menu-item:not(.header-menu-item--in-bar)')[1]));
     await page.keyboard.press('ArrowUp');
     ok('ArrowUp moves back', await page.evaluate(() =>
-      document.activeElement === document.querySelectorAll('#header-menu-panel .header-menu-item')[0]));
+      document.activeElement === document.querySelectorAll('#header-menu-panel .header-menu-item:not(.header-menu-item--in-bar)')[0]));
     await page.keyboard.press('ArrowUp');
     ok('ArrowUp from the top wraps to the bottom (Privacy, the last link)', await page.evaluate(() => {
-      const l = document.querySelectorAll('#header-menu-panel .header-menu-item, #header-menu-panel .header-menu-legal-link');
+      const l = document.querySelectorAll('#header-menu-panel .header-menu-item:not(.header-menu-item--in-bar), #header-menu-panel .header-menu-legal-link');
       return document.activeElement === l[l.length - 1];
     }));
     await page.keyboard.press('End');
     ok('End goes to the last item', await page.evaluate(() => {
-      const l = document.querySelectorAll('#header-menu-panel .header-menu-item, #header-menu-panel .header-menu-legal-link');
+      const l = document.querySelectorAll('#header-menu-panel .header-menu-item:not(.header-menu-item--in-bar), #header-menu-panel .header-menu-legal-link');
       return document.activeElement === l[l.length - 1];
     }));
     await page.keyboard.press('Home');
     ok('Home goes to the first item', await page.evaluate(() =>
-      document.activeElement === document.querySelector('#header-menu-panel .header-menu-item')));
+      document.activeElement === document.querySelector('#header-menu-panel .header-menu-item:not(.header-menu-item--in-bar)')));
 
     // Tabbing out of the last item must not leave the panel open behind it.
     await page.keyboard.press('End');
@@ -419,7 +421,16 @@ async function measureCLS(browser, path, opts) {
     await page.click('#header-menu-btn');
     const shown = await page.$$eval('#header-menu-panel .header-menu-item', (els) =>
       els.filter((e) => e.getClientRects().length > 0).map((e) => e.querySelector('.header-menu-label').textContent));
-    ok('701px (tablet, no bottom bar): Tips and My Account stay in the menu', shown[0] === 'Tips' && shown.indexOf('My Account') === 4, shown.join(' | '));
+    ok('701px (tablet, no bottom bar): Tips and My Account leave the menu...', JSON.stringify(shown) === JSON.stringify(['Categories', 'Stores', 'Help & Support', 'Create Store']), shown.join(' | '));
+    const bar = await page.$$eval('.header-bar-links a', (els) => els.filter((e) => e.getClientRects().length > 0).map((e) => [e.textContent.trim(), e.getAttribute('href')]));
+    ok('...and sit in the header as words', JSON.stringify(bar) === JSON.stringify([['Tips', 'customer-tips.html'], ['My Account', 'customer-login.html']]), JSON.stringify(bar));
+    ok('...with the three-line menu icon instead of the dots', await page.evaluate(() => getComputedStyle(document.querySelector('.header-menu-lines')).display !== 'none' && getComputedStyle(document.querySelector('.header-menu-dots')).display === 'none'));
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await open(browser, '/index.html', { width: 700 });
+    ok('700px (phone): dots, no header words', await page.evaluate(() => getComputedStyle(document.querySelector('.header-menu-dots')).display !== 'none'
+      && getComputedStyle(document.querySelector('.header-menu-lines')).display === 'none' && getComputedStyle(document.querySelector('.header-bar-links')).display === 'none'));
     await ctx.close();
   }
 

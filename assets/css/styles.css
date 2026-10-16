@@ -4156,6 +4156,61 @@ header.site-header .header-menu-item:focus-visible {
   }
 }
 
+/* Menu icon: three dots on phones; above 700px three lines with the bottom
+   one half length on the right (owner request, Oct 2026). */
+.header-menu-lines { display: none; }
+
+/* Tips and My Account as plain words in the header, left of the cart -
+   above 700px only, where there is no bottom nav. Out of flow like the cart
+   and the menu button (header-menu.js adds it after first paint), and the
+   row's right padding below already reserves its room. */
+.header-bar-links { display: none; }
+
+@media (min-width: 701px) {
+  .header-menu-dots { display: none; }
+  .header-menu-lines { display: block; }
+
+  .header-bar-links {
+    position: absolute;
+    top: var(--space-2);
+    right: calc(var(--space-2) + 88px);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    height: 40px;
+  }
+
+  header.site-header a.header-bar-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 var(--space-2);
+    border-radius: 6px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  header.site-header a.header-bar-link:hover,
+  header.site-header a.header-bar-link:focus-visible,
+  header.site-header a.header-bar-link[aria-current="page"] {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* In the header now, so the menu doesn't repeat them. */
+  body.has-header-menu .header-menu-item--in-bar {
+    display: none;
+  }
+
+
+  /* Homepage advert lines stay clear of the two new links on the right. */
+  body.has-header-menu .header-ticker-item {
+    padding-right: 290px;
+  }
+}
+
 /* Terms · Privacy: fine print at the foot of the menu, standing in for the
    footer phones and tablets no longer show. Small text, full-size targets. */
 .header-menu-legal {
@@ -4222,6 +4277,18 @@ body.has-header-menu .header-cart {
 
 body.has-header-menu header.site-header > .container:first-of-type {
   padding-right: 96px;
+}
+
+/* Above 700px the row also holds Tips and My Account (header-menu.js), so it
+   reserves room for them too, and is at least as tall as the 40px controls
+   plus their 8px top offset - categories.html's row is only its nav links
+   tall, and the buttons hung over the search box below. After the 96px rule
+   above on purpose: same specificity, so the later one wins. */
+@media (min-width: 701px) {
+  body.has-header-menu header.site-header > .container:first-of-type {
+    padding-right: 280px;
+    min-height: 56px;
+  }
 }
 
 .bottom-nav { display: none; }

@@ -111,11 +111,16 @@ function initHeaderMenu() {
   btn.setAttribute('aria-expanded', 'false');
   btn.setAttribute('aria-controls', 'header-menu-panel');
   btn.setAttribute('aria-label', 'Menu');
+  // Two icons, CSS picks one (styles.css): three dots on phones, and above
+  // 700px a three-line menu icon whose bottom line is half length, on the
+  // right (owner request, Oct 2026).
   btn.innerHTML =
-    '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+    '<svg class="header-menu-dots" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
     '<circle cx="12" cy="5" r="2"></circle>' +
     '<circle cx="12" cy="12" r="2"></circle>' +
-    '<circle cx="12" cy="19" r="2"></circle></svg>';
+    '<circle cx="12" cy="19" r="2"></circle></svg>' +
+    '<svg class="header-menu-lines" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true">' +
+    '<path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M12 18h8"></path></svg>';
 
   const panel = document.createElement('div');
   panel.id = 'header-menu-panel';
@@ -147,6 +152,25 @@ function initHeaderMenu() {
   wrap.appendChild(btn);
   wrap.appendChild(panel);
   host.appendChild(wrap);
+
+  // Above 700px (no bottom nav) Tips and My Account are plain words in the
+  // header itself, and the menu hides its own copies (styles.css). Same
+  // destinations, same login chooser, as the menu entries they stand for.
+  const bar = document.createElement('nav');
+  bar.className = 'header-bar-links';
+  bar.setAttribute('aria-label', 'Shortcuts');
+  bar.innerHTML = headerMenuItems().filter((it) => it.inBar).map((it) => {
+    const isCurrent = it.href.split('#')[0].toLowerCase() === current;
+    return '<a class="header-bar-link" href="' + it.href + '"' + (isCurrent ? ' aria-current="page"' : '') +
+      (it.chooser ? ' data-login-chooser="1"' : '') + '>' + escapeHtml(it.label) + '</a>';
+  }).join('');
+  bar.addEventListener('click', (e) => {
+    const link = e.target.closest('[data-login-chooser]');
+    if (!link) return;
+    e.preventDefault();
+    showLoginChooser();
+  });
+  host.appendChild(bar);
 
   wireHeaderMenu(btn, panel);
 }
