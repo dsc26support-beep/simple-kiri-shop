@@ -98,7 +98,7 @@ const store = (i) => ({ storeSlug: 's' + i, storeName: 'Store ' + i, logoUrl: ''
       const tk = document.querySelector('.header-ticker');
       return { pos: getComputedStyle(tk).position, bg: getComputedStyle(tk).backgroundColor, h: tk.getBoundingClientRect().height };
     });
-    ok(w + 'px: phones keep the yellow strip', p.pos === 'relative' && p.bg === 'rgb(252, 209, 22)' && p.h === 28, JSON.stringify(p));
+    ok(w + 'px: phones keep the yellow strip (sticky to the top since Oct 2026)', p.pos === 'sticky' && p.bg === 'rgb(252, 209, 22)' && p.h === 28, JSON.stringify(p));
     await ctx.close();
   }
 

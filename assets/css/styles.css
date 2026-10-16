@@ -178,7 +178,13 @@ header.site-header .container.header-top-row {
    window) lands at a different point in global time purely from its
    animation-delay, with no JS and no step/content changes to coordinate. */
 .header-ticker {
-  position: relative;
+  /* Owner request (Oct 2026): the red header scrolls away, the yellow strip
+     stays pinned to the top of the screen. Sticky (not fixed) so it keeps
+     its own place in the page - nothing jumps when scrolling starts. Above
+     cards and badges, below the FAB, chat, drawers and dialogs (1000+). */
+  position: sticky;
+  top: 0;
+  z-index: 10;
   height: 28px;
   overflow: hidden;
   background: var(--color-gold);
@@ -283,6 +289,21 @@ header.site-header .container.header-top-row {
      takes them. */
   .header-ticker .header-ticker-link {
     pointer-events: auto;
+  }
+  /* Homepage (owner request, Oct 2026): here the adverts live in the red
+     header, so the whole red header stays on top while the page scrolls.
+     The header is the first thing on the page, so sticky and top-of-page are
+     the same place - the lines can be fixed to it. Below the FAB, chat,
+     drawers and dialogs (1001+); the header's menu panel opens inside it. */
+  body.home-page header.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  body.home-page .header-ticker {
+    position: fixed;
+    z-index: 1000;
   }
 }
 
@@ -1156,37 +1177,42 @@ footer.site-footer .copyright {
   font-size: 0.875rem;
 }
 
-/* Custom PWA "Install" pill, injected by register-sw.js on mobile & tablet.
-   Sits in the lower-right, stacked just above the 56px chat FAB (or the same
-   slot on pages with no chat button). Hidden until JS adds .is-visible, and
-   never shown on desktop (the min-width guard below), matching the JS gate. */
+/* Custom PWA "App Install" tab, injected by register-sw.js on mobile & tablet
+   (owner request, Oct 2026): a yellow tab flush with the right edge, words
+   rotated to read bottom to top, floating level with the homepage's
+   Categories ... Recents row (--install-top, set by register-sw.js; the
+   default is where that row sits on a phone). Fixed, so it stays at that
+   height while the page scrolls. Hidden until JS adds .is-visible, and never
+   shown on desktop (the min-width guard below), matching the JS gate. */
 .install-fab {
   position: fixed;
-  right: max(var(--space-3), env(safe-area-inset-right));
-  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
+  top: var(--install-top, 222px);
+  right: 0;
   z-index: 1001;
   display: none;
   align-items: center;
-  gap: var(--space-2);
-  padding: 0.5em 1em;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  min-width: 36px;
+  padding: 0.9em 0.45em;
   border: 0;
-  border-radius: 999px;
+  /* Rotated half a turn, so these are the corners on the screen's inner
+     (left) side; the right side stays flush with the edge. */
+  border-radius: 0 10px 10px 0;
   background: var(--color-gold);
   color: var(--color-ink);
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .install-fab.is-visible {
   display: inline-flex;
-}
-
-.install-fab svg {
-  width: 18px;
-  height: 18px;
 }
 
 @media (min-width: 1025px) {
@@ -1196,13 +1222,13 @@ footer.site-footer .copyright {
 }
 
 /* Instruction popover shown when there's no programmatic install (iOS, or a
-   browser with no captured prompt) - anchored above the Install pill. */
+   browser with no captured prompt) - beside the App Install tab, to its left. */
 .install-hint {
   position: fixed;
-  right: max(var(--space-3), env(safe-area-inset-right));
-  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2) + 3rem);
+  top: var(--install-top, 222px);
+  right: 48px;
   z-index: 1002;
-  max-width: min(18rem, calc(100vw - 2 * var(--space-3)));
+  max-width: min(18rem, calc(100vw - 64px));
   padding: var(--space-2) var(--space-3);
   border-radius: 12px;
   background: var(--color-ink);
@@ -4135,6 +4161,61 @@ header.site-header .header-menu-item:focus-visible {
   }
 }
 
+/* Menu icon: three dots on phones; above 700px three lines with the bottom
+   one half length on the right (owner request, Oct 2026). */
+.header-menu-lines { display: none; }
+
+/* Tips and My Account as plain words in the header, left of the cart -
+   above 700px only, where there is no bottom nav. Out of flow like the cart
+   and the menu button (header-menu.js adds it after first paint), and the
+   row's right padding below already reserves its room. */
+.header-bar-links { display: none; }
+
+@media (min-width: 701px) {
+  .header-menu-dots { display: none; }
+  .header-menu-lines { display: block; }
+
+  .header-bar-links {
+    position: absolute;
+    top: var(--space-2);
+    right: calc(var(--space-2) + 88px);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    height: 40px;
+  }
+
+  header.site-header a.header-bar-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 var(--space-2);
+    border-radius: 6px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  header.site-header a.header-bar-link:hover,
+  header.site-header a.header-bar-link:focus-visible,
+  header.site-header a.header-bar-link[aria-current="page"] {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* In the header now, so the menu doesn't repeat them. */
+  body.has-header-menu .header-menu-item--in-bar {
+    display: none;
+  }
+
+
+  /* Homepage advert lines stay clear of the two new links on the right. */
+  body.has-header-menu .header-ticker-item {
+    padding-right: 290px;
+  }
+}
+
 /* Terms · Privacy: fine print at the foot of the menu, standing in for the
    footer phones and tablets no longer show. Small text, full-size targets. */
 .header-menu-legal {
@@ -4201,6 +4282,18 @@ body.has-header-menu .header-cart {
 
 body.has-header-menu header.site-header > .container:first-of-type {
   padding-right: 96px;
+}
+
+/* Above 700px the row also holds Tips and My Account (header-menu.js), so it
+   reserves room for them too, and is at least as tall as the 40px controls
+   plus their 8px top offset - categories.html's row is only its nav links
+   tall, and the buttons hung over the search box below. After the 96px rule
+   above on purpose: same specificity, so the later one wins. */
+@media (min-width: 701px) {
+  body.has-header-menu header.site-header > .container:first-of-type {
+    padding-right: 280px;
+    min-height: 56px;
+  }
 }
 
 .bottom-nav { display: none; }
@@ -4315,16 +4408,6 @@ body.has-header-menu header.site-header > .container:first-of-type {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
   }
 
-  /* The Install pill (and its hint) stack above the chat button, so they rise
-     by the same bar height. Without this the chat button was lifted but the
-     pill wasn't, and on store pages it sat on top of the chat button. */
-  body.has-bottom-nav .install-fab {
-    bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
-  }
-
-  body.has-bottom-nav .install-hint {
-    bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2) + 3rem);
-  }
 
 }
 
