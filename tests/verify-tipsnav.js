@@ -72,10 +72,10 @@ const BASE = 'http://127.0.0.1:8099';
       contentType: 'application/json', body: JSON.stringify({ ok: true, products: [], stores: [] }) }));
     const page = await ctx.newPage();
     await page.goto(BASE + '/index.html', { waitUntil: 'load' });
-    await page.click('#header-menu-btn');
-    await page.click('#header-menu-panel .header-menu-item[href="customer-tips.html"]');
+    // Above 700px Tips is a word in the header itself (Oct 2026).
+    await page.click('.header-bar-links a[href="customer-tips.html"]');
     await page.waitForURL(/customer-tips/, { timeout: 6000 }).catch(() => {});
-    ok('desktop: the menu item reaches the Tips page', /customer-tips/.test(page.url()), page.url());
+    ok('desktop: the header Tips link reaches the Tips page', /customer-tips/.test(page.url()), page.url());
     await ctx.close();
   }
 

@@ -111,8 +111,10 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     // attribute that says it will happen.
     let chooser = false;
     if (st.accountChooser) {
+      // My Account is in the menu on phones and a header word above 700px
+      // (Oct 2026): click whichever one this screen shows.
       await page.click('#header-menu-btn');
-      await page.click('#header-menu-panel [data-login-chooser]').catch(() => {});
+      await page.locator('#header-menu-panel [data-login-chooser], .header-bar-links [data-login-chooser]').locator('visible=true').first().click().catch(() => {});
       chooser = await page.evaluate(() => !!document.getElementById('login-chooser'));
     }
     await ctx.close();
