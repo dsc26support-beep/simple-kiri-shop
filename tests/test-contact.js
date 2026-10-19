@@ -136,7 +136,7 @@ const settingsJs = fs.readFileSync(REPO + 'assets/js/owner-settings.js', 'utf8')
 ok('settings page has a WhatsApp input', /id="contact-whatsapp"/.test(settingsHtml));
 ok('the WhatsApp input is marked optional', /WhatsApp Number \(Optional\)/.test(settingsHtml));
 ok('settings page explains the blank-means-phone fallback',
-  /different number/i.test(settingsHtml));
+  /different from your contact phone/i.test(settingsHtml));
 ok('settings form loads the saved value', /contact-whatsapp'\)\.value = owner\.whatsapp/.test(settingsJs));
 ok('settings form saves it', /whatsapp: document\.getElementById\('contact-whatsapp'\)\.value\.trim\(\)/.test(settingsJs));
 
