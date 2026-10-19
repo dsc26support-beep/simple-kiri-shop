@@ -91,8 +91,10 @@ const ok = (name, cond, detail) => {
   // A quiet page error is still a broken page.
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    // products/stores too: index.html is the first stop, and an answer without
+    // them made home.js throw - sometimes late enough to be blamed on this page.
     await ctx.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
-      contentType: 'application/json', body: JSON.stringify({ ok: true, conversations: [] }) }));
+      contentType: 'application/json', body: JSON.stringify({ ok: true, conversations: [], products: [], stores: [] }) }));
     const page = await ctx.newPage();
     const errs = [];
     let watching = false;
