@@ -5327,7 +5327,7 @@ legend {
   }
 }
 
-/* ---- Customer sign-in: Google, shared device, guest ------------------------
+/* ---- Customer sign-in: Google, guest ------------------------
    The Google block carries its own "or" divider so both disappear together
    when the button never renders - an unconfigured deployment, or a connection
    that blocked accounts.google.com. A stray "or" above the email form would
@@ -5372,33 +5372,6 @@ legend {
   background: var(--color-border);
 }
 
-/* The checkbox and its info dot share a row; position:relative anchors the
-   panel to this row rather than the page. */
-.auth-shared-row {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-.auth-shared-device {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  flex: 1 1 auto;
-  cursor: pointer;
-  line-height: 1.4;
-}
-
-/* 20px, not the 16px a checkbox defaults to: this is tapped on a phone, and it
-   is the control that decides how long a session survives on a shared handset. */
-.auth-shared-device input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
-  margin: 0;
-}
 
 /* The two no-typing ways in, above the "or" divider. */
 .auth-quick {
@@ -6162,15 +6135,6 @@ body.has-app-update .install-fab {
 
 html.has-remembered-email .login-remembered {
   display: block;
-}
-
-/* Same before-first-paint signal, opposite direction: a device that has
-   already signed in once has already made the shared-device call, so this
-   row only needs to show the first time. No separate CLS note needed - this
-   one starts visible in the markup and DISAPPEARS when remembered, so there
-   is no later un-hide to shift anything. */
-html.has-remembered-email .auth-shared-row {
-  display: none;
 }
 
 /* Both children are block-level so filling the address in changes the WIDTH of
@@ -8034,4 +7998,23 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
   color: var(--color-muted);
   font-size: 1.5rem;
   cursor: pointer;
+}
+
+/* Customer sign-in (owner request, Oct 2026): Google, "Continue as guest" and
+   "Send me a code" are all the same size. Google draws its own button at a
+   fixed 40px tall (size "large") and as wide as google-signin.js asks - the
+   full width of the card here (data-full-width) - so the other two match it. */
+.auth-card--customer #google-signin-btn[data-full-width] {
+  align-self: stretch;
+  width: 100%;
+  min-height: 40px;
+}
+.auth-card--customer #guest-continue,
+.auth-card--customer #login-form button[type="submit"],
+.auth-card--customer #signup-form button[type="submit"] {
+  width: 100%;
+  min-height: 40px;
+  height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
 }

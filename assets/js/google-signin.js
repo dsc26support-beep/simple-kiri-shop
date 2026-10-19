@@ -45,7 +45,7 @@ function initGoogleSignIn() {
         callback: onGoogleCredential,
         // The One Tap prompt is deliberately off. It appears unbidden over the
         // page, and on a shared phone it invites signing in as whoever used it
-        // last - the exact thing the shared-device checkbox exists to avoid.
+        // last.
         auto_select: false,
         cancel_on_tap_outside: true
       });
@@ -54,10 +54,15 @@ function initGoogleSignIn() {
       // produced a zero-height button on the checkout confirmation screen,
       // where this block is revealed late. Put back on failure.
       wrap.hidden = false;
-      google.accounts.id.renderButton(document.getElementById('google-signin-btn'), {
+      var host = document.getElementById('google-signin-btn');
+      // data-full-width (customer sign-in, owner request Oct 2026): as wide as
+      // the buttons under it. Google draws the button itself and accepts a
+      // pixel width from 200 to 400.
+      var full = host.hasAttribute('data-full-width') && host.clientWidth;
+      google.accounts.id.renderButton(host, {
         theme: 'outline',
         size: 'large',
-        width: 280,
+        width: full ? Math.max(200, Math.min(400, host.clientWidth)) : 280,
         text: 'continue_with',
         shape: 'rectangular'
       });
@@ -94,10 +99,7 @@ async function onGoogleCredential(response) {
   }
 
   if (wrap) wrap.classList.add('is-busy');
-  var res = await Api.post('googleSignIn', {
-    credential: response.credential,
-    sharedDevice: typeof sharedDeviceChecked === 'function' ? sharedDeviceChecked() : false
-  });
+  var res = await Api.post('googleSignIn', { credential: response.credential });
   if (wrap) wrap.classList.remove('is-busy');
 
   if (!res.ok) {

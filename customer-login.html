@@ -57,7 +57,7 @@
 
   <main id="main">
     <section class="container auth-card-wrap">
-      <div class="auth-card">
+      <div class="auth-card auth-card--customer">
         <h1 id="auth-title">Sign in to Mwakete</h1>
         <!-- Why they're here, when chat sent them to request a meeting. Filled
              synchronously right here, before first paint, so it can't shift
@@ -87,7 +87,7 @@
              so it must never disappear along with it. -->
         <div class="auth-quick">
           <div id="google-signin-wrap" class="auth-social" hidden>
-            <div id="google-signin-btn"></div>
+            <div id="google-signin-btn" data-full-width></div>
             <p id="google-signin-error" class="form-error" role="alert"></p>
           </div>
 
@@ -163,26 +163,6 @@
             <button type="submit" class="btn btn-primary btn-block">Verify &amp; create account</button>
             <button type="button" id="signup-back" class="btn btn-block">Change my details</button>
           </form>
-        </div>
-
-        <!-- Hidden by CSS once this browser has signed in before (same
-             html.has-remembered-email signal as the "Signing in as ..." line
-             above, decided before first paint) - a device that already has a
-             trusted 60-day session has already made this call, so asking
-             again on every visit is just noise. -->
-        <div class="auth-shared-row">
-          <label class="auth-shared-device" for="shared-device">
-            <input type="checkbox" id="shared-device">
-            <span>This is a shared device &mdash; sign me out sooner</span>
-          </label>
-          <button type="button" class="info-dot" id="shared-info-btn"
-                  aria-expanded="false" aria-controls="shared-info"
-                  aria-label="What does this do?">i</button>
-          <!-- Same absolutely-positioned popup as the guest one, so opening it
-               cannot move the form. -->
-          <p class="info-pop" id="shared-info" role="status" hidden>
-            Leave this unticked and we'll keep you signed in on this device for 60 days.
-          </p>
         </div>
 
         <!-- The footer (and its Terms | Privacy) is hidden on phones and

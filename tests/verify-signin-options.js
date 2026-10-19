@@ -1,5 +1,7 @@
 /**
- * The customer sign-in page: Google, guest, and "this is a shared device".
+ * The customer sign-in page: Google, guest and email - all three the same size.
+ * The "this is a shared device" box was removed (owner request, Oct 2026);
+ * everyone gets the normal 60-day sign-in and can log out.
  *
  * The most important assertions here are the DEGRADED ones. This site is used
  * on slow and filtered connections, so "Google's script did not load" is an
@@ -26,10 +28,14 @@ const GSI = 'https://accounts.google.com/gsi/client';
 const FAKE_GSI = `
   window.google = { accounts: { id: {
     initialize: function (cfg) { window.__gsiConfig = cfg; },
-    renderButton: function (el) {
+    renderButton: function (el, opts) {
+      window.__gsiButton = opts;
       var b = document.createElement('button');
       b.id = 'fake-google-btn';
       b.textContent = 'Continue with Google';
+      // Like Google's own: as wide as asked, 40px tall for size "large".
+      b.style.width = (opts && opts.width ? opts.width : 280) + 'px';
+      b.style.height = '40px';
       b.addEventListener('click', function () {
         window.__gsiConfig.callback({ credential: 'FAKE.ID.TOKEN' });
       });
@@ -150,33 +156,19 @@ async function makeContext(browser, opts) {
     const call = posted.find((b) => b.action === 'googleSignIn');
     ok('the credential is posted to googleSignIn', !!call && call.credential === 'FAKE.ID.TOKEN',
       JSON.stringify(call || {}));
-    ok('sharedDevice defaults to false when the box is unticked', call && call.sharedDevice === false,
-      String(call && call.sharedDevice));
+    ok('no shared-device flag is sent any more (normal sign-in length)', call && !('sharedDevice' in call),
+      JSON.stringify(call || {}));
     const token = await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } });
     ok('the session is saved on the device', token === 'sess-tok', String(token));
     await ctx.close();
   }
 
-  // ---- the shared-device box reaches the backend, on BOTH paths ----
-  {
-    const { ctx, posted } = await makeContext(browser, { clientId: 'test-client' });
-    const page = await ctx.newPage();
-    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    await page.waitForSelector('#fake-google-btn', { timeout: 5000 });
-    await page.check('#shared-device');
-    await page.click('#fake-google-btn');
-    await page.waitForTimeout(900);
-    const call = posted.find((b) => b.action === 'googleSignIn');
-    ok('ticking shared device sends sharedDevice:true on the Google path',
-      call && call.sharedDevice === true, String(call && call.sharedDevice));
-    await ctx.close();
-  }
+  // ---- email-code path: normal sign-in, no shared-device flag ----
   {
     const { ctx, posted } = await makeContext(browser, { clientId: '' });
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(600);
-    await page.check('#shared-device');
     await page.fill('#login-email', 'a@example.com');
     await page.click('#login-form button[type="submit"]');
     await page.waitForTimeout(700);
@@ -184,8 +176,24 @@ async function makeContext(browser, opts) {
     await page.click('#login-code-form button[type="submit"]');
     await page.waitForTimeout(900);
     const call = posted.find((b) => b.action === 'verifyCustomerLogin');
-    ok('and sharedDevice:true on the email-code path too',
-      call && call.sharedDevice === true, JSON.stringify(call || {}));
+    ok('the email-code sign-in sends no shared-device flag either',
+      !!call && !('sharedDevice' in call), JSON.stringify(call || {}));
+    await ctx.close();
+  }
+
+  // ---- all three ways in are the same size (owner request, Oct 2026) ----
+  for (const w of [320, 390, 1280]) {
+    const { ctx } = await makeContext(browser, { clientId: 'test-client' });
+    const page = await ctx.newPage();
+    await page.setViewportSize({ width: w, height: 844 });
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.waitForSelector('#fake-google-btn', { timeout: 5000 });
+    const g = await page.evaluate(() => ['#fake-google-btn', '#guest-continue', '#login-form button[type="submit"]'].map((sel) => {
+      const r = document.querySelector(sel).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+    ok(`${w}px: Google, guest and "Send me a code" are the same width`, Math.abs(g[0][0] - g[1][0]) <= 1 && Math.abs(g[1][0] - g[2][0]) <= 1, JSON.stringify(g));
+    ok(`${w}px: ...and the same height (40px)`, g.every((x) => x[1] === 40), JSON.stringify(g));
+    ok(`${w}px: Google was asked for that width (within its 200-400px limits)`, await page.evaluate(() => window.__gsiButton.width) === Math.max(200, Math.min(400, g[1][0])));
+    ok(`${w}px: no sideways scroll`, await page.evaluate(() => document.documentElement.scrollWidth - innerWidth <= 1));
     await ctx.close();
   }
 
@@ -270,54 +278,22 @@ async function makeContext(browser, opts) {
     await ctx.close();
   }
 
-  // ---- the shared-device explanation, same treatment as guest used to have ---
+  // ---- the shared-device box and its info button are gone ----------------
   {
     const { ctx } = await makeContext(browser, { clientId: 'test-client' });
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    await page.waitForTimeout(1300);
-
-    ok('the 60-day sentence is no longer sitting on the page as plain text',
-      await page.evaluate(() => !document.querySelector('.auth-shared-hint')));
-    ok('the checkbox label itself is untouched',
-      /shared device/i.test(await page.textContent('.auth-shared-device') || ''));
-    ok('its explanation starts closed', await page.locator('#shared-info').isHidden());
-
-    const footerTop = () => page.evaluate(() =>
-      Math.round(document.querySelector('footer.site-footer').getBoundingClientRect().top));
-    const before = await footerTop();
-    await page.click('#shared-info-btn');
-    await page.waitForTimeout(300);
-    ok('the dot opens it', await page.locator('#shared-info').isVisible());
-    ok('and it still says 60 days',
-      /60 days/.test(await page.textContent('#shared-info') || ''));
-    ok('opening it moves nothing', (await footerTop()) === before);
+    await page.waitForTimeout(1000);
+    ok('no "This is a shared device" box or its info button', await page.evaluate(() =>
+      !document.getElementById('shared-device') && !document.getElementById('shared-info-btn') && !document.querySelector('.auth-shared-row')
+      && !/shared device/i.test(document.body.textContent)));
     await ctx.close();
-  }
-
-  // ---- hidden once this device has signed in before ----------------------
-  {
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    await ctx.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
-      contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
-    const page = await ctx.newPage();
-    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    await page.waitForTimeout(1300);
-    ok('first visit to this device: the shared-device row shows',
-      await page.locator('.auth-shared-row').isVisible());
-    await ctx.close();
-
-    const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    await ctx2.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
-      contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
-    const page2 = await ctx2.newPage();
-    await page2.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
-    await page2.evaluate(() => { try { localStorage.setItem('skiri_last_email', 'aroita@example.com'); } catch (e) {} });
-    await page2.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    await page2.waitForTimeout(1300);
-    ok('remembered device: the shared-device row is gone (not asked again)',
-      await page2.locator('.auth-shared-row').isHidden());
-    await ctx2.close();
+    const fs = require('fs'), path = require('path');
+    const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    ok('Help Centre, Privacy Policy and Terms no longer mention the removed box',
+      ['help.html', 'privacy.html', 'terms.html', 'assets/js/help-content.js'].every((f) => !/This is a shared device/i.test(read(f))));
+    ok('...and still tell people to log out on a shared phone',
+      /shared phone, log out/i.test(read('terms.html')) && /Log out<\/strong> when you are finished/.test(read('privacy.html')));
   }
 
   // ---- the static "we'll email a code" line moved to the code step --------
@@ -336,35 +312,6 @@ async function makeContext(browser, opts) {
     ok('it reappears as a confirmation on the code step instead',
       /we emailed a 6-digit code to aroita@example\.com/i.test(await page.textContent('#login-code-hint') || ''),
       await page.textContent('#login-code-hint'));
-    await ctx.close();
-  }
-
-  // ---- a panel that opens off-screen is a tap that did nothing ------------
-  for (const h of [560, 640, 844]) {
-    const ctx = await browser.newContext({ viewport: { width: 390, height: h } });
-    await ctx.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,
-      contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
-    await ctx.route(GSI, (r) => r.fulfill({ status: 200,
-      contentType: 'application/javascript', body: FAKE_GSI }));
-    const page = await ctx.newPage();
-    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    await page.evaluate(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
-    await page.reload({ waitUntil: 'load' });
-    await page.waitForTimeout(1300);
-    for (const which of ['shared-info']) {
-      await page.locator('#' + which + '-btn').scrollIntoViewIfNeeded();
-      await page.waitForTimeout(150);
-      await page.click('#' + which + '-btn');
-      await page.waitForTimeout(300);
-      const box = await page.evaluate((id) => {
-        const r = document.getElementById(id).getBoundingClientRect();
-        return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight };
-      }, which);
-      // It flips above the dot when there is no room below. At 640px tall the
-      // shared-device panel used to open 95px past the bottom of the screen.
-      ok(`${which} stays on screen at ${h}px tall`,
-        box.top >= 0 && box.bottom <= box.vh, JSON.stringify(box));
-    }
     await ctx.close();
   }
 

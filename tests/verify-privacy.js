@@ -69,8 +69,9 @@ const ok = (name, cond, detail) => {
   const customers = fs.readFileSync(REPO + 'apps-script/Customers.gs', 'utf8');
   ok('the 60 days it quotes matches CUSTOMER_REMEMBER_HOURS',
     /60 days/.test(text) && /CUSTOMER_REMEMBER_HOURS\s*=\s*24\s*\*\s*60/.test(customers));
-  ok('the 12 hours it quotes matches CUSTOMER_SHARED_DEVICE_HOURS',
-    /12 hours/.test(text) && /CUSTOMER_SHARED_DEVICE_HOURS\s*=\s*12\b/.test(customers));
+  // The shared-device box (and its 12-hour session) was removed from sign-in
+  // (owner request, Oct 2026), so the policy no longer quotes 12 hours.
+  ok('it no longer quotes the removed 12-hour shared-device session', !/12 hours/.test(text) && !/shared device/i.test(text));
 
   // --- reachable, and linked from where it is needed ----------------------
   ok('precached, so it works offline like every other customer page',

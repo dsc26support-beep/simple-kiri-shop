@@ -455,8 +455,8 @@ const HELP_FAQS = [
     id: 'account-protect', category: 'account',
     title: 'How do I protect my account?',
     subtitle: 'Keep your codes private and log out on shared phones',
-    description: 'Never share the sign-in code we email you. On a shared phone, tick “This is a shared device” when signing in and log out when you finish. Sellers can turn on two-step sign-in (2FA) in store Settings.',
-    keywords: ['protect', 'secure', 'security', '2fa', 'two-step', 'shared device', 'logout', 'hacked'],
+    description: 'Never share the sign-in code we email you. On a shared phone, log out when you finish. Sellers can turn on two-step sign-in (2FA) in store Settings.',
+    keywords: ['protect', 'secure', 'security', '2fa', 'two-step', 'shared phone', 'logout', 'hacked'],
     related: ['safety-pin', 'account-access']
   },
   {
