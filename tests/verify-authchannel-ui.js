@@ -76,7 +76,7 @@ const OWNER = {
     await page.click('#twofa-enable-btn');
     await page.waitForSelector('#twofa-confirm-form:not(.hidden)', { timeout: 4000 });
     const hint = await page.textContent('#twofa-confirm-hint');
-    ok('enable-2FA hint says emailed on the email channel', /We emailed you/.test(hint), hint);
+    ok('enable-2FA hint says emailed on the email channel', /we emailed you/i.test(hint), hint);
     await ctx.close();
   }
   {
@@ -84,7 +84,7 @@ const OWNER = {
     await page.click('#twofa-enable-btn');
     await page.waitForSelector('#twofa-confirm-form:not(.hidden)', { timeout: 4000 });
     const hint = await page.textContent('#twofa-confirm-hint');
-    ok('enable-2FA hint says texted on the sms channel', /We texted you/.test(hint), hint);
+    ok('enable-2FA hint says texted on the sms channel', /we texted you/i.test(hint), hint);
     await ctx.close();
   }
 

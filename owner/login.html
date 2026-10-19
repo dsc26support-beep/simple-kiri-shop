@@ -71,7 +71,7 @@
 
         <form id="twofa-form" class="hidden" role="tabpanel">
           <input type="hidden" id="twofa-pending-token">
-          <p class="helper-text">We emailed you a 6-digit code. Enter it below to finish logging in.</p>
+          <p class="helper-text">Enter the 6-digit code we emailed you.</p>
           <div class="field">
             <label for="twofa-code">Verification Code</label>
             <input id="twofa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
@@ -115,17 +115,17 @@
           <div class="field">
             <label for="register-email">Contact Email</label>
             <input id="register-email" name="email" type="email" autocomplete="email" required>
-            <p class="helper-text">Customers' orders will be emailed here, so make sure it's one you check.</p>
+            <p class="helper-text">Orders are emailed here.</p>
           </div>
           <div class="field">
             <label for="register-phone">Contact Phone</label>
             <input id="register-phone" name="phone" type="tel" autocomplete="tel" required>
-            <p class="helper-text">Shown to customers as a backup way to reach you (e.g. WhatsApp).</p>
+            <p class="helper-text">A backup contact, e.g. WhatsApp.</p>
           </div>
           <div class="field">
             <label for="register-messenger">Facebook Messenger</label>
             <input id="register-messenger" name="messenger" type="text" placeholder="e.g. https://m.me/username" aria-describedby="register-messenger-help" required>
-            <p class="helper-text" id="register-messenger-help">Your Facebook username — the part after facebook.com/ when you open your own profile. Pasting the whole link works too. We save it as a Messenger link so customers can message you straight from your store page.</p>
+            <p class="helper-text" id="register-messenger-help">Your Facebook username or profile link.</p>
           </div>
           <p id="register-error" class="form-error" role="alert"></p>
           <p class="helper-text auth-terms-note">By creating a store you agree to the <a href="../terms.html">Terms of Service</a> and the <a href="../privacy.html">Privacy Policy</a>.</p>

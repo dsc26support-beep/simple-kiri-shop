@@ -565,7 +565,7 @@ async function onRequestEnable2FA() {
   document.getElementById('twofa-verify-token').value = res.verifyToken;
   const hint = document.getElementById('twofa-confirm-hint');
   if (hint) {
-    hint.textContent = `We ${authChannelPhrase(lastRenderedOwner)} you a 6-digit code. Enter it below to turn on 2FA.`;
+    hint.textContent = `Enter the 6-digit code we ${authChannelPhrase(lastRenderedOwner)} you.`;
   }
   document.getElementById('twofa-confirm-form').classList.remove('hidden');
   document.getElementById('twofa-confirm-code').focus();

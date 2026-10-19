@@ -33,7 +33,7 @@
   <main id="main" class="owner-main">
     <div class="container">
       <h1>Connect your stock</h1>
-      <p class="helper-text">Keep using the spreadsheet or system you already have. Mwakete reads it, shows you every change first, and only updates your store when you say so. <a href="inventory-help.html">How it works</a></p>
+      <p class="helper-text">Mwakete reads your sheet and shows changes before updating your store. <a href="inventory-help.html">How it works</a></p>
       <p id="sync-status" class="helper-text" role="status"></p>
 
       <!-- Sync Center: connected sources and anything waiting for a decision. -->
@@ -47,7 +47,7 @@
       <section id="sync-step-source" class="dash-section" aria-labelledby="sync-source-heading">
         <h2 id="sync-source-heading">1. Where do you keep your stock now?</h2>
         <div id="sync-sources" class="sync-sources"></div>
-        <p class="helper-text">No system yet? <a href="inventory.html">Use Mwakete Inventory</a> - it's already on.</p>
+        <p class="helper-text">No system? <a href="inventory.html">Use Mwakete Inventory</a>.</p>
       </section>
 
       <!-- Google Sheets: share, paste the link, pick the tab. -->
@@ -90,9 +90,9 @@
         <div id="sync-options" class="sync-options hidden">
           <fieldset id="sync-mode-field" class="sync-mode hidden">
             <legend>Which side is in charge?</legend>
-            <label class="sync-check"><input type="radio" name="sync-mode" value="import" checked> <span><strong>My sheet → Mwakete</strong><br><span class="helper-text">Your sheet is the master. Best if you already keep it up to date.</span></span></label>
-            <label class="sync-check"><input type="radio" name="sync-mode" value="export"> <span><strong>Mwakete → my sheet</strong><br><span class="helper-text">Mwakete is the master; it writes stock into your sheet.</span></span></label>
-            <label class="sync-check"><input type="radio" name="sync-mode" value="twoWay"> <span><strong>Both ways</strong><br><span class="helper-text">Changes either side are copied across. If the same item changes in both, we ask you.</span></span></label>
+            <label class="sync-check"><input type="radio" name="sync-mode" value="import" checked> <span><strong>My sheet → Mwakete</strong><br><span class="helper-text">Your sheet is the master.</span></span></label>
+            <label class="sync-check"><input type="radio" name="sync-mode" value="export"> <span><strong>Mwakete → my sheet</strong><br><span class="helper-text">Mwakete is the master and updates your sheet.</span></span></label>
+            <label class="sync-check"><input type="radio" name="sync-mode" value="twoWay"> <span><strong>Both ways</strong><br><span class="helper-text">Both sides sync; we ask if they clash.</span></span></label>
             <label class="sync-check"><input type="checkbox" id="sync-auto"> Keep in step automatically (every hour)</label>
           </fieldset>
           <label class="sync-check" id="sync-create-new-row"><input type="checkbox" id="sync-create-new"> Add items that aren't on Mwakete yet as new products</label>
@@ -130,7 +130,7 @@
 
       <section class="dash-section" aria-labelledby="sync-export-heading">
         <h2 id="sync-export-heading">Download your stock</h2>
-        <p class="helper-text">A CSV of everything on Mwakete, with held and available stock. Edit it and import it back - it matches by Mwakete ID.</p>
+        <p class="helper-text">CSV of all items. Edit it and import it back.</p>
         <button type="button" id="sync-export-btn" class="btn btn-light-purple">Download CSV</button>
         <p id="sync-export-error" class="form-error" role="alert"></p>
       </section>
