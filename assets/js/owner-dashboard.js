@@ -63,8 +63,27 @@ function greeting() {
 async function loadSummary(days) {
   const statusEl = document.getElementById('dash-status');
   const stopLoading = startLoadingMessage(statusEl);
+  // This store's last summary, kept on this device, is shown at once and then
+  // replaced by the fresh one. Keyed by store; dropped at log-out (auth.js).
+  const owner = (typeof Auth !== 'undefined' && Auth.getOwner && Auth.getOwner()) || {};
+  const keptKey = 'seller:' + (owner.storeSlug || 'me') + ':' + days;
+  const kept = Api.recall(keptKey);
+  if (kept) {
+    stopLoading();
+    statusEl.textContent = 'Updating…';
+    paintSummary(kept);
+  }
   const res = await Api.post('getSellerDashboard', { token: Auth.getToken(), days });
   stopLoading();
+  if (kept && res.ok && res.kpis) {
+    statusEl.textContent = '';
+    if (Api.remember(keptKey, res)) paintSummary(res);
+    return;
+  }
+  if (kept && !(res.ok && res.kpis)) {
+    statusEl.textContent = 'Showing your last summary - could not refresh. Check your connection.';
+    return;
+  }
   // An answer without figures (an old backend, a proxy page) is a failure too.
   if (!res.ok || !res.kpis) {
     statusEl.innerHTML = 'Your store summary could not be loaded. <button type="button" class="btn btn-small" id="dash-retry">Try again</button>';
@@ -74,6 +93,11 @@ async function loadSummary(days) {
     return;
   }
   statusEl.textContent = '';
+  Api.remember(keptKey, res);
+  paintSummary(res);
+}
+
+function paintSummary(res) {
   renderKpis(res.kpis, res.period);
   renderChart(res.series);
   renderRecent(res.recentOrders);

@@ -178,6 +178,17 @@ async function loadHomePageData() {
   const stopProductsLoading = startLoadingMessage(productsStatusEl);
   const stopStoresLoading = startLoadingMessage(storesStatusEl);
 
+  // Shown at once from this phone's last visit (Api.recall), then replaced by
+  // the fresh answer only if it changed - so a returning shopper never waits
+  // on Apps Script to see the page.
+  const kept = Api.recall('home');
+  if (kept) {
+    stopProductsLoading();
+    stopStoresLoading();
+    renderTrendingProducts(kept.products);
+    renderTrendingStores(kept.stores);
+  }
+
   const request = Api.get('getHomePageData', {});
   // The request this page paints from; whenIdle() waits for it (helpers.js).
   window.__criticalReady = request;
@@ -185,12 +196,18 @@ async function loadHomePageData() {
   stopProductsLoading();
   stopStoresLoading();
   if (!res.ok) {
-    showLoadFailedMessage(productsStatusEl);
-    showLoadFailedMessage(storesStatusEl);
+    // What was shown from the last visit stays; only an empty page says so.
+    if (!kept) {
+      showLoadFailedMessage(productsStatusEl);
+      showLoadFailedMessage(storesStatusEl);
+    }
     return;
   }
-  renderTrendingProducts(res.products);
-  renderTrendingStores(res.stores);
+  const fresh = { products: res.products, stores: res.stores };
+  if (Api.remember('home', fresh) || !kept) {
+    renderTrendingProducts(res.products);
+    renderTrendingStores(res.stores);
+  }
 }
 
 function renderTrendingProducts(products) {

@@ -24,6 +24,8 @@ const Auth = (function () {
   function clearSession() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(OWNER_KEY);
+    // The seller's kept dashboard summaries (api.js) leave with the session.
+    if (typeof Api !== 'undefined' && Api.forget) Api.forget('seller:');
   }
 
   async function logout() {

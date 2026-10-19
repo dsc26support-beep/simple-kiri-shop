@@ -189,17 +189,97 @@ function escapeHtmlForEmail(value) {
  */
 function getCached(key, ttlSeconds, producerFn) {
   var cache = CacheService.getScriptCache();
-  var hit = cache.get(key);
-  if (hit) return JSON.parse(hit);
+  var hit = readCachedJson(cache, key);
+  if (hit !== null) return hit;
 
   var value = producerFn();
-  try {
-    cache.put(key, JSON.stringify(value), ttlSeconds);
-  } catch (e) {
-    // Value too large for the ~100KB per-key cap - just skip caching this one.
-    Logger.log('getCached: skipped caching ' + key + ' (' + e + ')');
-  }
+  putCachedJson(cache, key, value, ttlSeconds);
   return value;
+}
+
+/*
+ * ScriptCache holds at most ~100KB per key, and a big category's product list
+ * is larger than that - it used to be skipped, so every visit to that category
+ * re-read every sheet (Oct 2026: "categories feel very slow"). A large value
+ * is now split over numbered part keys, with a small marker under the main
+ * key: '~parts:<n>'. Parts are written together (putAll) and read together
+ * (getAll); a missing part reads as a miss, never as half an answer.
+ */
+var CACHE_PART_CHARS = 90000;
+var CACHE_PARTS_MAX = 20;
+
+function readCachedJson(cache, key) {
+  var hit = cache.get(key);
+  if (!hit) return null;
+  var m = /^~parts:(\d+)$/.exec(hit);
+  if (!m) return JSON.parse(hit);
+  var n = Number(m[1]);
+  var keys = [];
+  for (var i = 0; i < n; i++) keys.push(key + '#' + i);
+  var got = cache.getAll(keys);
+  var text = '';
+  for (var j = 0; j < n; j++) {
+    if (typeof got[keys[j]] !== 'string') return null;
+    text += got[keys[j]];
+  }
+  try { return JSON.parse(text); } catch (e) { return null; }
+}
+
+function putCachedJson(cache, key, value, ttlSeconds) {
+  var text = JSON.stringify(value);
+  try {
+    if (text.length <= CACHE_PART_CHARS) {
+      cache.put(key, text, ttlSeconds);
+      return true;
+    }
+    var n = Math.ceil(text.length / CACHE_PART_CHARS);
+    if (n > CACHE_PARTS_MAX) throw new Error(n + ' parts');
+    var parts = {};
+    for (var i = 0; i < n; i++) parts[key + '#' + i] = text.slice(i * CACHE_PART_CHARS, (i + 1) * CACHE_PART_CHARS);
+    // Parts first, marker last: a reader never finds a marker without parts.
+    cache.putAll(parts, ttlSeconds);
+    cache.put(key, '~parts:' + n, ttlSeconds);
+    return true;
+  } catch (e) {
+    Logger.log('getCached: skipped caching ' + key + ' (' + e + ')');
+    return false;
+  }
+}
+
+/**
+ * Keeps what shoppers open first ready in the cache, so they never wait for
+ * the sheets to be read: the homepage (trending products and stores) and the
+ * first screen of every top-level category. Run by a time-driven trigger
+ * every 5 minutes (DEPLOY.md, "Speed: warm cache trigger") - each answer is
+ * rebuilt and stored for 6 minutes, so one always overlaps the next run.
+ * Read-only: it writes nothing to the sheets. Returns what it warmed.
+ */
+var WARM_TTL_SECONDS = 360;
+
+function warmPublicCaches() {
+  var cache = CacheService.getScriptCache();
+  var started = Date.now();
+  var warmed = [];
+  // Rebuilt, not just re-read: drop the main keys so getCached produces fresh.
+  cache.removeAll([topProductsCacheKey(), topStoresCacheKey()]);
+  var home = { products: getTopProductsCached(), stores: getTopStoresCached() };
+  putCachedJson(cache, topProductsCacheKey(), home.products, WARM_TTL_SECONDS);
+  putCachedJson(cache, topStoresCacheKey(), home.stores, WARM_TTL_SECONDS);
+  warmed.push('homepage');
+  LISTING_CATEGORY_SEED.filter(function (c) { return !c.parentId; }).forEach(function (c) {
+    // Stop well inside Apps Script's 6-minute limit on a very large catalogue.
+    if (Date.now() - started > 240000) return;
+    var key = 'v4:search:' + c.id + '::';
+    cache.remove(key);
+    var res = actionSearchProducts({ category: c.id, type: '', q: '' });
+    if (res && res.ok) {
+      var stored = readCachedJson(cache, key);
+      if (stored !== null) putCachedJson(cache, key, stored, WARM_TTL_SECONDS);
+      warmed.push(c.id);
+    }
+  });
+  Logger.log('warmPublicCaches: ' + warmed.join(', ') + ' in ' + (Date.now() - started) + 'ms');
+  return warmed;
 }
 
 function invalidateCache(keys) {

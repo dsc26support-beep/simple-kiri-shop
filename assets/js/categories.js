@@ -251,6 +251,16 @@ async function selectCategory(categoryId, opts) {
   document.getElementById('category-more').hidden = true;
   const stopLoading = startLoadingMessage(statusEl);
 
+  // This category as this phone last saw it (Api.recall), shown at once; the
+  // fresh list replaces it only if something changed.
+  const keptKey = 'cat:' + categoryId + ':' + (currentType || '');
+  const kept = Api.recall(keptKey);
+  if (kept) {
+    stopLoading();
+    categoryProducts = kept;
+    render();
+  }
+
   const request = Api.get('searchProducts', { category: categoryId, type: currentType });
   // The request this page paints from; whenIdle() waits for it (helpers.js).
   window.__criticalReady = request;
@@ -262,13 +272,16 @@ async function selectCategory(categoryId, opts) {
   if (currentCategory !== categoryId) return;
 
   if (!res.ok) {
-    showLoadFailedMessage(statusEl);
+    if (!kept) showLoadFailedMessage(statusEl);
     return;
   }
 
-  categoryProducts = res.products || [];
-  categoryCache[categoryId] = categoryProducts;
-  render();
+  const fresh = res.products || [];
+  categoryCache[categoryId] = fresh;
+  if (Api.remember(keptKey, fresh) || !kept) {
+    categoryProducts = fresh;
+    render();
+  }
 }
 
 /**
