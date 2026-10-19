@@ -95,7 +95,7 @@
               <div id="ov-stock"></div>
             </div>
           </div>
-          <p class="helper-text">Not shown, because Mwakete does not have them: commissions and payouts (buyers pay sellers directly) and delivery monitoring (no driver service yet).</p>
+          <p class="helper-text">Not shown: commissions and payouts (buyers pay sellers directly).</p>
         </section>
 
         <section class="dash-section" aria-labelledby="admin-search-heading">
@@ -103,7 +103,7 @@
           <div class="field">
             <label for="admin-search-input">Store, product, order number, payment reference, customer or phone</label>
             <input type="search" id="admin-search-input" autocomplete="off" placeholder="e.g. Bong, rice, SKS-…, MWF…, 7300…">
-            <p class="helper-text">An exact order number (SKS-…), payment reference (MWF…) or case id (rev_…) opens it straight away.</p>
+            <p class="helper-text">An exact order, payment or case number opens it directly.</p>
           </div>
           <p id="admin-search-status" class="helper-text" aria-live="polite"></p>
           <div id="admin-search-results" class="admin-search-results"></div>
@@ -114,7 +114,7 @@
              backend ListingReview.gs). Numbers are counted from the queue rows. -->
         <section class="dash-section" aria-labelledby="lr-heading" id="listing-review">
           <h2 id="lr-heading">Listing review</h2>
-          <p class="helper-text">Listings the checks stopped or warned about, and requests for new categories. A held listing is hidden from shoppers until you decide. Approve only publishes a listing that passes the checks; Override and Dismiss need a reason and are logged.</p>
+          <p class="helper-text">Held or flagged listings and category requests. Override and Dismiss need a reason.</p>
           <div class="admin-stats" id="lr-metrics" aria-live="polite"></div>
           <form id="lr-filter-form" class="lr-filters" novalidate>
             <div class="field"><label for="lr-status">Status</label>
@@ -150,7 +150,7 @@
           <p class="lr-pager"><button type="button" class="btn btn-small" id="lr-prev" disabled>Previous</button><button type="button" class="btn btn-small" id="lr-next" disabled>Next</button></p>
           <details id="lr-cats-panel">
             <summary>Categories</summary>
-            <p class="helper-text">Switch a category off rather than deleting it: listings already in it stay where they are, new listings cannot choose it. Keywords are what the checks look for (comma separated; start one with ~ to make it a weak word).</p>
+            <p class="helper-text">Switch categories off, don't delete. Keywords: comma separated; ~ = weak.</p>
             <p id="lr-cats-status" class="helper-text" role="status"></p>
             <div class="admin-table-wrap"><table class="admin-table lr-cats" id="lr-cats">
               <thead><tr><th scope="col">Category</th><th scope="col">On</th><th scope="col">Listings</th><th scope="col">Keywords</th><th scope="col">Actions</th></tr></thead>
@@ -164,7 +164,7 @@
         <section class="dash-section" aria-labelledby="txa-heading" id="tx-disputes">
           <h2 id="txa-heading">Order problems</h2>
           <p id="txa-mode" class="helper-text"></p>
-          <p class="helper-text">Problems buyers and sellers report in an order room. Open one to see the order, the messages, the payment and delivery records and every photo, then ask for information or record a decision with reasons. Mwakete does not hold payments, so a refund is recorded only when the seller says it was sent and the buyer confirms it arrived.</p>
+          <p class="helper-text">Problems reported in order rooms. A refund is recorded only when the seller sends it and the buyer confirms.</p>
           <div class="field"><label for="txa-filter">Show</label>
             <select id="txa-filter" style="width:auto"><option value="open">Open problems</option><option value="resolved">Resolved</option><option value="all">All</option></select></div>
           <p id="txa-status" class="helper-text" role="status" aria-live="polite"></p>
@@ -189,7 +189,7 @@
           <p id="dlv-mode" class="helper-text"></p>
           <div class="kpi-grid" id="dlv-counts" aria-label="Delivery summary"></div>
           <h3>Drivers</h3>
-          <p class="helper-text">Approve a driver only after you have spoken to them. Rejecting or suspending needs a reason - the driver sees it.</p>
+          <p class="helper-text">Call drivers before approving. Rejections need a reason.</p>
           <div id="dlv-drivers"></div>
           <div class="dash-panel-head"><h3>Delivery jobs</h3>
             <label class="sr-only" for="dlv-filter">Show</label>
@@ -201,7 +201,7 @@
              homepage strip - red on desktop, yellow on phones. -->
         <section class="dash-section" aria-labelledby="ha-heading" id="header-ads">
           <h2 id="ha-heading">Header adverts</h2>
-          <p class="helper-text">Short lines in the homepage header (red on a computer, yellow on a phone). Each slides in from the right, stays 6 seconds, and slides out to the left; tapping it opens its link. With no advert running, the three built-in lines show.</p>
+          <p class="helper-text">Homepage header lines. Each shows 6 seconds; tapping opens its link.</p>
           <div class="ha-preview" aria-hidden="true"><span id="ha-preview-text">Local Kiribati sellers</span></div>
           <p id="ha-status" class="helper-text" role="status" aria-live="polite"></p>
           <ol id="ha-list" class="ha-list"></ol>
@@ -220,7 +220,7 @@
             <div class="field">
               <label for="ha-link" class="is-required">Link</label>
               <input id="ha-link" maxlength="500" autocomplete="off" placeholder="store.html?store=bong  or  https://…">
-              <p class="helper-text">A Mwakete page (store.html?store=…, product.html?store=…&amp;product=…, categories.html?category=…) or a full https:// address.</p>
+              <p class="helper-text">A Mwakete page link or a full https:// address.</p>
             </div>
             <div class="ha-dates">
               <div class="field"><label for="ha-start">Start date <span class="helper-text">(optional)</span></label><input type="date" id="ha-start"></div>
@@ -258,10 +258,7 @@
         <p id="admin-error" class="form-error" role="alert"></p>
         <section class="dash-section" aria-labelledby="wholesale-heading">
           <h2 id="wholesale-heading">Wholesaler &amp; distributor verification</h2>
-          <p class="helper-text">
-            Stores that registered as wholesalers or distributors. Call each one to confirm their
-            wholesale business, then mark them verified. Unverified stores are listed first.
-          </p>
+          <p class="helper-text">Call each wholesaler, then mark them verified.</p>
           <p id="wholesale-error" class="form-error" role="alert"></p>
           <p id="wholesale-status" class="helper-text" aria-live="polite"></p>
           <div id="wholesale-list"></div>
@@ -269,7 +266,7 @@
 
         <section class="dash-section" aria-labelledby="inv-admin-heading">
           <h2 id="inv-admin-heading">Inventory &amp; sync</h2>
-          <p class="helper-text">How sellers are using stock tracking and connected sheets, and anything failing. No seller's sheet details are shown.</p>
+          <p class="helper-text">Stock tracking use and failed syncs.</p>
           <p id="inv-admin-status" class="helper-text" aria-live="polite"></p>
           <div id="inv-admin"></div>
         </section>
@@ -278,7 +275,7 @@
              this page - no public page loads any of it. -->
         <section class="dash-section" aria-labelledby="mkt-heading" id="marketing">
           <h2 id="mkt-heading">Marketing</h2>
-          <p class="helper-text">Emails only customers who opted in. Automatic campaigns wait here as drafts until you approve them. Nobody's email address is shown.</p>
+          <p class="helper-text">Opted-in customers only. Automatic campaigns wait here as drafts.</p>
           <div id="mkt-status" class="mkt-status" aria-live="polite"></div>
           <div class="admin-stats" id="mkt-totals"></div>
           <p class="mkt-actions">
@@ -318,7 +315,7 @@
               <div class="field"><label for="mkt-subject">Subject</label><input id="mkt-subject" maxlength="120" required></div>
               <div class="field"><label for="mkt-message">Message</label>
                 <textarea id="mkt-message" rows="5" maxlength="2000" required aria-describedby="mkt-message-help"></textarea>
-                <p class="helper-text" id="mkt-message-help">Plain text. You can use {{customerName}}, {{storeName}}, {{productName}}. Only state prices, discounts or stock you have confirmed with the seller - the engine never adds any.</p></div>
+                <p class="helper-text" id="mkt-message-help">Plain text: {{customerName}}, {{storeName}}, {{productName}}. Only use confirmed prices.</p></div>
               <div class="field"><label for="mkt-start">Start</label><input id="mkt-start" type="datetime-local"></div>
               <div class="field"><label for="mkt-end">End</label><input id="mkt-end" type="datetime-local"></div>
               <div class="field"><label for="mkt-max">Most recipients (blank = no limit)</label><input id="mkt-max" type="number" min="1" max="5000" inputmode="numeric"></div>
@@ -330,14 +327,7 @@
 
         <section class="dash-section" aria-labelledby="feature-payments-heading">
           <h2 id="feature-payments-heading">Featuring payments</h2>
-          <p class="helper-text">
-            Sellers paying 5c per product per day to be featured. Clear receipts are
-            approved automatically; ones the check could not confirm wait here.
-            Open the screenshot, check it against your account, then approve or reject.
-            A screenshot can be edited, so every few days also check each paid reference
-            and amount really arrived in account 906149, and tick <strong>Seen in bank</strong>.
-            Paid featuring not ticked within 7 days of starting stops by itself; reminder emails go out 2 days and 1 day before.
-          </p>
+          <p class="helper-text">5c per product per day. Unclear receipts wait here: check, then approve or reject. Every few days tick <strong>Seen in bank</strong> for payments in account 906149 — unticked featuring stops after 7 days.</p>
           <p id="feature-payments-unmatched" class="feature-unmatched" aria-live="polite"></p>
           <p id="feature-payments-error" class="form-error" role="alert"></p>
           <p id="feature-payments-status" class="helper-text" aria-live="polite"></p>
@@ -356,11 +346,7 @@
              a shopper sees has to translate between two. -->
         <section class="dash-section" aria-labelledby="badges-heading">
           <h2 id="badges-heading">Seller badges</h2>
-          <p class="helper-text">
-            Badges are worked out from orders, reviews and messages every six hours.
-            You can verify a store, approve or remove Mwakete Recommended, or hide
-            every badge from a store while you look into it.
-          </p>
+          <p class="helper-text">Updated every 6 hours. Verify, recommend or hide a store's badges.</p>
           <div class="badge-admin-toolbar">
             <button type="button" id="badge-recompute-btn" class="btn btn-outline btn-small">Recompute now</button>
             <span id="badge-updated" class="helper-text"></span>
@@ -372,10 +358,7 @@
 
         <section class="dash-section" aria-labelledby="badge-config-heading">
           <h2 id="badge-config-heading">Badge settings</h2>
-          <p class="helper-text">
-            Thresholds, minimum requirements and the score weights. Changing one
-            recomputes every store straight away.
-          </p>
+          <p class="helper-text">Changes recompute every store at once.</p>
           <details class="badge-config-panel">
             <summary>Show settings</summary>
             <div id="badge-config-list"></div>

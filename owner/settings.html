@@ -58,8 +58,7 @@
           <div class="field">
             <label for="email-change-password">Your password</label>
             <input id="email-change-password" type="password" autocomplete="current-password">
-            <p class="helper-text">Asked for because this address also receives your
-              login and password-reset codes.</p>
+            <p class="helper-text">Also receives your login codes.</p>
           </div>
           <p id="email-change-error" class="form-error" role="alert"></p>
           <button type="button" id="email-change-send" class="btn btn-primary">Send me a code</button>
@@ -84,7 +83,7 @@
         <div class="field">
           <label for="contact-whatsapp">WhatsApp Number (Optional)</label>
           <input id="contact-whatsapp" type="tel">
-          <p class="helper-text">Only fill this in if your WhatsApp is on a different number. Leave it blank and customers reach you on the contact phone above.</p>
+          <p class="helper-text">Only if different from your contact phone.</p>
         </div>
         <div class="field">
           <!-- No `required` here, deliberately. Registration demands one; this
@@ -93,7 +92,7 @@
                details until it supplies a Facebook profile it may not have. -->
           <label for="contact-messenger">Facebook Messenger</label>
           <input id="contact-messenger" type="text" placeholder="e.g. https://m.me/username" aria-describedby="contact-messenger-help">
-          <p class="helper-text" id="contact-messenger-help">Your Facebook username — the part after facebook.com/ when you open your own profile. Pasting the whole link works too. We save it as a Messenger link so customers can message you straight from your store page.</p>
+          <p class="helper-text" id="contact-messenger-help">Your Facebook username or profile link.</p>
         </div>
 
         <h2>Store Logo</h2>
@@ -105,7 +104,7 @@
         </div>
 
         <h2>ID / License (Optional)</h2>
-        <p class="helper-text">Upload a photo of your ID or business license. This is private — it's never shown to customers or on your store page, only visible to you here.</p>
+        <p class="helper-text">Private — never shown to customers.</p>
         <div class="field">
           <label for="idlicense-image-input">ID / License Photo</label>
           <img id="idlicense-preview" class="image-upload-preview hidden" alt="ID/License preview">
@@ -114,7 +113,7 @@
         </div>
 
         <h2>Delivery Methods</h2>
-        <p class="helper-text">Select all the ways you can deliver orders — these show as icons next to your store name. For each paid method, either set a fixed fee ($0 = free delivery, shown with a green icon) or choose <strong>To Be Negotiated</strong> if the price depends on the order and you agree it with the customer.</p>
+        <p class="helper-text">Tick how you deliver. Set a fee ($0 = free) or choose <strong>To Be Negotiated</strong>.</p>
         <div class="delivery-toggle-group" id="delivery-toggle-group" role="group" aria-label="Delivery methods">
           <div class="delivery-method-row">
             <button type="button" class="delivery-toggle-btn" id="delivery-truck-btn" data-method="truck" aria-pressed="false"></button>
@@ -145,7 +144,7 @@
           </div>
           <div class="delivery-method-row">
             <button type="button" class="delivery-toggle-btn" id="delivery-pickpay-btn" data-method="pickPay" aria-pressed="false"></button>
-            <span class="helper-text">Always free — customers pick up in person and pay at your store.</span>
+            <span class="helper-text">Free — customers collect and pay in store.</span>
           </div>
         </div>
 
@@ -161,7 +160,6 @@
           <select id="settings-village">
             <option value="">Select an island first…</option>
           </select>
-          <p class="helper-text">This village list is a first draft — pick "Other" if yours isn't listed.</p>
         </div>
         <div class="field hidden" id="settings-village-other-field">
           <label for="settings-village-other">Village Name</label>
@@ -178,7 +176,7 @@
         <div class="field">
           <label for="new-password">New Password</label>
           <input id="new-password" type="password" minlength="8" autocomplete="new-password">
-          <p class="helper-text">At least 8 characters. Leave blank to keep your current password.</p>
+          <p class="helper-text">8+ characters. Leave blank to keep your current one.</p>
         </div>
         <p id="password-error" class="form-error" role="alert"></p>
         <p id="password-success" class="form-success" role="status"></p>
@@ -196,7 +194,7 @@
           <input type="hidden" id="twofa-verify-token">
           <!-- Text set by owner-settings.js: says "emailed" or "texted" to
                match where the code actually went. -->
-          <p class="helper-text" id="twofa-confirm-hint">We emailed you a 6-digit code. Enter it below to turn on 2FA.</p>
+          <p class="helper-text" id="twofa-confirm-hint">Enter the 6-digit code we emailed you.</p>
           <div class="field">
             <label for="twofa-confirm-code">Verification Code</label>
             <input id="twofa-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
@@ -213,7 +211,7 @@
       <div id="store-status-section" style="margin-top:2.5rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
         <h2>Store Status</h2>
         <p id="store-status-current" class="helper-text"></p>
-        <p class="helper-text">Standby hides your store from customers but you can still log in and switch it back at any time. Deleting also hides it and signs you out for good from here on — your data stays safely on file, so contact us if you ever need it restored.</p>
+        <p class="helper-text">Standby hides your store; switch back any time. Delete hides it for good — contact us to restore.</p>
         <button type="button" id="store-status-standby-btn" class="btn">Pause Store (Standby)</button>
         <button type="button" id="store-status-reactivate-btn" class="btn btn-primary hidden">Reactivate Store</button>
         <button type="button" id="store-status-delete-btn" class="btn btn-danger">Delete Store</button>
