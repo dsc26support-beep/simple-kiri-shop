@@ -166,6 +166,23 @@ tabs and headers without exposing any row data.
 
 ---
 
+## Speed: warm cache trigger (one-time, Oct 2026)
+
+Keeps the homepage and every category's first screen ready in Apps Script's
+cache, so shoppers don't wait for the spreadsheets to be read. Free; read-only
+(it writes nothing to the sheets).
+
+1. In the Apps Script editor, open **Triggers** (the alarm-clock icon on the left).
+2. **+ Add Trigger** → function **`warmPublicCaches`**, deployment **Head**,
+   event source **Time-driven**, type **Minutes timer**, **Every 5 minutes** → **Save**.
+3. Approve the permissions prompt if it appears.
+4. Check it: **Executions** (left menu) should show `warmPublicCaches` finishing
+   every 5 minutes; its log line lists what it warmed.
+
+To stop it, delete the trigger. Nothing else depends on it. With it on, a
+seller's product changes can take up to 5 minutes to show in category lists
+(the store page itself still updates at once).
+
 ## Quick reference
 
 | | |

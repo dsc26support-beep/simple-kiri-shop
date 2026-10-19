@@ -102,5 +102,64 @@ const Api = (function () {
     return share('POST ' + body, send);
   }
 
-  return { get, post };
+  // ---- Last good answer, kept on this phone (Oct 2026: "pages feel slow") --
+  //
+  // Apps Script takes seconds to answer from Kiribati. A page that showed
+  // something before can show it again at once from here, then quietly swap
+  // in the fresh answer when it arrives. Only for read-only lists (home,
+  // categories, the seller's own summary); prices and stock are re-checked by
+  // the server at checkout whatever a list showed. Capped at MAX_KEPT
+  // answers and MAX_AGE_MS old, and every read/write survives a full or
+  // blocked storage (private mode) by doing nothing.
+  const KEPT_PREFIX = 'skiri_kept:';
+  const MAX_KEPT = 12;
+  const MAX_AGE_MS = 7 * 86400000;
+
+  function recall(key) {
+    try {
+      const v = JSON.parse(localStorage.getItem(KEPT_PREFIX + key));
+      return v && v.data && Date.now() - v.t < MAX_AGE_MS ? v.data : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Returns true when data differs from what was kept (worth re-drawing).
+  function remember(key, data) {
+    try {
+      const json = JSON.stringify(data);
+      const old = localStorage.getItem(KEPT_PREFIX + key);
+      if (old && old.indexOf(json) !== -1 && old.length - json.length < 40) return false;
+      localStorage.setItem(KEPT_PREFIX + key, JSON.stringify({ t: Date.now(), data: data }));
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(KEPT_PREFIX) === 0) keys.push(k);
+      }
+      if (keys.length > MAX_KEPT) {
+        keys.map((k) => { try { return [k, JSON.parse(localStorage.getItem(k)).t || 0]; } catch (e) { return [k, 0]; } })
+          .sort((a, b) => a[1] - b[1]).slice(0, keys.length - MAX_KEPT)
+          .forEach((x) => localStorage.removeItem(x[0]));
+      }
+    } catch (e) {
+      // Full or blocked storage: just not kept.
+    }
+    return true;
+  }
+
+  // Drops every kept answer whose key starts with prefix (e.g. at log-out).
+  function forget(prefix) {
+    try {
+      const drop = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(KEPT_PREFIX + (prefix || '')) === 0) drop.push(k);
+      }
+      drop.forEach((k) => localStorage.removeItem(k));
+    } catch (e) {
+      // nothing kept
+    }
+  }
+
+  return { get, post, recall, remember, forget };
 })();
