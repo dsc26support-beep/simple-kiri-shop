@@ -81,8 +81,10 @@ const OWNER = {
   });
   ok('the helper line now explains cart vs by-date',
     helper && /cart/i.test(helper) && /date/i.test(helper), String(helper));
-  ok('the helper line still says the choice can be changed later',
-    helper && /change this later/i.test(helper), String(helper));
+  // Shortened with the owner's approval (Oct 2026): it now only says what
+  // each type does.
+  ok('the helper line says what each listing type does',
+    helper && /cart/i.test(helper) && /booked by date/i.test(helper), String(helper));
 
   // ---------- the labels ----------
   const labels = await page.evaluate(() => ({
