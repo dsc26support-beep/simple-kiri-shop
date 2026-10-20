@@ -1,6 +1,7 @@
 // The full-screen mobile chat must sit ABOVE the bottom nav. Reproduces the
 // reported symptom directly: the message box was unreachable because the nav
 // was painted over it.
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
@@ -10,6 +11,7 @@ const PRODUCTS = [{ productId: 'p1', name: 'Rice', category: 'pantry', descripti
 
 async function openChat(browser, width, height, path) {
   const ctx = await browser.newContext({ viewport: { width, height } });
+  await signInShopper(ctx);
   await ctx.route('**/macros/s/**', (r) => {
     let a = ''; try { a = new URL(r.request().url()).searchParams.get('action') || ''; } catch (e) {}
     try { const j = r.request().postDataJSON(); if (!a && j) a = j.action; } catch (e) {}

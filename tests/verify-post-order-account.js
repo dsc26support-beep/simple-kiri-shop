@@ -15,6 +15,10 @@
  *    the case where the promise CANNOT hold: the fallback confirmation, shown
  *    when createOrder never reached the backend, offers nothing.
  *
+ * Since Oct 2026 guests are viewers: checkout sends them to sign in first, so
+ * nobody reaches this screen without an account and the offer is never made.
+ * The guest-only checks were retired; what is left is asserted below.
+ *
  * Google is never contacted. The Identity Services script is stubbed at the
  * network layer - the only way to test it from a sandbox that cannot reach
  * accounts.google.com anyway.
@@ -90,7 +94,8 @@ async function makeCheckout(browser, opts) {
       + 'CURRENCY_SYMBOL:"$",SITE_NAME:"Mwakete",GOOGLE_CLIENT_ID:'
       + JSON.stringify(opts.clientId === undefined ? CLIENT_ID : opts.clientId) + '};'
   }));
-  const token = opts.token || '';
+  // Signed in by default: guests never reach checkout (see the header).
+  const token = opts.guest ? '' : (opts.token || 'tok-shopper');
   await ctx.addInitScript(`(() => { try {
     localStorage.setItem('skiri_cookie_consent', 'true');
     localStorage.setItem('skiri_active_store', 'bong');
@@ -157,55 +162,20 @@ async function placeOrder(page, email) {
     await ctx.close();
   }
 
-  // ---- a guest sees the offer, at the bottom, and it carries their email -----
+  // ---- a guest never gets this far ----------------------------------------
   {
-    const { ctx, page } = await makeCheckout(browser, {});
-    await placeOrder(page, 'debby@example.com');
-
-    ok('guest: the offer is shown', await page.locator('#post-order-account').isVisible());
-    ok('guest: CALL SELLER NOW is still the loud thing above it',
-      await page.locator('.confirmation-cta').isVisible());
-
-    const geom = await page.evaluate(() => {
-      const r = (s) => { const e = document.querySelector(s); return e ? e.getBoundingClientRect() : null; };
-      const offer = r('#post-order-account');
-      return {
-        belowCta: r('.confirmation-cta').bottom <= offer.top,
-        belowContact: r('#order-contact').bottom <= offer.top,
-        belowSummary: r('#order-summary-text').bottom <= offer.top,
-        // Last element in the confirmation section, not merely low down.
-        isLastChild: document.querySelector('#confirmation-section .container').lastElementChild.id === 'post-order-account'
-      };
-    });
-    ok('guest: the offer sits below CALL SELLER NOW', geom.belowCta, JSON.stringify(geom));
-    ok('guest: below the seller contact buttons', geom.belowContact, JSON.stringify(geom));
-    ok('guest: below the order summary', geom.belowSummary, JSON.stringify(geom));
-    ok('guest: and it is the last thing on the page', geom.isLastChild, JSON.stringify(geom));
-
-    const href = await page.getAttribute('#post-order-email-link', 'href');
-    ok('guest: the email route opens the sign-up tab', /tab=signup/.test(href || ''), href);
-    ok('guest: and carries the address from the order', /email=debby%40example\.com/.test(href || ''), href);
-    ok('guest: the link stays same-site and relative',
-      /^customer-login\.html\?/.test(href || ''), href);
-
-    ok('guest: no sideways scrolling with the offer shown', await page.evaluate(() =>
-      document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1));
-
-    // 44px is the tap-target floor used everywhere else on this site.
-    const h = await page.evaluate(() => Math.round(document.getElementById('post-order-email-link').getBoundingClientRect().height));
-    ok('guest: the email button is tappable (>=44px)', h >= 44, h + 'px');
-    await ctx.close();
-  }
-
-  // ---- an email with characters that must survive encoding -------------------
-  {
-    const { ctx, page } = await makeCheckout(browser, {});
-    await placeOrder(page, 'debby+shop@example.co.nz');
-    const href = await page.getAttribute('#post-order-email-link', 'href');
-    // A raw + in a query string reads back as a space, which would produce an
-    // account on a different address than the order.
-    ok('a "+" in the address is percent-encoded, not left to read as a space',
-      /email=debby%2Bshop%40example\.co\.nz/.test(href || ''), href);
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
+    await ctx.addInitScript(() => { try {
+      localStorage.setItem('skiri_cookie_consent', 'true');
+      localStorage.setItem('skiri_active_store', 'bong');
+      localStorage.setItem('skiri_cart_bong', JSON.stringify([{ variantId: 'v1', productId: 'p1', label: 'Rice 1kg', unitPrice: 6, qty: 1 }]));
+    } catch (e) {} });
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/checkout.html', { waitUntil: 'load' });
+    await page.waitForURL(/customer-login\.html/, { timeout: 6000 }).catch(() => {});
+    ok('guest: checkout sends them to sign in first, then back to checkout',
+      /customer-login\.html\?next=checkout\.html&reason=order$/.test(page.url()), page.url());
     await ctx.close();
   }
 
@@ -236,61 +206,6 @@ async function placeOrder(page, email) {
     ok('fallback: no account offer is made', await page.locator('#post-order-account').isHidden());
     ok('fallback: the seller contact route is still there, which is what matters',
       await page.locator('#order-contact a, #order-contact button').first().isVisible());
-    await ctx.close();
-  }
-
-  // ---- Google: rendered late, and it does not navigate away ----------------
-  {
-    const { ctx, page } = await makeCheckout(browser, {});
-    ok('the page asks google-signin.js not to auto-init',
-      await page.evaluate(() => window.GOOGLE_SIGNIN_DEFER === true));
-    ok('so no Google button exists while the form is still up',
-      await page.evaluate(() => !window.__gsiRenders || window.__gsiRenders.length === 0),
-      JSON.stringify(await page.evaluate(() => window.__gsiRenders || null)));
-
-    await placeOrder(page, 'debby@example.com');
-    await page.waitForSelector('#fake-google-btn', { timeout: 8000 });
-    ok('after the order it renders, into a box that is actually laid out',
-      await page.evaluate(() => window.__gsiRenders.length === 1 && window.__gsiRenders[0].visible === true),
-      JSON.stringify(await page.evaluate(() => window.__gsiRenders)));
-    ok('and the Google block is visible', await page.locator('#google-signin-wrap').isVisible());
-
-    const urlBefore = page.url();
-    await page.click('#fake-google-btn');
-    await page.waitForSelector('#post-order-done:not([hidden])', { timeout: 8000 });
-    ok('signing in keeps the customer on the confirmation screen', page.url() === urlBefore,
-      page.url());
-    ok('the seller contact buttons survive it',
-      await page.locator('#order-contact a, #order-contact button').first().isVisible());
-    ok('the order summary is still there to send',
-      (await page.inputValue('#order-summary-text')).includes('SKS-bong-1'));
-    const done = await page.textContent('#post-order-done');
-    ok('it confirms by name', /Aroita/.test(done || ''), done);
-    ok('and the two sign-up routes are withdrawn once there is an account',
-      await page.locator('#google-signin-wrap').isHidden()
-      && await page.locator('#post-order-email-link').isHidden());
-    ok('the session token was stored', await page.evaluate(() => {
-      try { return localStorage.getItem('skiri_customer_token') === 'sess-tok'; } catch (e) { return false; }
-    }));
-    await ctx.close();
-  }
-
-  // ---- Google unavailable: the email route still works ---------------------
-  {
-    const { ctx, page } = await makeCheckout(browser, { gsiBlocked: true });
-    await placeOrder(page, 'debby@example.com');
-    ok('Google blocked: its block stays hidden', await page.locator('#google-signin-wrap').isHidden());
-    ok('Google blocked: the offer is still made', await page.locator('#post-order-account').isVisible());
-    ok('Google blocked: the email route is still offered',
-      await page.locator('#post-order-email-link').isVisible());
-    await ctx.close();
-  }
-  {
-    const { ctx, page } = await makeCheckout(browser, { clientId: '' });
-    await placeOrder(page, 'debby@example.com');
-    ok('no client id: no Google block', await page.locator('#google-signin-wrap').isHidden());
-    ok('no client id: the email route is still offered',
-      await page.locator('#post-order-email-link').isVisible());
     await ctx.close();
   }
 
@@ -333,11 +248,8 @@ async function placeOrder(page, email) {
     const { ctx, page } = await makeCheckout(browser, {});
     await page.setViewportSize({ width: 1280, height: 900 });
     await placeOrder(page, 'debby@example.com');
-    ok('desktop: the offer is shown and below the contact buttons', await page.evaluate(() => {
-      const o = document.getElementById('post-order-account');
-      const c = document.getElementById('order-contact');
-      return !o.hidden && c.getBoundingClientRect().bottom <= o.getBoundingClientRect().top;
-    }));
+    ok('desktop: signed in, no offer; the contact buttons are there', await page.evaluate(() =>
+      document.getElementById('post-order-account').hidden && !!document.getElementById('order-contact')));
     ok('desktop: no sideways scrolling', await page.evaluate(() =>
       document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1));
     // It must read as the quiet option: not bigger type than the order details.

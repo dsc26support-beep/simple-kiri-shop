@@ -5,6 +5,7 @@
 // the page. What must survive the move is that it still reaches the cart, and
 // that it never gets mistaken for the primary action - a shopper one tap from
 // paying should not find two blue buttons of equal weight.
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 
@@ -13,6 +14,8 @@ const BASE = 'http://127.0.0.1:8099';
   const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+
+  await signInShopper(ctx);
   await ctx.route('**/macros/s/**', (r) => {
     let a = '';
     try { a = (r.request().postDataJSON() || {}).action; } catch (e) {}
@@ -89,6 +92,7 @@ const BASE = 'http://127.0.0.1:8099';
   // The pattern it was copied from must be untouched.
   {
     const c = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await signInShopper(c);
     await c.route('**/macros/s/**', (r) => r.fulfill({ status: 200,
       contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
     const p2 = await c.newPage();

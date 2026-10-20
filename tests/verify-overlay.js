@@ -1,9 +1,11 @@
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 800 } });
+  await signInShopper(ctx);
 
   // Delay getStorePublicInfo so the initial-load overlay is observable.
   await ctx.route('**/macros/s/**', async (route) => {

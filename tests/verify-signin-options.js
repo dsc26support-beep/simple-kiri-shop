@@ -210,13 +210,21 @@ async function makeContext(browser, opts) {
     ok('and lands on the homepage with no account', /index\.html$/.test(page.url()), page.url());
     const token = await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } });
     ok('a guest holds no session token', !token, String(token));
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    ok('the guest button says it is browse only', (await page.textContent('#guest-continue')).trim() === 'Just browse (guest)');
+    ok('...with a note that ordering, booking and messaging need sign-in',
+      /Ordering, booking and messaging sellers need you to sign in/.test(await page.textContent('.auth-guest-note')) && await page.locator('.auth-guest-note').isVisible());
+    // Sent here from checkout: guests can't order, so there is no guest route.
+    await page.goto(BASE + '/customer-login.html?next=checkout.html&reason=order', { waitUntil: 'load' });
+    ok('sent from checkout: says why, and hides the guest route',
+      /sign in to place your order/i.test(await page.textContent('#auth-reason')) && await page.locator('#guest-continue').isHidden()
+      && await page.locator('.auth-guest-note').isHidden());
     await ctx.close();
   }
 
-  // ---- guest checkout still remembers the device, which is the point ----
+  // ---- checkout: guests are sent to sign in; the device still remembers ----
   {
-    const { ctx } = await makeContext(browser, { clientId: '' });
-    await ctx.addInitScript(() => {
+    const cart = () => {
       try {
         localStorage.setItem('skiri_checkout_profile', JSON.stringify({
           customerName: 'Aroita', customerPhone: '73012345', customerEmail: 'a@example.com',
@@ -226,14 +234,33 @@ async function makeContext(browser, opts) {
         localStorage.setItem('skiri_cart_bong', JSON.stringify(
           [{ variantId: 'v0', productId: 'p0', label: 'Rice 1kg', unitPrice: 5, qty: 1 }]));
       } catch (e) {}
+    };
+    let { ctx } = await makeContext(browser, { clientId: '' });
+    await ctx.addInitScript(cart);
+    let page = await ctx.newPage();
+    await page.goto(BASE + '/checkout.html', { waitUntil: 'load' });
+    await page.waitForURL(/customer-login\.html/, { timeout: 5000 }).catch(() => {});
+    ok('a guest at checkout is sent to sign in, then back to checkout',
+      /customer-login\.html\?next=checkout\.html&reason=order$/.test(page.url()), page.url());
+    ok('...and their cart is kept meanwhile', await page.evaluate(() => JSON.parse(localStorage.getItem('skiri_cart_bong')).length === 1));
+    await ctx.close();
+
+    ({ ctx } = await makeContext(browser, { clientId: '' }));
+    await ctx.addInitScript(cart);
+    await ctx.addInitScript(() => {
+      localStorage.setItem('skiri_customer_token', 'tok-aroita');
+      localStorage.setItem('skiri_customer_profile', JSON.stringify({ name: 'Aroita T', email: 'aroita@example.com' }));
     });
-    const page = await ctx.newPage();
+    page = await ctx.newPage();
     await page.goto(BASE + '/checkout.html', { waitUntil: 'load' });
     await page.waitForTimeout(1200);
     const name = await page.inputValue('#customer-name').catch(() => '');
     const phone = await page.inputValue('#customer-phone').catch(() => '');
-    ok('a returning guest gets their name back without signing in', name === 'Aroita', name);
+    ok('signed in, a returning shopper gets their saved name back', name === 'Aroita', name);
     ok('and their phone number', phone === '73012345', phone);
+    ok('the email is the account\'s, and cannot be changed here', await page.evaluate(() => {
+      const e = document.getElementById('customer-email'); return e.value === 'aroita@example.com' && e.readOnly;
+    }));
     await ctx.close();
   }
 

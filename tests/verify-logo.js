@@ -1,4 +1,5 @@
 // Site logo: far left, in the flow, ahead of the nav, and a link home.
+const { signInShopper } = require('./lib/shopper.js');
 const fs = require('fs');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
@@ -12,6 +13,7 @@ const WITHOUT = ['store.html?store=bong', 'categories.html?q=x', 'stores.html',
 
 async function open(browser, path, width) {
   const ctx = await browser.newContext({ viewport: { width: width || 390, height: 800 } });
+  await signInShopper(ctx);
   await ctx.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json',
     body: JSON.stringify({ ok: true, products: [], stores: [], tips: [], conversations: [],
       storeName: 'Bong', storeOpen: true, store: { storeName: 'Bong', storeSlug: 'bong', isOpen: true,

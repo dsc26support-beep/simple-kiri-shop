@@ -1,10 +1,13 @@
 /**
- * A guest who has not given a name yet opens the chat on a store page and
+ * A signed-in customer whose account has no name, who has not given a chat
+ * name yet, opens the chat on a store page and
  * taps Meetings. The "What's your name?" prompt fills the chat (flex: 1), and
  * the Meetings panel used to sit BELOW it - so on a phone "Request Meeting"
  * was off the bottom of the screen. Now the prompt steps aside while Meetings
- * is open, and comes back when it closes.
+ * is open, and comes back when it closes. (Guests can't send messages at all
+ * now - they get a Sign in button instead; checked at the end.)
  */
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
@@ -13,6 +16,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   for (const [w, h] of [[360, 560], [360, 640], [360, 740], [390, 844], [412, 915]]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+    await signInShopper(ctx);
     await ctx.route('**/macros/s/**', (route) => {
       let a = '';
       try { a = (route.request().postDataJSON() || {}).action || ''; } catch (e) {}
@@ -26,7 +30,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
     const page = await ctx.newPage();
     const errs = [];
     page.on('pageerror', (e) => errs.push(e.message));
-    // Signed out, and no chat name stored: the name prompt shows.
+    // Signed in with a nameless profile, and no chat name stored: the name prompt shows.
     await page.addInitScript(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
     await page.goto(BASE + '/store.html?store=bong', { waitUntil: 'load' });
     await page.click('#chat-fab');
@@ -54,6 +58,24 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
     ok(w + 'px: closing Meetings brings the name prompt back', await page.isVisible('#chat-name-gate')
       && await page.$eval('#meeting-panel-host', (e) => e.classList.contains('hidden')));
     ok(w + 'px: no JS errors', errs.length === 0, errs.join(' | '));
+    await ctx.close();
+  }
+  // A guest: no name prompt and no message box - a Sign in button that
+  // comes back to this chat.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.route('**/macros/s/**', (route) => route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ok: true, products: [], stores: [], storeName: 'Burabonita', meetings: [], messages: [], conversation: null }) }));
+    const page = await ctx.newPage();
+    await page.addInitScript(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
+    await page.goto(BASE + '/store.html?store=bong', { waitUntil: 'load' });
+    await page.click('#chat-fab');
+    await page.waitForSelector('#chat-window.chat-window--open');
+    await page.waitForTimeout(300);
+    ok('guest: no name prompt, no message box', !(await page.isVisible('#chat-name-gate')) && !(await page.isVisible('#chat-message-input')));
+    ok('guest: a Sign in button instead, back to this chat afterwards', await page.isVisible('#chat-signin-gate a')
+      && /customer-login\.html\?next=store\.html%3Fstore%3Dbong%26chat%3Dopen&reason=message$/.test(await page.getAttribute('#chat-signin-gate a', 'href')),
+      await page.getAttribute('#chat-signin-gate a', 'href'));
     await ctx.close();
   }
   await browser.close();

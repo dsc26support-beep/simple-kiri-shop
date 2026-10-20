@@ -1,5 +1,6 @@
 // The negotiated-shipping sentence: gone from every product card, said once on
 // the store page and only when it is true, still there at checkout.
+const { signInShopper } = require('./lib/shopper.js');
 const fs = require('fs');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
@@ -27,6 +28,7 @@ const PICKPAY_ONLY = { storeDeliveryTruck: false, storeDeliveryTruckCost: null,
 
 async function openStore(browser, delivery) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await signInShopper(ctx);
   await ctx.route('**/macros/s/**', (r) => {
     let a = ''; try { a = new URL(r.request().url()).searchParams.get('action') || ''; } catch (e) {}
     try { const j = r.request().postDataJSON(); if (!a && j) a = j.action; } catch (e) {}
@@ -95,6 +97,7 @@ const look = (page) => page.evaluate(() => {
   /* --- checkout keeps its own note --- */
   {
     const c = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await signInShopper(c);
     await c.route('**/macros/s/**', (r) => {
       let a = ''; try { a = new URL(r.request().url()).searchParams.get('action') || ''; } catch (e) {}
       try { const j = r.request().postDataJSON(); if (!a && j) a = j.action; } catch (e) {}

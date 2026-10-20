@@ -7,6 +7,7 @@
 // The trap this guards is the class leak: show a red warning, let the shopper
 // fix it, submit - if the clear only wiped the text, the success line inherits
 // the red and a shopper reading red concludes their booking failed.
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 
@@ -22,6 +23,7 @@ const iso = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10
 
   async function open(path, bookingOk = true) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+    await signInShopper(ctx);
     await ctx.route('**/macros/s/**', (r) => {
       let body = {};
       try { body = r.request().postDataJSON() || {}; } catch (e) {}
@@ -126,6 +128,7 @@ const iso = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 10
   // ---- load failures and empty states stay grey ----
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await signInShopper(ctx);
     await ctx.route('**/macros/s/**', (r) => {
       let a = '';
       try { a = (r.request().postDataJSON() || {}).action; } catch (e) {}

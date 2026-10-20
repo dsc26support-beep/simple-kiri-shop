@@ -6359,7 +6359,9 @@ html.has-remembered-email .login-remembered {
 }
 
 html.auth-for-meeting .auth-guest-row,
-html.auth-required .auth-guest-row {
+html.auth-for-meeting .auth-guest-note,
+html.auth-required .auth-guest-row,
+html.auth-required .auth-guest-note {
   display: none;
 }
 
@@ -6369,9 +6371,15 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   display: none;
 }
 
-/* Guests are viewers: says so under the guest button. */
+/* Guests are viewers: says so under the guest button, on a line of its own
+   (the row wraps; the note takes the full width). */
+.auth-guest-row {
+  flex-wrap: wrap;
+}
+
 .auth-guest-note {
-  margin: var(--space-2) 0 0;
+  flex: 1 0 100%;
+  margin: 0;
   text-align: center;
 }
 

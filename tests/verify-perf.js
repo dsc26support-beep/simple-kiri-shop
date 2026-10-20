@@ -1,6 +1,7 @@
 // The behaviours the performance work must NOT have broken, plus the ones it
 // was supposed to change. Real files over http.server; the API is mocked with
 // a delay so ordering is observable.
+const { signInShopper } = require('./lib/shopper.js');
 const fs = require('fs');
 const { assertCacheBump } = require('./lib/cache-bump.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
@@ -22,6 +23,7 @@ const CART = [{ variantId: 'v1', productId: 'p1', label: 'Rice 1kg', unitPrice: 
 
 async function open(browser, path, opts = {}) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await signInShopper(ctx);
   const calls = [];
   await ctx.route('**/macros/s/**', async (r) => {
     let a = ''; let b = null;
@@ -99,6 +101,7 @@ async function open(browser, path, opts = {}) {
   /* --- chat-window still works standalone (no page publishes store info) --- */
   {
     const c = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await signInShopper(c);
     const seen = [];
     await c.route('**/macros/s/**', async (r) => {
       let a = ''; try { a = new URL(r.request().url()).searchParams.get('action') || ''; } catch (e) {}
@@ -127,6 +130,7 @@ async function open(browser, path, opts = {}) {
   /* --- Service worker: second visit renders with the network down --- */
   {
     const c = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await signInShopper(c);
     await c.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ ok: true, products: PRODUCTS, stores: [], storeName: 'Bong Store', storeOpen: true }) }));
     const p = await c.newPage();

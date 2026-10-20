@@ -1,9 +1,11 @@
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 
 async function run(emailedSeller) {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 800 } });
+  await signInShopper(ctx);
   await ctx.route('**/macros/s/**', (route) => {
     let action = '', post = {};
     try { post = route.request().postDataJSON() || {}; action = post.action; } catch (e) {}

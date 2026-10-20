@@ -9,6 +9,7 @@
 // broken. The 44px thumb target moved to the wrapping label; if that did not
 // happen everywhere, this change made the site harder to use on a phone, which
 // is worse than the squares it removed.
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 
@@ -28,6 +29,7 @@ const OWNER = { ownerId: 'o1', storeName: 'Bong', storeSlug: 'bong', email: 'a@b
 
   async function page(path, seed) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+    await signInShopper(ctx);
     await ctx.route('**/macros/s/**', (r) => {
       let body = {};
       try { body = r.request().postDataJSON() || {}; } catch (e) {}
