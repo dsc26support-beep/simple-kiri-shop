@@ -131,12 +131,13 @@ const hereOwnerSrc = grab(auth, 'publicOwnerFields');
 // tree and main would differ by that instead. Strict is the resting state;
 // relax it only for the life of a branch that is deliberately adding a field,
 // and put it back on merge.
-// RELAXED for the life of #106, which deliberately adds hasPasswordHint: the
-// only difference may be that one line. Put back to strict on merge.
+// Strict again once #106 is on main (main then carries hasPasswordHint too,
+// so the two are identical). Until then the only difference allowed is that
+// one line - any OTHER added field still fails here.
 const norm = (src) => src.split('\n').filter((l) => !/^\s*\/\//.test(l)).map((l) => l.replace(/,\s*$/, ''));
 const extra = norm(hereOwnerSrc).filter((l) => norm(mainOwnerSrc).indexOf(l) === -1);
-ok('publicOwnerFields differs from main only by the hasPasswordHint line (#106)',
-  extra.length === 1 && /^\s+hasPasswordHint: /.test(extra[0]), extra.join(' | '));
+ok('publicOwnerFields matches main (allowing only #106\'s hasPasswordHint before it merges)',
+  extra.length === 0 || (extra.length === 1 && /^\s+hasPasswordHint: /.test(extra[0])), extra.join(' | '));
 ok('nothing was removed from publicOwnerFields',
   mainOwnerSrc.split('\n').filter((l) => /^\s+\w+: /.test(l))
     .every((l) => hereOwnerSrc.indexOf(l) !== -1));
