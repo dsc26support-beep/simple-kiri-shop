@@ -295,6 +295,18 @@ function composeCampaignEmail(c, r, ctx, cfg, eventId, unsubToken) {
     productUrl: first ? marketingLink(base, 'product.html?store=' + encodeURIComponent(first.StoreSlug) + '&product=' + encodeURIComponent(first.ProductId), c.CampaignId, eventId) : '',
     storeUrl: store ? marketingLink(base, 'store.html?store=' + encodeURIComponent(store.StoreSlug), c.CampaignId, eventId) : ''
   };
+  // A seller's own campaign (SellerCampaigns.gs): their checked blocks, rendered by the server.
+  if (c.BlocksJson) {
+    var blocks = []; try { blocks = JSON.parse(c.BlocksJson || '[]'); } catch (e) { blocks = []; }
+    var style = {}; try { style = JSON.parse(c.StyleJson || '{}'); } catch (e) { style = {}; }
+    var seller = renderSellerCampaignEmail({
+      blocks: blocks, style: style, base: base, storeName: vars.storeName,
+      products: scEmailProducts(parseJsonArray(c.ProductIdsJson), ctx.productById, ctx.ownerById, base, c.CampaignId, eventId),
+      storeUrl: vars.storeUrl, vars: vars,
+      unsubscribeUrl: base ? base + '/unsubscribe.html?t=' + encodeURIComponent(unsubToken) : ''
+    });
+    return { subject: String(fillMarketingVariables(c.Subject, vars) || 'News from Mwakete').replace(/[\r\n\t]+/g, ' ').slice(0, 150), text: seller.text, html: seller.html };
+  }
   var manual = MANUAL_CAMPAIGN_TYPES.indexOf(c.Type) !== -1;
   var copy = manual
     ? { subject: fillMarketingVariables(c.Subject, vars), headline: fillMarketingVariables(c.Subject, vars),
@@ -590,6 +602,10 @@ function runMarketingSweep() {
   }
   try {
     var now = Date.now();
+    // Seller campaigns first: start the scheduled ones and charge today's day,
+    // only here - after the on/paused checks, so nothing is charged while
+    // sending is switched off.
+    try { Logger.log('seller campaigns: ' + JSON.stringify(runSellerCampaignSweep(cfg, now))); } catch (e) { Logger.log('seller campaign sweep failed: ' + e); }
     var created = [];
     try { created = generateMarketingOpportunities(cfg, now); } catch (e) { Logger.log('marketing generation failed: ' + e); }
     var summary = processMarketingQueue(cfg, now);
