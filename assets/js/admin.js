@@ -31,6 +31,7 @@ async function init() {
   if (typeof HeaderAdsAdmin !== 'undefined') HeaderAdsAdmin.init();   // admin-header-ads.js
   if (typeof TxAdmin !== 'undefined') TxAdmin.init();                 // admin-tx.js
   if (typeof DeliveriesAdmin !== 'undefined') DeliveriesAdmin.init(); // admin-deliveries.js
+  if (typeof CampaignsAdmin !== 'undefined') CampaignsAdmin.init(); // admin-campaigns.js
 }
 
 async function loadStores() {

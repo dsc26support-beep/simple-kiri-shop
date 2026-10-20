@@ -45,6 +45,7 @@
             <li><a href="#dlv-heading">Deliveries &amp; drivers</a></li>
             <li><a href="#ha-heading">Header adverts</a></li>
             <li><a href="#feature-payments-heading">Featuring payments</a></li>
+            <li><a href="#scad-heading">Seller campaigns</a></li>
             <li><a href="#featured-now-heading">Featured now</a></li>
             <li><a href="#feature-store-heading">Feature a store / product</a></li>
             <li><a href="#trust-heading">Store checks</a></li>
@@ -351,6 +352,23 @@
           <div id="feature-payments-list"></div>
         </section>
 
+        <!-- Seller campaigns (admin-campaigns.js, backend SellerCampaigns.gs):
+             verify campaign payments, approve content, pause/stop, refunds. -->
+        <section class="dash-section" aria-labelledby="scad-heading" id="seller-campaigns">
+          <h2 id="scad-heading">Seller campaigns</h2>
+          <p class="helper-text">Email campaigns sellers pay for at A$0.10 a day by ANZ transfer. Verify a payment only after you see it in the bank with its MWC reference, then check the email and approve it. Nothing sends until both are done.</p>
+          <form id="scad-search" class="scad-search" novalidate>
+            <div class="field"><label for="scad-filter">Show</label>
+              <select id="scad-filter" style="width:auto"><option value="review">Payments to check</option><option value="approval">Waiting for approval</option><option value="all">All campaigns</option></select></div>
+            <div class="field"><label for="scad-q">Search</label>
+              <input type="search" id="scad-q" maxlength="80" autocomplete="off" placeholder="Campaign ID, store or MWC reference"></div>
+            <button type="submit" class="btn btn-small">Search</button>
+          </form>
+          <p id="scad-status" class="helper-text" role="status" aria-live="polite"></p>
+          <div id="scad-list"></div>
+          <div id="scad-detail" class="scad-detail" hidden></div>
+        </section>
+
         <section class="dash-section">
           <h2 id="featured-now-heading">Currently featured</h2>
           <p id="featured-status" class="helper-text" aria-live="polite"></p>
@@ -400,6 +418,7 @@
   <script defer src="../assets/js/dash-ui.min.js"></script>
   <script defer src="../assets/js/admin-overview.min.js"></script>
   <script defer src="../assets/js/admin-deliveries.min.js"></script>
+  <script defer src="../assets/js/admin-campaigns.min.js"></script>
   <script defer src="../assets/js/admin.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

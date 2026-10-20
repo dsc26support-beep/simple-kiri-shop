@@ -214,6 +214,99 @@ function scCleanStyle(raw) {
   };
 }
 
+/* ---------------------------------------------------------------------------
+ * Store colour (owner decision, Oct 2026). Customers already know their own
+ * stores, so every seller email wears the STORE's colour, not Mwakete's: the
+ * top bar (with the store logo and name), headings, product names, buttons, a
+ * pale background tint and the footer line. The colour is picked from the
+ * logo in My Campaigns and confirmed once by the seller (Owners.BrandColor),
+ * and it is locked: a campaign cannot choose another. No colour yet, or one
+ * too pale to show (near white), falls back to Mwakete purple. The true colour
+ * fills the top bar, buttons and footer line, with white or dark text on it -
+ * whichever reads better; headings and product names on the light background
+ * use it darkened until it reaches 4.5:1 (WCAG AA). Mwakete stays small, in
+ * the footer.
+ * ------------------------------------------------------------------------- */
+var SC_BRAND_DEFAULT = '#332d63';
+var SC_BRAND_MIN_CONTRAST = 1.3;   // against white; below this (near white) the colour is too pale to use
+var SC_INK = '#1a1a1a';
+
+function scHex(v) {
+  var s = String(v || '').trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(s) ? s : '';
+}
+
+function scRgb(hex) { return [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16); }); }
+
+function scToHex(rgb) {
+  return '#' + rgb.map(function (v) { return ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2); }).join('');
+}
+
+function scLuminance(hex) {
+  var c = scRgb(hex).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+
+function scContrast(a, b) {
+  var x = scLuminance(a), y = scLuminance(b);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+/** The colours one store's emails use, from its Owners row. */
+function scBrand(store) {
+  store = store || {};
+  var raw = scHex(store.BrandColor);
+  var usable = !!raw && scContrast(raw, '#ffffff') >= SC_BRAND_MIN_CONTRAST;
+  var base = usable ? raw : SC_BRAND_DEFAULT;
+  var rgb = scRgb(base), accent = base, guard = 0;
+  while (scContrast(accent, '#ffffff') < 4.5 && guard++ < 60) { rgb = rgb.map(function (v) { return v * 0.92; }); accent = scToHex(rgb); }
+  var b = scRgb(base);
+  return {
+    color: raw, fill: base, onFill: scContrast(base, '#ffffff') >= scContrast(base, SC_INK) ? '#ffffff' : SC_INK, accent: accent, tint: scToHex(b.map(function (v) { return v + (255 - v) * 0.93; })),
+    logoUrl: /^https:\/\/[^\s"'<>]+$/.test(String(store.LogoUrl || '')) ? String(store.LogoUrl) : '',
+    source: usable ? 'store' : 'default', tooPale: !!raw && !usable, confirmed: !!(raw && store.BrandColorSetAt)
+  };
+}
+
+/** body.color: '#rrggbb', picked from the store's logo and confirmed by the seller. */
+function actionSetStoreBrandColor(owner, body) {
+  var color = scHex(body && body.color);
+  if (!color) return fail('Choose a colour');
+  var sheet = getSheet('Owners');
+  ensureColumn(sheet, 'BrandColor');
+  ensureColumn(sheet, 'BrandColorSetAt');
+  var row = findRowById(sheet, 'OwnerId', owner.OwnerId);
+  if (!row) return fail('Store account not found');
+  updateRowFromObject(sheet, row.__row, { BrandColor: color, BrandColorSetAt: nowIso() });
+  row.BrandColor = color;
+  row.BrandColorSetAt = nowIso();
+  var brand = scBrand(row);
+  return ok({ brand: brand, note: brand.tooPale ? 'That colour is too pale to show in an email, so Mwakete purple is used. Pick a stronger colour from your logo.' : '' });
+}
+
+/**
+ * The store's own logo as base64, so My Campaigns can read its colours on a
+ * canvas (a logo served from another site cannot be read by the page). Only
+ * the signed-in seller's own logo; nothing else can be fetched through this.
+ */
+function actionGetStoreLogoData(owner) {
+  var row = findRowById(getSheet('Owners'), 'OwnerId', owner.OwnerId);
+  if (!row || !row.LogoUrl) return ok({ hasLogo: false });
+  var blob = null;
+  try {
+    var id = String(row.LogoFileId || '');
+    if (id && id.indexOf('cld:') !== 0) blob = DriveApp.getFileById(id).getBlob();
+    else if (/^https:\/\/res\.cloudinary\.com\//.test(String(row.LogoUrl))) blob = UrlFetchApp.fetch(String(row.LogoUrl), { muteHttpExceptions: false }).getBlob();
+  } catch (e) {
+    blob = null;
+  }
+  if (!blob) return ok({ hasLogo: true, readable: false });
+  var bytes = blob.getBytes();
+  var type = String(blob.getContentType() || '');
+  if (bytes.length > MAX_IMAGE_BYTES || type.indexOf('image/') !== 0) return ok({ hasLogo: true, readable: false });
+  return ok({ hasLogo: true, readable: true, mimeType: type, imageBase64: Utilities.base64Encode(bytes) });
+}
+
 /** YYYY-MM-DD, a real date. */
 function scDate(v) {
   var s = String(v || '').trim();
@@ -291,13 +384,17 @@ function scDescribe(c) {
 function renderSellerCampaignEmail(m) {
   var e = escapeHtmlForEmail;
   var style = scCleanStyle(m.style);
+  var brand = m.brand || scBrand({});
+  // The store's colour is locked: it replaces any colour saved in the campaign's style.
+  style.accent = brand.accent;
+  style.background = brand.tint;
   var pad = SC_PADDING[style.padding];
   var base = m.base;
   var products = (m.products || []).slice(0, SC_MAX_PRODUCTS);
   var fill = function (s) { return fillMarketingVariables(String(s || ''), m.vars || {}); };
   var img = function (u) { return /^https:\/\/[^\s"'<>]+$/.test(String(u || '')) ? String(u) : ''; };
   var link = function (u) { return safeMarketingUrl(u, base); };
-  var text = ['Mwakete', ''];
+  var text = [m.storeName || 'Mwakete', ''];
   var html = [];
   (m.blocks || []).forEach(function (b) {
     if (b.type === 'heading') {
@@ -342,7 +439,7 @@ function renderSellerCampaignEmail(m) {
       var target = b.target === 'product' && products[0] ? link(products[0].url) : link(m.storeUrl);
       if (!target) return;
       text.push(b.label + ': ' + target, '');
-      html.push('<p style="margin:16px 0;text-align:center"><a href="' + e(target) + '" style="background:' + style.accent + ';color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold">' + e(b.label) + '</a></p>');
+      html.push('<p style="margin:16px 0;text-align:center"><a href="' + e(target) + '" style="background:' + brand.fill + ';color:' + brand.onFill + ';padding:12px 22px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold">' + e(b.label) + '</a></p>');
     } else if (b.type === 'divider') {
       html.push('<hr style="border:0;border-top:1px solid #e3e1ee;margin:16px 0">');
     } else if (b.type === 'spacer') {
@@ -353,9 +450,11 @@ function renderSellerCampaignEmail(m) {
   text.push('--', 'Sent by Mwakete for ' + (m.storeName || 'a store on Mwakete') + ', because you asked for news from Mwakete.',
     'Stop these emails: ' + (unsub || 'reply and ask'));
   var out = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;background:' + style.background + '">'
-    + '<div style="background:#ce1126;border-bottom:4px solid #fcd116;padding:12px 16px;color:#fff;font-weight:bold;font-size:18px">Mwakete</div>'
+    + '<div style="background:' + brand.fill + ';padding:12px 16px;color:' + brand.onFill + ';font-weight:bold;font-size:18px">'
+    + (img(brand.logoUrl) ? '<img src="' + e(brand.logoUrl) + '" alt="" width="36" height="36" style="display:inline-block;vertical-align:middle;width:36px;height:36px;border-radius:8px;background:#ffffff;object-fit:contain;margin-right:10px">' : '')
+    + '<span style="vertical-align:middle">' + e(m.storeName || 'Mwakete') + '</span></div>'
     + '<div style="padding:' + pad + 'px">' + html.join('') + '</div>'
-    + '<div style="padding:12px 16px;border-top:1px solid #e3e1ee;color:#5f6368;font-size:12px">'
+    + '<div style="padding:12px 16px;border-top:3px solid ' + brand.fill + ';color:#5f6368;font-size:12px">'
     + 'Sent by Mwakete for ' + e(m.storeName || 'a store on Mwakete') + ', because you asked for news from Mwakete. '
     + (unsub ? '<a href="' + e(unsub) + '" style="color:#5f6368">Stop these emails</a>' : '') + '</div></div>';
   return { text: text.join('\n'), html: out };
@@ -480,7 +579,7 @@ function actionGetCampaignStudio(owner) {
       refundPolicy: 'Unused paid days can be refunded on request: contact Mwakete. Days already used are not refunded.',
       billingRule: 'A day is used on each Kiribati calendar day the campaign is live, even for part of the day. Paused, stopped and unpaid campaigns are never charged.'
     },
-    storeName: owner.StoreName, storeSlug: owner.StoreSlug, products: products,
+    storeName: owner.StoreName, storeSlug: owner.StoreSlug, brand: scBrand(owner), products: products,
     campaigns: mine.map(function (c) {
       var p = scPublic(c);
       var open = payments.filter(function (x) { return x.CampaignId === c.CampaignId && [SC_PAY.AWAITING, SC_PAY.REVIEW, SC_PAY.REJECTED].indexOf(x.Status) !== -1; })
@@ -914,7 +1013,7 @@ function scPreview(c) {
   var blocks = []; try { blocks = JSON.parse(c.BlocksJson || '[]'); } catch (e) { blocks = []; }
   var style = {}; try { style = JSON.parse(c.StyleJson || '{}'); } catch (e) { style = {}; }
   var r = renderSellerCampaignEmail({
-    blocks: blocks, style: style, base: base, storeName: store.StoreName,
+    blocks: blocks, style: style, base: base, storeName: store.StoreName, brand: scBrand(store),
     products: scEmailProducts(parseJsonArray(c.ProductIdsJson), productById, ownerById, base, 'preview', 'preview'),
     storeUrl: base + '/store.html?store=' + encodeURIComponent(store.StoreSlug || ''),
     unsubscribeUrl: base + '/unsubscribe.html', vars: { customerName: 'there', storeName: store.StoreName || '' }

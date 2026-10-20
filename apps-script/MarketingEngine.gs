@@ -300,7 +300,7 @@ function composeCampaignEmail(c, r, ctx, cfg, eventId, unsubToken) {
     var blocks = []; try { blocks = JSON.parse(c.BlocksJson || '[]'); } catch (e) { blocks = []; }
     var style = {}; try { style = JSON.parse(c.StyleJson || '{}'); } catch (e) { style = {}; }
     var seller = renderSellerCampaignEmail({
-      blocks: blocks, style: style, base: base, storeName: vars.storeName,
+      blocks: blocks, style: style, base: base, storeName: vars.storeName, brand: scBrand(store),
       products: scEmailProducts(parseJsonArray(c.ProductIdsJson), ctx.productById, ctx.ownerById, base, c.CampaignId, eventId),
       storeUrl: vars.storeUrl, vars: vars,
       unsubscribeUrl: base ? base + '/unsubscribe.html?t=' + encodeURIComponent(unsubToken) : ''
