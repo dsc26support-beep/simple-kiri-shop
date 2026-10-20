@@ -34,8 +34,13 @@
    two that matter most rather than the two that happened to come first. */
 const SELLER_BADGE_ORDER = [
   'recommended', 'top', 'verified', 'responsive',
-  'delivery', 'favourite', 'popular', 'new'
+  'delivery', 'favourite', 'popular', 'new', 'unchecked'
 ];
+
+// A clock: "waiting to be checked", not a warning sign - the store has done
+// nothing wrong, Mwakete just hasn't checked it yet.
+const BADGE_ICON_CLOCK =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>';
 
 const BADGE_ICON_STAR =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"></path></svg>';
@@ -147,10 +152,18 @@ const SELLER_BADGES = {
   // rather than only the ones on screen.
   new: {
     label: 'New',
-    srLabel: 'New Seller',
-    explain: 'Recently joined Mwakete.',
+    srLabel: 'New Store, checked by Mwakete',
+    explain: 'Checked by Mwakete: phoned, emailed and visited. Becomes Verified once customers rate it well.',
     iconOnly: true,
     tier: 'chip', category: 'newcomer', icon: BADGE_ICON_SPARK
+  },
+  // Owner decision, Oct 2026: every store Mwakete has not yet phoned, emailed
+  // and visited says so, in words, and is listed after checked stores.
+  unchecked: {
+    label: 'Not yet checked',
+    srLabel: 'Store not yet checked by Mwakete',
+    explain: 'Mwakete has not yet phoned, emailed and visited this store. Take extra care before paying.',
+    tier: 'plain', category: 'unchecked', icon: BADGE_ICON_CLOCK
   }
 };
 

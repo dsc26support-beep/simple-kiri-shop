@@ -58,11 +58,14 @@ function initGoogleSignIn() {
       // data-full-width (customer sign-in, owner request Oct 2026): as wide as
       // the buttons under it. Google draws the button itself and accepts a
       // pixel width from 200 to 400.
-      var full = host.hasAttribute('data-full-width') && host.clientWidth;
+      // A box with a border (the purple outline on customer sign-in) gets a
+      // button that wide again, so the button reaches under the border.
+      var cs = getComputedStyle(host);
+      var full = host.hasAttribute('data-full-width') && (host.clientWidth + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0));
       google.accounts.id.renderButton(host, {
         theme: 'outline',
         size: 'large',
-        width: full ? Math.max(200, Math.min(400, host.clientWidth)) : 280,
+        width: full ? Math.max(200, Math.min(400, full)) : 280,
         text: 'continue_with',
         shape: 'rectangular'
       });

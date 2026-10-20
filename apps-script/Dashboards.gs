@@ -108,7 +108,24 @@ function actionGetSellerDashboard(owner, body) {
   }).length;
   var type = storeTypeOf(owner);
 
+  // Where this store stands in Mwakete's checks (Badges.gs, STORE CHECKS):
+  // the seller sees which checks are done, never who did them or notes.
+  var snap = dashRows('SellerBadges').filter(function (r) { return String(r.OwnerId) === String(owner.OwnerId); })[0] || {};
+  var snapIds = String(snap.Badges || 'unchecked').split(',');
+  var snapMetrics = {};
+  try { snapMetrics = JSON.parse(snap.MetricsJson || '{}'); } catch (e) { snapMetrics = {}; }
+  var tier = storeTrustTier(snapIds);
+  var cfg = badgeConfig();
+  var storeCheck = {
+    status: tier === 2 ? 'verified' : (tier === 1 ? 'new' : 'unchecked'),
+    call: !!owner.CheckCall, email: !!owner.CheckEmail, visit: !!owner.CheckVisit,
+    reviews: Number(snapMetrics.reviews) || 0,
+    rating: snapMetrics.rating == null ? null : Number(snapMetrics.rating),
+    minRating: badgeNum(cfg, 'verified.autoMinRating'), minReviews: badgeNum(cfg, 'verified.autoMinReviews')
+  };
+
   return ok({
+    storeCheck: storeCheck,
     today: today,
     period: period,
     storeType: type,

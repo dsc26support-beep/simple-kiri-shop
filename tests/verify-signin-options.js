@@ -188,11 +188,16 @@ async function makeContext(browser, opts) {
     await page.setViewportSize({ width: w, height: 844 });
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForSelector('#fake-google-btn', { timeout: 5000 });
-    const g = await page.evaluate(() => ['#fake-google-btn', '#guest-continue', '#login-form button[type="submit"]'].map((sel) => {
+    // The purple box around Google's button is what shows, so that is measured.
+    const g = await page.evaluate(() => ['#google-signin-btn', '#guest-continue', '#login-form button[type="submit"]'].map((sel) => {
       const r = document.querySelector(sel).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
     ok(`${w}px: Google, guest and "Send me a code" are the same width`, Math.abs(g[0][0] - g[1][0]) <= 1 && Math.abs(g[1][0] - g[2][0]) <= 1, JSON.stringify(g));
     ok(`${w}px: ...and the same height (40px)`, g.every((x) => x[1] === 40), JSON.stringify(g));
     ok(`${w}px: Google was asked for that width (within its 200-400px limits)`, await page.evaluate(() => window.__gsiButton.width) === Math.max(200, Math.min(400, g[1][0])));
+    ok(`${w}px: Google's box has the same purple outline`, await page.evaluate(() => {
+      const cs = getComputedStyle(document.getElementById('google-signin-btn'));
+      return cs.borderTopColor === 'rgb(51, 45, 99)' && cs.borderTopWidth === '2px';
+    }));
     ok(`${w}px: no sideways scroll`, await page.evaluate(() => document.documentElement.scrollWidth - innerWidth <= 1));
     await ctx.close();
   }
@@ -211,14 +216,17 @@ async function makeContext(browser, opts) {
     const token = await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } });
     ok('a guest holds no session token', !token, String(token));
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    ok('the guest button says it is browse only', (await page.textContent('#guest-continue')).trim() === 'Just browse (guest)');
-    ok('...with a note that ordering, booking and messaging need sign-in',
-      /Ordering, booking and messaging sellers need you to sign in/.test(await page.textContent('.auth-guest-note')) && await page.locator('.auth-guest-note').isVisible());
+    ok('the guest button just says Guest', (await page.textContent('#guest-continue')).trim() === 'Guest');
+    ok('...with no extra note under it', (await page.$('.auth-guest-note')) === null);
+    ok('every button on the card is a purple outline on a see-through fill', await page.evaluate(() =>
+      [...document.querySelectorAll('.auth-card--customer .btn')].every((b) => {
+        const cs = getComputedStyle(b);
+        return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.borderTopColor === 'rgb(51, 45, 99)' && cs.borderTopWidth === '2px';
+      })));
     // Sent here from checkout: guests can't order, so there is no guest route.
     await page.goto(BASE + '/customer-login.html?next=checkout.html&reason=order', { waitUntil: 'load' });
     ok('sent from checkout: says why, and hides the guest route',
-      /sign in to place your order/i.test(await page.textContent('#auth-reason')) && await page.locator('#guest-continue').isHidden()
-      && await page.locator('.auth-guest-note').isHidden());
+      /sign in to place your order/i.test(await page.textContent('#auth-reason')) && await page.locator('#guest-continue').isHidden());
     await ctx.close();
   }
 

@@ -242,8 +242,20 @@ function storeCacheKeys(slug) {
  * cached builder that already has it, and looking it up per product would undo
  * the entire point of precomputing it.
  */
+/**
+ * Owner decision, Oct 2026: Verified stores first, then New (checked by
+ * Mwakete), then stores not yet checked - on every list Mwakete ranks.
+ * Stable, so inside each group the list keeps its own order (views, visits,
+ * relevance). Reads the sellerBadges each item already carries.
+ */
+function byStoreTrust(a, b) {
+  return storeTrustTier(b.sellerBadges) - storeTrustTier(a.sellerBadges);
+}
+
 function attachSellerBadges(obj, index, ownerId) {
-  var ids = index[String(ownerId)];
+  // A store missing from the snapshot (joined since the last recompute) has
+  // not been checked yet - and says so (Badges.gs, STORE CHECKS).
+  var ids = index[String(ownerId)] || ['unchecked'];
   if (ids && ids.length) obj.sellerBadges = ids;
   return obj;
 }
@@ -341,12 +353,16 @@ function actionListStores(params) {
       })
       .filter(function (e) { return e.score > 0; })
       .sort(function (a, b) {
+        var trust = byStoreTrust(a.store, b.store);
+        if (trust) return trust;
         if (b.score !== a.score) return b.score - a.score;
         // Alphabetical inside a score band, so two identical requests can
         // never come back in two different orders.
         return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0);
       })
       .map(function (e) { return e.store; });
+  } else {
+    filtered = all.slice().sort(byStoreTrust);
   }
 
   var limit = clampPageSize(params.limit, DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE);
@@ -413,7 +429,7 @@ function getTopProductsCached() {
       // "trending products" carousel assumes every card has - excluded here
       // rather than given a broken card.
       .filter(function (p) { return listingTypeOf(p) === 'product' && p.variants.length > 0; })
-      .sort(function (a, b) { return b.views - a.views; })
+      .sort(function (a, b) { return byStoreTrust(a, b) || b.views - a.views; })
       .slice(0, 20);
   });
 }
@@ -441,7 +457,7 @@ function getTopStoresCached() {
         Object.assign(store, deliveryFlagsOf(o));
         return attachSellerBadges(store, badges, o.OwnerId);
       })
-      .sort(function (a, b) { return b.visits - a.visits; })
+      .sort(function (a, b) { return byStoreTrust(a, b) || b.visits - a.visits; })
       .slice(0, 20);
   });
 }
@@ -648,7 +664,8 @@ function actionSearchProducts(params) {
         product.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
         return attachSellerBadges(product, badges, owner.OwnerId);
       })
-      .filter(function (p) { return p.variants.length > 0; });
+      .filter(function (p) { return p.variants.length > 0; })
+      .sort(byStoreTrust);
   });
 
   return ok({ products: results });

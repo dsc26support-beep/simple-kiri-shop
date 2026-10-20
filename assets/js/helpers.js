@@ -539,7 +539,7 @@ function sellerBadgeRow(product) {
   // Verified has its own row on product cards (cardVerifiedRow), so it is
   // left out here; the rest keep the usual priority order. No cap: all are
   // rendered, and fitCardBadges shows as many as the line has room for.
-  const others = (product.sellerBadges || []).filter((id) => id !== 'verified');
+  const others = (product.sellerBadges || []).filter((id) => id !== 'verified' && id !== 'unchecked');
   return renderSellerBadges(others, { size: 'chip', interactive: false });
 }
 
@@ -552,9 +552,16 @@ function cardIsVerified(product) {
   return typeof renderSellerBadges === 'function' && (product.sellerBadges || []).indexOf('verified') !== -1;
 }
 
+// "Not yet checked" (owner decision, Oct 2026) takes the same bottom row, in
+// words, so a shopper sees it as plainly as Verified.
+function cardIsUnchecked(product) {
+  return typeof renderSellerBadges === 'function' && (product.sellerBadges || []).indexOf('unchecked') !== -1;
+}
+
 function cardVerifiedRow(product) {
-  if (!cardIsVerified(product)) return '';
-  return `<div class="product-card-verified">${renderSellerBadges(['verified'], { size: 'chip', interactive: false })}<span class="seller-badges card-badge-spill"></span></div>`;
+  const id = cardIsVerified(product) ? 'verified' : (cardIsUnchecked(product) ? 'unchecked' : '');
+  if (!id) return '';
+  return `<div class="product-card-verified">${renderSellerBadges([id], { size: 'chip', interactive: false })}<span class="seller-badges card-badge-spill"></span></div>`;
 }
 
 /**
@@ -575,7 +582,7 @@ function fitOneCardBadges(card) {
   const spill = card.querySelector('.card-badge-spill');
   const vRow = card.querySelector('.product-card-verified');
   card.querySelectorAll('.card-badge-count').forEach((e) => e.remove());
-  const chips = Array.from(card.querySelectorAll('.seller-badges .seller-badge:not(.seller-badge--verified):not(.seller-badge--more)'));
+  const chips = Array.from(card.querySelectorAll('.seller-badges .seller-badge:not(.seller-badge--verified):not(.seller-badge--unchecked):not(.seller-badge--more)'));
   chips.forEach((c) => { c.hidden = false; home.appendChild(c); });
   const place = meta.querySelector('.product-card-place');
   if (!chips.length || !place || !meta.offsetWidth) return;
@@ -587,7 +594,7 @@ function fitOneCardBadges(card) {
   if (over.length && spill && vRow) {
     over.forEach((c) => spill.appendChild(c));
     row = spill;
-    ref = vRow.querySelector('.seller-badge--verified') || vRow.firstElementChild;
+    ref = vRow.querySelector('.seller-badge--verified, .seller-badge--unchecked') || vRow.firstElementChild;
     over = over.filter((c) => below(c, ref));
   }
   if (!over.length) return;

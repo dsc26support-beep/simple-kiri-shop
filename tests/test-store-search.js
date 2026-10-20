@@ -95,6 +95,8 @@ function makeContext() {
     grabVar(productsSrc, 'STORE_SEARCH_MAX_QUERY'),
     grab(productsSrc, 'normalizeStoreSearchText'),
     grab(productsSrc, 'storeSearchScore'),
+    grab(productsSrc, 'byStoreTrust'),
+    grab(fs.readFileSync(REPO + 'apps-script/Badges.gs', 'utf8'), 'storeTrustTier'),
     grab(productsSrc, 'actionListStores')
   ].join('\n\n'), box);
   box.__cache = cache;

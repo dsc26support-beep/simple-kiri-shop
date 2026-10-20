@@ -36,7 +36,28 @@
  * the two files rather than trusting them to stay in step.
  */
 var BADGE_IDS = ['recommended', 'top', 'verified', 'responsive',
-                 'delivery', 'favourite', 'popular', 'new'];
+                 'delivery', 'favourite', 'popular', 'new', 'unchecked'];
+
+/*
+ * STORE CHECKS (owner decision, Oct 2026). Every store is one of three:
+ *   verified  - Mwakete checked it AND it earned the rating bar, or the owner
+ *               gave it Verified by hand. Replaces New.
+ *   new       - the owner phoned it, emailed it and visited it (CheckCall,
+ *               CheckEmail, CheckVisit), then gave it New (BadgeNew).
+ *   unchecked - everyone else, shown "Not yet checked" and ranked last.
+ * Verified -> New -> unchecked is also the ranking order (storeTrustTier).
+ * BadgeVerified 'false' means the owner removed Verified: it does not come
+ * back from ratings until they allow it again ('').
+ */
+var STORE_CHECKS = { call: 'CheckCall', email: 'CheckEmail', visit: 'CheckVisit' };
+
+/** 2 Verified, 1 New, 0 not yet checked - from a store's badge ids. */
+function storeTrustTier(ids) {
+  ids = ids || [];
+  if (ids.indexOf('verified') !== -1) return 2;
+  if (ids.indexOf('new') !== -1) return 1;
+  return 0;
+}
 
 /* ---------- configuration ---------------------------------------------------
  *
@@ -55,6 +76,11 @@ var BADGE_CONFIG_DEFAULTS = {
   'enabled.favourite': 'true',
   'enabled.popular': 'true',
   'enabled.new': 'true',
+  'enabled.unchecked': 'true',
+
+  // Verified through ratings: a store already given New that reaches this.
+  'verified.autoMinRating': '4.5',
+  'verified.autoMinReviews': '10',
 
   // Performance score weights, as specified. They are renormalised across
   // whichever components a seller actually has data for - see sellerScore().
@@ -76,8 +102,6 @@ var BADGE_CONFIG_DEFAULTS = {
   // fulfilled orders is established; 250 does not make them 10x more
   // trustworthy, and without a ceiling the badge just tracks store size.
   'target.orders': '25',
-
-  'newSellerDays': '30',
 
   'top.score': '75',
   'top.minRating': '4.2',
@@ -374,18 +398,15 @@ function autoBadgesFor(cfg, owner, score, om, rm, sm, popularOwnerIds) {
   var enoughHistory = !!om && om.total >= minOrders;
   var enoughReviews = !!rm && rm.count >= minReviews;
 
-  // New Seller. The only badge that needs no track record - it is a statement
-  // about the join date and nothing else.
-  var joined = new Date(owner.CreatedAt).getTime();
-  // A blank CreatedAt means a seller who registered before that column existed,
-  // not one who joined at the epoch. Treated as "not new", or every long-
-  // standing store on the site would suddenly be labelled brand new.
-  if (!isNaN(joined) && joined > 0) {
-    var ageDays = (Date.now() - joined) / (24 * 60 * 60 * 1000);
-    if (ageDays <= badgeNum(cfg, 'newSellerDays')) {
-      out.push('new');
-      why.new = 'Joined ' + Math.max(0, Math.round(ageDays)) + ' days ago';
-    }
+  // New is no longer automatic from the join date: the owner gives it after
+  // checking the store (applyBadgeOverrides). Verified CAN come from data, but
+  // only for a store that was checked first - ratings alone never vouch for a
+  // store nobody has called or visited.
+  if (String(owner.BadgeNew) === 'true' && rm
+      && rm.count >= badgeNum(cfg, 'verified.autoMinReviews')
+      && rm.average >= badgeNum(cfg, 'verified.autoMinRating')) {
+    out.push('verified');
+    why.verified = rm.average.toFixed(1) + ' average over ' + rm.count + ' reviews';
   }
 
   if (sm && sm.replies >= badgeNum(cfg, 'responsive.minReplies')
@@ -438,10 +459,6 @@ function autoBadgesFor(cfg, owner, score, om, rm, sm, popularOwnerIds) {
     }
   }
 
-  // Verified is deliberately absent. It is a statement that a human checked
-  // this store, and no amount of good data is a substitute for that, so it has
-  // no automatic path at all - only an admin can grant it.
-
   return { badges: out, why: why };
 }
 
@@ -483,13 +500,15 @@ function applyBadgeOverrides(cfg, owner, auto) {
 
   // One switch that takes every badge off a store, for a seller under review.
   // Checked first, so nothing below can put one back.
+  // It also counts as not checked: last in every ranking.
   if (String(owner.BadgeSuppressed) === 'true') {
-    return { badges: [], source: {}, suppressed: true };
+    return { badges: ['unchecked'], source: { unchecked: 'system' }, suppressed: true };
   }
 
   auto.forEach(function (id) {
     if (!badgeEnabled(cfg, id)) return;             // switched off site-wide
     if (id === 'recommended' && String(owner.BadgeRecommended) === 'false') return;
+    if (id === 'verified' && String(owner.BadgeVerified) === 'false') return;   // the owner took it away
     effective.push(id);
     source[id] = 'auto';
   });
@@ -504,6 +523,20 @@ function applyBadgeOverrides(cfg, owner, auto) {
       && effective.indexOf('recommended') === -1) {
     effective.push('recommended');
     source.recommended = 'admin';
+  }
+
+  if (badgeEnabled(cfg, 'new') && String(owner.BadgeNew) === 'true') {
+    effective.push('new');
+    source['new'] = 'admin';
+  }
+  // Verified replaces New - one statement about the store, not two.
+  if (effective.indexOf('verified') !== -1 && effective.indexOf('new') !== -1) {
+    effective.splice(effective.indexOf('new'), 1);
+    delete source['new'];
+  }
+  if (effective.indexOf('verified') === -1 && effective.indexOf('new') === -1) {
+    effective.push('unchecked');
+    source.unchecked = 'system';
   }
 
   // Priority order, so every surface gets them in the same order without
@@ -631,6 +664,8 @@ function ensureBadgeColumns() {
   ensureColumn(sheet, 'BadgeVerified');
   ensureColumn(sheet, 'BadgeRecommended');
   ensureColumn(sheet, 'BadgeSuppressed');
+  ensureColumn(sheet, 'BadgeNew');
+  Object.keys(STORE_CHECKS).forEach(function (k) { ensureColumn(sheet, STORE_CHECKS[k]); });
 }
 
 /**

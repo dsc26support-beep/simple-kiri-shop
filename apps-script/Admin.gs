@@ -436,6 +436,120 @@ function actionRecomputeBadges(owner) {
   return ok({ sellers: count });
 }
 
+/* ---------- Store checks: New and Verified (admin) --------------------------
+ *
+ * Owner decision, Oct 2026 (Badges.gs, STORE CHECKS). The owner phones,
+ * emails and visits a store, ticking each here; only with all three ticked can
+ * they give it New. Verified comes from ratings (for a store with New) or from
+ * the owner by hand. Removing either needs a reason. Every change is written
+ * to the TrustLog tab: when, which store, what, why, and who.
+ */
+var TRUST_LOG_HEADERS = ['At', 'OwnerId', 'StoreName', 'Action', 'Detail', 'By'];
+
+/** 'ISO|admin@email' in a check cell -> { at, by }, or null when not ticked. */
+function storeCheckOf(cell) {
+  var v = String(cell || '');
+  if (!v) return null;
+  var parts = v.split('|');
+  return { at: parts[0] || '', by: parts[1] || '' };
+}
+
+/** Every store with its checks and where it stands, not yet checked first. */
+function actionListStoreTrust(owner) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var snaps = {};
+  try {
+    sheetToObjects(getSheet('SellerBadges')).forEach(function (r) { snaps[String(r.OwnerId)] = r; });
+  } catch (e) { snaps = {}; }
+  var cfg = badgeConfig();
+  var stores = sheetToObjects(getSheet('Owners')).map(function (o) {
+    var snap = snaps[String(o.OwnerId)] || {};
+    var ids = String(snap.Badges || 'unchecked').split(',').filter(function (s) { return !!s; });
+    var metrics = {};
+    try { metrics = JSON.parse(snap.MetricsJson || '{}'); } catch (e) { metrics = {}; }
+    var checks = {};
+    Object.keys(STORE_CHECKS).forEach(function (k) { checks[k] = storeCheckOf(o[STORE_CHECKS[k]]); });
+    var tier = storeTrustTier(ids);
+    return {
+      ownerId: o.OwnerId, storeName: o.StoreName, storeSlug: o.StoreSlug, status: o.Status,
+      phone: o.Phone, email: o.Email, island: o.Island, village: o.Village,
+      createdAt: o.CreatedAt ? String(o.CreatedAt) : '',
+      trust: tier === 2 ? 'verified' : (tier === 1 ? 'new' : 'unchecked'),
+      checks: checks,
+      hasNew: String(o.BadgeNew) === 'true',
+      // '' ratings decide, 'true' given by hand, 'false' taken away
+      verifiedSetting: String(o.BadgeVerified || ''),
+      suppressed: String(o.BadgeSuppressed) === 'true',
+      reviews: Number(metrics.reviews) || 0,
+      rating: metrics.rating == null ? null : Number(metrics.rating),
+      autoBar: { minRating: badgeNum(cfg, 'verified.autoMinRating'), minReviews: badgeNum(cfg, 'verified.autoMinReviews') }
+    };
+  });
+  // The queue to work through: not yet checked (newest first), then New, then Verified.
+  stores.sort(function (a, b) {
+    var ta = a.trust === 'verified' ? 2 : (a.trust === 'new' ? 1 : 0);
+    var tb = b.trust === 'verified' ? 2 : (b.trust === 'new' ? 1 : 0);
+    if (ta !== tb) return ta - tb;
+    return String(b.createdAt).localeCompare(String(a.createdAt));
+  });
+  return ok({ stores: stores });
+}
+
+var STORE_TRUST_ACTIONS = ['check', 'uncheck', 'giveNew', 'removeNew', 'giveVerified', 'removeVerified', 'ratingsDecide'];
+
+/**
+ * body.ownerId, body.op (STORE_TRUST_ACTIONS), body.check ('call'|'email'|
+ * 'visit') for check/uncheck, body.reason for the two removals.
+ */
+function actionSetStoreTrust(owner, body) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var op = String(body.op || '');
+  if (STORE_TRUST_ACTIONS.indexOf(op) === -1) return fail('Unknown action');
+  var sheet = getSheet('Owners');
+  ensureBadgeColumns();
+  var row = findRowById(sheet, 'OwnerId', String(body.ownerId || ''));
+  if (!row) return fail('Store not found');
+
+  var reason = String(body.reason || '').trim();
+  if ((op === 'removeNew' || op === 'removeVerified') && reason.length < 5) {
+    return fail('Please give a reason (at least 5 characters).');
+  }
+  var reasonErr = capLength(reason, 300, 'Reason');
+  if (reasonErr) return reasonErr;
+
+  var by = normalizeEmail(owner.Email);
+  var patch = {};
+  var detail = reason;
+  if (op === 'check' || op === 'uncheck') {
+    var col = STORE_CHECKS[String(body.check || '')];
+    if (!col) return fail('Unknown check');
+    patch[col] = op === 'check' ? nowIso() + '|' + by : '';
+    detail = String(body.check);
+  } else if (op === 'giveNew') {
+    var missing = Object.keys(STORE_CHECKS).filter(function (k) { return !storeCheckOf(row[STORE_CHECKS[k]]); });
+    if (missing.length) return fail('Tick ' + missing.join(', ') + ' first: New needs a call, an email and a visit.');
+    patch.BadgeNew = 'true';
+  } else if (op === 'removeNew') {
+    patch.BadgeNew = '';
+  } else if (op === 'giveVerified') {
+    patch.BadgeVerified = 'true';
+  } else if (op === 'removeVerified') {
+    // 'false', not '': ratings must not hand it straight back.
+    patch.BadgeVerified = 'false';
+  } else if (op === 'ratingsDecide') {
+    patch.BadgeVerified = '';
+  }
+  updateRowFromObject(sheet, row.__row, patch);
+  appendRowFromObject(getSheetCreating('TrustLog', TRUST_LOG_HEADERS), {
+    At: nowIso(), OwnerId: row.OwnerId, StoreName: row.StoreName, Action: op, Detail: detail, By: by
+  });
+  // Shown at once, and ranked at once on the store lists (search catches up
+  // within its 60-second cache).
+  recomputeSellerBadges();
+  invalidateCache(storeCacheKeys(row.StoreSlug));
+  return ok({ ownerId: row.OwnerId, op: op });
+}
+
 /* ---------- Wholesaler verification (admin) ---------- */
 
 /** Every wholesaler store, unverified first, then newest first - the queue an admin works through. */

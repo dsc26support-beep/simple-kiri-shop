@@ -118,7 +118,7 @@ function ctx(opts) {
   const calls = [
     ['actionListSellerBadges', (f) => s[f](SELLER, {})],
     ['actionSetSellerBadgeOverride', (f) => s[f](SELLER, { ownerId: 'o1', field: 'verified', value: 'true' })],
-    ['actionSetBadgeConfig', (f) => s[f](SELLER, { key: 'newSellerDays', value: '90' })],
+    ['actionSetBadgeConfig', (f) => s[f](SELLER, { key: 'target.orders', value: '90' })],
     ['actionRecomputeBadges', (f) => s[f](SELLER)]
   ];
   calls.forEach(([name, run]) => {
@@ -169,7 +169,7 @@ function ctx(opts) {
   ok('the configuration comes with it, so the settings panel needs no second call',
     r.config && r.config['weight.ratings'] === '30');
   ok('and the badge id list, so the admin page cannot drift from the backend',
-    r.badgeIds.join(',') === 'recommended,top,verified,responsive,delivery,favourite,popular,new');
+    r.badgeIds.join(',') === 'recommended,top,verified,responsive,delivery,favourite,popular,new,unchecked');
 
   const noTab = ctx({ noSnapshotTab: true });
   const r2 = noTab.actionListSellerBadges(ADMIN, {});
@@ -217,15 +217,15 @@ function ctx(opts) {
 /* ---------- settings ---------- */
 {
   let s = ctx();
-  let r = s.actionSetBadgeConfig(ADMIN, { key: 'newSellerDays', value: '45' });
+  let r = s.actionSetBadgeConfig(ADMIN, { key: 'target.orders', value: '45' });
   ok('an admin can change a threshold', r.ok === true, JSON.stringify(r));
   ok('and it is stored', s.appended.length === 1 && s.appended[0].obj.Value === '45');
   ok('the config cache is dropped, or the change would not apply for five minutes',
     s.invalidated.indexOf('v1:badgeConfig') !== -1, s.invalidated.join(','));
   ok('and every store is recomputed against it', s.recomputes.length === 1);
 
-  s = ctx({ config: [{ Key: 'newSellerDays', Value: '30' }] });
-  s.actionSetBadgeConfig(ADMIN, { key: 'newSellerDays', value: '60' });
+  s = ctx({ config: [{ Key: 'target.orders', Value: '30' }] });
+  s.actionSetBadgeConfig(ADMIN, { key: 'target.orders', value: '60' });
   ok('changing it again updates the row rather than adding a second one',
     s.updated.length === 1 && s.appended.length === 0, JSON.stringify([s.updated, s.appended]));
 
@@ -240,10 +240,10 @@ function ctx(opts) {
     r.ok === false && /Unknown setting/.test(r.error), JSON.stringify(r));
   ok('and nothing was written', s.appended.length === 0 && s.updated.length === 0);
 
-  r = s.actionSetBadgeConfig(ADMIN, { key: 'newSellerDays', value: 'soon' });
+  r = s.actionSetBadgeConfig(ADMIN, { key: 'target.orders', value: 'soon' });
   ok('a threshold that is not a number is refused rather than stored and ignored',
     r.ok === false && /number/.test(r.error), JSON.stringify(r));
-  r = s.actionSetBadgeConfig(ADMIN, { key: 'newSellerDays', value: '-5' });
+  r = s.actionSetBadgeConfig(ADMIN, { key: 'target.orders', value: '-5' });
   ok('and a negative one too', r.ok === false);
   r = s.actionSetBadgeConfig(ADMIN, { key: 'enabled.top', value: '1' });
   ok('an on/off setting only takes true or false', r.ok === false && /true or false/.test(r.error));

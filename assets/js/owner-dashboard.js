@@ -103,6 +103,7 @@ function paintSummary(res) {
   renderRecent(res.recentOrders);
   renderAlerts(res);
   renderWholesale(res.storeType, res.wholesale);
+  renderStoreCheck(res.storeCheck);
 }
 
 function renderKpis(k, period) {
@@ -162,6 +163,31 @@ function renderAlerts(res) {
   document.getElementById('dash-alerts').innerHTML = items.length
     ? items.map(([t, text, href]) => `<li class="dash-alert is-${t}"><span class="dash-alert-tag">${tone[t]}</span> <a href="${href}">${escapeHtml(text)}</a></li>`).join('')
     : '<li class="dash-empty">Nothing needs your attention right now.</li>';
+}
+
+// Owner decision, Oct 2026: a store Mwakete has not phoned, emailed and
+// visited is shown "Not yet checked" and listed after checked stores. The
+// seller sees which checks are done and what comes next.
+function renderStoreCheck(c) {
+  const box = document.getElementById('dash-check');
+  if (!box || !c) return;
+  box.hidden = false;
+  const text = document.getElementById('dash-check-text');
+  const steps = document.getElementById('dash-check-steps');
+  const rating = c.rating == null ? 'no reviews yet' : `${Number(c.rating).toFixed(1)}★ over ${c.reviews} review(s)`;
+  if (c.status === 'verified') {
+    text.textContent = 'Verified by Mwakete. Your store is listed among the first in search and on the home page.';
+    steps.innerHTML = '';
+    return;
+  }
+  if (c.status === 'new') {
+    text.textContent = `Checked by Mwakete (New). Your store is listed above stores not yet checked. It becomes Verified at ${c.minRating}★ over ${c.minReviews}+ reviews - now ${rating}.`;
+    steps.innerHTML = '';
+    return;
+  }
+  text.textContent = 'Not yet checked. Mwakete will phone you, email you and visit your shop. Until then shoppers see "Not yet checked" and your store is listed after checked stores.';
+  steps.innerHTML = [['call', 'Phone call'], ['email', 'Email'], ['visit', 'Shop visit']]
+    .map(([k, label]) => `<li class="${c[k] ? 'is-done' : ''}">${c[k] ? '✓' : '○'} ${label}${c[k] ? ' - done' : ''}</li>`).join('');
 }
 
 function renderWholesale(type, w) {
