@@ -137,12 +137,13 @@ const tabState = (page) => page.evaluate(() => ({
       const n = document.getElementById('shopper-note');
       return { hidden: n.hidden, text: n.textContent.trim() };
     });
-    ok('a signed-in shopper is told a store account is separate',
-      note.hidden === false && /separate account/i.test(note.text), note.text);
-    ok('and it names the address they are signed in with',
-      note.text.includes(CUSTOMER.email), note.text);
-    ok('it explains the payoff for reusing that address',
-      /My Account/.test(note.text), note.text);
+    // Owner request (Oct 2026): just this line, highlighted and centred.
+    ok('a signed-in shopper sees exactly "You are signed in as a shopper (their email)", no full stop',
+      note.hidden === false && note.text === 'You are signed in as a shopper (' + CUSTOMER.email + ')', note.text);
+    ok('...highlighted and centred', await page.evaluate(() => {
+      const cs = getComputedStyle(document.getElementById('shopper-note'));
+      return cs.textAlign === 'center' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)';
+    }));
     ok('the register form is the one on screen',
       (await tabState(page)).registerShown);
     // Nothing about the shopper session may leave this page.

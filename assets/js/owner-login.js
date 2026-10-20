@@ -77,9 +77,8 @@ function showShopperNote() {
 
   const customer = CustomerAuth.getCustomer() || {};
   const email = customer.email ? ' (' + customer.email + ')' : '';
-  note.textContent = 'You are signed in as a shopper' + email + '. A store account is a '
-    + 'separate account with its own username and password. Use the same contact email '
-    + 'below and your store will also appear under My Account.';
+  // Owner request (Oct 2026): just who they are signed in as, highlighted.
+  note.textContent = 'You are signed in as a shopper' + email;
   note.hidden = false;
 }
 
