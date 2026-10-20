@@ -3015,7 +3015,8 @@ textarea.meeting-request-input {
   gap: var(--space-2);
   min-height: 44px;
   padding: 0.6em 1.2em;
-  border-radius: var(--radius);
+  /* Fully round (pill) ends on every button - owner request, Oct 2026. */
+  border-radius: 999px;
   border: 2px solid transparent;
   font-size: 1rem;
   font-weight: 600;
@@ -8164,9 +8165,10 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 }
 
 /* Owner request (Oct 2026): every button on the customer sign-in card is the
-   size and shape of Google's own sign-in button - 240px wide (narrower on a
-   very small screen), 40px tall, 4px corners, Google's 14px text - and
-   centred, Google's included. Overrides the full-width sizing above. */
+   size of Google's own sign-in button - 240px wide (narrower on a very small
+   screen), 40px tall, Google's 14px text - and centred, Google's included.
+   Pill ends, like every button (Google is asked for its "pill" shape too).
+   Overrides the full-width sizing above. */
 .auth-card--customer #google-signin-btn[data-full-width],
 .auth-card--customer .btn {
   width: 240px;
@@ -8175,7 +8177,7 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   min-height: 40px;
   margin-left: auto;
   margin-right: auto;
-  border-radius: 4px;
+  border-radius: 999px;
 }
 .auth-card--customer #google-signin-btn[data-full-width] { align-self: center; }
 .auth-card--customer .btn {

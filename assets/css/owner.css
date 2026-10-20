@@ -431,7 +431,7 @@ label.is-required::after {
   gap: var(--space-2);
   padding: 0.6em 1em;
   border: 2px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 999px;
   background: #fff;
   color: var(--color-ink);
   cursor: pointer;

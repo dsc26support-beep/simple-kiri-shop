@@ -67,7 +67,8 @@ function initGoogleSignIn() {
         size: 'large',
         width: full ? Math.max(200, Math.min(400, full)) : 280,
         text: 'continue_with',
-        shape: 'rectangular'
+        // Pill ends, like every Mwakete button (owner request, Oct 2026).
+        shape: 'pill'
       });
     } catch (e) {
       wrap.hidden = true;   // a half-rendered Google button is worse than none
