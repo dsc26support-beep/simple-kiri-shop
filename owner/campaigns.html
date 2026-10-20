@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Campaigns — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell owner-campaigns-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">My Campaigns</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Seller Campaign Studio (backend: apps-script/SellerCampaigns.gs). One
+       page, four views chosen by the URL: the list (no query), the builder
+       (?new=1 or ?edit=<id>), payment (?pay=<id>) and one campaign (?id=<id>).
+       Everything a seller can pick comes from the server's config, so the
+       page cannot offer something the server would refuse. -->
+  <main id="main" class="owner-main cs-main">
+    <div class="container cs-container">
+      <p id="cs-status" class="helper-text" role="status"></p>
+      <p id="cs-closed" class="cs-closed" hidden></p>
+
+      <!-- ===== Overview ===== -->
+      <section id="cs-overview" hidden aria-labelledby="cs-overview-heading">
+        <div class="cs-headrow">
+          <div>
+            <h1 id="cs-overview-heading">My Campaigns</h1>
+            <p class="helper-text">Email your products to customers who asked Mwakete for news. <strong id="cs-rate-line">A$0.10 per active day</strong>.</p>
+          </div>
+          <a class="btn btn-primary cs-new-btn" href="campaigns.html?new=1">New campaign</a>
+        </div>
+        <div class="cs-filters" role="group" aria-label="Show campaigns">
+          <button type="button" class="cs-chip is-on" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" class="cs-chip" data-filter="DRAFT" aria-pressed="false">Draft</button>
+          <button type="button" class="cs-chip" data-filter="AWAITING_PAYMENT" aria-pressed="false">Awaiting payment</button>
+          <button type="button" class="cs-chip" data-filter="PAYMENT_REVIEW" aria-pressed="false">Payment under review</button>
+          <button type="button" class="cs-chip" data-filter="PAYMENT_REJECTED" aria-pressed="false">Payment rejected</button>
+          <button type="button" class="cs-chip" data-filter="AWAITING_APPROVAL" aria-pressed="false">Awaiting approval</button>
+          <button type="button" class="cs-chip" data-filter="CHANGES_REQUESTED" aria-pressed="false">Changes requested</button>
+          <button type="button" class="cs-chip" data-filter="SCHEDULED" aria-pressed="false">Scheduled</button>
+          <button type="button" class="cs-chip" data-filter="ACTIVE" aria-pressed="false">Active</button>
+          <button type="button" class="cs-chip" data-filter="PAUSED" aria-pressed="false">Paused</button>
+          <button type="button" class="cs-chip" data-filter="EXHAUSTED" aria-pressed="false">Paid days used</button>
+          <button type="button" class="cs-chip" data-filter="COMPLETED" aria-pressed="false">Completed</button>
+          <button type="button" class="cs-chip" data-filter="STOPPED" aria-pressed="false">Stopped</button>
+        </div>
+        <div id="cs-list" class="cs-list"></div>
+      </section>
+
+      <!-- ===== Builder (wizard) ===== -->
+      <section id="cs-builder" hidden aria-labelledby="cs-builder-heading">
+        <div class="cs-builder-top">
+          <div>
+            <p class="cs-crumb"><a href="campaigns.html">Campaigns</a> / <span id="cs-crumb-name">New campaign</span></p>
+            <h1 id="cs-builder-heading">New campaign</h1>
+            <p id="cs-builder-state" class="helper-text">Draft - not sent</p>
+          </div>
+          <div class="cs-top-actions">
+            <button type="button" id="cs-preview-btn" class="btn btn-outline">Preview</button>
+            <button type="button" id="cs-save-btn" class="btn btn-outline">Save draft</button>
+            <button type="button" id="cs-cancel-btn" class="btn btn-outline">Cancel</button>
+          </div>
+        </div>
+
+        <ol id="cs-steps" class="cs-steps" aria-label="Steps"></ol>
+
+        <div class="cs-builder-body">
+          <div class="cs-step-area">
+            <p id="cs-step-error" class="form-error" role="alert"></p>
+
+            <!-- 1. Goal -->
+            <div class="cs-step" data-step="goal">
+              <h2>What do you want this campaign to do?</h2>
+              <p class="helper-text">Every campaign is one email to customers who asked Mwakete for news. Each customer receives it at most once.</p>
+              <div id="cs-goals" class="cs-cards" role="radiogroup" aria-label="Campaign goal"></div>
+              <div class="field">
+                <label for="cs-name">Campaign name <span class="helper-text">(only you see this)</span></label>
+                <input id="cs-name" type="text" maxlength="60" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- 2. Products -->
+            <div class="cs-step" data-step="products">
+              <h2>Choose products</h2>
+              <p id="cs-products-help" class="helper-text"></p>
+              <div class="cs-product-tools">
+                <label class="sr-only" for="cs-product-search">Search your products</label>
+                <input id="cs-product-search" type="search" placeholder="Search your products">
+                <label class="sr-only" for="cs-product-cat">Category</label>
+                <select id="cs-product-cat"><option value="">All categories</option></select>
+              </div>
+              <p id="cs-product-count" class="cs-count" aria-live="polite"></p>
+              <div id="cs-products" class="cs-product-grid"></div>
+            </div>
+
+            <!-- 3. Audience -->
+            <div class="cs-step" data-step="audience">
+              <h2>Who receives it?</h2>
+              <p class="helper-text">Only customers who opted in to emails. You never see their names or addresses, and nobody else's customers.</p>
+              <div id="cs-audiences" class="cs-cards" role="radiogroup" aria-label="Audience"></div>
+              <div class="field" id="cs-category-field" hidden>
+                <label for="cs-audience-cat">Category</label>
+                <select id="cs-audience-cat"></select>
+              </div>
+              <button type="button" id="cs-reach-btn" class="btn btn-outline btn-small">Estimate how many</button>
+              <p id="cs-reach" class="helper-text" aria-live="polite"></p>
+            </div>
+
+            <!-- 4. Design: blocks + templates | live email | properties -->
+            <div class="cs-step" data-step="design">
+              <div class="cs-editor">
+                <aside class="cs-panel cs-palette" aria-label="Content blocks and templates">
+                  <h3>Content blocks</h3>
+                  <p class="helper-text">Tap to add, or drag into the email.</p>
+                  <div id="cs-block-buttons" class="cs-block-buttons"></div>
+                  <h3>Templates</h3>
+                  <div id="cs-templates" class="cs-template-list"></div>
+                </aside>
+                <div class="cs-canvas-wrap">
+                  <div class="cs-canvas-bar">
+                    <div class="cs-device" role="group" aria-label="Preview width">
+                      <button type="button" class="cs-chip is-on" data-device="desktop" aria-pressed="true">Desktop</button>
+                      <button type="button" class="cs-chip" data-device="mobile" aria-pressed="false">Mobile</button>
+                    </div>
+                  </div>
+                  <div class="cs-canvas" id="cs-canvas">
+                    <div class="cs-envelope">
+                      <label class="sr-only" for="cs-subject">Email subject line</label>
+                      <input id="cs-subject" class="cs-subject" type="text" maxlength="100" placeholder="Email subject line">
+                      <label class="sr-only" for="cs-preview-text">Preview text</label>
+                      <input id="cs-preview-text" class="cs-preview-text" type="text" maxlength="120" placeholder="Preview text...">
+                    </div>
+                    <div id="cs-email" class="cs-email" aria-label="Your email"></div>
+                  </div>
+                </div>
+                <aside class="cs-panel cs-props" aria-label="Properties">
+                  <h3>Properties</h3>
+                  <div id="cs-props"></div>
+                </aside>
+              </div>
+            </div>
+
+            <!-- 5. Schedule -->
+            <div class="cs-step" data-step="schedule">
+              <h2>When should it run?</h2>
+              <div class="cs-two">
+                <div class="field">
+                  <label for="cs-start">Start date</label>
+                  <input id="cs-start" type="date">
+                  <p class="helper-text">It starts on this date (Kiribati time) once your payment is verified and Mwakete approves it - not before.</p>
+                </div>
+                <div class="field">
+                  <label for="cs-days">Active days</label>
+                  <input id="cs-days" type="number" inputmode="numeric" min="1" max="60" step="1" value="7">
+                  <p class="helper-text">Up to 60. Pause any time - paused days are not charged.</p>
+                </div>
+              </div>
+              <p id="cs-price-calc" class="cs-price-calc" aria-live="polite"></p>
+              <p id="cs-billing-rule" class="helper-text"></p>
+            </div>
+
+            <!-- 6. Review -->
+            <div class="cs-step" data-step="review">
+              <h2>Review your campaign</h2>
+              <dl id="cs-review" class="cs-review"></dl>
+              <p id="cs-review-missing" class="form-error" role="alert"></p>
+              <p id="cs-refund-policy" class="helper-text"></p>
+            </div>
+
+            <div class="cs-step-nav">
+              <button type="button" id="cs-back-btn" class="btn btn-outline">Back</button>
+              <button type="button" id="cs-next-btn" class="btn btn-primary">Continue</button>
+            </div>
+          </div>
+
+          <!-- The persistent summary: rebuilt on every change. -->
+          <aside class="cs-summary" aria-labelledby="cs-summary-heading">
+            <h2 id="cs-summary-heading">Summary</h2>
+            <p id="cs-description" class="cs-description" aria-live="polite"></p>
+            <dl class="cs-summary-facts">
+              <div><dt>Price</dt><dd id="cs-sum-price"></dd></div>
+              <div><dt>Days</dt><dd id="cs-sum-days"></dd></div>
+              <div><dt>Estimated total</dt><dd id="cs-sum-total"></dd></div>
+            </dl>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ===== Payment ===== -->
+      <section id="cs-pay" hidden aria-labelledby="cs-pay-heading">
+        <p class="cs-crumb"><a href="campaigns.html">Campaigns</a> / <span id="cs-pay-crumb"></span></p>
+        <h1 id="cs-pay-heading">Pay for your campaign</h1>
+        <p id="cs-thanks" class="cs-thanks"></p>
+        <div class="cs-pay-box">
+          <dl class="cs-pay-facts">
+            <div><dt>Amount to pay</dt><dd id="cs-pay-amount" class="cs-big"></dd></div>
+            <div><dt>Reference (type it exactly)</dt><dd id="cs-pay-ref" class="cs-big cs-mono"></dd></div>
+            <div><dt>Bank</dt><dd id="cs-pay-bank"></dd></div>
+            <div><dt>Account name</dt><dd id="cs-pay-name"></dd></div>
+            <div><dt>Account number</dt><dd id="cs-pay-number" class="cs-mono"></dd></div>
+          </dl>
+          <p id="cs-pay-calc" class="helper-text"></p>
+        </div>
+        <ol class="cs-pay-steps">
+          <li>In your banking app, pay the exact amount to the account above, with the reference.</li>
+          <li>When it says the payment was successful, take a screenshot of that screen.</li>
+          <li>Upload the screenshot here. Mwakete checks it with the bank before your campaign can start.</li>
+        </ol>
+        <div class="field">
+          <label for="cs-receipt">Receipt screenshot</label>
+          <input id="cs-receipt" type="file" accept="image/png,image/jpeg,image/webp">
+        </div>
+        <p id="cs-pay-error" class="form-error" role="alert"></p>
+        <p id="cs-pay-done" class="cs-pay-done" role="status" hidden></p>
+        <button type="button" id="cs-upload-btn" class="btn btn-primary">Submit payment evidence</button>
+        <p class="helper-text">Uploading a receipt does not start the campaign. It starts only after Mwakete verifies the payment and approves the campaign.</p>
+        <p id="cs-pay-refund" class="helper-text"></p>
+      </section>
+
+      <!-- ===== One campaign ===== -->
+      <section id="cs-detail" hidden aria-labelledby="cs-detail-heading">
+        <p class="cs-crumb"><a href="campaigns.html">Campaigns</a> / <span id="cs-detail-crumb"></span></p>
+        <div class="cs-headrow">
+          <div>
+            <h1 id="cs-detail-heading"></h1>
+            <p><span id="cs-detail-status" class="cs-pill"></span></p>
+          </div>
+          <div id="cs-detail-actions" class="cs-top-actions"></div>
+        </div>
+        <p id="cs-detail-thanks" class="cs-thanks" hidden></p>
+        <p id="cs-detail-note" class="cs-note" hidden></p>
+        <p id="cs-detail-desc" class="cs-description"></p>
+        <p id="cs-detail-error" class="form-error" role="alert"></p>
+
+        <h2>Performance</h2>
+        <div id="cs-metrics" class="cs-metrics"></div>
+        <div id="cs-timeline" class="cs-timeline"></div>
+        <p id="cs-metrics-note" class="helper-text"></p>
+
+        <div id="cs-extend" class="cs-extend" hidden>
+          <h2>Extend</h2>
+          <div class="field">
+            <label for="cs-extend-days">Add active days</label>
+            <input id="cs-extend-days" type="number" min="1" max="60" value="7">
+          </div>
+          <p id="cs-extend-calc" class="helper-text"></p>
+          <button type="button" id="cs-extend-btn" class="btn btn-outline">Pay for more days</button>
+        </div>
+
+        <h2>Payments and billing</h2>
+        <div id="cs-payments"></div>
+        <div id="cs-ledger"></div>
+
+        <h2>History</h2>
+        <ol id="cs-history" class="cs-history"></ol>
+      </section>
+
+      <!-- Preview: the email exactly as the server renders it. -->
+      <dialog id="cs-preview-dialog" class="cs-preview-dialog" aria-labelledby="cs-preview-title">
+        <div class="cs-preview-head">
+          <h2 id="cs-preview-title">Preview</h2>
+          <div class="cs-device" role="group" aria-label="Preview width">
+            <button type="button" class="cs-chip is-on" data-pdevice="desktop" aria-pressed="true">Desktop</button>
+            <button type="button" class="cs-chip" data-pdevice="mobile" aria-pressed="false">Mobile</button>
+          </div>
+          <button type="button" id="cs-preview-close" class="btn btn-outline btn-small">Close</button>
+        </div>
+        <p id="cs-preview-subject" class="cs-preview-subject"></p>
+        <iframe id="cs-preview-frame" class="cs-preview-frame" title="Email preview" sandbox=""></iframe>
+      </dialog>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/campaign-studio.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>
