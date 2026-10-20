@@ -316,6 +316,27 @@ header.site-header > .container:first-of-type {
   padding-right: 52px;
 }
 
+/* Owner request (Oct 2026): the page's own links (Home, Browse Stores...) sit
+   together at the right edge of the bar, not beside the logo. Where the cart
+   or menu icon is there (pinned in the reserved space above), the links end
+   just left of it; where neither is, that space is given back so they reach
+   the edge. */
+header.site-header > .container:first-of-type > nav.site-nav {
+  margin-left: auto;
+}
+
+header.site-header > .container:first-of-type:not(:has(.header-cart, .header-menu)) {
+  padding-right: var(--space-3);
+}
+
+/* On a phone the header cart is hidden (the bottom bar has Cart), so only
+   the menu button, where a page has one, still needs the corner. */
+@media (max-width: 700px) {
+  header.site-header > .container:first-of-type:not(:has(.header-menu)) {
+    padding-right: var(--space-3);
+  }
+}
+
 /* In the flow at the far left, not pinned to the right corner. */
 .header-logo-link {
   display: inline-flex;
