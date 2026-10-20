@@ -85,7 +85,7 @@ var PROTECTED_POST_ACTIONS = [
   'adminInventoryOverview',
   // Marketing engine - every one checks isOwnerAdmin inside (Marketing.gs).
   'getMarketingOverview', 'createMarketingCampaign', 'setMarketingCampaignStatus', 'setMarketingPaused',
-  'getCampaignStudio', 'saveCampaignDraft', 'startCampaignPayment', 'submitCampaignPayment', 'campaignAction',
+  'getCampaignStudio', 'setStoreBrandColor', 'getStoreLogoData', 'saveCampaignDraft', 'startCampaignPayment', 'submitCampaignPayment', 'campaignAction',
   'extendCampaign', 'getCampaignDetail', 'estimateCampaignReach', 'previewSellerCampaign',
   'adminListCampaigns', 'adminGetCampaign', 'adminDecideCampaignPayment', 'adminReviewCampaign', 'adminCampaignAction', 'adminRecordCampaignRefund',
   'previewMarketingCampaign', 'getMarketingStats', 'runMarketingGeneration',
@@ -122,7 +122,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'campaigns2-2026-10-20';
+var APP_VERSION = 'brand1-2026-10-20';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -605,6 +605,8 @@ function doPost(e) {
         case 'getMarketingOverview': return jsonOut(actionGetMarketingOverview(owner));
         // Seller Campaign Studio (SellerCampaigns.gs)
         case 'getCampaignStudio': return jsonOut(actionGetCampaignStudio(owner));
+        case 'setStoreBrandColor': return jsonOut(actionSetStoreBrandColor(owner, body));
+        case 'getStoreLogoData': return jsonOut(actionGetStoreLogoData(owner));
         case 'saveCampaignDraft': return jsonOut(actionSaveCampaignDraft(owner, body));
         case 'startCampaignPayment': return jsonOut(actionStartCampaignPayment(owner, body));
         case 'submitCampaignPayment': return jsonOut(actionSubmitCampaignPayment(owner, body));

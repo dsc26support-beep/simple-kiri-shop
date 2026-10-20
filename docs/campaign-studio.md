@@ -16,8 +16,30 @@ Sellers build, pay for and run their own email campaigns.
 | Receipt checks | **Pre-screen only.** A definite failure is rejected so the seller can upload again. Everything else waits for an admin, who **always verifies against the bank**. Nothing is verified or started automatically. |
 | Content | An admin **approves every campaign** before it sends. A paid campaign needs approval again after any edit. |
 | Templates | The designs are fixed: Spotlight, Showcase, Seasonal, New arrival, Come back, and Custom. Every block is plain text or the seller's own product. Sellers cannot add HTML or image links. |
+| Store colour | Every email uses the **store's own colour**, taken from its logo, so customers recognise the store. See "Store colour" below. The colour is locked: a campaign cannot choose another. |
 | Refunds | **Unused paid days are refundable on request.** The admin pays the seller back by hand, then records it. There is no automatic payout. |
 | Engine off | **Payment is closed** until `MARKETING_ENABLED=true` and `MARKETING_DRY_RUN=false`. Sellers can still build and save drafts. |
+
+## Store colour
+
+Customers already know their own stores, so seller emails look like the store, not like Mwakete.
+
+- **Picking it:** the first time a seller with a logo opens My Campaigns, the page reads the logo's main colours and suggests the strongest one. The seller taps **Use this colour** to confirm it, or picks another colour from the logo.
+  - The page reads the logo through `getStoreLogoData`. That action returns only the signed-in seller's own logo, as image data, because a logo served from another site can't be read by the page.
+  - The colour is saved to `Owners.BrandColor` (and `BrandColorSetAt`). Both columns are added on first use.
+  - The seller can change it later with **Change colour**.
+- **In the email** (`scBrand` in SellerCampaigns.gs):
+
+  | Part | Colour |
+  |---|---|
+  | Top bar (with the store's logo and name), buttons, footer line | The true colour, with white or dark text, whichever reads better |
+  | Headings and product names | The colour darkened until it reads on white (WCAG AA, 4.5:1) |
+  | Background | A very pale tint of the colour |
+
+- **Mwakete** appears only in the footer: "Sent by Mwakete for <store>", with the unsubscribe link.
+- **Locked:** the editor offers no colour choices. Any colour saved in an older campaign's style is ignored.
+- **Fallback:** a store with no colour yet, no logo, or a near-white colour gets Mwakete purple (#332d63).
+- **When it applies:** the colour is read when each email is built. A seller who changes their store colour changes how later emails from all their campaigns look. This doesn't need new approval, because the colour can only come from their own logo's palette and the readable variants are made by the server.
 
 ## States
 
@@ -88,7 +110,7 @@ Every decision is checked again on the server. The server checks that:
    - `SellerCampaigns.gs` (new)
    - `Code.gs`, `Marketing.gs`, `MarketingEngine.gs` (changed)
 2. **Deploy → Manage deployments → Edit → New version.**
-3. Open `<web app URL>?action=getVersion` and check that it shows `campaigns2-2026-10-20` or later.
+3. Open `<web app URL>?action=getVersion` and check that it shows `brand1-2026-10-20` or later.
 4. Sellers can build drafts straight away. Payment opens only when the engine is live:
    - `MARKETING_ENABLED=true`
    - `MARKETING_DRY_RUN=false`

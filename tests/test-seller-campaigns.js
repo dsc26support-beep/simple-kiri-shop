@@ -189,7 +189,11 @@ sweep(); sweep();
 ok('REPEATED RUNS ON THE SAME DAY NEVER CHARGE TWICE', Number(camp(c1.campaignId).UsedDays) === 1 && ledger(c1.campaignId).filter((l) => l.EntryType === 'DAY_CHARGE').length === 1);
 ok('an admin cannot hand-approve the engine row behind it', /seller/.test(box.actionSetMarketingCampaignStatus(ADM, { campaignId: eng.CampaignId, op: 'cancel' }).error || ''));
 
-// The email it sends.
+// The email it sends - in Ana's own store colour, with her logo (set before the send).
+const ownersSheet = box.getSheet('Owners');
+box.ensureColumn(ownersSheet, 'LogoUrl');
+box.updateRowFromObject(ownersSheet, box.findRowById(ownersSheet, 'OwnerId', 'own_a').__row, { LogoUrl: 'https://res.cloudinary.com/x/ana-logo.png' });
+ok('a seller can save their store colour', box.actionSetStoreBrandColor(owner('own_a'), { color: '#1F8A70' }).ok && owner('own_a').BrandColor === '#1f8a70');
 const sent = [];
 const realSend = box.MailApp.sendEmail;
 box.MailApp.sendEmail = (to, subject, body, opts) => { sent.push({ to, subject, body, html: opts && opts.htmlBody }); };
@@ -200,6 +204,14 @@ ok('the engine emails the store\'s opted-in customer, once', !!mail && !sent.som
 ok('...with the seller\'s blocks, filled in and escaped', mail && /New in at Ana Shop/.test(mail.html) && /Hi Tera, rice is back/.test(mail.body) && mail.subject === 'Rice at Ana Shop', mail && mail.subject);
 ok('...their own product photo, and only https links to Mwakete', mail && /res\.cloudinary\.com\/x\/rice\.jpg/.test(mail.html) && !/href="(?!https:\/\/mwakete\.com)/.test(mail.html));
 ok('...and an unsubscribe link and who sent it', mail && /unsubscribe\.html\?t=/.test(mail.html) && /Sent by Mwakete for Ana Shop/.test(mail.html));
+const anaBrand = box.scBrand(owner('own_a'));
+ok('STORE COLOUR: the top bar is the store colour with its logo and name, not Mwakete red', mail && mail.html.includes('background:' + anaBrand.fill + ';padding:12px 16px;color:' + anaBrand.onFill)
+  && mail.html.includes('ana-logo.png') && !/#ce1126/i.test(mail.html) && !/>Mwakete<\/div>/.test(mail.html), anaBrand.accent);
+ok('...buttons and headings in it, a pale tint behind, a line above the footer', mail && mail.html.includes('color:' + anaBrand.accent + ';text-align') && mail.html.includes('background:' + anaBrand.tint)
+  && mail.html.includes('border-top:3px solid ' + anaBrand.fill) && mail.html.includes('background:' + anaBrand.fill + ';color:' + anaBrand.onFill + ';padding:12px 22px'));
+ok('...locked: the campaign\'s own saved colour is not used', mail && !mail.html.includes('#332d63'));
+ok('...and Mwakete only small in the footer', mail && (mail.html.match(/Mwakete/g) || []).length === 2 && /Sent by Mwakete for Ana Shop/.test(mail.html));
+ok('the plain-text email opens with the store name', mail && /^Ana Shop\n/.test(mail.body));
 sent.length = 0;
 clearCache();
 box.processMarketingQueue(box.marketingConfig(), Date.now());
@@ -300,6 +312,29 @@ ok('...and is recorded with the reason', r.ok && camp(c5.campaignId).Status === 
 const list = box.actionAdminListCampaigns(ADM, { q: s2.payment.reference, filter: 'all' });
 ok('admins can find a campaign by payment reference', list.ok && list.campaigns.length === 1 && list.campaigns[0].campaignId === c2.campaignId, J(list.campaigns && list.campaigns.map((c) => c.campaignId)));
 ok('sellers cannot list the admin queue', !box.actionAdminListCampaigns(A, {}).ok);
+
+/* ---------- store colour rules ---------- */
+const brandOf = (c) => box.scBrand({ BrandColor: c, BrandColorSetAt: c ? ago(0) : '' });
+ok('no colour yet: Mwakete purple', brandOf('').accent === '#332d63' && brandOf('').source === 'default');
+ok('a colour too pale to show falls back to purple, and says so', brandOf('#fafafa').accent === '#332d63' && brandOf('#fafafa').tooPale
+  && /too pale/.test(box.actionSetStoreBrandColor(owner('own_b'), { color: '#fbfbfb' }).note));
+const gold = brandOf('#fcd116');
+ok('Kiribati gold is used as it is for the bar and buttons, with dark text on it', gold.source === 'store' && gold.fill === '#fcd116' && gold.onFill === '#1a1a1a');
+ok('...and darkened for headings until they read on white (4.5:1)', box.scContrast(gold.accent, '#ffffff') >= 4.5 && gold.accent !== '#fcd116', gold.accent);
+ok('a dark colour gets white text', brandOf('#0b3d91').onFill === '#ffffff');
+ok('a dark colour is used as it is', brandOf('#0b3d91').accent === '#0b3d91');
+ok('only a real colour can be saved', ['red', '#12345', 'url(x)', '#zzzzzz', ''].every((c) => !box.actionSetStoreBrandColor(owner('own_b'), { color: c }).ok));
+ok('the studio sends the store colour and logo', (() => { const st = box.actionGetCampaignStudio(owner('own_a')); return st.brand.accent === anaBrand.accent && st.brand.confirmed && /ana-logo/.test(st.brand.logoUrl); })());
+ok('the preview the admin approves shows the same colours', box.actionAdminGetCampaign(ADM, { campaignId: c1.campaignId }).preview.html.includes('background:' + anaBrand.fill));
+ok('a logo that is not https is never put in an email', box.scBrand({ LogoUrl: 'http://x/logo.png' }).logoUrl === '' && box.scBrand({ LogoUrl: 'javascript:alert(1)' }).logoUrl === '');
+// The logo's own pixels for the colour picker: from Drive, for the signed-in seller only.
+const logoFile = box.DriveApp.createFolder('logos').createFile(box.Utilities.newBlob([1, 2, 3, 4], 'image/png', 'logo'));
+box.ensureColumn(ownersSheet, 'LogoFileId');
+box.updateRowFromObject(ownersSheet, box.findRowById(ownersSheet, 'OwnerId', 'own_b').__row, { LogoUrl: 'https://lh3.googleusercontent.com/d/' + logoFile.getId(), LogoFileId: logoFile.getId() });
+const ld = box.actionGetStoreLogoData(owner('own_b'));
+ok('the colour picker gets the seller\'s own logo as image data', ld.ok && ld.readable && ld.mimeType === 'image/png' && ld.imageBase64 === Buffer.from([1, 2, 3, 4]).toString('base64'));
+ok('...through the signed-in session only', /Not authenticated/.test(post({ action: 'getStoreLogoData', token: 'nope' }).error || '') && post({ action: 'getStoreLogoData', token: 'tok-b' }).imageBase64 === ld.imageBase64);
+ok('a store with no logo is told so', box.actionGetStoreLogoData(ADM).hasLogo === false);
 
 let fails = 0;
 console.log('\n--- seller campaign studio (real backend) ---');

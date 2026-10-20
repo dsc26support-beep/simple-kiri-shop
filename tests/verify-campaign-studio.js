@@ -76,6 +76,7 @@ const png = () => { const b = Buffer.alloc(20000); b.set([0x89, 0x50, 0x4e, 0x47
   await p.waitForSelector('#cs-overview:not([hidden]) .cs-empty', { timeout: 10000 }).catch(() => {});
   ok('a seller with no campaigns sees a clear empty state', /No campaigns yet/.test(await p.textContent('#cs-list').catch(() => '')));
   ok('...with the price per day', /A\$0\.10 per active day/.test(await p.textContent('#cs-overview')));
+  ok('a store without a logo is told to add one for its store colour', /Add your logo in Settings/.test(await p.textContent('#cs-brand')));
   await shot(p, 'empty');
 
   /* ---------- builder ---------- */
@@ -127,8 +128,9 @@ const png = () => { const b = Buffer.alloc(20000); b.set([0x89, 0x50, 0x4e, 0x47
   await p.click('#cs-email .cs-blk.is-sel [data-act="up"]');
   ok('blocks can be reordered with the keyboard-friendly arrows', /Hi Tera/.test(await p.textContent('#cs-email .cs-blk[data-i="0"]')));
   await p.click('#cs-email .cs-blk.is-sel [data-act="down"]');
-  await p.click('[data-swatch="accent"][data-value="#ce1126"]');
-  ok('an accent colour from the palette applies to the email', await p.evaluate(() => getComputedStyle(document.querySelector('#cs-email .cs-ebtn')).backgroundColor) === 'rgb(206, 17, 38)');
+  ok('colours are locked to the store colour (purple until one is picked): no palette to choose from',
+    !(await p.$('[data-swatch]')) && await p.evaluate(() => getComputedStyle(document.querySelector('#cs-email .cs-ebtn')).backgroundColor) === 'rgb(51, 45, 99)'
+    && /Pick it on My Campaigns/.test(await p.textContent('#cs-props')));
   await p.click('[data-device="mobile"]');
   ok('the mobile view narrows the canvas', await p.evaluate(() => document.getElementById('cs-canvas').getBoundingClientRect().width) <= 380);
   await p.click('[data-device="desktop"]');

@@ -28,7 +28,7 @@ const CS_BLOCK_LABEL = { heading: 'Heading', text: 'Text', image: 'Product photo
 const CS_BLOCK_ICON = { heading: 'H', text: 'T', image: '▣', products: '☰', button: '▭', divider: '—', spacer: '↕' };
 
 const cs = {
-  cfg: null, products: [], campaigns: [], storeName: '', storeSlug: '',
+  brand: null, cfg: null, products: [], campaigns: [], storeName: '', storeSlug: '',
   draft: null, step: 0, selected: -1, device: 'desktop', dirty: false, filter: 'all'
 };
 
@@ -49,6 +49,7 @@ async function csInit() {
   cs.campaigns = res.campaigns || [];
   cs.storeName = res.storeName || owner.storeName || '';
   cs.storeSlug = res.storeSlug || '';
+  cs.brand = res.brand || csBrandOf('');
   document.getElementById('cs-rate-line').textContent = csMoney(cs.cfg.dailyRate) + ' per active day';
   if (!cs.cfg.open) {
     const closed = document.getElementById('cs-closed');
@@ -78,6 +79,128 @@ function csMoney(n) {
   return (v < 0 ? '-' : '') + label + Math.abs(v).toFixed(2);
 }
 
+/* ---------- store colour ----------
+ * Every email wears the store's own colour (owner decision, Oct 2026): picked
+ * from the logo here, confirmed once by the seller, saved to the store and
+ * locked for every campaign. The server (scBrand in SellerCampaigns.gs) makes
+ * the same readable variants this mirrors for the live canvas, and the server
+ * is what the emails use. */
+const CS_BRAND_DEFAULT = '#332d63';
+
+function csLum(hex) {
+  const c = [1, 3, 5].map((i) => parseInt(hex.substr(i, 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function csContrast(a, b) { const x = csLum(a), y = csLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function csHex(rgb) { return '#' + rgb.map((v) => ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2)).join(''); }
+function csRgb(hex) { return [1, 3, 5].map((i) => parseInt(hex.substr(i, 2), 16)); }
+
+function csBrandOf(color) {
+  const raw = /^#[0-9a-f]{6}$/i.test(color || '') ? color.toLowerCase() : '';
+  const usable = !!raw && csContrast(raw, '#ffffff') >= 1.3;
+  const base = usable ? raw : CS_BRAND_DEFAULT;
+  let rgb = csRgb(base), accent = base, guard = 0;
+  while (csContrast(accent, '#ffffff') < 4.5 && guard++ < 60) { rgb = rgb.map((v) => v * 0.92); accent = csHex(rgb); }
+  return { color: raw, fill: base, onFill: csContrast(base, '#ffffff') >= csContrast(base, '#1a1a1a') ? '#ffffff' : '#1a1a1a', accent, tint: csHex(csRgb(base).map((v) => v + (255 - v) * 0.93)), source: usable ? 'store' : 'default', tooPale: !!raw && !usable };
+}
+
+/** The main colours of a logo, most prominent first; near-white and transparent pixels ignored. */
+function csLogoColours(img) {
+  const size = 64;
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const g = c.getContext('2d');
+  // No smoothing: blended edge pixels would show up as colours the logo does not have.
+  g.imageSmoothingEnabled = false;
+  g.drawImage(img, 0, 0, size, size);
+  const px = g.getImageData(0, 0, size, size).data;
+  const bins = {};
+  let counted = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] < 128) continue;
+    const r = px[i], gr = px[i + 1], b = px[i + 2];
+    if (r > 235 && gr > 235 && b > 235) continue;
+    const key = (r >> 4) + ',' + (gr >> 4) + ',' + (b >> 4);
+    const bin = bins[key] || (bins[key] = { n: 0, r: 0, g: 0, b: 0 });
+    bin.n++; bin.r += r; bin.g += gr; bin.b += b;
+    counted++;
+  }
+  // A real logo colour covers a fair share of it; tiny specks are anti-aliasing.
+  const found = Object.keys(bins).filter((k) => bins[k].n >= counted * 0.03).map((k) => {
+    const x = bins[k];
+    const rgb = [x.r / x.n, x.g / x.n, x.b / x.n];
+    const sat = (Math.max(...rgb) - Math.min(...rgb)) / 255;
+    return { hex: csHex(rgb), rgb, score: x.n * (0.35 + sat) };
+  }).sort((a, b) => b.score - a.score);
+  const out = [];
+  found.forEach((f) => {
+    if (out.length < 6 && !out.some((o) => Math.hypot(o.rgb[0] - f.rgb[0], o.rgb[1] - f.rgb[1], o.rgb[2] - f.rgb[2]) < 48)) out.push(f);
+  });
+  return out.map((o) => o.hex);
+}
+
+function csLoadImage(src) {
+  return new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = src; });
+}
+
+function renderBrandCard(colours, note) {
+  const box = document.getElementById('cs-brand');
+  if (!box) return;
+  const b = cs.brand;
+  const logo = b.logoUrl ? `<img class="cs-brand-logo" src="${escapeAttr(b.logoUrl)}" alt="Your logo">` : '<span class="cs-brand-logo is-empty" aria-hidden="true"></span>';
+  const bar = (x) => `<div class="cs-brand-bar" style="background:${escapeAttr(x.fill || x.accent)};color:${escapeAttr(x.onFill || '#ffffff')}">${b.logoUrl ? `<img src="${escapeAttr(b.logoUrl)}" alt="">` : ''}<span>${escapeHtml(cs.storeName)}</span></div>`;
+  if (!colours) {
+    box.innerHTML = `${logo}<div class="cs-brand-main">
+      <h2>Your store colour</h2>
+      ${b.confirmed && b.source === 'store'
+        ? `<p class="helper-text">Every campaign email uses your store colour, so customers know it is from you.</p>${bar(b)}`
+        : b.logoUrl ? `<p class="helper-text">Pick your store colour from your logo. Until you do, your emails use Mwakete purple.</p>${bar(b)}`
+          : `<p class="helper-text">Add your logo in <a href="settings.html">Settings</a> to use your store colour. Until then your emails use Mwakete purple.</p>${bar(b)}`}
+      ${b.logoUrl ? `<button type="button" class="btn btn-small btn-light-purple" id="cs-brand-pick">${b.confirmed ? 'Change colour' : 'Pick from my logo'}</button>` : ''}
+      ${note ? `<p class="helper-text" role="status">${escapeHtml(note)}</p>` : ''}</div>`;
+    const btn = document.getElementById('cs-brand-pick');
+    if (btn) btn.addEventListener('click', openBrandPicker);
+    return;
+  }
+  const current = cs.pickColour;
+  const preview = Object.assign({}, b, csBrandOf(current));
+  box.innerHTML = `${logo}<div class="cs-brand-main">
+    <h2>Your store colour</h2>
+    <p class="helper-text">${colours.length ? 'These colours are in your logo. Tap the one that is your store colour.' : 'We could not read colours from your logo. Choose your store colour here.'}</p>
+    ${colours.length ? `<div class="cs-swatches" role="radiogroup" aria-label="Colours from your logo">${colours.map((c) =>
+      `<button type="button" class="cs-swatch${c === current ? ' is-on' : ''}" role="radio" aria-checked="${c === current}" data-brand="${escapeAttr(c)}" style="background:${escapeAttr(c)}"><span class="sr-only">${escapeHtml(c)}</span></button>`).join('')}</div>`
+      : `<div class="field"><label for="cs-brand-input">Store colour</label><input type="color" id="cs-brand-input" value="${escapeAttr(current)}"></div>`}
+    ${bar(preview)}
+    ${preview.tooPale ? '<p class="form-error">This colour is too pale to show in an email, so Mwakete purple would be used. Pick a stronger one.</p>' : ''}
+    <div class="cs-brand-actions"><button type="button" class="btn btn-small btn-primary" id="cs-brand-save">Use this colour</button>
+      <button type="button" class="btn btn-small" id="cs-brand-cancel">Cancel</button></div>
+    ${note ? `<p class="form-error" role="alert">${escapeHtml(note)}</p>` : ''}</div>`;
+  box.querySelectorAll('[data-brand]').forEach((s) => s.addEventListener('click', () => { cs.pickColour = s.dataset.brand; renderBrandCard(colours); }));
+  const input = document.getElementById('cs-brand-input');
+  if (input) input.addEventListener('input', () => { cs.pickColour = input.value; renderBrandCard(colours); document.getElementById('cs-brand-input').focus(); });
+  document.getElementById('cs-brand-cancel').addEventListener('click', () => renderBrandCard());
+  document.getElementById('cs-brand-save').addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    const res = await Api.post('setStoreBrandColor', { token: Auth.getToken(), color: cs.pickColour });
+    if (!res.ok) { renderBrandCard(colours, res.error || 'Not saved. Please try again.'); return; }
+    cs.brand = res.brand;
+    renderBrandCard(null, res.note || 'Saved. All your campaign emails now use this colour.');
+  });
+}
+
+async function openBrandPicker() {
+  const btn = document.getElementById('cs-brand-pick');
+  if (btn) { btn.disabled = true; btn.textContent = 'Reading your logo…'; }
+  let colours = [];
+  const res = await Api.post('getStoreLogoData', { token: Auth.getToken() });
+  if (res.ok && res.readable) {
+    try { colours = csLogoColours(await csLoadImage('data:' + res.mimeType + ';base64,' + res.imageBase64)); } catch (e) { colours = []; }
+  }
+  const usable = colours.filter((c) => csContrast(c, '#ffffff') >= 1.3);
+  cs.pickColour = (cs.brand.confirmed && cs.brand.color) || usable[0] || colours[0] || CS_BRAND_DEFAULT;
+  renderBrandCard(colours);
+}
+
 function csGoal(id) { return (cs.cfg.goals || []).find((g) => g.id === id) || null; }
 function csProduct(id) { return cs.products.find((p) => p.productId === id) || null; }
 
@@ -85,6 +208,9 @@ function csProduct(id) { return cs.products.find((p) => p.productId === id) || n
 
 function openOverview() {
   showView('cs-overview');
+  renderBrandCard();
+  // First visit with a logo and no colour yet: suggest one straight away.
+  if (cs.brand.logoUrl && !cs.brand.confirmed) openBrandPicker();
   document.querySelectorAll('.cs-filters .cs-chip').forEach((b) => {
     b.addEventListener('click', () => {
       cs.filter = b.dataset.filter;
@@ -518,8 +644,11 @@ function renderCanvas(opts) {
   const email = document.getElementById('cs-email');
   const pad = { compact: 12, normal: 20, roomy: 28 }[st.padding] || 20;
   const chosen = d.productIds.map(csProduct).filter(Boolean);
-  email.style.setProperty('--cs-bg', st.background);
-  email.style.setProperty('--cs-accent', st.accent);
+  // Locked to the store colour (as the server sends it), whatever the campaign's saved style says.
+  email.style.setProperty('--cs-bg', cs.brand.tint);
+  email.style.setProperty('--cs-accent', cs.brand.accent);
+  email.style.setProperty('--cs-fill', cs.brand.fill || cs.brand.accent);
+  email.style.setProperty('--cs-on-fill', cs.brand.onFill || '#ffffff');
   email.style.setProperty('--cs-pad', pad + 'px');
   const productLine = (p) => `<div class="cs-prow">${p.imageUrl ? `<img src="${escapeAttr(p.imageUrl)}" alt="">` : '<span class="cs-noimg"></span>'}<span>${escapeHtml(p.name)}</span></div>`;
   const body = d.blocks.map((b, i) => {
@@ -549,7 +678,7 @@ function renderCanvas(opts) {
         <button type="button" data-act="del" aria-label="Delete block" class="is-del">✕</button></span>` : ''}
     </div>`;
   }).join('');
-  email.innerHTML = `<div class="cs-ehead">Mwakete</div><div class="cs-ebody">${body || '<div class="cs-placeholder">Add blocks from the left, or pick a template.</div>'}</div>
+  email.innerHTML = `<div class="cs-ehead">${cs.brand.logoUrl ? `<img src="${escapeAttr(cs.brand.logoUrl)}" alt="">` : ''}<span>${escapeHtml(cs.storeName)}</span></div><div class="cs-ebody">${body || '<div class="cs-placeholder">Add blocks from the left, or pick a template.</div>'}</div>
     <div class="cs-efoot">Sent by Mwakete for ${escapeHtml(cs.storeName)}, because you asked for news from Mwakete. Stop these emails</div>`;
   email.querySelectorAll('.cs-blk').forEach((el) => {
     const i = Number(el.dataset.i);
@@ -585,11 +714,6 @@ function blockAction(i, act) {
   if (cs.selected >= 0) focusBlock(cs.selected);
 }
 
-function swatches(name, list, current) {
-  return `<div class="cs-swatches" role="radiogroup" aria-label="${escapeAttr(name)}">${list.map((c) =>
-    `<button type="button" class="cs-swatch${c === current ? ' is-on' : ''}" role="radio" aria-checked="${c === current}" data-swatch="${escapeAttr(name)}" data-value="${escapeAttr(c)}" style="background:${escapeAttr(c)}"><span class="sr-only">${escapeHtml(c)}</span></button>`).join('')}</div>`;
-}
-
 function renderProps() {
   const box = document.getElementById('cs-props');
   const b = cs.draft.blocks[cs.selected];
@@ -620,8 +744,10 @@ function renderProps() {
   } else {
     html += '<p class="helper-text">Select a block in the email to edit it.</p>';
   }
-  html += `<h4>Email style</h4><p class="cs-props-label">Background colour</p>${swatches('background', cs.cfg.palette.background, st.background)}
-    <p class="cs-props-label">Accent colour (headings and button)</p>${swatches('accent', cs.cfg.palette.accent, st.accent)}
+  html += `<h4>Email style</h4><p class="cs-props-label">Colours</p>
+    <p class="cs-brand-lock"><span class="cs-swatch is-on" style="background:${escapeAttr(cs.brand.fill || cs.brand.accent)}" aria-hidden="true"></span>
+      ${cs.brand.source === 'store' ? 'Your store colour, so customers know it is you.' : 'Mwakete purple until you pick your store colour.'}
+      <a href="campaigns.html">${cs.brand.source === 'store' ? 'Change it on My Campaigns' : 'Pick it on My Campaigns'}</a></p>
     ${sel('cs-p-pad', 'Padding', cs.cfg.paddings.map((p) => [p, p.charAt(0).toUpperCase() + p.slice(1)]), st.padding)}`;
   box.innerHTML = html;
 
@@ -644,11 +770,6 @@ function renderProps() {
     renderCanvasKeepProps();
     changed();
     ta.focus();
-  }));
-  box.querySelectorAll('[data-swatch]').forEach((s) => s.addEventListener('click', () => {
-    st[s.dataset.swatch] = s.dataset.value;
-    renderCanvas();
-    changed();
   }));
 }
 

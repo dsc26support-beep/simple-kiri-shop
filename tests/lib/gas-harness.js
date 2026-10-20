@@ -7,7 +7,7 @@
 const fs = require('fs');
 const vm = require('vm');
 const crypto = require('crypto');
-const DIR = '/home/user/simple-kiri-shop/apps-script';
+const DIR = require('path').resolve(__dirname, '../../apps-script');
 
 class FakeSheet {
   constructor(name, rows) { this.name = name; this.grid = rows ? rows.map((r) => r.slice()) : []; }
