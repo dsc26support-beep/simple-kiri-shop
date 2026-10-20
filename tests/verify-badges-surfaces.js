@@ -306,7 +306,8 @@ const snap = (page) => page.evaluate(() => ({
   const helpers = fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8');
   ok('card badges: read-only, uncapped, fitted to the space by fitCardBadges',
     /renderSellerBadges\(others, \{ size: 'chip', interactive: false \}\)/.test(helpers) && /function fitCardBadges/.test(helpers)
-      && /renderSellerBadges\(\['verified'\], \{ size: 'chip', interactive: false \}\)/.test(helpers));
+      && /renderSellerBadges\(\[id\], \{ size: 'chip', interactive: false \}\)/.test(helpers)
+      && /cardIsVerified\(product\) \? 'verified' : \(cardIsUnchecked\(product\) \? 'unchecked'/.test(helpers));
   ok('and guarded, so a page without badges.js renders the card it always did',
     /typeof renderSellerBadges !== 'function'\) return ''/.test(helpers));
 

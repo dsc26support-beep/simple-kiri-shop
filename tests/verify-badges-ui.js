@@ -34,7 +34,11 @@ const ok = (name, cond, detail) => {
   else { fail++; console.log('FAIL  ' + name + (detail ? '  [' + detail + ']' : '')); }
 };
 
-const ALL = ['recommended', 'top', 'verified', 'responsive', 'delivery', 'favourite', 'popular', 'new'];
+// 'unchecked' (Oct 2026): "Not yet checked" - every store Mwakete has not phoned, emailed and visited.
+const ALL = ['recommended', 'top', 'verified', 'responsive', 'delivery', 'favourite', 'popular', 'new', 'unchecked'];
+// A real store never has "Not yet checked" next to Verified or New, so the
+// checks that show a whole row of badges use every badge but that one.
+const TOGETHER = ALL.filter((id) => id !== 'unchecked');
 
 async function open(browser, width) {
   const ctx = await browser.newContext({ viewport: { width: width || 390, height: 844 } });
@@ -95,7 +99,7 @@ const box = (page, sel) => page.evaluate((s) => {
                  tier: b.tier, category: b.category, hasIcon: !!b.icon };
       })
     }));
-    ok('the priority order is the eight badges, highest first',
+    ok('the priority order is the nine badges, highest first',
       meta.order.join(',') === ALL.join(','), meta.order.join(','));
     ok('every ordered id has metadata and vice versa',
       meta.keys.slice().sort().join(',') === ALL.slice().sort().join(','), meta.keys.join(','));
@@ -114,12 +118,13 @@ const box = (page, sel) => page.evaluate((s) => {
     const shown = {
       recommended: 'Recommended', top: 'Top', verified: 'Verified',
       responsive: 'Responsive', delivery: 'Delivery', favourite: 'Favourite',
-      popular: 'Popular', new: 'New'
+      popular: 'Popular', new: 'New', unchecked: 'Not yet checked'
     };
     const heard = {
       recommended: 'Mwakete Recommended', top: 'Top Seller', verified: 'Verified Seller',
       responsive: 'Responsive Seller', delivery: 'Reliable Delivery',
-      favourite: 'Customer Favourite', popular: 'Popular Seller', new: 'New Seller'
+      favourite: 'Customer Favourite', popular: 'Popular Seller', new: 'New Store, checked by Mwakete',
+      unchecked: 'Store not yet checked by Mwakete'
     };
     Object.keys(shown).forEach((id) => {
       const e = meta.entries.filter((x) => x.id === id)[0];
@@ -135,15 +140,17 @@ const box = (page, sel) => page.evaluate((s) => {
       delivery: 'Strong record of successful fulfilment.',
       favourite: 'Popular with returning and satisfied customers.',
       popular: 'Currently receiving strong customer interest.',
-      new: 'Recently joined Mwakete.'
+      new: 'Checked by Mwakete: phoned, emailed and visited. Becomes Verified once customers rate it well.',
+      unchecked: 'Mwakete has not yet phoned, emailed and visited this store. Take extra care before paying.'
     };
     const byId = {};
     meta.entries.forEach((e) => { byId[e.id] = e; });
     Object.keys(want).forEach((id) => {
       ok(id + ': the explanation is the agreed wording', byId[id].explain === want[id], byId[id].explain);
     });
-    ok('every visible label is a single word, so a card chip never wraps',
-      meta.entries.every((e) => e.label.indexOf(' ') === -1),
+    // "Not yet checked" is the exception: it sits on a row of its own on cards.
+    ok('every visible label is a single word, so a card chip never wraps (bar "Not yet checked", on its own row)',
+      meta.entries.every((e) => e.id === 'unchecked' || e.label.indexOf(' ') === -1),
       meta.entries.map((e) => e.label).join(' | '));
     await ctx.close();
   }
@@ -174,7 +181,7 @@ const box = (page, sel) => page.evaluate((s) => {
   // ---- every badge keeps its text at both sizes ---------------------------
   for (const size of ['chip', 'detail']) {
     const { ctx, page } = await open(browser, 1280);
-    await render(page, ALL, { size: size, interactive: false });
+    await render(page, TOGETHER, { size: size, interactive: false });
     const texts = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.seller-badge-label')).map((e) => e.textContent.trim()));
     // Only Verified shows a word (owner decision); every other badge is
@@ -191,7 +198,7 @@ const box = (page, sel) => page.evaluate((s) => {
     // The word is gone from the screen, NOT from the accessible name. Someone
     // listening to a list of products hears exactly what they heard before.
     ok(size + ': icon-only badges are still announced by full name',
-      await page.evaluate(() => [['new', 'New Seller'], ['top', 'Top Seller'], ['recommended', 'Mwakete Recommended']].every(([id, name]) => {
+      await page.evaluate(() => [['new', 'New Store, checked by Mwakete'], ['top', 'Top Seller'], ['recommended', 'Mwakete Recommended']].every(([id, name]) => {
         const el = document.querySelector('.seller-badge--' + id);
         const sr = el && el.querySelector('.sr-only');
         return !!sr && sr.textContent.trim() === name;
@@ -237,7 +244,7 @@ const box = (page, sel) => page.evaluate((s) => {
       [null, 'Mwakete Recommended'], [null, 'Top Seller'],
       ['Verified', 'Verified Seller'], [null, 'Responsive Seller'],
       [null, 'Reliable Delivery'], [null, 'Customer Favourite'],
-      [null, 'Popular Seller'], [null, 'New Seller']
+      [null, 'Popular Seller'], [null, 'New Store, checked by Mwakete'], ['Not yet checked', 'Store not yet checked by Mwakete']
     ];
     want.forEach(([reads, hears], i) => {
       const label = reads === null ? 'nothing (icon only)' : '"' + reads + '"';
@@ -263,10 +270,10 @@ const box = (page, sel) => page.evaluate((s) => {
       if (n.role === 'button' && n.name) names.push(n.name);
       (n.children || []).forEach(walk);
     })(snap);
-    const badgeNames = names.filter((n) => /Seller|Recommended|Delivery|Favourite/.test(n));
+    const badgeNames = names.filter((n) => /Seller|Recommended|Delivery|Favourite|Mwakete/.test(n));
     ok('every tappable badge has the FULL name as its accessible name',
       badgeNames.join(' | ') === 'Mwakete Recommended | Top Seller | Verified Seller | '
-        + 'Responsive Seller | Reliable Delivery | Customer Favourite | Popular Seller | New Seller',
+        + 'Responsive Seller | Reliable Delivery | Customer Favourite | Popular Seller | New Store, checked by Mwakete | Store not yet checked by Mwakete',
       badgeNames.join(' | '));
     await ctx.close();
   }
@@ -336,7 +343,7 @@ const box = (page, sel) => page.evaluate((s) => {
   // ---- overflow -----------------------------------------------------------
   {
     const { ctx, page } = await open(browser);
-    await render(page, ALL, { size: 'chip', max: 2, interactive: false });
+    await render(page, TOGETHER, { size: 'chip', max: 2, interactive: false });
     const r = await page.evaluate(() => ({
       shown: Array.from(document.querySelectorAll('.seller-badge:not(.seller-badge--more) .sr-only'))
         .map((e) => e.textContent.trim()),
@@ -350,7 +357,7 @@ const box = (page, sel) => page.evaluate((s) => {
     ok('and a screen reader hears what is behind it, not just "+6"',
       /6 more seller badges: Verified Seller, Responsive Seller/.test(r.moreAria || ''), r.moreAria);
     ok('the counter names the FULL versions, which is what someone listening needs',
-      /Reliable Delivery, Customer Favourite, Popular Seller, New Seller/.test(r.moreAria || ''),
+      /Reliable Delivery, Customer Favourite, Popular Seller, New Store, checked by Mwakete/.test(r.moreAria || ''),
       r.moreAria);
     await ctx.close();
   }
@@ -503,10 +510,10 @@ const box = (page, sel) => page.evaluate((s) => {
       names: Array.from(document.querySelectorAll('.badge-legend dt .seller-badge-label')).map((e) => e.textContent.trim()),
       overflow: document.documentElement.scrollWidth <= window.innerWidth + 1
     }));
-    ok('the legend explains all eight', r.terms === 8 && r.defs.length === 8, String(r.terms));
+    ok('the legend explains all nine', r.terms === 9 && r.defs.length === 9, String(r.terms));
     ok('and names every badge in full, New included', r.names.join(',') ===
-      'Mwakete Recommended,Top Seller,Verified Seller,Responsive Seller,Reliable Delivery,Customer Favourite,Popular Seller,New Seller', r.names.join(','));
-    ok('each with its own sentence', r.defs.every((d) => d.length > 20) && new Set(r.defs).size === 8);
+      'Mwakete Recommended,Top Seller,Verified Seller,Responsive Seller,Reliable Delivery,Customer Favourite,Popular Seller,New Store, checked by Mwakete,Store not yet checked by Mwakete', r.names.join(','));
+    ok('each with its own sentence', r.defs.every((d) => d.length > 20) && new Set(r.defs).size === 9);
     ok('Delivery: truck, ship, air cargo, Pick & Pay and the green icon, each with its icon and a short line',
       r.delivery.join(' | ') === "Truck: Delivered by truck on the store's island. | Ship: Sent by ship to other islands. | Air cargo: Sent by plane to other islands. | Pick & Pay: Collect from the store and pay there. Always free. | Green icon: That delivery is free."
       && r.deliveryIcons === 5, r.delivery.join(' | '));

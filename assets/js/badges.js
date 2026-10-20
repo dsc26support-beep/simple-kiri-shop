@@ -110,7 +110,7 @@ const SELLER_BADGES = {
   verified: {
     label: 'Verified',
     srLabel: 'Verified Seller',
-    explain: 'Checked by Mwakete and rated well by customers, or verified by Mwakete itself.',
+    explain: 'Store verified by Mwakete.',
     tier: 'shield', category: 'trust', icon: BADGE_ICON_SHIELD
   },
   responsive: {
