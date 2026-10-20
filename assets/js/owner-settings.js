@@ -202,6 +202,10 @@ function fillForm(owner) {
   // which is what the customer-facing button falls back to.
   document.getElementById('contact-whatsapp').value = owner.whatsapp || '';
 
+  const accepted = owner.paymentMethods || [];
+  document.querySelectorAll('input[name="paymentMethod"]').forEach((box) => { box.checked = accepted.indexOf(box.value) !== -1; });
+  document.getElementById('payment-other').value = owner.paymentOther || '';
+
   DELIVERY_BUTTONS.forEach(({ id, costId, method }) => {
     const key = 'delivery' + method[0].toUpperCase() + method.slice(1);
     const pressed = !!owner[key];
@@ -448,7 +452,9 @@ async function onSaveSettings(e) {
     messenger: messengerStoredValue(document.getElementById('contact-messenger').value),
     whatsapp: document.getElementById('contact-whatsapp').value.trim(),
     island: document.getElementById('settings-island').value,
-    village: village
+    village: village,
+    paymentMethods: Array.from(document.querySelectorAll('input[name="paymentMethod"]:checked')).map((box) => box.value),
+    paymentOther: document.getElementById('payment-other').value.trim()
   };
 
   DELIVERY_BUTTONS.forEach(({ id, costId, modeName, method }) => {

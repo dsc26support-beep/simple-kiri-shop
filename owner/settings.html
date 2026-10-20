@@ -148,6 +148,21 @@
           </div>
         </div>
 
+        <h2 id="payment-options-heading">Payment options</h2>
+        <p class="helper-text">Tick how buyers can pay you. Your store page shows them as <strong>We accept …</strong> - only the names, never your account numbers. Give those to a buyer in the order room or a message.</p>
+        <fieldset class="payment-options" aria-labelledby="payment-options-heading">
+          <legend class="sr-only">Payment options</legend>
+          <label class="payment-option"><input type="checkbox" name="paymentMethod" value="ib"> <span>IB <small>(internet banking)</small></span></label>
+          <label class="payment-option"><input type="checkbox" name="paymentMethod" value="mpaisa"> <span>MPaisa</span></label>
+          <label class="payment-option"><input type="checkbox" name="paymentMethod" value="teremo"> <span>Teremo</span></label>
+          <label class="payment-option"><input type="checkbox" name="paymentMethod" value="cash"> <span>Cash</span></label>
+        </fieldset>
+        <div class="field">
+          <label for="payment-other">Another way to pay <span class="helper-text">(optional)</span></label>
+          <input id="payment-other" type="text" maxlength="30" autocomplete="off" placeholder="e.g. BKL transfer">
+          <p class="helper-text">Just the name, up to 30 characters.</p>
+        </div>
+
         <h2>Location</h2>
         <div class="field">
           <label for="settings-island">Island</label>

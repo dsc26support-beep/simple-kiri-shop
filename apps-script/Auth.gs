@@ -118,6 +118,8 @@ function publicOwnerFields(owner) {
     deliveryTruckCost: owner.DeliveryTruckCost === '' || owner.DeliveryTruckCost == null ? null : Number(owner.DeliveryTruckCost),
     deliveryShipCost: owner.DeliveryShipCost === '' || owner.DeliveryShipCost == null ? null : Number(owner.DeliveryShipCost),
     deliveryAirCargoCost: owner.DeliveryAirCargoCost === '' || owner.DeliveryAirCargoCost == null ? null : Number(owner.DeliveryAirCargoCost),
+    paymentMethods: paymentOptionsOf(owner).ids,
+    paymentOther: paymentOptionsOf(owner).other,
     twoFAEnabled: String(owner.TwoFAEnabled) === 'true',
     // An email change that was asked for but never confirmed. Sent so Settings
     // can say so after a reload - otherwise a seller who closed the page has no
@@ -172,6 +174,7 @@ function publicStoreFields(owner) {
   // does, including the blank-cost-means-negotiated contract: '' and null both
   // become null, while 0 stays 0 (free).
   Object.assign(store, deliveryFlagsOf(owner));
+  store.paymentOptions = paymentOptionsOf(owner).labels;
   return store;
 }
 

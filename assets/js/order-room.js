@@ -208,6 +208,7 @@ const OrderRoom = (function () {
 
   /** Mwakete driver panel (Deliveries.gs): status, driver, last shared location. */
   function deliveryHtml(d) {
+    if (d && !d.status && d.why) return `<p class="helper-text tx-delivery-note">${esc(d.why)}</p>`;
     if (!d || !d.status) return '';
     const loc = d.location ? `<a href="${esc(d.location.link)}" target="_blank" rel="noopener">See the driver on the map</a>
       <span class="helper-text">(shared ${esc(when(d.location.at))}${d.location.accuracy ? ', within about ' + esc(d.location.accuracy) + ' m' : ''})</span>` : '';
@@ -655,7 +656,7 @@ const OrderRoom = (function () {
     adminComplete: () => field('f-reason', 'Why complete without the buyer’s confirmation?', area('f-reason', 'maxlength="500"')),
     adminNote: () => field('f-text', 'Note (only admins see it)', area('f-text', 'maxlength="1500"')),
     requestDriver: () => `
-      <p class="helper-text">An approved independent driver in ${esc((room.delivery && room.delivery.areas || []).join(', '))} collects from you and delivers. You pay the driver this fee directly - Mwakete does not handle the money. The driver sees the buyer's name, phone and village once they accept.</p>
+      <p class="helper-text">An approved independent driver on ${esc((room.delivery && room.delivery.island) || 'your island')} collects from you and delivers. Drivers only deliver within one island. You pay the driver this fee directly - Mwakete does not handle the money. The driver sees the buyer's name, phone and village once they accept.</p>
       ${field('f-fee', 'Fee you will pay the driver ($)', '<input id="f-fee" type="number" min="0" max="500" step="0.5" inputmode="decimal">')}
       ${field('f-pickup', 'Where the driver collects the goods', area('f-pickup', 'maxlength="300"'))}
       ${field('f-notes', 'Notes for the driver (optional)', area('f-notes', 'maxlength="300"'), 'For example: fragile, call on arrival.')}`,

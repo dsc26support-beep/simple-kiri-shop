@@ -85,7 +85,7 @@ const DriverPage = (() => {
     $('drv-online').setAttribute('aria-checked', on ? 'true' : 'false');
     $('drv-online').classList.toggle('is-open', on);
     $('drv-online-label').textContent = on ? 'Online' : 'Offline';
-    $('drv-online-hint').textContent = on ? 'You can see and accept new jobs.' : 'Go online to see new jobs in your area.';
+    $('drv-online-hint').textContent = on ? 'You can see and accept new jobs.' : 'Go online to see new jobs on your island.';
   }
 
   function renderMine(list) {

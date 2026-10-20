@@ -9,7 +9,7 @@ const DeliveriesAdmin = (() => {
     const res = await Api.post('adminListDeliveries', { token: Auth.getToken(), status: $('dlv-filter').value });
     if (!res.ok || !res.counts) { $('dlv-status').textContent = (res && res.error) || 'Could not load deliveries.'; return; }
     $('dlv-status').textContent = '';
-    $('dlv-mode').textContent = res.enabled ? `Mwakete drivers are ON for: ${res.areas.join(', ')}.` : 'Mwakete drivers are OFF (Script Property DELIVERY_JOBS). Nothing here is visible to sellers or drivers yet.';
+    $('dlv-mode').textContent = res.enabled ? (res.allIslands ? 'Mwakete drivers are ON on every island. A job is only for a store and buyer on the same island, and only drivers there see it.' : `Mwakete drivers are ON for: ${res.areas.join(', ')} (within one island only).`) : 'Mwakete drivers are OFF (Script Property DELIVERY_JOBS). Nothing here is visible to sellers or drivers yet.';
     const c = res.counts;
     const card = (label, v, sub) => `<div class="kpi-card"><span class="kpi-label">${escapeHtml(label)}</span><strong class="kpi-value">${v}</strong>${sub ? `<span class="kpi-sub${/stuck|fail/i.test(sub) && v ? ' is-warning' : ''}">${escapeHtml(sub)}</span>` : ''}</div>`;
     $('dlv-counts').innerHTML = card('Waiting for a driver', c.open, '') + card('On the way', c.active, '') +

@@ -20,8 +20,13 @@
  *    the buyer and admins see it as a free OpenStreetMap link.
  *
  * ROLLOUT: Script Property DELIVERY_JOBS = 'on' (default off), and order
- * rooms must be on for the store (Transactions.gs). DELIVERY_AREAS lists the
- * islands covered (default 'South Tarawa').
+ * rooms must be on for the store (Transactions.gs).
+ *
+ * ISLANDS (owner decision, Oct 2026): drivers work on EVERY island, but a
+ * delivery never leaves one: a job exists only when the store and the buyer
+ * are on the same island, and only drivers on that island see or take it.
+ * DELIVERY_AREAS can still narrow the islands (comma list); unset or 'all'
+ * means every island.
  *
  * TABS (created on first use, additive):
  *   Drivers       DriverId | CustomerId | Name | Phone | Email | Vehicle | Area | Status
@@ -57,14 +62,37 @@ function deliveriesEnabled() {
   return String(PropertiesService.getScriptProperties().getProperty('DELIVERY_JOBS') || 'off').trim().toLowerCase() === 'on';
 }
 
+// The same island names as assets/js/kiribati-locations.js (stores, buyers and drivers all pick from it).
+var KIRIBATI_ISLAND_NAMES = ['South Tarawa', 'North Tarawa', 'Makin', 'Butaritari', 'Marakei', 'Abaiang', 'Maiana', 'Kuria', 'Aranuka',
+  'Abemama', 'Nonouti', 'Tabiteuea North', 'Tabiteuea South', 'Beru', 'Nikunau', 'Onotoa', 'Tamana', 'Arorae', 'Banaba',
+  'Kiritimati', 'Tabuaeran', 'Teraina', 'Kanton'];
+
+function deliveryAllIslands() {
+  var raw = String(PropertiesService.getScriptProperties().getProperty('DELIVERY_AREAS') || '').trim();
+  return !raw || raw.toLowerCase() === 'all';
+}
+
 function deliveryAreas() {
-  return String(PropertiesService.getScriptProperties().getProperty('DELIVERY_AREAS') || 'South Tarawa')
+  if (deliveryAllIslands()) return KIRIBATI_ISLAND_NAMES.slice();
+  return String(PropertiesService.getScriptProperties().getProperty('DELIVERY_AREAS'))
     .split(',').map(function (s) { return s.trim(); }).filter(Boolean);
 }
 
-function deliveryCovers(order) {
-  return deliveryAreas().map(function (a) { return a.toLowerCase(); }).indexOf(String(order.Island || '').trim().toLowerCase()) !== -1;
+function islandKey(v) { return String(v || '').trim().toLowerCase(); }
+
+/** Why a driver cannot take this order, or '' when one can: same island for store and buyer, and an island drivers cover. */
+function deliveryCoverageError(order, store) {
+  var island = islandKey(order.Island);
+  if (!island) return 'The buyer has no island on this order.';
+  store = store || findRowById(getSheet('Owners'), 'OwnerId', order.OwnerId);
+  if (!store || islandKey(store.Island) !== island) {
+    return 'Mwakete drivers deliver within one island only. This store is on ' + ((store && store.Island) || 'an unknown island') + ' and the buyer is on ' + order.Island + '.';
+  }
+  if (deliveryAreas().map(islandKey).indexOf(island) === -1) return 'Mwakete drivers do not cover ' + order.Island + ' yet.';
+  return '';
 }
+
+function deliveryCovers(order, store) { return !deliveryCoverageError(order, store); }
 
 /** Delivery jobs for one order, oldest first. */
 function deliveryJobsFor(orderId) {
@@ -107,7 +135,7 @@ function actionDriverApply(body) {
   var vehicle = String(body.vehicle || '');
   if (!DRIVER_VEHICLES[vehicle]) return fail('Choose your vehicle.');
   var area = String(body.area || '');
-  if (deliveryAreas().indexOf(area) === -1) return fail('Choose the area you will drive in.');
+  if (deliveryAreas().indexOf(area) === -1) return fail('Choose the island you will drive on.');
   if (body.agree !== true) return fail('Please agree to the driver rules.');
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -144,7 +172,7 @@ function actionGetDriverHome(body) {
   var storeName = makeStoreNameResolver();
   deliveryRows('DeliveryJobs').forEach(function (j) {
     var o = orders[j.OrderId] || {};
-    if (j.Status === 'open' && d.Available === 'yes' && String(o.Island || '') === d.Area) {
+    if (j.Status === 'open' && d.Available === 'yes' && islandKey(o.Island) === islandKey(d.Area)) {
       // Before accepting: where from and where to, by area only - no buyer details.
       out.open.push({ jobId: j.JobId, storeName: storeName(j.StoreSlug), dropoffArea: o.Village ? o.Village + ', ' + o.Island : o.Island,
         fee: deliveryMoney(j.Fee), items: txOrderItems(o).reduce(function (n, l) { return n + (Number(l.qty) || 0); }, 0), postedAt: j.CreatedAt, version: Number(j.Version) || 1 });
@@ -243,7 +271,7 @@ function actionDriverAcceptJob(body) {
   return runDriverWrite(body, 'accept', function (ctx) {
     if (ctx.driver.Available !== 'yes') return fail('Go online first.');
     if (ctx.job.Status !== 'open') return fail('Another driver has already taken this job.');
-    if (String(ctx.order.Island || '') !== ctx.driver.Area) return fail('This job is outside your area.');
+    if (islandKey(ctx.order.Island) !== islandKey(ctx.driver.Area)) return fail('This job is on another island.');
     var mine = deliveryRows('DeliveryJobs').filter(function (j) { return j.DriverId === ctx.driver.DriverId && ['accepted', 'picked_up'].indexOf(String(j.Status)) !== -1; });
     if (mine.length >= DRIVER_MAX_ACTIVE_JOBS) return fail('Finish one of your ' + mine.length + ' jobs before taking another.');
     saveJob(ctx.job, { Status: 'accepted', DriverId: ctx.driver.DriverId, AcceptedAt: nowIso() });
@@ -401,7 +429,8 @@ function actionTxRequestDriver(body) {
     if (deny) return deny;
     if (txIsFinal(ctx.order)) return txFail('This order is cancelled.');
     if (txIsCollection(ctx.order)) return txFail('This is a collection order.');
-    if (!deliveryCovers(ctx.order)) return txFail('Mwakete drivers only cover ' + deliveryAreas().join(', ') + ' for now.');
+    var coverErr = deliveryCoverageError(ctx.order);
+    if (coverErr) return txFail(coverErr);
     var f = String(ctx.state.FulfilmentState || '');
     if (['preparing', 'ready_dispatch'].indexOf(f) === -1) return txFail(f === '' ? 'Check the goods against the order first.' : 'This order has already been sent.');
     if (activeDeliveryJob(ctx.order.OrderId)) return txFail('A driver job is already open for this order.');
@@ -428,7 +457,7 @@ function actionTxRequestDriver(body) {
 function notifyDriversOfJob(order) {
   try {
     var cache = CacheService.getScriptCache();
-    deliveryRows('Drivers').filter(function (d) { return d.Status === 'approved' && d.Available === 'yes' && d.Area === order.Island && d.Email; })
+    deliveryRows('Drivers').filter(function (d) { return d.Status === 'approved' && d.Available === 'yes' && islandKey(d.Area) === islandKey(order.Island) && d.Email; })
       .slice(0, 20).forEach(function (d) {
         var key = 'v1:dlv:notify:' + d.DriverId;
         if (cache.get(key)) return;
@@ -484,7 +513,8 @@ function deliveryRoomView(order, state, viewer) {
   var f = String(state.FulfilmentState || '');
   var canRequest = viewer === 'seller' && state.Flow === 'v1' && !txIsFinal(order) && !txIsCollection(order) && deliveryCovers(order)
     && ['preparing', 'ready_dispatch'].indexOf(f) !== -1 && !(j && DELIVERY_JOB_ACTIVE.indexOf(String(j.Status)) !== -1);
-  if (!j) return { available: canRequest, canRequest: canRequest, areas: deliveryAreas() };
+  if (!j) return { available: canRequest, canRequest: canRequest, areas: deliveryAreas(), island: order.Island,
+    why: viewer === 'seller' && !canRequest ? deliveryCoverageError(order) : '' };
   var drv = j.DriverId ? deliveryRows('Drivers').filter(function (d) { return d.DriverId === j.DriverId; })[0] : null;
   var live = j.Sharing === 'yes' && DELIVERY_JOB_ACTIVE.indexOf(String(j.Status)) !== -1;
   return {
@@ -517,7 +547,7 @@ function actionAdminListDeliveries(owner, body) {
   }).sort(function (a, b) { return String(b.UpdatedAt).localeCompare(String(a.UpdatedAt)); }).slice(0, 200);
   var all = deliveryRows('DeliveryJobs');
   return ok({
-    enabled: deliveriesEnabled(), areas: deliveryAreas(),
+    enabled: deliveriesEnabled(), areas: deliveryAreas(), allIslands: deliveryAllIslands(),
     counts: {
       open: all.filter(function (j) { return j.Status === 'open'; }).length,
       active: all.filter(function (j) { return ['accepted', 'picked_up'].indexOf(String(j.Status)) !== -1; }).length,

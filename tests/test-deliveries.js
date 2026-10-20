@@ -57,7 +57,8 @@ box.__props.DELIVERY_JOBS = 'on';
 /* ---- applying ---- */
 ok('apply needs a real local phone and the rules agreed', !dan('actionDriverApply', { name: 'Dan', phone: '12345', vehicle: 'motorbike', area: 'South Tarawa', agree: true }).ok
   && !dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa' }).ok);
-ok('an area outside coverage is refused', !dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'Abaiang', agree: true }).ok);
+ok('an island that is not a Kiribati island is refused', !dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'Atlantis', agree: true }).ok);
+ok('every Kiribati island is open to drivers by default', box.deliveryAreas().length === 23 && box.deliveryAreas().indexOf('Abaiang') !== -1 && box.deliveryAreas().indexOf('Kiritimati') !== -1);
 r = dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true });
 ok('a customer applies to drive -> pending, admins emailed', r.ok && r.status === 'pending' && box.__mail.some((m) => /admin@x.test/.test(m[0]) && /driver application/i.test(m[1])));
 ok('one application per account', !dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'car', area: 'South Tarawa', agree: true }).ok);
@@ -80,8 +81,14 @@ ready(a);
 let room = seller('actionGetTxRoom', { orderId: a }).room;
 ok('the seller is offered "request a driver" once ready', room.delivery.canRequest && room.actions.indexOf('requestDriver') !== -1);
 ok('...and a collection order never is', (() => { const c = order({ deliveryMethod: 'pickPay' }); ready(c); return !seller('actionGetTxRoom', { orderId: c }).room.delivery.canRequest; })());
-ok('only the covered islands (default South Tarawa) can book a driver', box.deliveryCovers({ Island: 'South Tarawa' }) && !box.deliveryCovers({ Island: 'Abaiang' })
-  && (box.__props.DELIVERY_AREAS = 'South Tarawa, Abaiang', box.deliveryCovers({ Island: 'Abaiang' })));
+const abaiangStore = { OwnerId: 'own_ab', Island: 'Abaiang' };
+ok('WITHIN ONE ISLAND: a South Tarawa store can book a driver to a South Tarawa buyer', box.deliveryCovers({ OwnerId: 'own_s', Island: 'South Tarawa' }));
+ok('...but never to a buyer on another island', !box.deliveryCovers({ OwnerId: 'own_s', Island: 'Abaiang' })
+  && /within one island only.*South Tarawa.*Abaiang/.test(box.deliveryCoverageError({ OwnerId: 'own_s', Island: 'Abaiang' })));
+ok('an outer-island store can book a driver on its own island', box.deliveryCovers({ OwnerId: 'own_ab', Island: 'Abaiang' }, abaiangStore)
+  && box.deliveryCovers({ OwnerId: 'own_ab', Island: 'abaiang ' }, abaiangStore));
+ok('DELIVERY_AREAS can still narrow the islands', (box.__props.DELIVERY_AREAS = 'South Tarawa', !box.deliveryCovers({ OwnerId: 'own_ab', Island: 'Abaiang' }, abaiangStore))
+  && box.deliveryCovers({ OwnerId: 'own_s', Island: 'South Tarawa' }) && (box.__props.DELIVERY_AREAS = 'all', box.deliveryAreas().length === 23));
 delete box.__props.DELIVERY_AREAS;
 ok('the fee must be 0-500 and pickup described', !seller('actionTxRequestDriver', { orderId: a, fee: 900, pickup: 'Back door' }).ok && !seller('actionTxRequestDriver', { orderId: a, fee: 5, pickup: '' }).ok);
 ok('a buyer cannot book a driver', !buyer('actionTxRequestDriver', { orderId: a, fee: 5, pickup: 'Back door of the shop' }).ok);
@@ -98,6 +105,12 @@ ok('drivers see the job with area and fee, but NOT the buyer\'s name or phone', 
 const jobId = job(a).JobId;
 ok('an offline driver does not see open jobs', (eve('actionDriverSetAvailable', { available: false }), eve('actionGetDriverHome', {}).open.length === 0));
 eve('actionDriverSetAvailable', { available: true });
+// Eve moves to Abaiang for a moment: a South Tarawa job is not hers to see or take.
+const ds = box.driversSheet(), eveRow = () => box.sheetToObjects(ds).find((d) => d.Name === 'Eve');
+box.updateRowFromObject(ds, eveRow().__row, { Area: 'Abaiang' });
+ok('a driver on another island does not see the job', !eve('actionGetDriverHome', {}).open.some((x) => x.jobId === jobId));
+ok('...and cannot take it', /another island/.test(eve('actionDriverAcceptJob', { jobId }).error || '') && job(a).Status === 'open');
+box.updateRowFromObject(ds, eveRow().__row, { Area: 'South Tarawa' });
 r = dan('actionDriverAcceptJob', { jobId });
 ok('Dan accepts', r.ok && job(a).Status === 'accepted' && job(a).DriverId === idOf('Dan'));
 r = eve('actionDriverAcceptJob', { jobId });
