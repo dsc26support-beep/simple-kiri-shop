@@ -20,7 +20,7 @@ const box = makeBox({
   Customers: [['CustomerId', 'Name', 'Email', 'CreatedAt'], ['c1', 'Tia', 't@x.test', iso(1)]],
   FeaturePurchases: [['PurchaseId', 'Status', 'BankMatchedAt'], ['f1', 'Pending review', '']],
   Conversations: [['ConversationId', 'OwnerId']], Featured: [['FeaturedId', 'Type', 'RefId', 'SortOrder', 'CreatedAt']]
-});
+}, { guest: true }); // counts customers: no harness shopper
 box.__props.ADMIN_EMAILS = 'admin@x.test';
 box.ContentService = { createTextOutput: (s) => ({ s, setMimeType() { return this; } }), MimeType: { JSON: 'json' } };
 const call = (b) => { try { return box.doPost({ postData: { contents: b } }).s; } catch (e) { return JSON.stringify({ ok: false, error: String(e.message || e) }); } };
