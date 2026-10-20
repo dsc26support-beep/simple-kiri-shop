@@ -3343,6 +3343,10 @@ textarea.meeting-request-input {
   flex-wrap: wrap;
 }
 
+/* My Account: Log out in medium grey (owner request) - a quiet exit, still
+   5.7:1 on its pale button so it stays readable. */
+#customer-logout { color: #666666; }
+
 .dash-section {
   margin: var(--space-4) 0;
   padding: var(--space-3) var(--space-4);
