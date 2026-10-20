@@ -85,6 +85,9 @@ var PROTECTED_POST_ACTIONS = [
   'adminInventoryOverview',
   // Marketing engine - every one checks isOwnerAdmin inside (Marketing.gs).
   'getMarketingOverview', 'createMarketingCampaign', 'setMarketingCampaignStatus', 'setMarketingPaused',
+  'getCampaignStudio', 'saveCampaignDraft', 'startCampaignPayment', 'submitCampaignPayment', 'campaignAction',
+  'extendCampaign', 'getCampaignDetail', 'estimateCampaignReach', 'previewSellerCampaign',
+  'adminListCampaigns', 'adminGetCampaign', 'adminDecideCampaignPayment', 'adminReviewCampaign', 'adminCampaignAction', 'adminRecordCampaignRefund',
   'previewMarketingCampaign', 'getMarketingStats', 'runMarketingGeneration',
   // Listing checks + review queue (ListingReview.gs). requestCategory and
   // listMyReviewCases are the seller's own; the rest check isOwnerAdmin inside.
@@ -119,7 +122,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'checks1-2026-10-20';
+var APP_VERSION = 'campaigns1-2026-10-20';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -600,6 +603,22 @@ function doPost(e) {
         case 'inventoryReport': return jsonOut(actionInventoryReport(owner, body));
         case 'adminInventoryOverview': return jsonOut(actionAdminInventoryOverview(owner));
         case 'getMarketingOverview': return jsonOut(actionGetMarketingOverview(owner));
+        // Seller Campaign Studio (SellerCampaigns.gs)
+        case 'getCampaignStudio': return jsonOut(actionGetCampaignStudio(owner));
+        case 'saveCampaignDraft': return jsonOut(actionSaveCampaignDraft(owner, body));
+        case 'startCampaignPayment': return jsonOut(actionStartCampaignPayment(owner, body));
+        case 'submitCampaignPayment': return jsonOut(actionSubmitCampaignPayment(owner, body));
+        case 'campaignAction': return jsonOut(actionCampaignAction(owner, body));
+        case 'extendCampaign': return jsonOut(actionExtendCampaign(owner, body));
+        case 'getCampaignDetail': return jsonOut(actionGetCampaignDetail(owner, body));
+        case 'estimateCampaignReach': return jsonOut(actionEstimateCampaignReach(owner, body));
+        case 'previewSellerCampaign': return jsonOut(actionPreviewSellerCampaign(owner, body));
+        case 'adminListCampaigns': return jsonOut(actionAdminListCampaigns(owner, body));
+        case 'adminGetCampaign': return jsonOut(actionAdminGetCampaign(owner, body));
+        case 'adminDecideCampaignPayment': return jsonOut(actionAdminDecideCampaignPayment(owner, body));
+        case 'adminReviewCampaign': return jsonOut(actionAdminReviewCampaign(owner, body));
+        case 'adminCampaignAction': return jsonOut(actionAdminCampaignAction(owner, body));
+        case 'adminRecordCampaignRefund': return jsonOut(actionAdminRecordCampaignRefund(owner, body));
         case 'createMarketingCampaign': return jsonOut(actionCreateMarketingCampaign(owner, body));
         case 'setMarketingCampaignStatus': return jsonOut(actionSetMarketingCampaignStatus(owner, body));
         case 'setMarketingPaused': return jsonOut(actionSetMarketingPaused(owner, body));

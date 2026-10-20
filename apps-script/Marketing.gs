@@ -305,7 +305,7 @@ function campaignSummary(c) {
   return {
     campaignId: c.CampaignId, name: c.Name, type: c.Type, status: c.Status,
     audienceType: c.AudienceType, subject: c.Subject, startAt: c.StartAt, endAt: c.EndAt,
-    createdAt: c.CreatedAt, createdBy: c.CreatedBy === 'engine' ? 'Automatic' : 'Admin', sentCount: Number(c.SentCount) || 0,
+    createdAt: c.CreatedAt, createdBy: c.CreatedBy === 'engine' ? 'Automatic' : String(c.CreatedBy).indexOf('seller:') === 0 ? 'Seller' : 'Admin', sentCount: Number(c.SentCount) || 0,
     failedCount: Number(c.FailedCount) || 0, lastRunAt: c.LastRunAt,
     storeSlugs: parseJsonArray(c.StoreSlugsJson), productIds: parseJsonArray(c.ProductIdsJson)
   };
@@ -432,6 +432,8 @@ function actionSetMarketingCampaignStatus(owner, body) {
     var sheet = getSheet('Campaigns');
     var c = findRowById(sheet, 'CampaignId', String(body.campaignId || ''));
     if (!c) return fail('Campaign not found');
+    // A seller's paid campaign is run by its own states (SellerCampaigns.gs); approving it here would skip payment.
+    if (String(c.CreatedBy).indexOf('seller:') === 0) return fail('This is a seller\'s campaign - manage it under Store campaigns.');
     if (t.from.indexOf(c.Status) === -1) return fail('A ' + c.Status.toLowerCase() + ' campaign cannot be changed that way');
     updateRowFromObject(sheet, c.__row, { Status: t.to, UpdatedAt: nowIso() });
     return ok({ status: t.to });

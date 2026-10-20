@@ -300,6 +300,30 @@ const deliveries = (box) => rows(box, 'CampaignEvents').filter((e) => e.EventTyp
   ok('APP_VERSION is set', /APP_VERSION = '[a-z0-9]+-\d{4}-\d{2}-\d{2}'/.test(src));
 }
 
+/* ---------- seller campaigns (SellerCampaigns.gs) beside the engine ---------- */
+{
+  const box = world();
+  // An admin's own seller promotion still renders the original plain way (no blocks).
+  const created = box.actionCreateMarketingCampaign(ADMIN, { type: 'SELLER_PROMOTION', name: 'Ana week', subject: 'Ana has rice', message: 'Come and see', storeSlug: 'ana', productIds: ['p1'], audience: 'STORE_CUSTOMERS' });
+  const c = rows(box, 'Campaigns').find((x) => x.CampaignId === created.campaignId);
+  const ctx = box.buildMarketingContext(box.marketingConfig(), Date.now());
+  const plan = box.planCampaignRecipients(c, ctx, box.marketingConfig()).recipients[0];
+  const mail = box.composeCampaignEmail(c, plan, ctx, box.marketingConfig(), 'mev_0000000000000000', 'tok');
+  ok('admin-made campaigns still use the original email (no seller blocks)', /Come and see/.test(mail.text) && !/Sent by Mwakete for/.test(mail.html));
+  // A seller's engine row: rendered from its blocks, and not approvable from the marketing page.
+  box.appendRowFromObject(box.getSheet('Campaigns'), Object.assign({}, c, { CampaignId: 'cmp_aaaaaaaaaaaaaaaa', CreatedBy: 'seller:own_a', Status: 'DRAFT',
+    SourceKey: 'seller:scmp_x' }));
+  box.ensureColumn(box.getSheet('Campaigns'), 'BlocksJson');
+  const sc = box.findRowById(box.getSheet('Campaigns'), 'CampaignId', 'cmp_aaaaaaaaaaaaaaaa');
+  box.updateRowFromObject(box.getSheet('Campaigns'), sc.__row, { BlocksJson: JSON.stringify([{ type: 'heading', text: 'Seller headline', size: 24, align: 'left' }]) });
+  const sRow = rows(box, 'Campaigns').find((x) => x.CampaignId === 'cmp_aaaaaaaaaaaaaaaa');
+  const sMail = box.composeCampaignEmail(sRow, plan, ctx, box.marketingConfig(), 'mev_0000000000000000', 'tok');
+  ok('a seller campaign row is rendered from its own blocks', /Seller headline/.test(sMail.html) && /Sent by Mwakete for Ana Shop/.test(sMail.html));
+  const res = box.actionSetMarketingCampaignStatus(ADMIN, { campaignId: 'cmp_aaaaaaaaaaaaaaaa', op: 'approve' });
+  ok('the marketing page cannot approve a seller\'s campaign (it would skip payment)', !res.ok && /seller/.test(res.error));
+  ok('...and lists it as a Seller campaign', box.actionGetMarketingOverview(ADMIN).campaigns.some((x) => x.campaignId === 'cmp_aaaaaaaaaaaaaaaa' && x.createdBy === 'Seller'));
+}
+
 let f = 0;
 console.log('\n--- Marketing engine ---');
 for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e !== '' ? '  [' + e + ']' : ''}`); }
