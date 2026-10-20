@@ -128,8 +128,10 @@ const tokenOf = (page) => page.evaluate(() => {
     await page.waitForTimeout(1000);
     ok('the sign-in page pre-fills it',
       (await page.inputValue('#login-email')) === 'a@example.com');
-    ok('and says whose address it is',
-      /a@example\.com/.test(await page.textContent('#login-remembered') || ''));
+    // Owner request (Oct 2026): the address is in the box only - no "Signing
+    // in as ..." line repeating it underneath - with "Not you?" still offered.
+    ok('without repeating the address under the box, and "Not you?" is offered',
+      !/a@example\.com|Signing in as/.test(await page.textContent('#login-remembered') || '') && await page.locator('#login-not-you').isVisible());
 
     // The escape hatch that makes this safe on a borrowed phone.
     await page.click('#login-not-you');

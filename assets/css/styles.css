@@ -3343,6 +3343,10 @@ textarea.meeting-request-input {
   flex-wrap: wrap;
 }
 
+/* My Account: Log out in medium grey (owner request) - a quiet exit, still
+   5.7:1 on its pale button so it stays readable. */
+#customer-logout { color: #666666; }
+
 .dash-section {
   margin: var(--space-4) 0;
   padding: var(--space-3) var(--space-4);
@@ -8046,16 +8050,14 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 /* Customer sign-in (owner request, Oct 2026): Google, "Continue as guest" and
    "Send me a code" are all the same size. Google draws its own button at a
    fixed 40px tall (size "large") and as wide as google-signin.js asks - the
-   full width of the card here (data-full-width) - so the other two match it. */
+   width of its box here (data-full-width, 240px, set further down) - so the
+   other two match it. */
 .auth-card--customer #google-signin-btn[data-full-width] {
-  align-self: stretch;
-  width: 100%;
   min-height: 40px;
 }
 .auth-card--customer #guest-continue,
 .auth-card--customer #login-form button[type="submit"],
 .auth-card--customer #signup-form button[type="submit"] {
-  width: 100%;
   min-height: 40px;
   height: 40px;
   padding-top: 0;
@@ -8160,3 +8162,29 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   background: var(--color-gold-soft);
   color: var(--color-ink);
 }
+
+/* Owner request (Oct 2026): every button on the customer sign-in card is the
+   size and shape of Google's own sign-in button - 240px wide (narrower on a
+   very small screen), 40px tall, 4px corners, Google's 14px text - and
+   centred, Google's included. Overrides the full-width sizing above. */
+.auth-card--customer #google-signin-btn[data-full-width],
+.auth-card--customer .btn {
+  width: 240px;
+  max-width: 100%;
+  height: 40px;
+  min-height: 40px;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 4px;
+}
+.auth-card--customer #google-signin-btn[data-full-width] { align-self: center; }
+.auth-card--customer .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.auth-card--customer .auth-guest-row { justify-content: center; }
+.auth-card--customer .auth-guest-row #guest-continue { flex: 0 0 auto; margin: 0 auto; }

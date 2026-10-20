@@ -59,14 +59,13 @@ function prefillRememberedEmail() {
 
   const input = document.getElementById('login-email');
   const note = document.getElementById('login-remembered');
-  const shown = document.getElementById('login-remembered-email');
-  if (!input || !note || !shown) return;
+  if (!input || !note) return;
 
-  // Visibility was already decided before first paint by the inline script in
-  // the head (see customer-login.html). This only fills in the text, which
-  // changes the line's width and not its height, so nothing moves.
+  // Visibility of "Not you?" was already decided before first paint by the
+  // inline script in the head (see customer-login.html), so nothing moves.
+  // The address is filled into the box only - not repeated under it (owner
+  // request, Oct 2026).
   input.value = email;
-  shown.textContent = email;
 
   document.getElementById('login-not-you').addEventListener('click', () => {
     CustomerAuth.forgetEmail();

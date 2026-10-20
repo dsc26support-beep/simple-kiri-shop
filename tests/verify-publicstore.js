@@ -11,7 +11,9 @@ const grab = (s, n) => s.match(new RegExp('function ' + n + '\\([\\s\\S]*?\\n}')
 const auth = fs.readFileSync(AS + 'Auth.gs', 'utf8'), prod = fs.readFileSync(AS + 'Products.gs', 'utf8');
 const box = { isOwnerAdmin: () => true }; vm.createContext(box);
 vm.runInContext([grab(auth, 'publicStoreFields'), grab(auth, 'isStoreOpenForBusiness'),
-  grab(prod, 'deliveryFlagsOf'), grab(prod, 'deliveryCostOf')].join('\n'), box);
+  grab(prod, 'deliveryFlagsOf'), grab(prod, 'deliveryCostOf'),
+  // #112: payment option names on the public store info.
+  prod.match(/var PAYMENT_OPTIONS = [^\n]*\n/)[0], grab(prod, 'paymentOptionsOf'), grab(prod, 'paymentMethodIds')].join('\n'), box);
 
 const ROW = {
   OwnerId: 'own_1', StoreName: 'Bong Store', StoreSlug: 'bong', Email: 'boss@mwakete.com',
