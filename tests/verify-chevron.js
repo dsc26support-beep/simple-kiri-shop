@@ -61,14 +61,15 @@ const rgb = s => s.replace(/\s+/g, '');
     await page.waitForSelector('.search-box button[type="submit"]');
     const bgAndText = await page.evaluate(() => {
       const b = document.querySelector('.search-box button[type="submit"]');
-      return { bg: getComputedStyle(b).backgroundColor, text: b.textContent.trim(), fs: getComputedStyle(b).fontSize, radius: getComputedStyle(b).borderTopLeftRadius };
+      return { bg: getComputedStyle(b).backgroundColor, text: b.textContent.trim(), fs: getComputedStyle(b).fontSize, radius: getComputedStyle(b).borderTopLeftRadius, w: Math.round(b.getBoundingClientRect().width) };
     });
     ok('desktop: outlined like every primary button (white fill)', rgb(bgAndText.bg) === 'rgb(255,255,255)', bgAndText.bg);
-    ok('desktop: and it is NOT a disc - shape is what separates the two now',
-       bgAndText.radius !== '999px', bgAndText.radius);
+    // Every button has pill ends since Oct 2026 (owner request), so what
+    // separates desktop from the phone's 44px disc is now width and the label.
+    ok('desktop: a pill with room for its label, NOT the 44px disc',
+       bgAndText.radius === '999px' && bgAndText.w > 60, JSON.stringify(bgAndText));
     ok('desktop: shows "Search"', bgAndText.text === 'Search' && bgAndText.fs !== '0px', JSON.stringify(bgAndText));
-    ok('desktop: no disc radius leaked up from the phone rules',
-       bgAndText.radius !== '999px', String(bgAndText.radius));
+    ok('desktop: the phone\'s 44px disc width did not leak up', bgAndText.w !== 44, String(bgAndText.w));
     await page.close();
   }
 
