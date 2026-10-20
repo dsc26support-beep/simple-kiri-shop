@@ -203,6 +203,7 @@ const tabState = (page) => page.evaluate(() => ({
     await page.fill('#register-store-name', 'Bong Store');
     await page.fill('#register-username', 'teretia');
     await page.fill('#register-password', 'longenough1');
+    await page.fill('#register-password-hint', 'my usual one');
     await page.fill('#register-email', 'bong@example.com');
     await page.fill('#register-phone', '73012345');
     await page.fill('#register-messenger', 'bong.store');
@@ -249,6 +250,7 @@ const tabState = (page) => page.evaluate(() => ({
     await page.fill('#register-store-name', 'Bong Store');
     await page.fill('#register-username', 'teretia');
     await page.fill('#register-password', 'longenough1');
+    await page.fill('#register-password-hint', 'my usual one');
     await page.fill('#register-email', 'bong@example.com');
     await page.fill('#register-phone', '73012345');
     await page.fill('#register-messenger', 'bong.store');
@@ -271,6 +273,7 @@ const tabState = (page) => page.evaluate(() => ({
     await page.fill('#register-store-name', 'Bong Store');
     await page.fill('#register-username', 'brandnew');
     await page.fill('#register-password', 'longenough1');
+    await page.fill('#register-password-hint', 'my usual one');
     await page.fill('#register-email', 'bong@example.com');
     await page.fill('#register-phone', '73012345');
     await page.fill('#register-messenger', 'bong.store');

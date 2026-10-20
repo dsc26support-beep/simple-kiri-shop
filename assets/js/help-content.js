@@ -248,7 +248,7 @@ const HELP_FAQS = [
     id: 'selling-what', category: 'selling',
     title: 'What can I list?',
     subtitle: 'Products, services and rentals',
-    description: 'You can list products, services and rentals that you actually have and are legally allowed to sell in Kiribati.\n\nNot allowed: anything illegal, weapons, drugs, medicines, stolen or counterfeit goods, and other people’s photos or text used without permission.\n\nNew Food & Groceries listings are open to wholesalers and distributors.',
+    description: 'You can list products, services and rentals that you actually have and are legally allowed to sell in Kiribati.\n\nNot allowed: anything illegal, weapons, drugs, medicines, stolen or counterfeit goods, and other people’s photos or text used without permission.\n\nFood & Groceries is open to wholesalers and distributors, and to retailers outside South Tarawa.',
     keywords: ['allowed', 'list', 'prohibited', 'banned', 'rules', 'what can', 'food', 'groceries'],
     related: ['selling-good-listing', 'business-wholesale']
   },

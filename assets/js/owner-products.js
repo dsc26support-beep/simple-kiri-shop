@@ -91,8 +91,11 @@ let variantRowSeq = 0;
 async function init() {
   const owner = await Auth.guardOwnerAuth();
   if (!owner) return;
-  // Wholesalers and distributors alike (Admin.gs canListFood).
-  ownerIsWholesaler = owner.storeType === 'wholesaler' || owner.storeType === 'distributor';
+  // Same rule as Admin.gs canListFood (owner decision, Oct 2026): wholesalers
+  // and distributors everywhere, retailers on any island except South Tarawa
+  // (no island set counts as South Tarawa). The name is historical.
+  ownerIsWholesaler = owner.storeType === 'wholesaler' || owner.storeType === 'distributor'
+    || (!!String(owner.island || '').trim() && String(owner.island).trim() !== 'South Tarawa');
   document.getElementById('food-wholesale-hint').hidden = ownerIsWholesaler;
   document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
 
@@ -173,7 +176,7 @@ function onListingCheckClick(e) {
     fillCategoryOptions(document.getElementById('product-listing-type').value, cat);
     if (!Array.from(select.options).some((o) => o.value === cat)) {
       ListingCheck.render({ issues: [{ severity: 'medium', message: cat === 'food' && !ownerIsWholesaler
-        ? 'Food & Groceries is for wholesaler and distributor stores only.'
+        ? 'Food & Groceries isn\'t open to retailers on South Tarawa.'
         : 'That category does not take this kind of listing - change "What are you offering?" first.' }], suggestions: [] });
       return;
     }
@@ -290,6 +293,7 @@ function renderList() {
             <span class="status-badge status-${escapeHtml(p.status)}">${escapeHtml(p.status === 'review' ? 'in review' : p.status)}</span>
             <div class="helper-text">${priceRange}</div>
             ${reviewLineHtml(p)}
+            ${p.foodHidden ? '<div class="helper-text form-error">Hidden from shoppers: Food &amp; Groceries isn\'t open to retailers on South Tarawa. Change its category to show it.</div>' : ''}
           </div>
           <div class="row-actions">
             <button type="button" class="btn btn-small" data-action="edit">Edit</button>

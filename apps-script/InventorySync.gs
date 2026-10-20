@@ -438,7 +438,7 @@ function planFromRequest(owner, body) {
   var category = categoryIdOf(body.category);
   if (body.createNew) {
     if (!body.category || CATEGORY_IDS.indexOf(String(body.category)) === -1) return { error: 'Choose a category for the new products.' };
-    if (category === 'food' && !canListFood(owner)) return { error: 'Food & Groceries is for wholesaler and distributor stores only. Choose another category for the new products.' };
+    if (category === 'food' && !canListFood(owner)) return { error: FOOD_CLOSED_MESSAGE + ' Choose another category for the new products.' };
   }
   var ctx = sellerImportContext(owner);
   var records = normalizeImportRows(data.headers, data.rows, mapping, data.firstLine);

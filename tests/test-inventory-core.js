@@ -8,7 +8,8 @@
 const { makeBox } = require('./lib/gas-harness.js');
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
 
-const OWNER = { OwnerId: 'own_1', StoreSlug: 'bong', StoreName: 'Bong', Email: '', Status: 'active', Island: 'South Tarawa', DeliveryPickPay: 'true' };
+// A wholesaler: Food & Groceries is closed to South Tarawa retailers.
+const OWNER = { OwnerId: 'own_1', StoreSlug: 'bong', StoreName: 'Bong', Email: '', Status: 'active', Island: 'South Tarawa', DeliveryPickPay: 'true', StoreType: 'wholesaler' };
 function fresh(variants) {
   const vHead = ['VariantId', 'ProductId', 'OwnerId', 'Label', 'Price', 'SKU', 'StockQty', 'Status'];
   return makeBox({

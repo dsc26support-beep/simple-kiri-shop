@@ -152,6 +152,7 @@ ok('messengerUrl still normalizes a legacy bare handle on read',
     await page.fill('#register-store-name', 'Bong Store');
     await page.fill('#register-username', 'bong');
     await page.fill('#register-password', 'longenoughpw');
+    await page.fill('#register-password-hint', 'my usual one');
     await page.fill('#register-email', 'a@b.com');
     await page.fill('#register-phone', '73007552');
     await page.fill('#register-messenger', messenger);

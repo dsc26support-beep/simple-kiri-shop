@@ -368,7 +368,7 @@ function getTopProductsCached() {
     var ratings = productRatingIndex();
 
     return sheetToObjects(getSheet('Products'))
-      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
+      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId] && !foodListingHidden(ownersById[p.OwnerId], p); })
       .map(function (p) {
         var owner = ownersById[p.OwnerId];
         var productVariants = variants
@@ -582,7 +582,7 @@ function actionSearchProducts(params) {
     var ratings = productRatingIndex();
 
     var matched = sheetToObjects(getSheet('Products'))
-      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
+      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId] && !foodListingHidden(ownersById[p.OwnerId], p); })
       .filter(function (p) {
         // Compared against the MAPPED id, so "Food & Groceries" finds the
         // products still stored as the legacy 'pantry'. Matching the raw
@@ -681,7 +681,7 @@ function actionListProducts(params) {
     if (!isStoreBrowsable(owner)) return null;
 
     var products = sheetToObjects(getSheet('Products')).filter(function (p) {
-      return p.OwnerId === owner.OwnerId && p.Status === 'active';
+      return p.OwnerId === owner.OwnerId && p.Status === 'active' && !foodListingHidden(owner, p);
     });
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) {
       return v.OwnerId === owner.OwnerId && v.Status === 'active';
@@ -788,6 +788,9 @@ function actionListOwnerProducts(owner, body) {
       options: productOptionsOf(p),
       requestedStatus: String(p.RequestedStatus || ''),
       review: cases[p.ProductId] || null,
+      // Food & Groceries not shown to shoppers for this store (Admin.gs
+      // foodListingHidden) - the Products page says so.
+      foodHidden: foodListingHidden(owner, p),
       sortOrder: p.SortOrder,
       variants: productVariants
     };
@@ -824,13 +827,13 @@ function actionCreateOrUpdateProduct(owner, body) {
     listingType = listingTypeOfRow({ ListingType: '', Category: body.category });
   }
 
-  // Food & Groceries is wholesale-only for NEW listings (owner decision). A
-  // listing already filed there is grandfathered - editing it keeps working -
-  // but nothing new can be filed into it by a store that isn't a wholesaler.
+  // Food & Groceries (owner decisions): not for retailers on South Tarawa
+  // (canListFood). A listing already filed there can still be edited - it is
+  // just hidden from shoppers (foodListingHidden) - but nothing new is filed.
   if (category === 'food' && !canListFood(owner)) {
     var prior = body.productId ? findRowById(getSheet('Products'), 'ProductId', body.productId) : null;
     var alreadyFood = !!(prior && prior.OwnerId === owner.OwnerId && categoryIdOf(prior.Category) === 'food');
-    if (!alreadyFood) return fail('Food & Groceries is for wholesaler and distributor stores only. Please choose another category.');
+    if (!alreadyFood) return fail(FOOD_CLOSED_MESSAGE + ' Please choose another category.');
   }
 
   // Listing checks (ListingReview.gs). Run before anything is written: a

@@ -102,7 +102,10 @@ const OWNER_KEYS = ['ownerId', 'storeName', 'storeSlug', 'email', 'phone', 'mess
   'twoFAEnabled', 'isAdmin',
   // #70: the owner's own retailer/wholesaler type and verification, shown on
   // their dashboard - owner-only, never on publicStoreFields.
-  'storeType', 'wholesaleVerified'];
+  'storeType', 'wholesaleVerified',
+  // #106: whether a password hint is set (not the hint itself), for the
+  // dashboard reminder - owner-only.
+  'hasPasswordHint'];
 ok('publicOwnerFields key set unchanged',
   JSON.stringify(Object.keys(owner).sort()) === JSON.stringify(OWNER_KEYS.slice().sort()),
   Object.keys(owner).sort().join(','));
@@ -128,7 +131,12 @@ const hereOwnerSrc = grab(auth, 'publicOwnerFields');
 // tree and main would differ by that instead. Strict is the resting state;
 // relax it only for the life of a branch that is deliberately adding a field,
 // and put it back on merge.
-ok('publicOwnerFields source is byte-identical to main', mainOwnerSrc === hereOwnerSrc);
+// RELAXED for the life of #106, which deliberately adds hasPasswordHint: the
+// only difference may be that one line. Put back to strict on merge.
+const norm = (src) => src.split('\n').filter((l) => !/^\s*\/\//.test(l)).map((l) => l.replace(/,\s*$/, ''));
+const extra = norm(hereOwnerSrc).filter((l) => norm(mainOwnerSrc).indexOf(l) === -1);
+ok('publicOwnerFields differs from main only by the hasPasswordHint line (#106)',
+  extra.length === 1 && /^\s+hasPasswordHint: /.test(extra[0]), extra.join(' | '));
 ok('nothing was removed from publicOwnerFields',
   mainOwnerSrc.split('\n').filter((l) => /^\s+\w+: /.test(l))
     .every((l) => hereOwnerSrc.indexOf(l) !== -1));

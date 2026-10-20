@@ -39,9 +39,27 @@ function isBulkSeller(owner) {
   return storeTypeOf(owner) !== 'retailer';
 }
 
-/** Food & Groceries listing permission - one place, so business types can grow. */
+/**
+ * Food & Groceries listing permission - one place, so business types can grow.
+ * Owner decision, Oct 2026: wholesalers and distributors everywhere, and
+ * retailers on every island EXCEPT South Tarawa. A store with no island set
+ * counts as South Tarawa until it sets one.
+ */
+var FOOD_RETAIL_CLOSED_ISLAND = 'South Tarawa';
+var FOOD_CLOSED_MESSAGE = 'Food & Groceries isn\'t open to retailers on South Tarawa (wholesalers and distributors can list it).';
 function canListFood(owner) {
-  return isBulkSeller(owner);
+  if (isBulkSeller(owner)) return true;
+  var island = String((owner && owner.Island) || '').trim();
+  return !!island && island !== FOOD_RETAIL_CLOSED_ISLAND;
+}
+
+/**
+ * A Food & Groceries listing from a store that may not list food (a South
+ * Tarawa retailer, or one that moved there) is hidden from shoppers - kept,
+ * never deleted, back as soon as the store may list food again.
+ */
+function foodListingHidden(owner, p) {
+  return categoryIdOf(p && p.Category) === 'food' && !canListFood(owner);
 }
 
 /**
@@ -188,7 +206,7 @@ function buildTips() {
     sheetToObjects(getSheet('Products')).forEach(function (p) {
       if (!want[p.ProductId] || p.Status !== 'active') return;
       var owner = ownersById[p.OwnerId];
-      if (!isStoreBrowsable(owner)) return;
+      if (!isStoreBrowsable(owner) || foodListingHidden(owner, p)) return;
       var pv = variants
         .filter(function (v) { return v.ProductId === p.ProductId && v.Status === 'active'; })
         .map(function (v) { return { variantId: v.VariantId, label: v.Label, price: Number(v.Price) }; });

@@ -154,6 +154,7 @@ function makeContext() {
     grab(chatSrc, 'findOrCreateConversation'),
     grab(chatSrc, 'getConversationById'),
     grab(chatSrc, 'resolveChatRequest'),
+    grab(chatSrc, 'linkConversationToCustomer'),
     meetingsSrc
   ].join('\n\n'), box);
 

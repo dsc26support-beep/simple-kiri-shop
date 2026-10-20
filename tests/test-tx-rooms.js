@@ -25,7 +25,7 @@ const box = makeBox({
     ['cus_sb', 'Seller as buyer', 's@x.test', '73000003', 'yes', '', '']],
   CustomerSessions: [['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'], ['ctok-b', 'cus_b', '', FUTURE], ['ctok-z', 'cus_z', '', FUTURE], ['ctok-sb', 'cus_sb', '', FUTURE]],
   Products: [['ProductId', 'OwnerId', 'StoreSlug', 'Name', 'Description', 'Category', 'ListingType', 'Status', 'SortOrder', 'CreatedAt', 'UpdatedAt'],
-    ['p_rice', 'own_s', 'bong', 'Rice', '10kg bag', 'food', 'product', 'active', 0, '', ''],
+    ['p_rice', 'own_s', 'bong', 'Rice', '10kg bag', 'home', 'product', 'active', 0, '', ''],
     ['p_phone', 'own_s', 'bong', 'Phone', 'Smartphone', 'electronics', 'product', 'active', 1, '', ''],
     ['p_oth', 'own_o', 'other', 'Soap', 'Bar', 'home', 'product', 'active', 0, '', '']],
   Variants: [['VariantId', 'ProductId', 'OwnerId', 'Label', 'Price', 'SKU', 'StockQty', 'Status'],

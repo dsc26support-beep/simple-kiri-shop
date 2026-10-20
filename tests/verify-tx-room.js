@@ -25,7 +25,7 @@ const box = makeBox({
     ['cus_z', 'Zed', 'z@x.test', '73000002', 'yes', '', '']],
   CustomerSessions: [['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'], ['ctok-b', 'cus_b', '', FUTURE], ['ctok-z', 'cus_z', '', FUTURE]],
   Products: [['ProductId', 'OwnerId', 'StoreSlug', 'Name', 'Description', 'Category', 'ListingType', 'Status', 'SortOrder', 'CreatedAt', 'UpdatedAt'],
-    ['p_rice', 'own_s', 'bong', 'Rice', '10kg bag', 'food', 'product', 'active', 0, '', ''], ['p_phone', 'own_s', 'bong', 'Phone', 'Smartphone', 'electronics', 'product', 'active', 1, '', '']],
+    ['p_rice', 'own_s', 'bong', 'Rice', '10kg bag', 'home', 'product', 'active', 0, '', ''], ['p_phone', 'own_s', 'bong', 'Phone', 'Smartphone', 'electronics', 'product', 'active', 1, '', '']],
   Variants: [['VariantId', 'ProductId', 'OwnerId', 'Label', 'Price', 'SKU', 'StockQty', 'Status'],
     ['v_rice', 'p_rice', 'own_s', '10kg', 20, '', 500, 'active'], ['v_phone', 'p_phone', 'own_s', 'Black', 150, '', 50, 'active']],
   Orders: [['OrderId', 'OwnerId', 'StoreSlug', 'CustomerName', 'CustomerPhone', 'CustomerEmail', 'Island', 'Village', 'DeliveryAddress',

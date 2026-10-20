@@ -257,7 +257,7 @@ function actionCreateOrder(body) {
       var product = products.filter(function (p) { return p.ProductId === variant.ProductId; })[0];
       // A listing that is hidden, held for review or archived can't be bought,
       // even with a variant id copied from an old cart.
-      if (!product || product.Status !== 'active') return fail('One of the items in your cart is no longer available. Please refresh your cart.');
+      if (!product || product.Status !== 'active' || foodListingHidden(owner, product)) return fail('One of the items in your cart is no longer available. Please refresh your cart.');
       var productName = product ? product.Name : 'Item';
       // What the customer chose, frozen into the order: later renames, price
       // changes or switched-off options never rewrite it.
