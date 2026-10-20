@@ -5768,63 +5768,41 @@ button.seller-badge[aria-expanded="true"] {
  * open chat, an unsaved form, or a cursor in a text field. Everywhere else the
  * app just refreshes itself and this is never seen.
  *
- * A bar, not a modal. The update is never urgent enough to block what someone
- * is doing, and a modal over a half-filled delivery address would be worse
- * than the stale build it is replacing.
+ * A centered popup (owner request, Oct 2026), with Later always offered. It
+ * never appears while someone is typing (register-sw.js waits for them to
+ * leave the field), so it can't land on a half-typed delivery address.
  */
-.app-update-bar {
+.app-update-back {
   position: fixed;
-  left: var(--space-3);
-  right: var(--space-3);
-  /* ABOVE THE CHAT BUTTON, not merely above the page.
-     The first version sat at z-index 60 and the full width of the screen, which
-     put the Refresh button directly underneath the floating chat button - fixed
-     at z-index 1001 in the lower right. The bar was visible and its main
-     control was not tappable. Same slot the install pill uses, and the same
-     expression, so the three stay in one stack. */
-  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
-  /* Above the FABs (1001), below the cookie banner (1003), which is a legal
-     notice and outranks a version update. */
-  z-index: 1002;
+  inset: 0;
+  /* A dialog, at the same layer as the unsaved-changes one (1004): above
+     the chat button and window, the bottom nav and the cookie notice, so its
+     backdrop covers everything it is waiting on. */
+  z-index: 1004;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-purple);
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(26, 26, 26, 0.55);
+}
+
+.app-update-box {
+  width: 100%;
+  max-width: 340px;
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--color-bg);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
-  font-size: 0.875rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
-.app-update-bar-text {
-  flex: 1 1 auto;
-  min-width: 0;
-}
+.app-update-title { margin: 0 0 var(--space-2); font-size: 1.2rem; color: var(--color-purple); }
+.app-update-note { margin: 0 0 var(--space-3); color: var(--color-ink); line-height: 1.45; }
+.app-update-actions { display: grid; gap: var(--space-2); }
+.app-update-actions .btn { width: 100%; min-height: 44px; }
 
-.app-update-bar .btn {
-  flex: 0 0 auto;
-}
-
-.app-update-dismiss {
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  color: var(--color-muted);
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.app-update-dismiss:hover {
-  color: var(--color-ink);
-}
-
-/* The install pill occupies exactly this slot. Both are transient and the
-   update matters more - someone running an old build has a problem now, where
-   "add to home screen" can wait for the next visit. */
+/* The install tab steps aside while the update popup is up. Both are
+   transient and the update matters more - someone running an old build has a
+   problem now, where "add to home screen" can wait for the next visit. */
 body.has-app-update .install-fab {
   display: none !important;
 }

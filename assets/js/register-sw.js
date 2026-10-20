@@ -79,40 +79,92 @@
   }
 
   /**
-   * The fallback when a refresh would cost someone their work: a small bar,
-   * bottom of the screen, that waits.
+   * The fallback when a refresh would cost someone their work: a centered
+   * "Update available" popup (owner request, Oct 2026) with Update now /
+   * Later and one line on what's new (release.json, written each release).
    *
-   * Not a modal. The update is never urgent enough to block what they are
-   * doing, and a modal over a checkout form would be worse than the stale
-   * build it is trying to replace.
+   * It never pops up under someone's fingers: while the cursor is in a text
+   * field it waits, and appears once they leave the field. Later just closes
+   * it - the new build is already in control, so the next page they open is
+   * the new version anyway.
    */
-  function showUpdateBar() {
-    if (document.getElementById('app-update-bar')) return;
-    var bar = document.createElement('div');
-    bar.id = 'app-update-bar';
-    bar.className = 'app-update-bar';
-    bar.setAttribute('role', 'status');
-    bar.innerHTML =
-      '<span class="app-update-bar-text">A new version of Mwakete is ready.</span>'
-      + '<button type="button" class="btn btn-small btn-primary" id="app-update-refresh">Refresh</button>'
-      + '<button type="button" class="app-update-dismiss" id="app-update-later"'
-      + ' aria-label="Not now">\u00d7</button>';
-    document.body.appendChild(bar);
-    // Hides the install pill, which sits in exactly this slot - see styles.css.
-    document.body.classList.add('has-app-update');
-    document.getElementById('app-update-refresh').addEventListener('click', applyUpdate);
-    document.getElementById('app-update-later').addEventListener('click', function () {
-      bar.remove();
-      document.body.classList.remove('has-app-update');
-      // Nothing more is needed: the new worker is already in control, so the
-      // next page they open is the new build either way.
+  var popupPending = false;
+
+  function typing() {
+    var el = document.activeElement;
+    return !!(el && (el.tagName === 'TEXTAREA'
+      || (el.tagName === 'INPUT' && !/^(button|submit|checkbox|radio|hidden)$/i.test(el.type))));
+  }
+
+  function whenNotTyping(fn) {
+    if (!typing()) { fn(); return; }
+    var onOut = function () {
+      // Focus moving from one field straight into another is still typing.
+      setTimeout(function () {
+        if (typing()) return;
+        document.removeEventListener('focusout', onOut, true);
+        fn();
+      }, 0);
+    };
+    document.addEventListener('focusout', onOut, true);
+  }
+
+  function showUpdatePopup() {
+    if (popupPending || document.getElementById('app-update-popup')) return;
+    popupPending = true;
+    whenNotTyping(function () {
+      popupPending = false;
+      if (document.getElementById('app-update-popup')) return;
+      var back = document.createElement('div');
+      back.id = 'app-update-popup';
+      back.className = 'app-update-back';
+      back.innerHTML =
+        '<div class="app-update-box" role="dialog" aria-modal="true" aria-labelledby="app-update-title" aria-describedby="app-update-note">'
+        + '<h2 id="app-update-title" class="app-update-title">Update available</h2>'
+        + '<p id="app-update-note" class="app-update-note">A new version of Mwakete is ready.</p>'
+        + '<div class="app-update-actions">'
+        + '<button type="button" class="btn btn-primary" id="app-update-refresh">Update now</button>'
+        + '<button type="button" class="btn" id="app-update-later">Later</button>'
+        + '</div></div>';
+      document.body.appendChild(back);
+      // Hides the install tab while this is up - see styles.css.
+      document.body.classList.add('has-app-update');
+      var close = function () {
+        back.remove();
+        document.body.classList.remove('has-app-update');
+        document.removeEventListener('keydown', onKey);
+      };
+      var onKey = function (e) {
+        if (e.key === 'Escape' || e.key === 'Esc') close();
+        if (e.key === 'Tab') {
+          var a = document.getElementById('app-update-refresh');
+          var b = document.getElementById('app-update-later');
+          if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); }
+          else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); }
+        }
+      };
+      document.addEventListener('keydown', onKey);
+      document.getElementById('app-update-refresh').addEventListener('click', applyUpdate);
+      document.getElementById('app-update-later').addEventListener('click', close);
+      document.getElementById('app-update-refresh').focus();
+      // What's new, from the NEW build (release.json at the site root). Never
+      // from the HTTP cache; offline or missing keeps the plain line above.
+      try {
+        fetch(new URL('../../release.json', scriptUrl).href, { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            var note = j && typeof j.note === 'string' ? j.note.trim() : '';
+            var el = document.getElementById('app-update-note');
+            if (note && el) el.textContent = 'A new version of Mwakete is ready: ' + note;
+          }).catch(function () {});
+      } catch (e) { /* plain line stays */ }
     });
   }
 
   function onNewVersionReady() {
     if (!hadController) return;      // first install, not an update
     if (safeToReload()) applyUpdate();
-    else showUpdateBar();
+    else showUpdatePopup();
   }
 
   window.addEventListener('load', function () {
