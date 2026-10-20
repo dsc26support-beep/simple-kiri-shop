@@ -331,8 +331,11 @@ function actionCreateOrder(body) {
     var deliveryCost = shippingNegotiated ? 0 : Number(rawDeliveryCost) || 0;
     var total = roundMoney(subtotal + deliveryCost);
 
-    var orderId = generateOrderRef(slug);
-    appendRowFromObject(getSheet('Orders'), {
+    // Unique among existing orders - checked here, inside the lock, so two
+    // checkouts at once can't both take the same reference.
+    var ordersSheet = getSheet('Orders');
+    var orderId = generateOrderRef(slug, function (ref) { return !!findRowById(ordersSheet, 'OrderId', ref); });
+    appendRowFromObject(ordersSheet, {
       OrderId: orderId,
       OwnerId: owner.OwnerId,
       StoreSlug: slug,
