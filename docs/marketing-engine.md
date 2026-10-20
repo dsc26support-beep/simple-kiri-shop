@@ -148,4 +148,4 @@ Not built:
 
 - **AI copy:** `generateCampaignCopy` is the single place to add it, with today's text kept as the fallback.
 - **Other channels:** WhatsApp, SMS or push would add a sender beside `deliverMarketingEmail`. See Notify.gs for the SMS options.
-- **Seller self-serve campaigns:** they would need their own store-scoped actions.
+- **Seller self-serve campaigns:** now built. See [campaign-studio.md](campaign-studio.md). Sellers pay A$0.10 a day, an admin verifies the payment and approves the content, and the campaigns send through this engine as `SELLER_PROMOTION` rows (CreatedBy `seller:<OwnerId>`). The marketing table labels these "Seller" and leaves their approval and pausing to Admin → Seller campaigns. While the engine is in dry run, seller campaigns neither start nor are charged.

@@ -2134,3 +2134,17 @@ body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 
 @media (prefers-reduced-motion: no-preference) {
   .cs-chip, .cs-card-opt, .cs-product, .cs-blk, .cs-block-btn, .cs-template { transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s; }
 }
+
+/* Admin: seller campaigns queue (admin-campaigns.js) */
+.scad-search { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+.scad-search .field { margin: 0; }
+.scad-detail { margin-top: 1rem; padding: 1rem; border: 1px solid var(--color-purple-soft); border-radius: 12px; }
+.scad-detail h4 { margin: 1.25rem 0 0.5rem; }
+.scad-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0; }
+.scad-preview { width: 100%; max-width: 640px; height: 520px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+.scad-refund { max-width: 420px; }
+.scad-history { padding-left: 1.25rem; font-size: 0.9rem; }
+.scad-history li { margin-bottom: 0.25rem; }
+@media (max-width: 600px) { .scad-preview { height: 420px; } }
+#seller-campaigns .dash-table td::before { flex: none; }
+@media (max-width: 600px) { .scad-detail { padding: 0.75rem; } }
