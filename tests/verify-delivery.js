@@ -1,3 +1,4 @@
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
@@ -14,6 +15,7 @@ const STORE = (over) => Object.assign({
 
   async function checkout(store, { fail = false, island = 'South Tarawa', village = 'Betio', qty = 2, price = 50 } = {}) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+    await signInShopper(ctx);
     await ctx.route('**/macros/s/**', (r) => {
       let action = ''; try { action = new URL(r.request().url()).searchParams.get('action') || ''; } catch (e) {}
       try { if (!action) action = (r.request().postDataJSON() || {}).action; } catch (e) {}

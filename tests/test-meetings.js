@@ -81,6 +81,7 @@ function makeContext() {
       return found ? Object.assign({}, found) : null;
     },
     appendRowFromObject: (sheet, obj) => { row(sheet.name, obj); },
+    ensureColumn: () => {}, // columns are free-form in this in-memory DB
     updateRowFromObject: (sheet, rowNumber, patch) => {
       const r = DB[sheet.name].find((x) => x.__row === rowNumber);
       if (r) Object.assign(r, patch);
@@ -149,11 +150,14 @@ function makeContext() {
     grab(productsSrc, 'getOwnerBySlug'),
     grab(authSrc, 'requireAuth'),
     grab(customersSrc, 'requireCustomerAuth'),
+    grab(customersSrc, 'signedInCustomer'),
+    grab(customersSrc, 'signInRequiredFail'),
     grab(chatSrc, 'findConversation'),
     grab(chatSrc, 'createConversation'),
     grab(chatSrc, 'findOrCreateConversation'),
     grab(chatSrc, 'getConversationById'),
     grab(chatSrc, 'resolveChatRequest'),
+    grab(chatSrc, 'linkConversationToCustomer'),
     meetingsSrc
   ].join('\n\n'), box);
 
@@ -424,7 +428,10 @@ const baseFields = () => ({ purpose: 'Discuss my order', requestedDate: futureDa
 
   // Customer accepts the vendor's request -> vendor gets told.
   const vendorReqMeetingId = box.__db.Meetings[1].MeetingId;
-  box.actionRespondToMeeting({ storeSlug: 'bong', customerToken: 'anon-9', meetingId: vendorReqMeetingId, accept: true });
+  // Guests are viewers: accepting needs the customer's sign-in.
+  const guestAccept = box.actionRespondToMeeting({ storeSlug: 'bong', customerToken: 'anon-9', meetingId: vendorReqMeetingId, accept: true });
+  ok_('a guest cannot accept a meeting (sign in first)', !guestAccept.ok && guestAccept.signInRequired === true && box.__sentEmails.length === 1);
+  box.actionRespondToMeeting({ storeSlug: 'bong', customerToken: 'anon-9', customerAuthToken: 'cust-tok-1', meetingId: vendorReqMeetingId, accept: true });
   ok_('vendor is emailed when the customer accepts their request', box.__sentEmails.length === 2);
 
   // Vendor accepts a customer's request -> customer (unreachable) gets no email, vendor (self) gets none either.

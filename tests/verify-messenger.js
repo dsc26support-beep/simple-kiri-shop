@@ -105,9 +105,10 @@ ok('signup marks the field required', / required[ >]/.test(field(login, 'registe
   field(login, 'register-messenger'));
 ok('settings does NOT, so existing stores can still save',
   !/ required[ >]/.test(field(settings, 'contact-messenger')), field(settings, 'contact-messenger'));
-// "username", not "profile name" (owner's wording, Oct 2026).
-ok('the helper text talks about a Facebook username, not a store name',
-  /Your Facebook username/.test(login) && /Your Facebook username/.test(settings));
+// "username", not "profile name" (owner's wording, Oct 2026). The written
+// instruction is now a "Help?" popup (fb-help.js); its label says username.
+ok('the Help? button speaks of a Facebook username, not a store name',
+  /data-fb-help aria-label="Help finding your Facebook username"/.test(login) && /data-fb-help aria-label="Help finding your Facebook username"/.test(settings));
 
 /* ---------- the backend is the one that decides ---------- */
 const auth = fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8');
@@ -151,6 +152,7 @@ ok('messengerUrl still normalizes a legacy bare handle on read',
     await page.fill('#register-store-name', 'Bong Store');
     await page.fill('#register-username', 'bong');
     await page.fill('#register-password', 'longenoughpw');
+    await page.fill('#register-password-hint', 'my usual one');
     await page.fill('#register-email', 'a@b.com');
     await page.fill('#register-phone', '73007552');
     await page.fill('#register-messenger', messenger);

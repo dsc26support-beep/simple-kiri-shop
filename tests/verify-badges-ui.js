@@ -528,12 +528,8 @@ const box = (page, sel) => page.evaluate((s) => {
     await page.waitForTimeout(900);
     ok('customer-login still loads with no JS errors after wireInfoDot moved to helpers',
       errs.length === 0, errs.join(' | '));
-    await page.click('#shared-info-btn');
-    await page.waitForTimeout(200);
-    ok('and its info dot still opens', await page.locator('#shared-info').isVisible());
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(150);
-    ok('and still closes on Escape', await page.locator('#shared-info').isHidden());
+    // Its shared-device info dot was removed with the box (owner request,
+    // Oct 2026); wireInfoDot is still exercised by the seller badges above.
     await ctx.close();
   }
 

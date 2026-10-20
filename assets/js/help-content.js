@@ -114,7 +114,7 @@ const HELP_FAQS = [
     id: 'general-who', category: 'general',
     title: 'Who can use Mwakete?',
     subtitle: 'Shoppers, individuals and businesses',
-    description: 'Anyone 18 or older can use Mwakete, or a younger person with the agreement of a parent or guardian. You can browse and order without an account.\n\nPlease give real contact details - a seller cannot deliver to a wrong number.',
+    description: 'Anyone 18 or older can use Mwakete, or a younger person with the agreement of a parent or guardian. Anyone can browse; to order, book or message a seller you sign in (free).\n\nPlease give real contact details - a seller cannot deliver to a wrong number.',
     keywords: ['age', 'who', 'allowed', 'eligible', 'use', '18'],
     related: ['account-need', 'selling-individuals']
   },
@@ -248,7 +248,7 @@ const HELP_FAQS = [
     id: 'selling-what', category: 'selling',
     title: 'What can I list?',
     subtitle: 'Products, services and rentals',
-    description: 'You can list products, services and rentals that you actually have and are legally allowed to sell in Kiribati.\n\nNot allowed: anything illegal, weapons, drugs, medicines, stolen or counterfeit goods, and other people’s photos or text used without permission.\n\nNew Food & Groceries listings are open to wholesalers and distributors.',
+    description: 'You can list products, services and rentals that you actually have and are legally allowed to sell in Kiribati.\n\nNot allowed: anything illegal, weapons, drugs, medicines, stolen or counterfeit goods, and other people’s photos or text used without permission.\n\nFood & Groceries is open to wholesalers and distributors, and to retailers outside South Tarawa.',
     keywords: ['allowed', 'list', 'prohibited', 'banned', 'rules', 'what can', 'food', 'groceries'],
     related: ['selling-good-listing', 'business-wholesale']
   },
@@ -446,8 +446,8 @@ const HELP_FAQS = [
   {
     id: 'account-need', category: 'account',
     title: 'Do I need an account?',
-    subtitle: 'Not to browse or order',
-    description: 'No. You can browse and order as a guest - you only give your name and phone number so the seller can reach you. An account adds your order history in one place, the ability to leave reviews, and staying signed in.\n\nTo sell, you need a store account.',
+    subtitle: 'Not to browse - yes to order',
+    description: 'To look around, no - guests can browse every store and product. To place an order, send a booking request, message a seller or leave a review, you sign in (free, with Google or an email code). Your cart is kept while you sign in. Your account also keeps your orders and chats in one place.\n\nTo sell, you need a store account.',
     keywords: ['account', 'sign up', 'register', 'guest', 'login', 'need'],
     related: ['account-protect']
   },
@@ -455,8 +455,8 @@ const HELP_FAQS = [
     id: 'account-protect', category: 'account',
     title: 'How do I protect my account?',
     subtitle: 'Keep your codes private and log out on shared phones',
-    description: 'Never share the sign-in code we email you. On a shared phone, tick “This is a shared device” when signing in and log out when you finish. Sellers can turn on two-step sign-in (2FA) in store Settings.',
-    keywords: ['protect', 'secure', 'security', '2fa', 'two-step', 'shared device', 'logout', 'hacked'],
+    description: 'Never share the sign-in code we email you. On a shared phone, log out when you finish. Sellers can turn on two-step sign-in (2FA) in store Settings.',
+    keywords: ['protect', 'secure', 'security', '2fa', 'two-step', 'shared phone', 'logout', 'hacked'],
     related: ['safety-pin', 'account-access']
   },
   {

@@ -33,9 +33,11 @@
     // meetingSignInUrl in chat-window.js) - hides the guest route, which
     // can't request a meeting and would drop them back on the homepage.
     try {
-      if (new URLSearchParams(location.search).get('reason') === 'meeting') {
-        document.documentElement.classList.add('auth-for-meeting');
-      }
+      var why = new URLSearchParams(location.search).get('reason');
+      if (why === 'meeting') document.documentElement.classList.add('auth-for-meeting');
+      // Sent here to order, book or message a seller: guests can't, so the
+      // guest route is hidden for these too.
+      if (/^(meeting|order|book|message)$/.test(why || '')) document.documentElement.classList.add('auth-required');
     } catch (e) { /* the explanation just does not show */ }
   </script>
 </head>
@@ -57,7 +59,7 @@
 
   <main id="main">
     <section class="container auth-card-wrap">
-      <div class="auth-card">
+      <div class="auth-card auth-card--customer">
         <h1 id="auth-title">Sign in to Mwakete</h1>
         <!-- Why they're here, when chat sent them to request a meeting. Filled
              synchronously right here, before first paint, so it can't shift
@@ -68,11 +70,17 @@
           (function () {
             try {
               var q = new URLSearchParams(location.search);
-              if (q.get('reason') !== 'meeting') return;
               var store = (q.get('store') || '').trim().slice(0, 80);
               var note = document.getElementById('auth-reason');
-              note.textContent = 'Please sign in to request a meeting' + (store ? ' with ' + store : '') +
-                '. You\u2019ll go straight back to your chat afterwards.';
+              var lines = {
+                meeting: 'Please sign in to request a meeting' + (store ? ' with ' + store : '') +
+                  '. You\u2019ll go straight back to your chat afterwards.',
+                order: 'Please sign in to place your order. Your cart is kept, and you\u2019ll go straight back to checkout.',
+                book: 'Please sign in to send a booking request. You\u2019ll go straight back afterwards.',
+                message: 'Please sign in to message the seller. You\u2019ll go straight back to the chat afterwards.'
+              };
+              if (!lines[q.get('reason')]) return;
+              note.textContent = lines[q.get('reason')];
               note.hidden = false;
             } catch (e) { /* no explanation, sign-in still works */ }
           })();
@@ -87,12 +95,13 @@
              so it must never disappear along with it. -->
         <div class="auth-quick">
           <div id="google-signin-wrap" class="auth-social" hidden>
-            <div id="google-signin-btn"></div>
+            <div id="google-signin-btn" data-full-width></div>
             <p id="google-signin-error" class="form-error" role="alert"></p>
           </div>
 
           <div class="auth-guest-row">
-            <a class="btn btn-block btn-outline" id="guest-continue" href="index.html">Continue as guest</a>
+            <a class="btn btn-block btn-outline" id="guest-continue" href="index.html">Just browse (guest)</a>
+            <p class="helper-text auth-guest-note">Guests can look around. Ordering, booking and messaging sellers need you to sign in.</p>
           </div>
 
           <p class="auth-divider"><span>or</span></p>
@@ -163,26 +172,6 @@
             <button type="submit" class="btn btn-primary btn-block">Verify &amp; create account</button>
             <button type="button" id="signup-back" class="btn btn-block">Change my details</button>
           </form>
-        </div>
-
-        <!-- Hidden by CSS once this browser has signed in before (same
-             html.has-remembered-email signal as the "Signing in as ..." line
-             above, decided before first paint) - a device that already has a
-             trusted 60-day session has already made this call, so asking
-             again on every visit is just noise. -->
-        <div class="auth-shared-row">
-          <label class="auth-shared-device" for="shared-device">
-            <input type="checkbox" id="shared-device">
-            <span>This is a shared device &mdash; sign me out sooner</span>
-          </label>
-          <button type="button" class="info-dot" id="shared-info-btn"
-                  aria-expanded="false" aria-controls="shared-info"
-                  aria-label="What does this do?">i</button>
-          <!-- Same absolutely-positioned popup as the guest one, so opening it
-               cannot move the form. -->
-          <p class="info-pop" id="shared-info" role="status" hidden>
-            Leave this unticked and we'll keep you signed in on this device for 60 days.
-          </p>
         </div>
 
         <!-- The footer (and its Terms | Privacy) is hidden on phones and

@@ -48,6 +48,18 @@ async function init() {
 
   document.getElementById('settings-form').addEventListener('submit', onSaveSettings);
   document.getElementById('password-form').addEventListener('submit', onChangePassword);
+  // Changing only the hint needs the current password (so the server can
+  // check the hint doesn't contain it); with a new password it doesn't.
+  const showHintPassword = () => {
+    document.getElementById('hint-current-password-field').hidden =
+      !(document.getElementById('password-hint').value.trim() && !document.getElementById('new-password').value);
+  };
+  document.getElementById('password-hint').addEventListener('input', showHintPassword);
+  document.getElementById('new-password').addEventListener('input', showHintPassword);
+  const me = Auth.getOwner && Auth.getOwner();
+  if (me && me.hasPasswordHint === false) {
+    document.getElementById('password-hint-help').textContent = 'Not set yet. Shown if you get your password wrong.';
+  }
 
   // After fillForm(owner) above, so the snapshot is what the vendor's store
   // actually has stored rather than an empty form.
@@ -487,24 +499,36 @@ async function onChangePassword(e) {
   successEl.textContent = '';
 
   const newPassword = document.getElementById('new-password').value;
-  if (!newPassword) {
-    errorEl.textContent = 'Enter a new password first.';
+  const passwordHint = document.getElementById('password-hint').value.trim();
+  const currentPassword = document.getElementById('hint-current-password').value;
+  if (!newPassword && !passwordHint) {
+    errorEl.textContent = 'Enter a new password or a new hint first.';
     return;
   }
-  if (newPassword.length < 8) {
+  if (newPassword && newPassword.length < 8) {
     errorEl.textContent = 'Password must be at least 8 characters.';
     return;
   }
+  if (passwordHint && !newPassword && !currentPassword) {
+    errorEl.textContent = 'Enter your current password to change only the hint.';
+    document.getElementById('hint-current-password').focus();
+    return;
+  }
 
-  const res = await Api.post('updateOwnerProfile', { token: Auth.getToken(), newPassword });
+  const payload = { token: Auth.getToken() };
+  if (newPassword) payload.newPassword = newPassword;
+  if (passwordHint) { payload.passwordHint = passwordHint; if (!newPassword) payload.currentPassword = currentPassword; }
+  const res = await Api.post('updateOwnerProfile', payload);
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not update your password.';
     return;
   }
+  if (res.owner) Auth.saveSession(Auth.getToken(), res.owner);
 
-  document.getElementById('new-password').value = '';
+  ['new-password', 'password-hint', 'hint-current-password'].forEach((id) => { document.getElementById(id).value = ''; });
+  document.getElementById('hint-current-password-field').hidden = true;
   UnsavedGuard.markSaved(document.getElementById('password-form'));
-  successEl.textContent = 'Password updated.';
+  successEl.textContent = newPassword && passwordHint ? 'Password and hint updated.' : newPassword ? 'Password updated.' : 'Password hint updated.';
   setTimeout(() => { successEl.textContent = ''; }, 3000);
 }
 

@@ -1,8 +1,15 @@
 document.addEventListener('DOMContentLoaded', init);
 
+// Where to go after logging in: ?next= (e.g. Messages, from a new-message
+// email - auth.js adds it), else the dashboard. Only a page in this folder.
+function ownerNextPage() {
+  const next = getQueryParam('next') || '';
+  return /^(?!login\.html)[a-z-]+\.html(\?[a-zA-Z0-9=&%._-]*)?$/.test(next) ? next : 'dashboard.html';
+}
+
 function init() {
   if (Auth.getToken()) {
-    window.location.href = 'dashboard.html';
+    window.location.href = ownerNextPage();
     return;
   }
   attachStoreNameCounter(document.getElementById('register-store-name'));
@@ -157,9 +164,15 @@ async function onLogin(e) {
 
   const res = await Api.post('loginOwner', { username, password });
 
+  const hintEl = document.getElementById('login-password-hint');
   if (!res.ok) {
     setButtonIdle(submitBtn);
     errorEl.textContent = res.error || 'Could not log in.';
+    // The seller's own password hint, after a wrong password (Oct 2026).
+    if (hintEl) {
+      hintEl.textContent = res.passwordHint ? 'Your password hint: ' + res.passwordHint : '';
+      hintEl.hidden = !res.passwordHint;
+    }
     document.getElementById('login-register-hint').hidden = false;
     return;
   }
@@ -174,7 +187,7 @@ async function onLogin(e) {
   }
 
   Auth.saveSession(res.token, res.owner);
-  window.location.href = 'dashboard.html';
+  window.location.href = ownerNextPage();
 }
 
 async function onVerifyTwoFA(e) {
@@ -192,7 +205,7 @@ async function onVerifyTwoFA(e) {
   }
 
   Auth.saveSession(res.token, res.owner);
-  window.location.href = 'dashboard.html';
+  window.location.href = ownerNextPage();
 }
 
 async function onRegister(e) {
@@ -203,6 +216,7 @@ async function onRegister(e) {
   const storeName = document.getElementById('register-store-name').value.trim();
   const username = document.getElementById('register-username').value.trim();
   const password = document.getElementById('register-password').value;
+  const passwordHint = document.getElementById('register-password-hint').value.trim();
   const email = document.getElementById('register-email').value.trim();
   const phone = document.getElementById('register-phone').value.trim();
   const storeTypeEl = document.querySelector('input[name="storeType"]:checked');
@@ -216,6 +230,16 @@ async function onRegister(e) {
 
   if (Array.from(storeName).length > STORE_NAME_MAX) {
     errorEl.textContent = `Store name must be ${STORE_NAME_MAX} characters or fewer.`;
+    return;
+  }
+  if (passwordHint.length < 3) {
+    errorEl.textContent = 'Add a password hint - it reminds you if you forget your password.';
+    document.getElementById('register-password-hint').focus();
+    return;
+  }
+  if (password && passwordHint.toLowerCase().replace(/\s+/g, '').indexOf(password.toLowerCase().replace(/\s+/g, '')) !== -1) {
+    errorEl.textContent = 'Your password hint must not contain the password itself.';
+    document.getElementById('register-password-hint').focus();
     return;
   }
   if (!email) {
@@ -241,7 +265,7 @@ async function onRegister(e) {
   const submitBtn = document.getElementById('register-submit-btn');
   setButtonBusy(submitBtn, 'Creating', 'Create Store Account');
 
-  const res = await Api.post('registerOwner', { storeName, username, password, email, phone, messenger, storeType });
+  const res = await Api.post('registerOwner', { storeName, username, password, passwordHint, email, phone, messenger, storeType });
 
   if (!res.ok) {
     setButtonIdle(submitBtn);

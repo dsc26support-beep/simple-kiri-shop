@@ -4,6 +4,7 @@
 // The screenshot that started this showed a rental sitting on "Requested" with
 // no way to reach the seller at all, so the assertions that matter most are on
 // product.html - the page that had no contact block whatsoever.
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 
@@ -30,6 +31,7 @@ function storeResponse(over) {
 
   async function makeCtx(overrides) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await signInShopper(ctx);
     await ctx.route('**/macros/s/**', (route) => {
       let action = '';
       try { action = (route.request().postDataJSON() || {}).action; } catch (e) {}
@@ -251,6 +253,7 @@ function storeResponse(over) {
   // ---------- owner settings ----------
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await signInShopper(ctx);
     let savedBody = null;
     await ctx.route('**/macros/s/**', (route) => {
       let body = {};

@@ -92,7 +92,7 @@
                details until it supplies a Facebook profile it may not have. -->
           <label for="contact-messenger">Facebook Messenger</label>
           <input id="contact-messenger" type="text" placeholder="e.g. https://m.me/username" aria-describedby="contact-messenger-help">
-          <p class="helper-text" id="contact-messenger-help">Your Facebook username or profile link.</p>
+          <p class="helper-text" id="contact-messenger-help"><button type="button" class="link-button" data-fb-help aria-label="Help finding your Facebook username">Help?</button></p>
         </div>
 
         <h2>Store Logo</h2>
@@ -178,6 +178,16 @@
           <input id="new-password" type="password" minlength="8" autocomplete="new-password">
           <p class="helper-text">8+ characters. Leave blank to keep your current one.</p>
         </div>
+        <div class="field">
+          <label for="password-hint">Password hint</label>
+          <input id="password-hint" type="text" maxlength="100" autocomplete="off" aria-describedby="password-hint-help">
+          <p class="helper-text" id="password-hint-help">Shown if you get your password wrong. Leave blank to keep your current hint.</p>
+        </div>
+        <div class="field" id="hint-current-password-field" hidden>
+          <label for="hint-current-password">Current password</label>
+          <input id="hint-current-password" type="password" autocomplete="current-password">
+          <p class="helper-text">Needed to change only the hint.</p>
+        </div>
         <p id="password-error" class="form-error" role="alert"></p>
         <p id="password-success" class="form-success" role="status"></p>
         <button type="submit" class="btn">Update Password</button>
@@ -234,6 +244,7 @@
   <script defer src="../assets/js/owner-nav.min.js"></script>
   <script defer src="../assets/js/unsaved-guard.min.js"></script>
   <script defer src="../assets/js/owner-settings.min.js"></script>
+  <script defer src="../assets/js/fb-help.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>
 </html>

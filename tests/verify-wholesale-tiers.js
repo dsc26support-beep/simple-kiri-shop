@@ -5,6 +5,7 @@
  * by quantity, and what the server charges for that cart is what the shopper
  * was shown. A retailer sees none of it. Phone widths, no sideways scroll.
  */
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const { makeBox } = require('./lib/gas-harness.js');
 const BASE = process.env.TX_BASE || 'http://127.0.0.1:8099';
@@ -39,6 +40,7 @@ const rice = () => box.__sheets.Variants.objects().find((v) => v.VariantId === '
   const errors = [];
   const open = async (w, path, token) => {
     const ctx = await browser.newContext({ viewport: { width: w, height: 844 }, serviceWorkers: 'block' });
+    await signInShopper(ctx);
     await ctx.addInitScript((t) => {
       localStorage.setItem('skiri_cookie_consent', 'true');
       if (t) { localStorage.setItem('skiri_owner_token', t); localStorage.setItem('skiri_owner_profile', JSON.stringify({ storeName: 'S', storeSlug: 's', status: 'active' })); }

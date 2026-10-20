@@ -139,6 +139,22 @@ function requireCustomerAuth(token) {
   return customer;
 }
 
+/**
+ * Owner decision, Oct 2026: a guest is a viewer. Placing an order, sending a
+ * booking request, messaging a seller and reviewing all need a signed-in
+ * customer - checked here on the server, not only hidden in the page.
+ * Returns the customer, or null for a missing, unknown or expired session.
+ */
+function signedInCustomer(token) {
+  if (!token) return null;
+  try { return requireCustomerAuth(token); } catch (e) { return null; }
+}
+
+/** The refusal a guest gets; signInRequired lets the page send them to sign in. */
+function signInRequiredFail(what) {
+  return Object.assign(fail('Please sign in to ' + what + '. Guests can browse, but need an account for this.'), { signInRequired: true });
+}
+
 function customerCodeRateLimited(email) {
   return rateLimitHit('ratelimit:custcode:' + normalizeEmail(email), CUSTOMER_CODE_SEND_MAX, CUSTOMER_CODE_SEND_WINDOW_SECONDS);
 }

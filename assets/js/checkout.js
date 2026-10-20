@@ -31,11 +31,18 @@ async function init() {
     window.location.href = 'cart.html';
     return;
   }
+  // Guests are viewers (owner decision, Oct 2026): sign in first, then come
+  // straight back here - the cart is kept on this phone meanwhile.
+  if (!CustomerAuth.getToken()) {
+    window.location.href = CustomerAuth.signInUrl('order', 'checkout.html');
+    return;
+  }
 
   populateCheckoutIslandSelect();
   wireCheckoutLocationFields();
   document.getElementById('delivery-method-options').addEventListener('change', updateReviewTotal);
   prefillSavedCheckoutProfile();
+  useAccountEmail();
 
   const hideOverlay = showLoadingOverlay();
   const request = Api.get('getStorePublicInfo', { storeSlug: currentSlug });
@@ -123,6 +130,19 @@ function prefillSavedCheckoutProfile() {
     document.getElementById('checkout-island').value = saved.island;
     populateCheckoutVillageSelect(saved.island, saved.village || '');
   }
+}
+
+// The order goes under the signed-in account's email (the server uses it
+// whatever is sent), so the box shows that address and can't be changed here.
+function useAccountEmail() {
+  const customer = CustomerAuth.getCustomer();
+  const input = document.getElementById('customer-email');
+  if (!customer || !customer.email || !input) return;
+  input.value = customer.email;
+  input.readOnly = true;
+  if (!customer.name) return;
+  const name = document.getElementById('customer-name');
+  if (name && !name.value) name.value = customer.name;
 }
 
 /* ---------- Island / village selects (mirrors owner-settings.js) ---------- */
@@ -531,6 +551,7 @@ async function onSubmit(e) {
     // never places it twice; a new one once it has answered.
     requestId: orderRequestId || (orderRequestId = newOrderRequestId()),
     storeSlug: currentSlug,
+    customerSession: CustomerAuth.getToken(),
     customerName,
     customerPhone,
     customerEmail,
@@ -554,6 +575,13 @@ async function onSubmit(e) {
   submitBtn.disabled = false;
   submitBtn.textContent = 'Place Order';
 
+  // Signed out or expired meanwhile: sign in again rather than offering the
+  // send-it-yourself fallback below, which would get round the sign-in.
+  if (!res.ok && res.signInRequired) {
+    CustomerAuth.clearSession();
+    window.location.href = CustomerAuth.signInUrl('order', 'checkout.html');
+    return;
+  }
   if (!res.ok) {
     errorEl.textContent = `${res.error || 'Something went wrong.'} You can also send your order directly using the buttons below once you confirm your details.`;
     showFallbackConfirmation(payload, cart);

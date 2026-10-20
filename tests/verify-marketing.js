@@ -12,8 +12,9 @@ const DAY = 86400000;
 const ago = (d) => new Date(Date.now() - d * DAY).toISOString();
 
 const box = makeBox({
+  // Ana sells groceries, so she is on an outer island (Food & Groceries is closed to South Tarawa retailers).
   Owners: [['OwnerId', 'StoreSlug', 'StoreName', 'Status', 'Email', 'Island', 'Village'],
-    ['own_a', 'ana', 'Ana Shop', 'active', 'ana@x.com', 'South Tarawa', 'Bairiki'],
+    ['own_a', 'ana', 'Ana Shop', 'active', 'ana@x.com', 'Abaiang', 'Tebunginako'],
     ['own_adm', 'admin', 'ADMIN', 'active', 'boss@mwakete.com', '', '']],
   Products: [['ProductId', 'OwnerId', 'StoreSlug', 'Name', 'Status', 'Category', 'ListingType', 'ImageUrl', 'Views', 'CreatedAt'],
     ['p1', 'own_a', 'ana', 'Rice 25kg', 'active', 'food', 'product', '', 50, ago(2)],

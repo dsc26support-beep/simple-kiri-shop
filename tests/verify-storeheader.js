@@ -8,6 +8,7 @@
 // a shopper on the product page and at checkout, which is where they are
 // actually deciding to pay. Removing it from a header is tidying; removing it
 // from a checkout would be hiding a cost.
+const { signInShopper } = require('./lib/shopper.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const PHRASE = /Shipping fee and delivery date to be negotiated/i;
@@ -24,6 +25,7 @@ const P = [{ productId: 'p1', name: 'Rice', description: 'x', category: 'food',
 
   async function open(path, seed) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await signInShopper(ctx);
     await ctx.route('**/macros/s/**', (r) => {
       let body = {};
       try { body = r.request().postDataJSON() || {}; } catch (e) {}

@@ -57,6 +57,7 @@ async function page(browser, path, opts) {
     await pg.fill('#register-store-name', 'Bulk Foods');
     await pg.fill('#register-username', 'bulkfoods');
     await pg.fill('#register-password', 'longpassword1');
+    await pg.fill('#register-password-hint', 'my usual one');
     await pg.fill('#register-email', 'b@example.com');
     await pg.fill('#register-phone', '73012345');
     await pg.fill('#register-messenger', 'bulk.foods');
@@ -119,7 +120,8 @@ async function page(browser, path, opts) {
     const guard = src.match(/  if \(category === 'food' && !canListFood\(owner\)\) \{[\s\S]*?\n  \}\n/)[0];
     const admin = fs.readFileSync(REPO + 'apps-script/Admin.gs', 'utf8');
     // storeTypeOf + isBulkSeller + canListFood: the one shared Food rule.
-    const storeTypeOf = ['storeTypeOf', 'isBulkSeller', 'canListFood'].map((n) => admin.match(new RegExp('function ' + n + '[\\s\\S]*?\\n}'))[0]).join('\n');
+    const storeTypeOf = ['FOOD_RETAIL_CLOSED_ISLAND', 'FOOD_CLOSED_MESSAGE'].map((n) => admin.match(new RegExp('var ' + n + ' = .*'))[0])
+      .concat(['storeTypeOf', 'isBulkSeller', 'canListFood'].map((n) => admin.match(new RegExp('function ' + n + '[\\s\\S]*?\\n}'))[0])).join('\n');
     const run = (owner, body, priorRow) => {
       const box = { owner, body, category: 'food', fail: (m) => ({ ok: false, error: m }),
         getSheet: () => ({}), findRowById: () => priorRow || null, categoryIdOf: (c) => c, result: null };
@@ -127,7 +129,10 @@ async function page(browser, path, opts) {
       vm.runInContext(storeTypeOf + '\nresult = (function(){' + guard + ' return { ok: true }; })();', box);
       return box.result;
     };
-    ok('server: a retailer cannot file a NEW listing in Food', run({ OwnerId: 'o', StoreType: '' }, {}).ok === false);
+    ok('server: a South Tarawa retailer cannot file a NEW listing in Food', run({ OwnerId: 'o', StoreType: '', Island: 'South Tarawa' }, {}).ok === false);
+    ok('server: a retailer with no island set counts as South Tarawa', run({ OwnerId: 'o', StoreType: '' }, {}).ok === false);
+    ok('server: a retailer on another island CAN list in Food', run({ OwnerId: 'o', StoreType: 'retailer', Island: 'Abaiang' }, {}).ok === true);
+    ok('server: the refusal names South Tarawa', /South Tarawa/.test(run({ OwnerId: 'o', StoreType: '' }, {}).error));
     ok('server: nor move an existing listing INTO Food', run({ OwnerId: 'o', StoreType: 'retailer' }, { productId: 'p' }, { OwnerId: 'o', Category: 'home' }).ok === false);
     ok('server: but can keep editing a listing already in Food', run({ OwnerId: 'o', StoreType: '' }, { productId: 'p' }, { OwnerId: 'o', Category: 'food' }).ok === true);
     ok('server: someone else\'s Food listing id does not grandfather anything', run({ OwnerId: 'o', StoreType: '' }, { productId: 'p' }, { OwnerId: 'other', Category: 'food' }).ok === false);

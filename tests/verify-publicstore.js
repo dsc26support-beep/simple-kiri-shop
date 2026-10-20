@@ -1,6 +1,7 @@
 // Renders checkout, cart and chat against the NARROWED getStorePublicInfo
 // payload - produced by running the real publicStoreFields, so the fixture
 // cannot drift from the shipped shape.
+const { signInShopper } = require('./lib/shopper.js');
 const fs = require('fs'), vm = require('vm');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
@@ -27,6 +28,7 @@ const CART = [{ variantId: 'v1', productId: 'p1', label: 'Rice 1kg', unitPrice: 
 
   async function open(path, storeOverride) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+    await signInShopper(ctx);
     await ctx.route('**/macros/s/**', (r) => {
       let action = ''; let body = null;
       try { action = new URL(r.request().url()).searchParams.get('action') || ''; } catch (e) {}

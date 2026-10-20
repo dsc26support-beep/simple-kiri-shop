@@ -360,6 +360,12 @@ function showAddingToCartState(btn) {
 
 // Compact single-product version of store.js's booking handler.
 async function onRequestBooking(btn) {
+  // Guests are viewers (owner decision, Oct 2026): booking needs a sign-in,
+  // then straight back to this page.
+  if (!CustomerAuth.getToken()) {
+    window.location.href = CustomerAuth.signInUrl('book');
+    return;
+  }
   const pid = product.productId;
   const statusEl = document.getElementById(`booking-status-${pid}`);
   const select = document.getElementById(`variety-${pid}`);
@@ -389,6 +395,7 @@ async function onRequestBooking(btn) {
   setFormStatus(statusEl, '');
 
   const res = await Api.post('createBookingRequest', {
+    customerSession: CustomerAuth.getToken(),
     storeSlug: slug,
     productId: pid,
     variantId: select.value,
@@ -398,6 +405,11 @@ async function onRequestBooking(btn) {
     customerPhone,
     notes: notesInput.value.trim()
   });
+  if (!res.ok && res.signInRequired) {
+    CustomerAuth.clearSession();
+    window.location.href = CustomerAuth.signInUrl('book');
+    return;
+  }
 
   if (!res.ok) {
     setFormStatus(statusEl, res.error || 'Could not send this booking request.', 'error');

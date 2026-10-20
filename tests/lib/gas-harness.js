@@ -118,7 +118,40 @@ function makeBox(tabs, opts) {
   fs.readdirSync(DIR).filter((f) => f.endsWith('.gs')).sort().forEach((f) => {
     vm.runInContext(fs.readFileSync(`${DIR}/${f}`, 'utf8'), box, { filename: f });
   });
+  if (!(opts && opts.guest)) signInDefaultShopper(box, sheets);
   return box;
 }
 
-module.exports = { makeBox, FakeSheet };
+/**
+ * Guests are viewers (owner decision, Oct 2026): ordering, booking and
+ * messaging a seller need a signed-in customer. Most tests are about
+ * something else, so by default a calling shopper is signed in: a REAL
+ * Customers + CustomerSessions row, whose token is added to any of those
+ * calls that names no customerSession at all - the server's own check still
+ * runs on it. It has no email, so an order keeps the email the test sent.
+ * A test of the guest path passes customerSession: '' (or makeBox(..., { guest: true })).
+ */
+const TEST_SHOPPER_TOKEN = 'harness-shopper-session';
+function signInDefaultShopper(box, sheets) {
+  const add = (name, head, row) => {
+    if (!sheets[name]) sheets[name] = new FakeSheet(name, [head]);
+    const grid = sheets[name].grid;
+    grid.push(grid[0].map((h) => (h in row ? row[h] : '')));
+  };
+  add('Customers', ['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt'],
+    { CustomerId: 'cus_harness', Name: 'Test Shopper', Email: '', EmailVerified: 'yes' });
+  add('CustomerSessions', ['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'],
+    { Token: TEST_SHOPPER_TOKEN, CustomerId: 'cus_harness', ExpiresAt: new Date(Date.now() + 9e8).toISOString() });
+  ['actionCreateOrder', 'actionCreateBookingRequest', 'actionSendMessage', 'actionSendChatImage'].forEach((n) => {
+    const real = box[n];
+    if (typeof real !== 'function') return;
+    box[n] = function (body) {
+      if (body && typeof body === 'object' && !body.token && !('customerSession' in body)) {
+        body = Object.assign({}, body, { customerSession: TEST_SHOPPER_TOKEN });
+      }
+      return real.apply(this, arguments.length > 1 ? [body].concat([].slice.call(arguments, 1)) : [body]);
+    };
+  });
+}
+
+module.exports = { makeBox, FakeSheet, TEST_SHOPPER_TOKEN };

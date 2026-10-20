@@ -257,6 +257,11 @@ function publicMeetingFields(meeting) {
  * Returns { ok, conversation, actorType, actorId, error }.
  */
 function resolveRequestingActor(body) {
+  // A customer's sign-in is checked first, so a guest gets this message
+  // rather than chat's general "sign in to message the seller".
+  if (!body.token && !signedInCustomer(body.customerAuthToken)) {
+    return { ok: false, error: 'Please sign in to your account to request a meeting.' };
+  }
   var resolved = resolveChatRequest(body, { createIfMissing: true });
   if (!resolved.ok) return { ok: false, error: resolved.error };
 
@@ -394,6 +399,11 @@ function actionRespondToMeeting(body) {
   var meeting = actor.meeting;
 
   if (meeting.RecipientType !== actor.actorType) return fail('Not authorized to respond to this meeting');
+  // Guests are viewers (signedInCustomer): a guest may decline, but accepting
+  // (and then arranging it in chat) needs a sign-in.
+  if (actor.actorType === 'customer' && body.accept === true && !signedInCustomer(body.customerAuthToken)) {
+    return signInRequiredFail('accept a meeting');
+  }
   // A vendor recipient is always checked against the real OwnerId already
   // resolved above. A customer recipient of a VENDOR-initiated meeting has
   // no real CustomerId on the row to check (see the file header) - the

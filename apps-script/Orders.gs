@@ -181,6 +181,11 @@ function actionCreateOrder(body) {
   if (!slug) return fail('storeSlug is required');
   var owner = getOwnerBySlug(slug);
   if (!isStoreBrowsable(owner)) return fail('Store not found');
+  // Guests are viewers (signedInCustomer). The order goes under the account's
+  // email, so it is always in that customer's My Account.
+  var customer = signedInCustomer(body.customerSession);
+  if (!customer) return signInRequiredFail('place an order');
+  if (customer.Email) body.customerEmail = customer.Email;
   // A standby (closed) store still takes orders - same as chat, the order
   // just waits for the owner to come back and process it. See
   // isStoreOpenForBusiness's header comment in Auth.gs.
@@ -257,7 +262,7 @@ function actionCreateOrder(body) {
       var product = products.filter(function (p) { return p.ProductId === variant.ProductId; })[0];
       // A listing that is hidden, held for review or archived can't be bought,
       // even with a variant id copied from an old cart.
-      if (!product || product.Status !== 'active') return fail('One of the items in your cart is no longer available. Please refresh your cart.');
+      if (!product || product.Status !== 'active' || foodListingHidden(owner, product)) return fail('One of the items in your cart is no longer available. Please refresh your cart.');
       var productName = product ? product.Name : 'Item';
       // What the customer chose, frozen into the order: later renames, price
       // changes or switched-off options never rewrite it.

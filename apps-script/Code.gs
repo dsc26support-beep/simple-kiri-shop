@@ -34,6 +34,9 @@ var PUBLIC_POST_ACTIONS = [
   'googleSignIn',
   'listCustomerOrders', 'listCustomerBookings', 'updateCustomerProfile',
   'getCustomerInbox',
+  // The signed-in customer's own chats, for a phone opened from a reply
+  // email (Chat.gs) - checks the customer session inside.
+  'claimCustomerChats',
   // Marketing (Marketing.gs): the customer's own opt-in (customer token
   // checked inside), the one-tap unsubscribe (random per-customer token), and
   // an email-link click (counted only for a real, sent email).
@@ -116,7 +119,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'speed1-2026-10-19';
+var APP_VERSION = 'guest1-2026-10-20';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -477,6 +480,7 @@ function doPost(e) {
         case 'listCustomerBookings': return jsonOut(actionListCustomerBookings(body));
         case 'updateCustomerProfile': return jsonOut(actionUpdateCustomerProfile(body));
         case 'getCustomerInbox': return jsonOut(actionGetCustomerInbox(body));
+        case 'claimCustomerChats': return jsonOut(actionClaimCustomerChats(body));
         case 'getMarketingPreference': return jsonOut(actionGetMarketingPreference(body));
         case 'setMarketingPreference': return jsonOut(actionSetMarketingPreference(body));
         case 'unsubscribeMarketing': return jsonOut(actionUnsubscribeMarketing(body));

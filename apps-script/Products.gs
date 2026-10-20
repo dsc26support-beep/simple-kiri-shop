@@ -368,7 +368,7 @@ function getTopProductsCached() {
     var ratings = productRatingIndex();
 
     return sheetToObjects(getSheet('Products'))
-      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
+      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId] && !foodListingHidden(ownersById[p.OwnerId], p); })
       .map(function (p) {
         var owner = ownersById[p.OwnerId];
         var productVariants = variants
@@ -582,7 +582,7 @@ function actionSearchProducts(params) {
     var ratings = productRatingIndex();
 
     var matched = sheetToObjects(getSheet('Products'))
-      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId]; })
+      .filter(function (p) { return p.Status === 'active' && ownersById[p.OwnerId] && !foodListingHidden(ownersById[p.OwnerId], p); })
       .filter(function (p) {
         // Compared against the MAPPED id, so "Food & Groceries" finds the
         // products still stored as the legacy 'pantry'. Matching the raw
@@ -681,7 +681,7 @@ function actionListProducts(params) {
     if (!isStoreBrowsable(owner)) return null;
 
     var products = sheetToObjects(getSheet('Products')).filter(function (p) {
-      return p.OwnerId === owner.OwnerId && p.Status === 'active';
+      return p.OwnerId === owner.OwnerId && p.Status === 'active' && !foodListingHidden(owner, p);
     });
     var variants = sheetToObjects(getSheet('Variants')).filter(function (v) {
       return v.OwnerId === owner.OwnerId && v.Status === 'active';
@@ -788,6 +788,9 @@ function actionListOwnerProducts(owner, body) {
       options: productOptionsOf(p),
       requestedStatus: String(p.RequestedStatus || ''),
       review: cases[p.ProductId] || null,
+      // Food & Groceries not shown to shoppers for this store (Admin.gs
+      // foodListingHidden) - the Products page says so.
+      foodHidden: foodListingHidden(owner, p),
       sortOrder: p.SortOrder,
       variants: productVariants
     };
@@ -824,13 +827,13 @@ function actionCreateOrUpdateProduct(owner, body) {
     listingType = listingTypeOfRow({ ListingType: '', Category: body.category });
   }
 
-  // Food & Groceries is wholesale-only for NEW listings (owner decision). A
-  // listing already filed there is grandfathered - editing it keeps working -
-  // but nothing new can be filed into it by a store that isn't a wholesaler.
+  // Food & Groceries (owner decisions): not for retailers on South Tarawa
+  // (canListFood). A listing already filed there can still be edited - it is
+  // just hidden from shoppers (foodListingHidden) - but nothing new is filed.
   if (category === 'food' && !canListFood(owner)) {
     var prior = body.productId ? findRowById(getSheet('Products'), 'ProductId', body.productId) : null;
     var alreadyFood = !!(prior && prior.OwnerId === owner.OwnerId && categoryIdOf(prior.Category) === 'food');
-    if (!alreadyFood) return fail('Food & Groceries is for wholesaler and distributor stores only. Please choose another category.');
+    if (!alreadyFood) return fail(FOOD_CLOSED_MESSAGE + ' Please choose another category.');
   }
 
   // Listing checks (ListingReview.gs). Run before anything is written: a
@@ -1156,9 +1159,28 @@ function actionUpdateOwnerProfile(owner, body) {
 
   if (body.newPassword) {
     if (String(body.newPassword).length < 8) return fail('Password must be at least 8 characters');
+    // A new password must not be spelled out by the hint already on file.
+    if (body.passwordHint === undefined && owner.PasswordHint && passwordHintError(owner.PasswordHint, body.newPassword)) {
+      return fail('Your current password hint gives this password away - change the hint too.');
+    }
     var salt = Utilities.getUuid();
     update.PasswordSalt = salt;
     update.PasswordHash = hashPassword(body.newPassword, salt);
+  }
+
+  // Password hint (Oct 2026). Checked against the password it hints at: the
+  // new one if it is being changed too, otherwise the current one, which the
+  // seller types so we can make sure the hint doesn't contain it.
+  if (body.passwordHint !== undefined) {
+    var hintFor = body.newPassword ? String(body.newPassword) : String(body.currentPassword || '');
+    if (!body.newPassword) {
+      if (!hintFor) return fail('Enter your current password to change the hint.');
+      if (!constantTimeEquals(hashPassword(hintFor, owner.PasswordSalt), owner.PasswordHash)) return fail('That current password is not right.');
+    }
+    var hintErr = passwordHintError(body.passwordHint, hintFor);
+    if (hintErr) return fail(hintErr);
+    ensureColumn(sheet, 'PasswordHint');
+    update.PasswordHint = String(body.passwordHint).trim();
   }
 
   // THE CONTACT EMAIL IS NOT SETTABLE HERE, deliberately.

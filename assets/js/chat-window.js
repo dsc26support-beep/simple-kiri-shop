@@ -550,11 +550,16 @@ function initChatWindow() {
     const bubble = appendMessage('chat-message--customer', text, { beforeTyping: true });
     bubble.classList.add('chat-message--sending');
 
-    const res = await Api.post('sendMessage', { storeSlug, customerToken, customerName: getCustomerName(), body: text });
+    // The sign-in Chat.gs needs to send at all; it also links the chat to the
+    // account, so a seller's reply can be emailed.
+    const customerSession = typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken ? CustomerAuth.getToken() : null;
+    const res = await Api.post('sendMessage', Object.assign({ storeSlug, customerToken, customerName: getCustomerName(), body: text },
+      customerSession ? { customerSession } : {}));
 
     bubble.classList.remove('chat-message--sending');
     if (!res.ok) {
       markBubbleFailed(bubble, text, res.error);
+      if (res.signInRequired) showSignInGate();
       return;
     }
     lastMessageId = res.message.messageId;
@@ -587,6 +592,7 @@ function initChatWindow() {
     bubble.classList.add('chat-message--sending');
 
     const res = await Api.post('sendChatImage', {
+      customerSession: isSignedInCustomer() ? CustomerAuth.getToken() : '',
       storeSlug,
       customerToken,
       customerName: getCustomerName(),
@@ -660,6 +666,7 @@ function initChatWindow() {
     }
 
     startPolling();
+    if (!isSignedInCustomer()) return; // reading only - nothing to type into
     setTimeout(() => input.focus(), 220); // after the open transition
   }
 
@@ -767,6 +774,19 @@ function initChatWindow() {
     updateBadge(0); // opening it is reading it
     adjustForOnscreenKeyboard(); // covers the rare case the keyboard is already up (e.g. re-focus after a fast reopen)
 
+    // Guests are viewers (owner decision, Oct 2026): sending needs a sign-in
+    // (Chat.gs refuses it too). A guest who chatted here before can still
+    // read that chat; the box to type in is replaced by a Sign in button.
+    if (!isSignedInCustomer()) {
+      showSignInGate();
+      if (getCustomerName()) startChatContent();
+      return;
+    }
+    hideSignInGate();
+    // Signed in: the account's name, so there is nothing to ask.
+    const profile = CustomerAuth.getCustomer();
+    if (!getCustomerName() && profile && profile.name) setCustomerName(profile.name);
+
     if (!getCustomerName()) {
       showNameGate();
       setTimeout(() => nameInput.focus(), 220);
@@ -774,6 +794,47 @@ function initChatWindow() {
     }
 
     startChatContent();
+  }
+
+  function isSignedInCustomer() {
+    return typeof CustomerAuth !== 'undefined' && !!CustomerAuth.getToken();
+  }
+
+  // Built here rather than in each page's markup: one copy for the four
+  // pages that carry the chat window.
+  let signInGateEl = null;
+  function showSignInGate() {
+    nameGateEl.classList.add('hidden');
+    form.classList.add('hidden');
+    if (!signInGateEl) {
+      signInGateEl = document.createElement('div');
+      signInGateEl.className = 'chat-signin-gate';
+      signInGateEl.id = 'chat-signin-gate';
+      const note = document.createElement('p');
+      note.textContent = 'Sign in to message this seller. Guests can look around, but can\u2019t send messages.';
+      const link = document.createElement('a');
+      link.className = 'btn btn-primary btn-block';
+      link.textContent = 'Sign in to message';
+      signInGateEl.append(note, link);
+      form.parentNode.insertBefore(signInGateEl, form);
+    }
+    signInGateEl.querySelector('a').href = messageSignInUrl();
+    signInGateEl.classList.remove('hidden');
+  }
+
+  function hideSignInGate() {
+    if (signInGateEl) signInGateEl.classList.add('hidden');
+  }
+
+  // Straight back into this chat after signing in (same deep link as
+  // meetingSignInUrl, without the Meetings panel).
+  function messageSignInUrl() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('chat', 'open');
+    params.delete('meetings');
+    params.delete('video');
+    const page = window.location.pathname.split('/').pop() || 'store.html';
+    return CustomerAuth.signInUrl('message', page + '?' + params.toString());
   }
 
   function closeWindow() {

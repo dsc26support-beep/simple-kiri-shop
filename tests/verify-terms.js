@@ -90,7 +90,7 @@ const ok = (name, cond, detail) => {
     ['age', /18 or older/i],
     ['governing law', /Republic of Kiribati/i],
     ['a contact address', /admin@mwakete\.com/],
-    ['shared devices', /shared device/i]
+    ['shared phones (log out)', /shared phone, log out/i]
   ]) ok('the terms cover: ' + label, re.test(text));
 
   // --- linked from where agreement actually happens -------------------------

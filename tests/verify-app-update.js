@@ -108,7 +108,7 @@ const newVersionArrives = async (page) => {
 const state = async (page, nav) => {
   const inPage = await page.evaluate(() => ({
     updates: window.__updateCalls,
-    bar: !!document.getElementById('app-update-bar')
+    bar: !!document.getElementById('app-update-popup')
   })).catch(() => ({ updates: 0, bar: false }));   // mid-reload
   return { reloads: nav.count, updates: inPage.updates, bar: inPage.bar };
 };
@@ -199,7 +199,11 @@ const state = async (page, nav) => {
     });
     await newVersionArrives(page);
     const s = await state(page, nav);
-    ok('a cursor in a text field stops the refresh', s.reloads === 0 && s.bar, JSON.stringify(s));
+    ok('a cursor in a text field stops the refresh', s.reloads === 0, JSON.stringify(s));
+    ok('...and the popup waits - it never lands under someone typing', !s.bar, JSON.stringify(s));
+    await page.evaluate(() => document.activeElement.blur());
+    await page.waitForTimeout(150);
+    ok('...appearing once they leave the field', (await state(page, nav)).bar);
     await ctx.close();
   }
 
@@ -260,47 +264,39 @@ const state = async (page, nav) => {
     await ctx.close();
   }
 
-  /* ---------- the bar ---------- */
+  /* ---------- the popup (owner request, Oct 2026) ---------- */
   {
     const { ctx, page, nav } = await open(browser, { url: '/checkout.html?store=bong' });
     await newVersionArrives(page);
-    const bar = await page.evaluate(() => {
-      const b = document.getElementById('app-update-bar');
+    await page.waitForTimeout(300);
+    const pop = await page.evaluate(() => {
+      const b = document.querySelector('#app-update-popup .app-update-box');
       if (!b) return null;
       const r = b.getBoundingClientRect();
-      return { text: b.textContent.replace(/\s+/g, ' ').trim(), role: b.getAttribute('role'),
-               bottom: Math.round(window.innerHeight - r.bottom), left: Math.round(r.left),
-               right: Math.round(window.innerWidth - r.right), width: Math.round(r.width) };
+      return { title: document.getElementById('app-update-title').textContent, note: document.getElementById('app-update-note').textContent,
+        role: b.getAttribute('role'), modal: b.getAttribute('aria-modal'),
+        centre: Math.abs((r.left + r.right) / 2 - innerWidth / 2) <= 2 && Math.abs((r.top + r.bottom) / 2 - innerHeight / 2) <= 2,
+        onScreen: r.left >= 8 && innerWidth - r.right >= 8, focus: document.activeElement && document.activeElement.id,
+        buttons: Array.from(b.querySelectorAll('button')).map((x) => x.textContent.trim()) };
     });
-    ok('the bar says what it is in plain words', bar && /new version of Mwakete is ready/i.test(bar.text),
-      bar && bar.text);
-    ok('and is announced rather than shouted', bar && bar.role === 'status', bar && bar.role);
-    ok('it sits fully on screen with a margin each side',
-      bar && bar.left >= 8 && bar.right >= 8 && bar.width > 100, JSON.stringify(bar));
-    ok('and clear of the bottom nav, not under it', bar && bar.bottom >= 56, JSON.stringify(bar));
-
-    /*
-     * THE REFRESH BUTTON MUST ACTUALLY BE TAPPABLE.
-     *
-     * The first version of this bar sat at z-index 60, full width, low on the
-     * screen - directly underneath the floating chat button, which is fixed at
-     * z-index 1001 in the lower right. The bar was perfectly visible and its
-     * only useful control could not be pressed. A hit test says whether
-     * something is on top of it; "is it visible" does not.
-     */
+    ok('a centered "Update available" popup appears', pop && pop.title === 'Update available' && pop.centre && pop.onScreen, JSON.stringify(pop));
+    ok('it says what is new (release.json)', pop && /new version of Mwakete is ready: .+/.test(pop.note), pop && pop.note);
+    ok('it is a proper dialog, focus on Update now', pop && pop.role === 'dialog' && pop.modal === 'true' && pop.focus === 'app-update-refresh', JSON.stringify(pop));
+    ok('two choices: Update now, Later', pop && pop.buttons.join('|') === 'Update now|Later', pop && pop.buttons.join('|'));
+    // Nothing (chat button, cookie notice) may sit on top of the main control.
     const onTop = await page.evaluate(() => {
       const b = document.getElementById('app-update-refresh');
       const r = b.getBoundingClientRect();
       const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       return { hit: hit ? hit.id || hit.className : null, inside: !!(hit && b.contains(hit)) };
     });
-    ok('nothing is stacked on top of the Refresh button', onTop.inside, JSON.stringify(onTop));
-    ok('and the install pill is hidden while the bar is up, since they share a slot',
+    ok('nothing is stacked on top of Update now', onTop.inside, JSON.stringify(onTop));
+    ok('and the install tab is hidden while the popup is up',
       await page.evaluate(() => document.body.classList.contains('has-app-update')));
 
     await page.click('#app-update-refresh');
     await page.waitForTimeout(200);
-    ok('tapping Refresh applies it', (await state(page, nav)).reloads === 1);
+    ok('tapping Update now applies it', (await state(page, nav)).reloads === 1);
     await ctx.close();
   }
 
@@ -310,7 +306,7 @@ const state = async (page, nav) => {
     await page.click('#app-update-later');
     await page.waitForTimeout(200);
     const s = await state(page, nav);
-    ok('it can be dismissed, and dismissing does NOT reload', !s.bar && s.reloads === 0,
+    ok('Later closes it, and does NOT reload', !s.bar && s.reloads === 0,
       JSON.stringify(s));
     await ctx.close();
   }
@@ -320,8 +316,8 @@ const state = async (page, nav) => {
     await newVersionArrives(page);
     await newVersionArrives(page);
     await newVersionArrives(page);
-    ok('three updates in a row still leave exactly one bar',
-      await page.evaluate(() => document.querySelectorAll('#app-update-bar').length) === 1);
+    ok('three updates in a row still leave exactly one popup',
+      await page.evaluate(() => document.querySelectorAll('#app-update-popup').length) === 1);
     await ctx.close();
   }
 

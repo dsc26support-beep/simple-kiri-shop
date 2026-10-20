@@ -158,9 +158,11 @@ function makeCtx(opts) {
   const customers = fs.readFileSync(REPO + 'apps-script/Customers.gs', 'utf8');
   ok('a remembered session is 60 days', /CUSTOMER_REMEMBER_HOURS\s*=\s*24\s*\*\s*60/.test(customers));
   ok('a shared-device session is much shorter', /CUSTOMER_SHARED_DEVICE_HOURS\s*=\s*12\b/.test(customers));
-  const calls = customers.match(/issueCustomerSession\(customer\.CustomerId[^)]*\)/g) || [];
-  ok('every email-code sign-in passes the shared-device choice through',
-    calls.length === 2 && calls.every((c) => c.indexOf('sharedDevice') !== -1), JSON.stringify(calls));
+  // The page no longer offers the shared-device box (owner request, Oct 2026),
+  // so it never sends the flag and every sign-in is the normal 60 days. The
+  // backend still accepts it, harmlessly.
+  const page = fs.readFileSync(REPO + 'assets/js/customer-login.js', 'utf8') + fs.readFileSync(REPO + 'assets/js/google-signin.js', 'utf8');
+  ok('the sign-in pages no longer send a shared-device choice', !/sharedDevice/.test(page));
 }
 
 let pass = 0;

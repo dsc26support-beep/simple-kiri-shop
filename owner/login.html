@@ -56,6 +56,7 @@
             <input id="login-password" name="password" type="password" autocomplete="current-password" required>
           </div>
           <p id="login-error" class="form-error" role="alert"></p>
+          <p id="login-password-hint" class="login-hint" role="status" hidden></p>
           <button type="submit" id="login-submit-btn" class="btn btn-primary btn-block">Log In</button>
           <p class="helper-text" style="text-align:center; margin-top:0.75rem;"><a href="forgot-password.html">Forgot your password?</a></p>
           <!-- Shown only after a log-in fails. The error above stays vague on
@@ -113,6 +114,11 @@
             <p class="helper-text">At least 8 characters.</p>
           </div>
           <div class="field">
+            <label for="register-password-hint">Password hint</label>
+            <input id="register-password-hint" name="passwordHint" type="text" maxlength="100" autocomplete="off" aria-describedby="register-password-hint-help" required>
+            <p class="helper-text" id="register-password-hint-help">Shown if you get your password wrong. Never the password itself.</p>
+          </div>
+          <div class="field">
             <label for="register-email">Contact Email</label>
             <input id="register-email" name="email" type="email" autocomplete="email" required>
             <p class="helper-text">Orders are emailed here.</p>
@@ -125,7 +131,7 @@
           <div class="field">
             <label for="register-messenger">Facebook Messenger</label>
             <input id="register-messenger" name="messenger" type="text" placeholder="e.g. https://m.me/username" aria-describedby="register-messenger-help" required>
-            <p class="helper-text" id="register-messenger-help">Your Facebook username or profile link.</p>
+            <p class="helper-text" id="register-messenger-help"><button type="button" class="link-button" data-fb-help aria-label="Help finding your Facebook username">Help?</button></p>
           </div>
           <p id="register-error" class="form-error" role="alert"></p>
           <p class="helper-text auth-terms-note">By creating a store you agree to the <a href="../terms.html">Terms of Service</a> and the <a href="../privacy.html">Privacy Policy</a>.</p>
@@ -154,6 +160,7 @@
        call is made from this page. -->
   <script defer src="../assets/js/customer-auth.min.js"></script>
   <script defer src="../assets/js/owner-login.min.js"></script>
+  <script defer src="../assets/js/fb-help.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>
 </html>

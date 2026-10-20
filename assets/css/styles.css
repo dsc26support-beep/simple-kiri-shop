@@ -1196,19 +1196,21 @@ footer.site-footer .copyright {
   transform: rotate(180deg);
   min-width: 36px;
   padding: 0.9em 0.45em;
-  border: 0;
   /* Rotated half a turn, so these are the corners on the screen's inner
      (left) side; the right side stays flush with the edge. */
   border-radius: 0 10px 10px 0;
-  background: var(--color-gold);
-  color: var(--color-ink);
+  /* Outlined, see-through (owner request, Oct 2026): the tab sits over the
+     right end of the Recents row, which shows through it. */
+  border: 2px solid var(--color-gold);
+  border-left-width: 0;
+  background: transparent;
+  color: var(--color-purple);
   font-family: inherit;
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .install-fab.is-visible {
@@ -1769,6 +1771,22 @@ footer.site-footer .copyright {
   padding: var(--space-2) var(--space-3);
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
+}
+
+/* Guests are viewers: in place of the input row, a Sign in button
+   (chat-window.js showSignInGate). */
+.chat-signin-gate {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.chat-signin-gate p {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.875rem;
 }
 
 .chat-message-input {
@@ -5325,7 +5343,7 @@ legend {
   }
 }
 
-/* ---- Customer sign-in: Google, shared device, guest ------------------------
+/* ---- Customer sign-in: Google, guest ------------------------
    The Google block carries its own "or" divider so both disappear together
    when the button never renders - an unconfigured deployment, or a connection
    that blocked accounts.google.com. A stray "or" above the email form would
@@ -5370,33 +5388,6 @@ legend {
   background: var(--color-border);
 }
 
-/* The checkbox and its info dot share a row; position:relative anchors the
-   panel to this row rather than the page. */
-.auth-shared-row {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-.auth-shared-device {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  flex: 1 1 auto;
-  cursor: pointer;
-  line-height: 1.4;
-}
-
-/* 20px, not the 16px a checkbox defaults to: this is tapped on a phone, and it
-   is the control that decides how long a session survives on a shared handset. */
-.auth-shared-device input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
-  margin: 0;
-}
 
 /* The two no-typing ways in, above the "or" divider. */
 .auth-quick {
@@ -5793,63 +5784,41 @@ button.seller-badge[aria-expanded="true"] {
  * open chat, an unsaved form, or a cursor in a text field. Everywhere else the
  * app just refreshes itself and this is never seen.
  *
- * A bar, not a modal. The update is never urgent enough to block what someone
- * is doing, and a modal over a half-filled delivery address would be worse
- * than the stale build it is replacing.
+ * A centered popup (owner request, Oct 2026), with Later always offered. It
+ * never appears while someone is typing (register-sw.js waits for them to
+ * leave the field), so it can't land on a half-typed delivery address.
  */
-.app-update-bar {
+.app-update-back {
   position: fixed;
-  left: var(--space-3);
-  right: var(--space-3);
-  /* ABOVE THE CHAT BUTTON, not merely above the page.
-     The first version sat at z-index 60 and the full width of the screen, which
-     put the Refresh button directly underneath the floating chat button - fixed
-     at z-index 1001 in the lower right. The bar was visible and its main
-     control was not tappable. Same slot the install pill uses, and the same
-     expression, so the three stay in one stack. */
-  bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--chat-fab-height, 56px) + var(--space-2));
-  /* Above the FABs (1001), below the cookie banner (1003), which is a legal
-     notice and outranks a version update. */
-  z-index: 1002;
+  inset: 0;
+  /* A dialog, at the same layer as the unsaved-changes one (1004): above
+     the chat button and window, the bottom nav and the cookie notice, so its
+     backdrop covers everything it is waiting on. */
+  z-index: 1004;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-purple);
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(26, 26, 26, 0.55);
+}
+
+.app-update-box {
+  width: 100%;
+  max-width: 340px;
+  padding: var(--space-4);
   border-radius: var(--radius);
   background: var(--color-bg);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
-  font-size: 0.875rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
-.app-update-bar-text {
-  flex: 1 1 auto;
-  min-width: 0;
-}
+.app-update-title { margin: 0 0 var(--space-2); font-size: 1.2rem; color: var(--color-purple); }
+.app-update-note { margin: 0 0 var(--space-3); color: var(--color-ink); line-height: 1.45; }
+.app-update-actions { display: grid; gap: var(--space-2); }
+.app-update-actions .btn { width: 100%; min-height: 44px; }
 
-.app-update-bar .btn {
-  flex: 0 0 auto;
-}
-
-.app-update-dismiss {
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  color: var(--color-muted);
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.app-update-dismiss:hover {
-  color: var(--color-ink);
-}
-
-/* The install pill occupies exactly this slot. Both are transient and the
-   update matters more - someone running an old build has a problem now, where
-   "add to home screen" can wait for the next visit. */
+/* The install tab steps aside while the update popup is up. Both are
+   transient and the update matters more - someone running an old build has a
+   problem now, where "add to home screen" can wait for the next visit. */
 body.has-app-update .install-fab {
   display: none !important;
 }
@@ -6162,15 +6131,6 @@ html.has-remembered-email .login-remembered {
   display: block;
 }
 
-/* Same before-first-paint signal, opposite direction: a device that has
-   already signed in once has already made the shared-device call, so this
-   row only needs to show the first time. No separate CLS note needed - this
-   one starts visible in the markup and DISAPPEARS when remembered, so there
-   is no later un-hide to shift anything. */
-html.has-remembered-email .auth-shared-row {
-  display: none;
-}
-
 /* Both children are block-level so filling the address in changes the WIDTH of
    the first line and nothing else. Sharing one line with the button meant the
    text arriving shoved the button sideways - a HORIZONTAL shift, which counts
@@ -6398,13 +6358,29 @@ html.has-remembered-email .auth-shared-row {
   line-height: 1.4;
 }
 
-html.auth-for-meeting .auth-guest-row {
+html.auth-for-meeting .auth-guest-row,
+html.auth-for-meeting .auth-guest-note,
+html.auth-required .auth-guest-row,
+html.auth-required .auth-guest-note {
   display: none;
 }
 
 /* With guest hidden, "or" only makes sense if Google is actually showing. */
-html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
+html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider,
+html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   display: none;
+}
+
+/* Guests are viewers: says so under the guest button, on a line of its own
+   (the row wraps; the note takes the full width). */
+.auth-guest-row {
+  flex-wrap: wrap;
+}
+
+.auth-guest-note {
+  flex: 1 0 100%;
+  margin: 0;
+  text-align: center;
 }
 
 /* ==========================================================================
@@ -7984,3 +7960,81 @@ html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
 .cart-line--bulk { flex-wrap: wrap; }
 .cart-line-bulk { flex-basis: 100%; margin: 0; }
 .cart-line-bulk:empty { display: none; }
+
+/* ===== "Help?" popup under the Messenger box (fb-help.js) ===== */
+.fbh-back {
+  position: fixed;
+  inset: 0;
+  z-index: 1005;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(26, 26, 26, 0.55);
+}
+.fbh-box {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.fbh-title { margin: 0 0 var(--space-1); font-size: 1.2rem; color: var(--color-ink); }
+.fbh-note { margin: 0 0 var(--space-3); color: var(--color-muted); font-size: 0.9rem; }
+.fbh-options { display: grid; gap: var(--space-2); }
+.fbh-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-purple);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+.fbh-option:hover, .fbh-option:focus-visible { background: var(--color-purple-light); }
+.fbh-close {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--color-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* Customer sign-in (owner request, Oct 2026): Google, "Continue as guest" and
+   "Send me a code" are all the same size. Google draws its own button at a
+   fixed 40px tall (size "large") and as wide as google-signin.js asks - the
+   full width of the card here (data-full-width) - so the other two match it. */
+.auth-card--customer #google-signin-btn[data-full-width] {
+  align-self: stretch;
+  width: 100%;
+  min-height: 40px;
+}
+.auth-card--customer #guest-continue,
+.auth-card--customer #login-form button[type="submit"],
+.auth-card--customer #signup-form button[type="submit"] {
+  width: 100%;
+  min-height: 40px;
+  height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Seller login: the seller's own password hint, after a wrong password. */
+.login-hint {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 4px solid var(--color-gold);
+  border-radius: 6px;
+  background: var(--color-gold-soft);
+  color: var(--color-ink);
+}
