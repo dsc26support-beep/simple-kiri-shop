@@ -78,6 +78,10 @@ function actionCreateBookingRequest(body) {
   if (!slug) return fail('storeSlug is required');
   var owner = getOwnerBySlug(slug);
   if (!isStoreBrowsable(owner)) return fail('Store not found');
+  // Guests are viewers (signedInCustomer); same as orders.
+  var customer = signedInCustomer(body.customerSession);
+  if (!customer) return signInRequiredFail('send a booking request');
+  if (customer.Email) body.customerEmail = customer.Email;
   // A standby (closed) store still takes booking requests - same as chat, the
   // request just waits for the owner to come back and process it. See
   // isStoreOpenForBusiness's header comment in Auth.gs.

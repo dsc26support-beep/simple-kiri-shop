@@ -531,6 +531,11 @@ function resolveChatRequest(body, opts) {
     // Chat stays open while a store is closed - that is the whole point of
     // showing a Closed badge instead of hiding the store.
     if (!isStoreBrowsable(storeOwner)) return { ok: false, error: 'Store not found' };
+    // Guests are viewers (signedInCustomer): they can still READ a chat they
+    // started before (the lookup below), but sending needs a sign-in.
+    // customerAuthToken is the meetings flow's name for the same session.
+    body.customerSession = body.customerSession || body.customerAuthToken;
+    if (!signedInCustomer(body.customerSession)) return signInRequiredFail('message the seller');
     var conv = findOrCreateConversation(storeOwner, storeSlug, customerToken, body.customerName);
     linkConversationToCustomer(conv, body.customerSession);
     return { ok: true, conversation: conv, senderType: 'customer' };
@@ -661,7 +666,7 @@ function actionSendMessage(body) {
   if (nameErr) return nameErr;
 
   var resolved = resolveChatRequest(body, { createIfMissing: true });
-  if (!resolved.ok) return fail(resolved.error);
+  if (!resolved.ok) return resolved.signInRequired ? resolved : fail(resolved.error);
 
   var message;
   var lock = LockService.getScriptLock();
@@ -747,7 +752,7 @@ function actionSendChatImage(body) {
   }
 
   var resolved = resolveChatRequest(body, { createIfMissing: true });
-  if (!resolved.ok) return fail(resolved.error);
+  if (!resolved.ok) return resolved.signInRequired ? resolved : fail(resolved.error);
 
   var message;
   var lock = LockService.getScriptLock();

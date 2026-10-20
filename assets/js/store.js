@@ -214,6 +214,12 @@ function showAddingToCartState(btn) {
 // which can repeat) - success leaves the button permanently disabled with a
 // "Requested" label rather than reverting after a timeout.
 async function onRequestBooking(btn) {
+  // Guests are viewers (owner decision, Oct 2026): booking needs a sign-in,
+  // then straight back to this page.
+  if (!CustomerAuth.getToken()) {
+    window.location.href = CustomerAuth.signInUrl('book');
+    return;
+  }
   const productId = btn.dataset.productId;
   const product = currentProducts.find((p) => p.productId === productId);
   if (!product) return;
@@ -249,6 +255,7 @@ async function onRequestBooking(btn) {
   setFormStatus(statusEl, '');
 
   const res = await Api.post('createBookingRequest', {
+    customerSession: CustomerAuth.getToken(),
     storeSlug: currentSlug,
     productId,
     variantId: select.value,
@@ -258,6 +265,11 @@ async function onRequestBooking(btn) {
     customerPhone,
     notes: notesInput.value.trim()
   });
+  if (!res.ok && res.signInRequired) {
+    CustomerAuth.clearSession();
+    window.location.href = CustomerAuth.signInUrl('book');
+    return;
+  }
 
   if (!res.ok) {
     setFormStatus(statusEl, res.error || 'Could not send this booking request.', 'error');

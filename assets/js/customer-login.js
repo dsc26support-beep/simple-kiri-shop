@@ -81,7 +81,7 @@ function prefillRememberedEmail() {
 // or off-site URL (open-redirect guard).
 function nextDest() {
   const next = getQueryParam('next');
-  if (next && !/^https?:/i.test(next) && !next.startsWith('//') && /^[a-zA-Z0-9_\-./?=&%]+$/.test(next)) {
+  if (next && !/^https?:/i.test(next) && !next.startsWith('//') && /^[a-zA-Z0-9_\-./?=&%+]+$/.test(next)) {
     return next;
   }
   return 'customer-dashboard.html';

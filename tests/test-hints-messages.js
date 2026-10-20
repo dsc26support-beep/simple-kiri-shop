@@ -6,7 +6,8 @@
  *  - a seller's new-message email links to Messages with ?from=email;
  *  - a customer who is signed in while chatting is linked to the chat, gets an
  *    email when the seller replies (at most one per 10 minutes per chat), and
- *    can open their chats on another phone (claimCustomerChats). Guests: none.
+ *    can open their chats on another phone (claimCustomerChats). Guests can't
+ *    send at all (viewers only), but can still read an older chat.
  */
 const { makeBox } = require('./lib/gas-harness.js');
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
@@ -88,15 +89,16 @@ ok('...with a link to their Messages (?from=email)', /customer-messages\.html\?f
 mail.length = 0;
 box.actionSendMessage({ token: ownerToken, conversationId: conv().ConversationId, body: 'And oil too.' });
 ok('a second reply within 10 minutes sends no second email', !mail.some((m) => m[0] === 'tia@x.test'));
-res = box.actionSendMessage({ storeSlug: 'bong-store', customerToken: 'dev-tok-guest', customerName: 'Guest', body: 'Hello?' });
-const guestConv = box.__sheets.Conversations.objects().find((c) => c.CustomerToken === 'dev-tok-guest');
-mail.length = 0;
-box.actionSendMessage({ token: ownerToken, conversationId: guestConv.ConversationId, body: 'Hi guest' });
-ok('a guest chat is not linked and gets no email', !guestConv.CustomerId && mail.filter((m) => m[0] !== 'bong@x.test').length === 0, J(mail));
+// Guests are viewers (owner decision, Oct 2026): no sign-in, no message.
+res = box.actionSendMessage({ storeSlug: 'bong-store', customerToken: 'dev-tok-guest', customerName: 'Guest', body: 'Hello?', customerSession: '' });
+ok('a guest cannot message a seller (asked to sign in)', !res.ok && res.signInRequired === true && /sign in/i.test(res.error), J(res));
+ok('...and no chat is started for them', !box.__sheets.Conversations.objects().some((c) => c.CustomerToken === 'dev-tok-guest'));
 res = box.actionSendMessage({ storeSlug: 'bong-store', customerToken: 'dev-tok-1', customerName: 'Tia', body: 'Thanks', customerSession: 'c-other' });
 ok('a different signed-in customer on the same phone does not take over a linked chat', conv().CustomerId === 'cus_t');
 res = box.actionSendMessage({ storeSlug: 'bong-store', customerToken: 'dev-tok-x', customerName: 'X', body: 'hi', customerSession: 'forged' });
-ok('a bad customer session is ignored (message still sends, chat stays unlinked)', res.ok && !box.__sheets.Conversations.objects().find((c) => c.CustomerToken === 'dev-tok-x').CustomerId);
+ok('a bad customer session is refused like a guest', !res.ok && res.signInRequired === true && !box.__sheets.Conversations.objects().some((c) => c.CustomerToken === 'dev-tok-x'), J(res));
+const readOnly = box.resolveChatRequest({ storeSlug: 'bong-store', customerToken: 'dev-tok-1' }, { createIfMissing: false });
+ok('reading an existing chat still works without sign-in', readOnly.ok && !!readOnly.conversation, J(readOnly));
 
 /* ---------- claim chats on another phone ---------- */
 res = box.actionClaimCustomerChats({ customerSession: 'c-tia' });

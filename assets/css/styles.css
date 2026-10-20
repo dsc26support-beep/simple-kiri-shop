@@ -1773,6 +1773,22 @@ footer.site-footer .copyright {
   border-top: 1px solid var(--color-border);
 }
 
+/* Guests are viewers: in place of the input row, a Sign in button
+   (chat-window.js showSignInGate). */
+.chat-signin-gate {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.chat-signin-gate p {
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
 .chat-message-input {
   flex: 1 1 auto;
   resize: none;
@@ -6342,13 +6358,21 @@ html.has-remembered-email .login-remembered {
   line-height: 1.4;
 }
 
-html.auth-for-meeting .auth-guest-row {
+html.auth-for-meeting .auth-guest-row,
+html.auth-required .auth-guest-row {
   display: none;
 }
 
 /* With guest hidden, "or" only makes sense if Google is actually showing. */
-html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider {
+html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider,
+html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   display: none;
+}
+
+/* Guests are viewers: says so under the guest button. */
+.auth-guest-note {
+  margin: var(--space-2) 0 0;
+  text-align: center;
 }
 
 /* ==========================================================================

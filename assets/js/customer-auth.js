@@ -111,6 +111,15 @@ const CustomerAuth = (function () {
     return res.customer;
   }
 
+  // Guests are viewers (owner decision, Oct 2026): placing an order, booking
+  // and messaging a seller send them to sign in first, then straight back.
+  // next defaults to this page (customer-login.js's nextDest only follows
+  // same-site paths); reason picks the line the sign-in page shows.
+  function signInUrl(reason, next) {
+    const here = next || ((window.location.pathname.split('/').pop() || 'index.html') + window.location.search);
+    return 'customer-login.html?' + new URLSearchParams({ next: here, reason: reason || '' }).toString();
+  }
+
   return { saveSession, getToken, getCustomer, isLoggedIn, clearSession, logout, guardCustomerAuth,
-           getRememberedEmail, forgetEmail };
+           getRememberedEmail, forgetEmail, signInUrl };
 })();

@@ -30,7 +30,7 @@ const box = makeBox({
   Products: [['ProductId', 'OwnerId', 'Name', 'Status'], ['p1', 'own_a', 'Rice', 'active'], ['p2', 'own_w', 'Oil', 'active'], ['p3', 'own_w', 'Old', 'hidden']],
   Variants: [['VariantId', 'ProductId', 'OwnerId', 'Label', 'StockQty', 'ReservedQty', 'ReorderLevel', 'Status'],
     ['v1', 'p1', 'own_a', 'x', 0, 0, '', 'active'], ['v2', 'p2', 'own_w', 'x', 3, 0, 5, 'active'], ['v3', 'p3', 'own_w', 'x', 0, 0, '', 'active']]
-});
+}, { guest: true }); // counts customers: no harness shopper
 box.__props.ADMIN_EMAILS = 'admin@x.test';
 const [ADM, A] = box.__sheets.Owners.objects();
 let r = box.actionGetAdminOverview(A, {});
