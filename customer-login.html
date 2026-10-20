@@ -19,7 +19,7 @@
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
   <!-- Deliberately inline and render-blocking, like the one in stores.html.
        It decides ONE thing before first paint: whether this device has signed
-       in before, so the "Signing in as ..." line is either present from the
+       in before, so the "Not you?" link under the email is either present from the
        first frame or never appears. Doing it in the deferred script instead
        measured 0.0124 CLS at 390px - the un-hide WAS the jump. Kept to a class
        toggle; everything else stays in customer-login.js. -->
@@ -121,7 +121,6 @@
                    hidden in the markup rather than created by JS so it cannot
                    push the form down when it appears. -->
               <p class="helper-text login-remembered" id="login-remembered">
-                <span>Signing in as <strong id="login-remembered-email"></strong></span>
                 <button type="button" class="linklike" id="login-not-you">Not you?</button>
               </p>
             </div>
