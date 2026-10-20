@@ -84,7 +84,9 @@ function ctx(extra) {
     bulkPricingOn: () => false,
     getOwnerBySlug: (slug) => OWNERS.filter((o) => o.StoreSlug === slug)[0] || null,
     // The thing under test: it must be called ONCE per response.
-    sellerBadgeIndex: () => { counts.badgeIndex++; return (extra && extra.badges) || BADGES; }
+    sellerBadgeIndex: () => { counts.badgeIndex++; return (extra && extra.badges) || BADGES; },
+    // Badges.gs isn't loaded; the one ranking helper the builders use is.
+    storeTrustTier: (ids) => ((ids || []).indexOf('verified') !== -1 ? 2 : ((ids || []).indexOf('new') !== -1 ? 1 : 0))
   };
   vm.createContext(sandbox);
   vm.runInContext(products, sandbox);
@@ -110,14 +112,18 @@ function ctx(extra) {
 
   s = ctx({ badges: {} });
   r = s.actionSearchProducts({ q: '' });
-  ok('A SELLER WITH NO BADGES SENDS NO KEY AT ALL, not an empty array',
-    r.products.every((p) => !('sellerBadges' in p)),
+  // Store checks (Oct 2026): a store with no badge has not been checked by
+  // Mwakete, and says so - never an empty array.
+  ok('A SELLER WITH NO BADGES IS SENT AS NOT YET CHECKED, not an empty array',
+    r.products.every((p) => (p.sellerBadges || []).join(',') === 'unchecked'),
     JSON.stringify(r.products.map((p) => p.sellerBadges)));
 
   s = ctx({ badges: { o1: ['verified'] } });
   r = s.actionSearchProducts({ q: '' });
-  ok('and one unbadged seller among badged ones is simply left out',
-    byIdOf(r).p3.sellerBadges === undefined && byIdOf(r).p1.sellerBadges.join(',') === 'verified');
+  ok('and one unbadged seller among badged ones is marked not yet checked',
+    byIdOf(r).p3.sellerBadges.join(',') === 'unchecked' && byIdOf(r).p1.sellerBadges.join(',') === 'verified');
+  ok('...and listed after the Verified seller\'s products',
+    r.products.map((p) => p.productId).join(',') === 'p1,p2,p3', r.products.map((p) => p.productId).join(','));
 }
 
 function byIdOf(r) {
@@ -139,7 +145,7 @@ function byIdOf(r) {
 
   const none = ctx({ badges: {} });
   const r2 = none.actionListProducts({ storeSlug: 'bong' });
-  ok('a store with no badges sends no key', !('sellerBadges' in r2));
+  ok('a store with no badges is sent as not yet checked', (r2.sellerBadges || []).join(',') === 'unchecked', JSON.stringify(r2.sellerBadges));
   ok('and the rest of the store payload is untouched',
     r2.storeName === 'Bong' && r2.products.length === 2 && r2.storeOpen === true);
 }

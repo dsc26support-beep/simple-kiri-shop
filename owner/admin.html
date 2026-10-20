@@ -47,6 +47,7 @@
             <li><a href="#feature-payments-heading">Featuring payments</a></li>
             <li><a href="#featured-now-heading">Featured now</a></li>
             <li><a href="#feature-store-heading">Feature a store / product</a></li>
+            <li><a href="#trust-heading">Store checks</a></li>
             <li><a href="#wholesale-heading">Wholesalers</a></li>
             <li><a href="#inv-admin-heading">Inventory</a></li>
             <li><a href="#mkt-heading">Marketing</a></li>
@@ -256,6 +257,22 @@
         </section>
 
         <p id="admin-error" class="form-error" role="alert"></p>
+        <!-- Store checks (owner decision, Oct 2026; backend Admin.gs
+             listStoreTrust / setStoreTrust). Not yet checked stores first. -->
+        <section class="dash-section" aria-labelledby="trust-heading" id="store-checks">
+          <h2 id="trust-heading">Store checks: New &amp; Verified</h2>
+          <p class="helper-text">Phone, email and visit each store, ticking each. With all three ticked, give it <strong>New</strong>: it then ranks above stores not yet checked. A New store becomes <strong>Verified</strong> on its own at 4.5&#9733; over 10+ reviews, or give Verified yourself. Removing either needs a reason; everything is logged in the TrustLog tab.</p>
+          <div class="trust-filter" role="group" aria-label="Show">
+            <label><input type="radio" name="trust-filter" value="unchecked" checked> Not yet checked</label>
+            <label><input type="radio" name="trust-filter" value="new"> New</label>
+            <label><input type="radio" name="trust-filter" value="verified"> Verified</label>
+            <label><input type="radio" name="trust-filter" value="all"> All</label>
+          </div>
+          <p id="trust-error" class="form-error" role="alert"></p>
+          <p id="trust-status" class="helper-text" aria-live="polite"></p>
+          <div id="trust-list"></div>
+        </section>
+
         <section class="dash-section" aria-labelledby="wholesale-heading">
           <h2 id="wholesale-heading">Wholesaler &amp; distributor verification</h2>
           <p class="helper-text">Call each wholesaler, then mark them verified.</p>

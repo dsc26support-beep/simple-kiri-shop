@@ -113,17 +113,18 @@ const msg = (o) => Object.assign({ ConversationId: 'c1', OwnerId: 'o1',
     [30, 20, 15, 15, 10, 10].join() === ['weight.ratings', 'weight.orders',
       'weight.responsiveness', 'weight.fulfilment', 'weight.cancellations',
       'weight.complaints'].map((k) => s.badgeNum(cfg, k)).join());
-  ok('New Seller defaults to 30 days', s.badgeNum(cfg, 'newSellerDays') === 30);
+  ok('Verified from ratings defaults to 4.5 stars over 10 reviews',
+    s.badgeNum(cfg, 'verified.autoMinRating') === 4.5 && s.badgeNum(cfg, 'verified.autoMinReviews') === 10);
   ok('the low-star complaints proxy is OFF by default - we do not measure complaints',
     s.badgeFlag(cfg, 'complaints.useLowStarProxy') === false);
   ok('every badge is enabled by default',
     s.BADGE_IDS.every((id) => s.badgeEnabled(cfg, id)));
 
-  s = ctx({ config: [{ Key: 'newSellerDays', Value: '90' },
+  s = ctx({ config: [{ Key: 'target.orders', Value: '90' },
                      { Key: 'enabled.popular', Value: 'false' },
                      { Key: 'nonsense.key', Value: 'x' }] });
   const c2 = s.badgeConfig();
-  ok('a sheet value overrides the default', s.badgeNum(c2, 'newSellerDays') === 90);
+  ok('a sheet value overrides the default', s.badgeNum(c2, 'target.orders') === 90);
   ok('a badge can be switched off site-wide', s.badgeEnabled(c2, 'popular') === false);
   ok('a key this build does not know is ignored, not invented',
     c2['nonsense.key'] === undefined);
@@ -290,19 +291,21 @@ const msg = (o) => Object.assign({ ConversationId: 'c1', OwnerId: 'o1',
   const auto = (o, score, om, rm, sm, pop) =>
     s.autoBadgesFor(cfg, owner(o), score, om, rm, sm, pop || {});
 
-  ok('a store that joined 5 days ago is a New Seller',
-    auto({ CreatedAt: daysAgo(5) }, null, null, null, null).badges.indexOf('new') !== -1);
-  ok('a store that joined 60 days ago is not',
-    auto({ CreatedAt: daysAgo(60) }, null, null, null, null).badges.indexOf('new') === -1);
-  ok('A BLANK JOIN DATE IS NOT BRAND NEW - sellers who predate the column keep their badges',
-    auto({ CreatedAt: '' }, null, null, null, null).badges.indexOf('new') === -1);
-  ok('and neither is an unparseable one',
-    auto({ CreatedAt: 'not a date' }, null, null, null, null).badges.indexOf('new') === -1);
+  // Store checks (owner decision, Oct 2026): New is given by the owner after
+  // a call, an email and a visit - joining recently earns nothing.
+  ok('JOINING RECENTLY NO LONGER MAKES A STORE NEW - the owner gives New',
+    auto({ CreatedAt: daysAgo(5) }, null, null, null, null).badges.indexOf('new') === -1);
 
-  ok('VERIFIED IS NEVER AUTOMATIC - no amount of good data replaces a human check',
-    auto({}, 100, { total: 500, fulfilled: 500, cancelled: 0, distinctCustomers: 100, repeatCustomers: 90, recent: 50 },
-      { count: 100, average: 5, lowShare: 0 }, { replies: 100, medianMinutes: 1 })
-      .badges.indexOf('verified') === -1);
+  const great = [100, { total: 500, fulfilled: 500, cancelled: 0, distinctCustomers: 100, repeatCustomers: 90, recent: 50 },
+    { count: 100, average: 5, lowShare: 0 }, { replies: 100, medianMinutes: 1 }];
+  ok('RATINGS NEVER VERIFY A STORE NOBODY CHECKED - however good the data',
+    auto({}, ...great).badges.indexOf('verified') === -1);
+  ok('a checked (New) store at 4.5 stars over 10 reviews becomes Verified',
+    auto({ BadgeNew: 'true' }, null, null, { count: 10, average: 4.5, lowShare: 0 }, null).badges.indexOf('verified') !== -1);
+  ok('...but not over 9 reviews',
+    auto({ BadgeNew: 'true' }, null, null, { count: 9, average: 5, lowShare: 0 }, null).badges.indexOf('verified') === -1);
+  ok('...nor at 4.4 stars',
+    auto({ BadgeNew: 'true' }, null, null, { count: 40, average: 4.4, lowShare: 0 }, null).badges.indexOf('verified') === -1);
 
   ok('a fast median reply earns Responsive Seller',
     auto({}, null, null, null, { replies: 10, medianMinutes: 30 }).badges.indexOf('responsive') !== -1);
@@ -393,25 +396,37 @@ const msg = (o) => Object.assign({ ConversationId: 'c1', OwnerId: 'o1',
   ok('badges come back in priority order', r.badges.join(',') === 'top,verified', r.badges.join(','));
 
   r = s.applyBadgeOverrides(cfg, owner({ BadgeRecommended: 'true' }), []);
-  ok('an admin can grant Mwakete Recommended with no automatic eligibility',
-    r.badges.join(',') === 'recommended' && r.source.recommended === 'admin');
+  ok('an admin can grant Mwakete Recommended with no automatic eligibility (still not yet checked)',
+    r.badges.join(',') === 'recommended,unchecked' && r.source.recommended === 'admin', r.badges.join(','));
 
   r = s.applyBadgeOverrides(cfg, owner({ BadgeRecommended: 'false' }), ['recommended', 'top']);
   ok('and can revoke it even when the data says yes',
-    r.badges.join(',') === 'top', r.badges.join(','));
+    r.badges.join(',') === 'top,unchecked', r.badges.join(','));
 
   r = s.applyBadgeOverrides(cfg, owner({ BadgeSuppressed: 'true', BadgeVerified: 'true' }),
     ['recommended', 'top']);
-  ok('suppressing a store removes EVERYTHING, including an admin grant',
-    r.badges.length === 0 && r.suppressed === true, r.badges.join(','));
+  ok('suppressing a store removes EVERYTHING, including an admin grant - it is not yet checked',
+    r.badges.join(',') === 'unchecked' && r.suppressed === true, r.badges.join(','));
 
   const off = ctx({ config: [{ Key: 'enabled.top', Value: 'false' }] });
   r = off.applyBadgeOverrides(off.badgeConfig(), owner({}), ['top', 'delivery']);
-  ok('a badge switched off site-wide stops appearing', r.badges.join(',') === 'delivery');
+  ok('a badge switched off site-wide stops appearing', r.badges.join(',') === 'delivery,unchecked', r.badges.join(','));
 
   const offV = ctx({ config: [{ Key: 'enabled.verified', Value: 'false' }] });
   r = offV.applyBadgeOverrides(offV.badgeConfig(), owner({ BadgeVerified: 'true' }), []);
-  ok('and switching one off beats an admin grant of it', r.badges.length === 0);
+  ok('and switching one off beats an admin grant of it', r.badges.join(',') === 'unchecked', r.badges.join(','));
+
+  /* store checks: New, Verified, not yet checked */
+  r = s.applyBadgeOverrides(cfg, owner({ BadgeNew: 'true' }), []);
+  ok('the owner\'s New shows, and the store is no longer "not yet checked"', r.badges.join(',') === 'new' && r.source.new === 'admin', r.badges.join(','));
+  r = s.applyBadgeOverrides(cfg, owner({ BadgeNew: 'true' }), ['verified']);
+  ok('VERIFIED REPLACES NEW', r.badges.join(',') === 'verified', r.badges.join(','));
+  r = s.applyBadgeOverrides(cfg, owner({ BadgeNew: 'true', BadgeVerified: 'false' }), ['verified']);
+  ok('a Verified the owner removed does not come back from ratings', r.badges.join(',') === 'new', r.badges.join(','));
+  r = s.applyBadgeOverrides(cfg, owner({ BadgeVerified: 'true' }), []);
+  ok('the owner can give Verified to any store', r.badges.join(',') === 'verified', r.badges.join(','));
+  ok('ranking tiers: Verified 2, New 1, not yet checked 0',
+    s.storeTrustTier(['verified']) === 2 && s.storeTrustTier(['new', 'top']) === 1 && s.storeTrustTier(['unchecked']) === 0 && s.storeTrustTier(undefined) === 0);
 
   // The whole point of keeping both.
   ok('THE AUTOMATIC ANSWER IS KEPT even when an admin overrules it',
@@ -477,7 +492,7 @@ const msg = (o) => Object.assign({ ConversationId: 'c1', OwnerId: 'o1',
   rows.forEach((r) => { byOwner[r[0]] = r; });
   ok('both sellers are in that one write', !!byOwner.o1 && !!byOwner.o2,
     Object.keys(byOwner).join(','));
-  ok('the new seller is badged as one', /\bnew\b/.test(byOwner.o2[1]), byOwner.o2[1]);
+  ok('a store the owner has not checked is stored as not yet checked', /\bunchecked\b/.test(byOwner.o2[1]), byOwner.o2[1]);
   ok('a seller with nothing scorable stores a blank score, NOT a zero',
     byOwner.o2[2] === '', JSON.stringify(byOwner.o2[2]));
   ok('columns are addressed by header name, so reordering the tab cannot scramble them',
@@ -486,7 +501,7 @@ const msg = (o) => Object.assign({ ConversationId: 'c1', OwnerId: 'o1',
   ok('NO CUSTOMER EMAIL is written to the sheet either',
     JSON.stringify(rows).indexOf('@') === -1);
   ok('the override columns are ensured before writing, so an old sheet still works',
-    s.ensured.join(',') === 'BadgeVerified,BadgeRecommended,BadgeSuppressed', s.ensured.join(','));
+    s.ensured.join(',') === 'BadgeVerified,BadgeRecommended,BadgeSuppressed,BadgeNew,CheckCall,CheckEmail,CheckVisit', s.ensured.join(','));
   ok('and the caches are dropped, or an admin\'s change would not show for 10 minutes',
     s.invalidated.indexOf('v1:sellerBadges') !== -1
     && s.invalidated.indexOf('v1:badgeConfig') !== -1, s.invalidated.join(','));
@@ -535,7 +550,7 @@ const msg = (o) => Object.assign({ ConversationId: 'c1', OwnerId: 'o1',
     JSON.stringify(clean.badges) === JSON.stringify(tampered.badges),
     JSON.stringify(tampered.badges));
   ok('not even by writing one into a Badges column on their own row',
-    tampered.badges.length === 0, JSON.stringify(tampered.badges));
+    tampered.badges.join(',') === 'unchecked', JSON.stringify(tampered.badges));
 }
 
 /* ---------- read from the source ---------- */

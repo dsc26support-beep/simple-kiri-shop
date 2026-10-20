@@ -20,6 +20,8 @@ async function init() {
   loadFeatured();
   loadSellerBadges();
   loadWholesalers();
+  loadStoreTrust();
+  document.querySelectorAll('input[name="trust-filter"]').forEach((r) => r.addEventListener('change', renderStoreTrust));
   loadFeaturePayments();
   initAdminSearch();
   initAdminJump();
@@ -398,6 +400,91 @@ async function setWholesaleVerified(ownerId, verified, btn) {
     return;
   }
   await loadWholesalers();
+}
+
+/* ---------- Store checks: New & Verified (Admin.gs) ---------- */
+
+const TRUST_LABEL = { unchecked: 'Not yet checked', new: 'New', verified: 'Verified' };
+const TRUST_CHECKS = [['call', 'Call'], ['email', 'Email'], ['visit', 'Visit']];
+let storeTrustRows = [];
+
+async function loadStoreTrust() {
+  const statusEl = document.getElementById('trust-status');
+  const stop = startLoadingMessage(statusEl);
+  const res = await Api.post('listStoreTrust', { token: Auth.getToken() });
+  stop();
+  if (!res.ok) {
+    document.getElementById('trust-list').innerHTML = '';
+    showLoadFailedMessage(statusEl);
+    return;
+  }
+  storeTrustRows = res.stores || [];
+  renderStoreTrust();
+}
+
+function renderStoreTrust() {
+  const picked = (document.querySelector('input[name="trust-filter"]:checked') || {}).value || 'unchecked';
+  const rows = storeTrustRows.filter((s) => picked === 'all' || s.trust === picked);
+  const counts = storeTrustRows.reduce((c, s) => { c[s.trust] = (c[s.trust] || 0) + 1; return c; }, {});
+  document.getElementById('trust-status').textContent =
+    `${counts.unchecked || 0} not yet checked · ${counts.new || 0} New · ${counts.verified || 0} Verified`
+    + (rows.length ? '' : ' - none to show here.');
+  const listEl = document.getElementById('trust-list');
+  listEl.innerHTML = rows.map(storeTrustRowHtml).join('');
+  listEl.querySelectorAll('[data-trust-op]').forEach((btn) => btn.addEventListener('click', () => onStoreTrust(btn)));
+}
+
+function storeTrustRowHtml(s) {
+  const phoneHref = String(s.phone || '').replace(/[^0-9+]/g, '');
+  const ticked = (k) => !!(s.checks && s.checks[k]);
+  const allTicked = TRUST_CHECKS.every(([k]) => ticked(k));
+  const checks = TRUST_CHECKS.map(([k, label]) => {
+    const c = s.checks && s.checks[k];
+    const when = c && c.at ? ` title="${escapeAttr('Ticked ' + new Date(c.at).toLocaleString() + (c.by ? ' by ' + c.by : ''))}"` : '';
+    return `<button type="button" class="btn btn-small btn-outline trust-check${c ? ' is-done' : ''}" aria-pressed="${c ? 'true' : 'false'}"${when}
+      data-trust-op="${c ? 'uncheck' : 'check'}" data-check="${k}" data-owner-id="${escapeAttr(s.ownerId)}">${c ? '&#10003; ' : ''}${label}</button>`;
+  }).join('');
+  const rating = s.rating == null ? 'no reviews yet' : `${Number(s.rating).toFixed(1)}&#9733; over ${s.reviews} review(s)`;
+  const btn = (op, label, extra) => `<button type="button" class="btn btn-small${extra || ' btn-outline'}" data-trust-op="${op}" data-owner-id="${escapeAttr(s.ownerId)}">${label}</button>`;
+  const actions = [];
+  if (!s.hasNew) actions.push(btn('giveNew', 'Give New', allTicked ? ' btn-primary' : '').replace('<button', allTicked ? '<button' : '<button disabled title="Tick Call, Email and Visit first"'));
+  else actions.push(btn('removeNew', 'Remove New'));
+  if (s.trust !== 'verified') actions.push(btn('giveVerified', 'Give Verified'));
+  else actions.push(btn('removeVerified', 'Remove Verified'));
+  if (s.verifiedSetting === 'false') actions.push(btn('ratingsDecide', 'Let ratings decide again'));
+  return `
+    <div class="wholesale-row trust-row is-${escapeAttr(s.trust)}">
+      <div class="wholesale-row-info">
+        <strong>${escapeHtml(s.storeName)}</strong>
+        <span class="status-badge ${s.trust === 'unchecked' ? 'status-hidden' : 'status-active'}">${TRUST_LABEL[s.trust]}</span>
+        ${s.verifiedSetting === 'false' ? '<span class="helper-text">Verified removed</span>' : ''}
+        <div class="helper-text">
+          ${s.phone ? `<a href="tel:${escapeAttr(phoneHref)}">${escapeHtml(s.phone)}</a> · ` : ''}${s.email ? `<a href="mailto:${escapeAttr(s.email)}">${escapeHtml(s.email)}</a> · ` : ''}${escapeHtml([s.village, s.island].filter(Boolean).join(', '))}
+        </div>
+        <div class="helper-text">Ratings: ${rating} (Verified at ${s.autoBar.minRating}&#9733; over ${s.autoBar.minReviews}+ for New stores)</div>
+        <div class="trust-checks" role="group" aria-label="Checks done for ${escapeAttr(s.storeName)}">${checks}</div>
+      </div>
+      <div class="trust-actions">${actions.join('')}</div>
+    </div>`;
+}
+
+async function onStoreTrust(btn) {
+  const errorEl = document.getElementById('trust-error');
+  errorEl.textContent = '';
+  const op = btn.dataset.trustOp;
+  let reason = '';
+  if (op === 'removeNew' || op === 'removeVerified') {
+    reason = window.prompt(op === 'removeNew' ? 'Why remove New from this store?' : 'Why remove Verified from this store? (It will not come back from ratings until you allow it.)') || '';
+    if (!reason.trim()) return;
+  }
+  btn.disabled = true;
+  const res = await Api.post('setStoreTrust', { token: Auth.getToken(), ownerId: btn.dataset.ownerId, op, check: btn.dataset.check || '', reason });
+  if (!res.ok) {
+    btn.disabled = false;
+    errorEl.textContent = res.error || 'Could not update that store.';
+    return;
+  }
+  await loadStoreTrust();
 }
 
 /* ---------- Featuring payments (Featuring.gs) ---------- */

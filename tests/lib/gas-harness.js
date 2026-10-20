@@ -34,7 +34,15 @@ class FakeSheet {
         });
         return this;
       },
-      setValue(v) { return this.setValues([[v]]); }
+      setValue(v) { return this.setValues([[v]]); },
+      // Blanks the cells, like Sheets: the rows stay (recomputeSellerBadges).
+      clearContent() {
+        for (let r = 0; r < numRows; r++) {
+          const target = sheet.grid[row + r - 1];
+          if (target) for (let c = 0; c < numCols; c++) target[col + c - 1] = '';
+        }
+        return this;
+      }
     };
   }
   appendRow(values) { this.grid.push(values.slice()); }

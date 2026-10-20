@@ -326,8 +326,8 @@ const HELP_FAQS = [
     id: 'safety-stay-safe', category: 'safety',
     title: 'How can I stay safe?',
     subtitle: 'Keep the conversation on Mwakete and check first',
-    description: 'Message sellers through Mwakete so there is a record. Check the item and price before you pay, meet in a public place for pickups, and be careful with anyone who pushes you to pay quickly or off the usual route.\n\nThe Verified badge means Mwakete has verified that store. It is not a promise about any particular sale.',
-    keywords: ['safe', 'safety', 'secure', 'trust', 'careful', 'tips', 'verified'],
+    description: 'Message sellers through Mwakete so there is a record. Check the item and price before you pay, meet in a public place for pickups, and be careful with anyone who pushes you to pay quickly or off the usual route.\n\nStore badges: Not yet checked means Mwakete has not yet phoned, emailed and visited the store - take extra care. New means Mwakete has done those checks. Verified means a checked store that customers rate well, or one Mwakete verified itself. Checked stores are listed first. No badge is a promise about any particular sale.',
+    keywords: ['safe', 'safety', 'secure', 'trust', 'careful', 'tips', 'verified', 'checked', 'new store', 'badge'],
     related: ['guide-safe-trading', 'safety-scam']
   },
   {
