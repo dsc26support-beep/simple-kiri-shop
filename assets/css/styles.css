@@ -6380,9 +6380,7 @@ html.has-remembered-email .login-remembered {
 }
 
 html.auth-for-meeting .auth-guest-row,
-html.auth-for-meeting .auth-guest-note,
-html.auth-required .auth-guest-row,
-html.auth-required .auth-guest-note {
+html.auth-required .auth-guest-row {
   display: none;
 }
 
@@ -6390,18 +6388,6 @@ html.auth-required .auth-guest-note {
 html.auth-for-meeting #google-signin-wrap[hidden] ~ .auth-divider,
 html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   display: none;
-}
-
-/* Guests are viewers: says so under the guest button, on a line of its own
-   (the row wraps; the note takes the full width). */
-.auth-guest-row {
-  flex-wrap: wrap;
-}
-
-.auth-guest-note {
-  flex: 1 0 100%;
-  margin: 0;
-  text-align: center;
 }
 
 /* ==========================================================================
@@ -8048,6 +8034,40 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   height: 40px;
   padding-top: 0;
   padding-bottom: 0;
+}
+
+/* Owner request (Oct 2026): every button on the customer sign-in card is the
+   same purple outline on a see-through fill - Guest, Send me a code, Verify,
+   and the back buttons. Hover/focus still fill purple, as .btn-outline does. */
+.auth-card--customer .btn {
+  background: transparent;
+  color: var(--color-purple);
+  border: 2px solid var(--color-purple);
+}
+
+.auth-card--customer .btn:hover,
+.auth-card--customer .btn:focus-visible {
+  background: var(--color-purple);
+  color: #fff;
+}
+
+/* Google draws its own button inside a frame it controls, so its white fill
+   can't be restyled. The purple outline goes on the box around it instead:
+   the same 40px tall as the buttons below, with Google's 40px button pulled
+   out by the 2px border on every side so its own grey edge sits under the
+   purple one (google-signin.js asks for the box's width plus both borders). */
+.auth-card--customer #google-signin-btn[data-full-width] {
+  box-sizing: border-box;
+  height: 40px;
+  min-height: 40px;
+  border: 2px solid var(--color-purple);
+  border-radius: var(--radius);
+  overflow: hidden;
+  line-height: 0;
+}
+
+.auth-card--customer #google-signin-btn[data-full-width] > * {
+  margin: -2px;
 }
 
 /* Seller login: the seller's own password hint, after a wrong password. */
