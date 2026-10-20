@@ -26,7 +26,11 @@ vm.runInContext([
   grab(auth, 'publicStoreFields'),
   grab(auth, 'isStoreOpenForBusiness'),
   grab(prod, 'deliveryFlagsOf'),
-  grab(prod, 'deliveryCostOf')
+  grab(prod, 'deliveryCostOf'),
+  // Payment options (#112): the names a store accepts - IB, MPaisa, ...
+  prod.match(/var PAYMENT_OPTIONS = [^\n]*\n/)[0],
+  grab(prod, 'paymentOptionsOf'),
+  grab(prod, 'paymentMethodIds')
 ].join('\n'), sandbox);
 const { publicOwnerFields, publicStoreFields } = sandbox;
 
@@ -52,10 +56,16 @@ ok('no owner email anywhere in the serialised payload', JSON.stringify(store).in
 // whatsapp joined this list deliberately (PR #24, the Call/WhatsApp/Messenger
 // buttons). It is the seller's own published business contact, sitting beside
 // phone and messenger, which were already here - not new customer data.
+// paymentOptions joined deliberately (#112): the NAMES of the ways a store is
+// paid ("IB", "MPaisa", ...), which the store chose to publish - never an
+// account number (checked below and in test-payment-options.js).
 const EXPECTED = ['storeName', 'storeSlug', 'phone', 'messenger', 'whatsapp', 'logoUrl', 'island', 'village',
   'isOpen', 'deliveryTruck', 'deliveryShip', 'deliveryAirCargo', 'deliveryPickPay',
-  'deliveryTruckCost', 'deliveryShipCost', 'deliveryAirCargoCost'];
-ok('publicStoreFields carries exactly the 16 expected fields',
+  'deliveryTruckCost', 'deliveryShipCost', 'deliveryAirCargoCost', 'paymentOptions'];
+ok('payment options are names only, never the account numbers on file',
+  JSON.stringify(publicStoreFields(Object.assign({}, OWNER, { PaymentMethods: 'ib,teremo', ANZ_AccountNumber: '12345678', Teremo_Number: '73009999' }))).indexOf('12345678') === -1
+  && JSON.stringify(publicStoreFields(Object.assign({}, OWNER, { PaymentMethods: 'ib,teremo', Teremo_Number: '73009999' })).paymentOptions) === '["IB","Teremo"]');
+ok('publicStoreFields carries exactly the 17 expected fields',
   JSON.stringify(Object.keys(store).sort()) === JSON.stringify(EXPECTED.slice().sort()),
   Object.keys(store).sort().join(','));
 
@@ -103,6 +113,9 @@ const OWNER_KEYS = ['ownerId', 'storeName', 'storeSlug', 'email', 'phone', 'mess
   // #70: the owner's own retailer/wholesaler type and verification, shown on
   // their dashboard - owner-only, never on publicStoreFields.
   'storeType', 'wholesaleVerified',
+  // #112: the payment options the seller ticked and typed, read back into
+  // their own Settings form.
+  'paymentMethods', 'paymentOther',
   // #106: whether a password hint is set (not the hint itself), for the
   // dashboard reminder - owner-only.
   'hasPasswordHint'];
@@ -136,8 +149,10 @@ const hereOwnerSrc = grab(auth, 'publicOwnerFields');
 // one line - any OTHER added field still fails here.
 const norm = (src) => src.split('\n').filter((l) => !/^\s*\/\//.test(l)).map((l) => l.replace(/,\s*$/, ''));
 const extra = norm(hereOwnerSrc).filter((l) => norm(mainOwnerSrc).indexOf(l) === -1);
-ok('publicOwnerFields matches main (allowing only #106\'s hasPasswordHint before it merges)',
-  extra.length === 0 || (extra.length === 1 && /^\s+hasPasswordHint: /.test(extra[0])), extra.join(' | '));
+// Same for #112's two payment-option lines: allowed only while that branch is
+// open; once it is on main the two are identical again and extra is empty.
+ok('publicOwnerFields matches main (allowing only #112\'s payment option lines before it merges)',
+  extra.every((l) => /^\s+hasPasswordHint: |^\s+payment(Methods|Other): paymentOptionsOf\(owner\)/.test(l)), extra.join(' | '));
 ok('nothing was removed from publicOwnerFields',
   mainOwnerSrc.split('\n').filter((l) => /^\s+\w+: /.test(l))
     .every((l) => hereOwnerSrc.indexOf(l) !== -1));
