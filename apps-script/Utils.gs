@@ -23,10 +23,23 @@ function newId(prefix) {
   return prefix + '_' + Utilities.getUuid().replace(/-/g, '').slice(0, 16);
 }
 
-function generateOrderRef(storeSlug) {
+/**
+ * SKS-<store>-<yyyyMMdd>-<4 digits>. The 4 digits are random, so two orders
+ * for one store on one day could draw the same number (about 1 in 20 days for
+ * a store taking 30 orders a day) - and every lookup by OrderId would then
+ * find the older order. isTaken(ref), checked by the caller inside its lock,
+ * makes it draw again; after 20 clashes in a row (a very busy day) two more
+ * digits are added rather than fail the order.
+ */
+function generateOrderRef(storeSlug, isTaken) {
   var datePart = Utilities.formatDate(new Date(), 'UTC', 'yyyyMMdd');
-  var rand = Math.floor(1000 + Math.random() * 9000);
-  return 'SKS-' + storeSlug + '-' + datePart + '-' + rand;
+  var base = 'SKS-' + storeSlug + '-' + datePart + '-';
+  var ref;
+  for (var i = 0; i < 40; i++) {
+    ref = base + Math.floor(1000 + Math.random() * 9000) + (i >= 20 ? '-' + Math.floor(10 + Math.random() * 90) : '');
+    if (!isTaken || !isTaken(ref)) return ref;
+  }
+  return ref + '-' + Date.now();
 }
 
 function slugify(text) {
