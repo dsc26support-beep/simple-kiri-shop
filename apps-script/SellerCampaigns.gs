@@ -820,7 +820,8 @@ function actionExtendCampaign(owner, body) {
 function actionGetCampaignDetail(owner, body) {
   var own = scOwnCampaign(owner, body.campaignId);
   if (!own) return fail('Campaign not found');
-  return ok(scDetail(own.c, false));
+  // Where to pay an extension: the same intended bank details as any campaign payment.
+  return ok(Object.assign(scDetail(own.c, false), { instructions: scPaymentInstructions(), thanksBefore: scThanks() }));
 }
 
 function scDetail(c, forAdmin) {
