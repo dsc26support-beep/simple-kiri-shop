@@ -459,6 +459,18 @@ header.site-header a {
   vertical-align: middle;
 }
 
+/* "We accept IB, MPaisa, Teremo" under the store name (store and product pages). */
+.store-payment-line {
+  margin: var(--space-1) 0 0;
+  font-size: 0.8rem;
+}
+.store-payments {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35em;
+}
+.store-payments svg { flex: none; margin-top: 0.1em; }
+
 .delivery-icon {
   display: inline-flex;
 }

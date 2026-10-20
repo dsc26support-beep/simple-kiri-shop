@@ -45,7 +45,7 @@
           <div class="field"><label for="drv-name">Your name</label><input id="drv-name" maxlength="80" autocomplete="name"></div>
           <div class="field"><label for="drv-phone">Phone</label><input id="drv-phone" type="tel" maxlength="30" autocomplete="tel"><p class="helper-text">Buyers and sellers call this number about a job you accept.</p></div>
           <div class="field"><label for="drv-vehicle">Vehicle</label><select id="drv-vehicle"></select></div>
-          <div class="field"><label for="drv-area">Area</label><select id="drv-area"></select></div>
+          <div class="field"><label for="drv-area">Your island</label><select id="drv-area"></select><p class="helper-text">You only get jobs on this island, from stores here to buyers here.</p></div>
           <div class="field tx-check"><input id="drv-agree" type="checkbox"><label for="drv-agree">I will handle goods with care, record pickup and delivery honestly, keep buyers' details private, and only share my location while on a job.</label></div>
           <p id="drv-apply-error" class="form-error" role="alert"></p>
           <button type="submit" class="btn btn-primary">Apply</button>
@@ -58,7 +58,7 @@
         <div class="driver-online">
           <span id="drv-online-label">Offline</span>
           <button type="button" id="drv-online" class="drv-switch" role="switch" aria-checked="false" aria-label="Online to receive jobs"><span class="drv-switch-knob" aria-hidden="true"></span></button>
-          <span class="helper-text" id="drv-online-hint">Go online to see new jobs in your area.</span>
+          <span class="helper-text" id="drv-online-hint">Go online to see new jobs on your island.</span>
         </div>
         <div class="kpi-grid" aria-label="Your deliveries">
           <div class="kpi-card"><span class="kpi-label">Active jobs</span><strong class="kpi-value" id="drv-k-active">–</strong></div>

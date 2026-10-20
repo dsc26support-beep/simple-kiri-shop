@@ -71,6 +71,9 @@ async function init() {
     shipCost: res.storeDeliveryShipCost,
     airCargoCost: res.storeDeliveryAirCargoCost
   });
+  const payLine = document.getElementById('store-payment-line');
+  payLine.innerHTML = renderPaymentOptions(res.storePaymentOptions);
+  payLine.hidden = !payLine.innerHTML;
 
   // The shared product card needs to know whose cart a product goes in.
   // Shown compact here (no place, delivery or badges): the store's own are

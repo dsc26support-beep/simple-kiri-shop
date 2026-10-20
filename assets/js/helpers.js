@@ -1333,6 +1333,13 @@ function renderDeliveryIcons(flags) {
     .join('')}</span>`;
 }
 
+/** "We accept IB, MPaisa, Teremo" - the names a store chose in Settings, never account details. */
+function renderPaymentOptions(labels) {
+  const list = (labels || []).filter(Boolean);
+  if (!list.length) return '';
+  return `<span class="store-payments"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg><span>We accept ${list.map((l) => `<strong>${escapeHtml(l)}</strong>`).join(', ')}</span></span>`;
+}
+
 const EYE_ICON_SVG =
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
 const EYE_OFF_ICON_SVG =

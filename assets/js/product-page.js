@@ -80,6 +80,9 @@ async function init() {
     shipCost: res.storeDeliveryShipCost,
     airCargoCost: res.storeDeliveryAirCargoCost
   });
+  const payLine = document.getElementById('store-payment-line');
+  payLine.innerHTML = renderPaymentOptions(res.storePaymentOptions);
+  payLine.hidden = !payLine.innerHTML;
 
   // Product detail (reuses the store-page product card markup)
   renderShippingNote('product-shipping-note', res);

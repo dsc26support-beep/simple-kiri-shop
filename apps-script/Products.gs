@@ -183,6 +183,37 @@ function stockQtyOf(rawStock) {
   return Math.floor(n);
 }
 
+/**
+ * Payment options a store accepts (owner decision, Oct 2026): ticked from a
+ * fixed list, plus one short option the seller names themselves. Only the
+ * NAMES are ever public - "We accept IB, MPaisa, Teremo" - never an account
+ * number; the seller gives those to a buyer in the order room or a message.
+ * Stored on Owners as PaymentMethods ('ib,mpaisa') and PaymentOther.
+ */
+var PAYMENT_OPTIONS = { ib: 'IB', mpaisa: 'MPaisa', teremo: 'Teremo', cash: 'Cash' };
+var PAYMENT_OTHER_MAX = 30;
+
+function paymentOptionsOf(owner) {
+  var ids = paymentMethodIds(String(owner.PaymentMethods || '').split(','));
+  var other = String(owner.PaymentOther || '').trim();
+  return { ids: ids, other: other, labels: ids.map(function (x) { return PAYMENT_OPTIONS[x]; }).concat(other ? [other] : []) };
+}
+
+/** Known options only, once each, always in the list's own order (IB, MPaisa, Teremo, Cash). */
+function paymentMethodIds(list) {
+  var picked = list.map(function (x) { return String(x).trim(); });
+  return Object.keys(PAYMENT_OPTIONS).filter(function (k) { return picked.indexOf(k) !== -1; });
+}
+
+/** The seller's own option: short plain words, never an account number. Returns an error message or ''. */
+function paymentOtherError(v) {
+  var s = String(v || '').trim();
+  if (s.length > PAYMENT_OTHER_MAX) return 'Keep your own payment option to ' + PAYMENT_OTHER_MAX + ' characters.';
+  if (/[<>]/.test(s)) return 'Your own payment option can only be plain words.';
+  if (/\d[\d\s-]{4,}\d/.test(s)) return 'Leave account numbers out - they are never shown publicly. Give them to buyers in the order room.';
+  return '';
+}
+
 function deliveryFlagsOf(owner) {
   return {
     deliveryTruck: String(owner.DeliveryTruck) === 'true',
@@ -757,6 +788,7 @@ function actionListProducts(params) {
     out.storeDeliveryTruckCost = deliveryCostOf(owner.DeliveryTruckCost);
     out.storeDeliveryShipCost = deliveryCostOf(owner.DeliveryShipCost);
     out.storeDeliveryAirCargoCost = deliveryCostOf(owner.DeliveryAirCargoCost);
+    out.storePaymentOptions = paymentOptionsOf(owner).labels;
     return out;
   });
 
@@ -1152,6 +1184,18 @@ function actionUpdateOwnerProfile(owner, body) {
     var villageErr = capLength(body.village, 100, 'Village');
     if (villageErr) return villageErr;
     update.Village = body.village;
+  }
+
+  if (body.paymentMethods !== undefined) {
+    if (!Array.isArray(body.paymentMethods)) return fail('Choose your payment options');
+    ensureColumn(sheet, 'PaymentMethods');
+    update.PaymentMethods = paymentMethodIds(body.paymentMethods).join(',');
+  }
+  if (body.paymentOther !== undefined) {
+    var payOtherErr = paymentOtherError(body.paymentOther);
+    if (payOtherErr) return fail(payOtherErr);
+    ensureColumn(sheet, 'PaymentOther');
+    update.PaymentOther = String(body.paymentOther || '').trim();
   }
 
   if (body.deliveryTruck !== undefined) update.DeliveryTruck = body.deliveryTruck ? 'true' : 'false';

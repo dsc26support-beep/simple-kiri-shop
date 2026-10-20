@@ -12,7 +12,7 @@ Stage 6 of the dashboard modernisation, October 2026. The owner said: "pick what
 
 | Decision | Choice | Why it suits Mwakete |
 |---|---|---|
-| Who drives | Independent drivers, in South Tarawa first (`DELIVERY_AREAS`) | This is where most orders and trucks are. Outer islands can be added to the property later. |
+| Who drives | Independent drivers on **every island**, delivering **within one island only** (owner decision, Oct 2026) | A driver job exists only when the store and the buyer are on the same island, and only drivers registered on that island see or take it. `DELIVERY_AREAS` can still narrow the islands. |
 | Driver accounts | A normal customer account that **applies** to drive; an admin **approves** them | There is no new login system, and people are vetted. |
 | Who pays the driver | **The seller pays directly,** at the fee the seller offered when booking | Mwakete never holds money, which is already its rule. Checkout prices are unchanged. |
 | When the driver sees the buyer | Only after accepting a job: name, phone, village and items | Personal details go only to the person doing the delivery. |
@@ -61,7 +61,7 @@ Script Properties:
 | Property | Value |
 |---|---|
 | `DELIVERY_JOBS` | `on` (default off: nothing is visible) |
-| `DELIVERY_AREAS` | optional; default `South Tarawa` (comma-separated island names) |
+| `DELIVERY_AREAS` | optional; unset or `all` = every island (default). A comma-separated list of island names narrows it. Deliveries never cross islands either way. |
 | `TX_ROOMS` | must be on (or pilot) for the stores using drivers |
 
 Two tabs, `Drivers` and `DeliveryJobs`, are created on first use. Nothing existing changes.
