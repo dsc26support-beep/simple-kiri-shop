@@ -1156,9 +1156,28 @@ function actionUpdateOwnerProfile(owner, body) {
 
   if (body.newPassword) {
     if (String(body.newPassword).length < 8) return fail('Password must be at least 8 characters');
+    // A new password must not be spelled out by the hint already on file.
+    if (body.passwordHint === undefined && owner.PasswordHint && passwordHintError(owner.PasswordHint, body.newPassword)) {
+      return fail('Your current password hint gives this password away - change the hint too.');
+    }
     var salt = Utilities.getUuid();
     update.PasswordSalt = salt;
     update.PasswordHash = hashPassword(body.newPassword, salt);
+  }
+
+  // Password hint (Oct 2026). Checked against the password it hints at: the
+  // new one if it is being changed too, otherwise the current one, which the
+  // seller types so we can make sure the hint doesn't contain it.
+  if (body.passwordHint !== undefined) {
+    var hintFor = body.newPassword ? String(body.newPassword) : String(body.currentPassword || '');
+    if (!body.newPassword) {
+      if (!hintFor) return fail('Enter your current password to change the hint.');
+      if (!constantTimeEquals(hashPassword(hintFor, owner.PasswordSalt), owner.PasswordHash)) return fail('That current password is not right.');
+    }
+    var hintErr = passwordHintError(body.passwordHint, hintFor);
+    if (hintErr) return fail(hintErr);
+    ensureColumn(sheet, 'PasswordHint');
+    update.PasswordHint = String(body.passwordHint).trim();
   }
 
   // THE CONTACT EMAIL IS NOT SETTABLE HERE, deliberately.

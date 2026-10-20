@@ -75,6 +75,24 @@ function hashPassword(password, salt) {
   return Utilities.base64Encode(digest);
 }
 
+/**
+ * Password hint (owner request, Oct 2026): a seller's own reminder, set when
+ * the store is registered (required) and editable in Settings. Shown on the
+ * login page after a wrong password for that username - never the password
+ * itself, so a hint that contains the password is refused.
+ */
+var PASSWORD_HINT_MAX = 100;
+function passwordHintError(hint, password) {
+  var h = String(hint || '').trim();
+  if (h.length < 3) return 'Add a password hint (at least 3 characters) - it reminds you if you forget your password.';
+  if (h.length > PASSWORD_HINT_MAX) return 'Keep the password hint to ' + PASSWORD_HINT_MAX + ' characters.';
+  var p = String(password || '').toLowerCase();
+  if (p && h.toLowerCase().replace(/\s+/g, '').indexOf(p.replace(/\s+/g, '')) !== -1) {
+    return 'Your password hint must not contain the password itself.';
+  }
+  return '';
+}
+
 function publicOwnerFields(owner) {
   return {
     ownerId: owner.OwnerId,
@@ -117,7 +135,10 @@ function publicOwnerFields(owner) {
     authChannelEffective: effectiveAuthChannel(owner),
     isAdmin: isOwnerAdmin(owner),
     storeType: storeTypeOf(owner),
-    wholesaleVerified: String(owner.WholesaleVerified) === 'true'
+    wholesaleVerified: String(owner.WholesaleVerified) === 'true',
+    // Whether a hint is set (the dashboard asks sellers without one). The hint
+    // text itself is only ever sent to the login page after a wrong password.
+    hasPasswordHint: !!String(owner.PasswordHint || '').trim()
   };
 }
 
@@ -266,6 +287,9 @@ function actionRegisterOwner(body) {
     return fail('Store name, username, password, contact email and contact phone are required');
   }
   if (password.length < 8) return fail('Password must be at least 8 characters');
+  var passwordHint = String(body.passwordHint || '').trim();
+  var hintErr = passwordHintError(passwordHint, password);
+  if (hintErr) return fail(hintErr);
   if (!/^[a-z0-9_.-]{3,40}$/.test(username)) return fail('Username must be 3-40 characters: letters, numbers, . _ -');
   var storeNameErr = storeNameTooLong(storeName);
   if (storeNameErr) return storeNameErr;
@@ -312,6 +336,7 @@ function actionRegisterOwner(body) {
     // Additive only: one header cell past the end if missing (see ensureColumn).
     ensureColumn(ownersSheet, 'StoreType');
     ensureColumn(ownersSheet, 'WholesaleVerified');
+    ensureColumn(ownersSheet, 'PasswordHint');
 
     appendRowFromObject(ownersSheet, {
       OwnerId: ownerId,
@@ -332,7 +357,8 @@ function actionRegisterOwner(body) {
       Status: 'active',
       CreatedAt: nowIso(),
       StoreType: storeType,
-      WholesaleVerified: ''
+      WholesaleVerified: '',
+      PasswordHint: passwordHint
     });
 
     var token = issueSession(ownerId);
@@ -372,9 +398,12 @@ function actionLoginOwner(body) {
   }
 
   if (!loginSucceeded) {
-    return fail(owner && owner.Status === 'closed'
-      ? 'This store has been deleted. Contact now via the Enquiry link below if this is a mistake.'
-      : 'Invalid username or password');
+    if (owner && owner.Status === 'closed') return fail('This store has been deleted. Contact now via the Enquiry link below if this is a mistake.');
+    // The seller's own hint, after a wrong password for a real store (owner
+    // decision, Oct 2026). It does tell the person typing that this username
+    // exists; the attempt lockout above still limits guessing.
+    var hint = owner && ownerCanLogIn(owner) ? String(owner.PasswordHint || '').trim() : '';
+    return hint ? Object.assign(fail('Invalid username or password'), { passwordHint: hint }) : fail('Invalid username or password');
   }
 
   if (String(owner.TwoFAEnabled) === 'true') {

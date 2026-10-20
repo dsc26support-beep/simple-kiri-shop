@@ -532,6 +532,7 @@ function resolveChatRequest(body, opts) {
     // showing a Closed badge instead of hiding the store.
     if (!isStoreBrowsable(storeOwner)) return { ok: false, error: 'Store not found' };
     var conv = findOrCreateConversation(storeOwner, storeSlug, customerToken, body.customerName);
+    linkConversationToCustomer(conv, body.customerSession);
     return { ok: true, conversation: conv, senderType: 'customer' };
   }
 
@@ -550,6 +551,66 @@ function resolveChatRequest(body, opts) {
  * should trigger one nudge, not one email per message.
  */
 var CHAT_NEW_MESSAGE_EMAIL_COOLDOWN_SECONDS = 10 * 60;
+
+/*
+ * Customer side (owner request, Oct 2026). A chat is tied to the phone's chat
+ * token, not to an account - so when the customer is SIGNED IN while
+ * messaging (body.customerSession), the chat records their CustomerId
+ * (Conversations.CustomerId, added on first use). That lets a seller's reply
+ * be emailed to them, and lets their account open the chat on another phone
+ * (actionClaimCustomerChats). Guests chat exactly as before.
+ */
+function linkConversationToCustomer(conv, customerSession) {
+  if (!conv || !customerSession || conv.CustomerId) return;
+  var customer;
+  try { customer = requireCustomerAuth(customerSession); } catch (e) { return; }
+  var sheet = getSheet('Conversations');
+  ensureColumn(sheet, 'CustomerId');
+  var row = findRowById(sheet, 'ConversationId', conv.ConversationId);
+  if (row) {
+    updateRowFromObject(sheet, row.__row, { CustomerId: customer.CustomerId });
+    conv.CustomerId = customer.CustomerId;
+  }
+}
+
+/** A seller replied: one email per conversation per 10 minutes, to signed-up customers only. */
+function notifyCustomerOfReply(conversation, previewText) {
+  if (!conversation || !conversation.CustomerId) return;
+  var cache = CacheService.getScriptCache();
+  var cooldownKey = 'v1:chat:replynotify:' + conversation.ConversationId;
+  if (cache.get(cooldownKey)) return;
+  try { cache.put(cooldownKey, '1', CHAT_NEW_MESSAGE_EMAIL_COOLDOWN_SECONDS); } catch (e) { /* best effort */ }
+
+  var customer = findRowById(getSheet('Customers'), 'CustomerId', conversation.CustomerId);
+  if (!customer || !customer.Email) return;
+  var owner = getOwnerBySlug(conversation.StoreSlug);
+  var storeName = owner ? owner.StoreName : 'A store';
+  // ?from=email: signed in -> their Messages; not signed in -> sign in, then Messages.
+  var url = siteBaseUrl() ? siteBaseUrl() + '/customer-messages.html?from=email' : '';
+  var body = storeName + ' replied to your message on Mwakete:\n\n"' + previewText + '"\n\n' +
+    (url ? 'Open your messages: ' + url : 'Open Mwakete to reply.');
+  var htmlBody = url
+    ? '<p>' + escapeHtmlForEmail(storeName) + ' replied to your message on Mwakete:</p>' +
+      '<p style="padding:12px;background:#f5f5f5;border-radius:6px;">' + escapeHtmlForEmail(previewText) + '</p>' +
+      '<p><a href="' + url + '" style="display:inline-block;padding:10px 22px;background:#332d63;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">Open Messages</a></p>'
+    : '';
+  sendAppEmail(customer.Email, storeName + ' replied to your message', body, htmlBody);
+}
+
+/**
+ * The signed-in customer's chats (those linked to their account), so a phone
+ * opened from the reply email can show them: [{ storeSlug, customerToken }].
+ * Only the customer's own chats; the tokens are what that phone needs to read
+ * and reply, exactly as on the phone they started on.
+ */
+function actionClaimCustomerChats(body) {
+  var customer;
+  try { customer = requireCustomerAuth(body && body.customerSession); } catch (e) { return fail(e.message || 'Please sign in.'); }
+  var out = sheetToObjects(getSheet('Conversations')).filter(function (c) {
+    return c.CustomerId && c.CustomerId === customer.CustomerId && c.Status !== 'deleted';
+  }).map(function (c) { return { storeSlug: c.StoreSlug, customerToken: c.CustomerToken }; });
+  return ok({ chats: out });
+}
 function notifyVendorOfNewMessage(conversation, previewText) {
   var cache = CacheService.getScriptCache();
   var cooldownKey = 'v1:chat:msgnotify:' + conversation.ConversationId;
@@ -560,7 +621,9 @@ function notifyVendorOfNewMessage(conversation, previewText) {
   if (!owner || !owner.Email) return;
 
   var customerLabel = conversation.CustomerName ? conversation.CustomerName : 'A customer';
-  var messagesUrl = siteBaseUrl() ? siteBaseUrl() + '/owner/messages.html' : '';
+  // ?from=email: a logged-out seller is taken to Log In and then straight
+  // back to Messages (auth.js), not to the dashboard.
+  var messagesUrl = siteBaseUrl() ? siteBaseUrl() + '/owner/messages.html?from=email' : '';
 
   var body = customerLabel + ' just messaged your store "' + owner.StoreName + '":\n\n"' + previewText + '"\n\n' +
     (messagesUrl ? 'Open your Messages inbox to reply: ' + messagesUrl : 'Open your Messages inbox to reply.');
@@ -611,6 +674,7 @@ function actionSendMessage(body) {
   if (!message) return fail('Message text is required');
 
   if (resolved.senderType === 'customer') notifyVendorOfNewMessage(resolved.conversation, message.Body);
+  else notifyCustomerOfReply(resolved.conversation, message.Body);
 
   return ok({
     conversationId: resolved.conversation.ConversationId,
@@ -701,6 +765,7 @@ function actionSendChatImage(body) {
   if (!message) return fail('Could not send this image');
 
   if (resolved.senderType === 'customer') notifyVendorOfNewMessage(resolved.conversation, message.Body || 'Sent a photo');
+  else notifyCustomerOfReply(resolved.conversation, message.Body || 'Sent a photo');
 
   return ok({
     conversationId: resolved.conversation.ConversationId,

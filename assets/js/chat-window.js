@@ -550,7 +550,11 @@ function initChatWindow() {
     const bubble = appendMessage('chat-message--customer', text, { beforeTyping: true });
     bubble.classList.add('chat-message--sending');
 
-    const res = await Api.post('sendMessage', { storeSlug, customerToken, customerName: getCustomerName(), body: text });
+    // A signed-in customer's chat is linked to their account (Chat.gs), so a
+    // seller's reply can be emailed to them. Guests send nothing extra.
+    const customerSession = typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken ? CustomerAuth.getToken() : null;
+    const res = await Api.post('sendMessage', Object.assign({ storeSlug, customerToken, customerName: getCustomerName(), body: text },
+      customerSession ? { customerSession } : {}));
 
     bubble.classList.remove('chat-message--sending');
     if (!res.ok) {

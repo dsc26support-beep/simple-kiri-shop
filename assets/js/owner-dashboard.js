@@ -154,6 +154,10 @@ function renderAlerts(res) {
   if (k.reviewWaiting) items.push(['warning', `${k.reviewWaiting} listing(s) need your changes before they can show`, 'products.html']);
   if (k.heldProducts) items.push(['info', `${k.heldProducts} listing(s) are being checked by Mwakete`, 'products.html']);
   if (k.roomUnread) items.push(['info', `${k.roomUnread} new message(s) or update(s) in your order rooms`, 'orders.html']);
+  // Stores from before password hints existed (Oct 2026): asked here until
+  // they add one in Settings.
+  const me = Auth.getOwner && Auth.getOwner();
+  if (me && me.hasPasswordHint === false) items.push(['info', 'Add a password hint - shown if you get your password wrong', 'settings.html#password-form']);
   const tone = { danger: 'Urgent', warning: 'Attention', info: 'To do' };
   document.getElementById('dash-alerts').innerHTML = items.length
     ? items.map(([t, text, href]) => `<li class="dash-alert is-${t}"><span class="dash-alert-tag">${tone[t]}</span> <a href="${href}">${escapeHtml(text)}</a></li>`).join('')

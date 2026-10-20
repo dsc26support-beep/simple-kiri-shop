@@ -1,14 +1,37 @@
 document.addEventListener('DOMContentLoaded', init);
 
-function init() {
+async function init() {
   const statusEl = document.getElementById('messages-status');
   const listEl = document.getElementById('messages-list');
+  // From a "seller replied" email (?from=email, owner request Oct 2026): not
+  // signed in -> sign in, then back here; signed in -> this account's chats
+  // are added to this phone, so they show even if they began on another one.
+  const session = typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken ? CustomerAuth.getToken() : null;
+  if (/[?&]from=email\b/.test(location.search) && !session) {
+    window.location.href = 'customer-login.html?next=' + encodeURIComponent('customer-messages.html');
+    return;
+  }
+  if (session) await claimAccountChats(session);
   const stores = collectChatStores();
   if (stores.length === 0) {
     statusEl.textContent = 'No messages yet.';
     return;
   }
   loadInbox(stores, statusEl, listEl);
+}
+
+async function claimAccountChats(session) {
+  let res;
+  try { res = await Api.post('claimCustomerChats', { customerSession: session }); } catch (e) { return; }
+  if (!res || !res.ok || !Array.isArray(res.chats)) return;
+  res.chats.forEach((c) => {
+    try {
+      // Never overwrite this phone's own chat with that store.
+      if (c.storeSlug && c.customerToken && !localStorage.getItem('skiri_chat_token_' + c.storeSlug)) {
+        localStorage.setItem('skiri_chat_token_' + c.storeSlug, c.customerToken);
+      }
+    } catch (e) { /* storage unavailable */ }
+  });
 }
 
 // The device's per-store chat identities live in localStorage as
