@@ -1894,6 +1894,13 @@ label.is-required::after {
 .seller-sidebar-store small { opacity: 0.85; font-size: 0.75rem; }
 .seller-drawer-open .seller-sidebar { transform: none; box-shadow: 0 0 40px rgba(0, 0, 0, 0.35); }
 .seller-scrim { position: fixed; inset: 0; z-index: 1004; background: rgba(0, 0, 0, 0.4); }
+/* ☰ in the top bar, left of the store name: opens the store menu. */
+.seller-topbar-lead { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.seller-menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -10px;
+  background: transparent; border: 0; border-radius: 8px; color: #fff; cursor: pointer; }
+.seller-menu-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.seller-menu-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.seller-menu-btn:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
 
 .seller-tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1003; display: grid; grid-template-columns: repeat(5, 1fr);
@@ -1909,7 +1916,7 @@ body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 
 @media (min-width: 1024px) {
   .seller-sidebar { transform: none; }
   .seller-sidebar-collapse { display: inline-flex; }
-  .seller-tabbar, .seller-scrim { display: none; }
+  .seller-tabbar, .seller-scrim, .seller-menu-btn { display: none; }
   body.has-seller-shell { padding-bottom: 0; padding-left: 240px; }
   body.has-seller-shell.seller-collapsed { padding-left: 76px; }
   .seller-collapsed .seller-sidebar { width: 76px; }
