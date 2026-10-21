@@ -8094,9 +8094,38 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 }
 
 .trust-row {
-  padding: var(--space-2) 0;
+  padding: 0;
   border-bottom: 1px solid var(--color-border);
 }
+
+/* Store checks: one line per store (name + status), tap to open (owner
+   request, Oct 2026). Full-width row, 44px tap target, chevron on the right. */
+.trust-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) 28px var(--space-2) 0;
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+}
+.trust-summary::-webkit-details-marker { display: none; }
+.trust-summary::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--color-muted);
+  border-bottom: 2px solid var(--color-muted);
+  transform: translateY(-70%) rotate(45deg);
+}
+.trust-row[open] > .trust-summary::after { transform: translateY(-30%) rotate(-135deg); }
+.trust-summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.trust-body { border-bottom: 0; padding-top: 0; }
 
 .trust-checks,
 .trust-actions {
