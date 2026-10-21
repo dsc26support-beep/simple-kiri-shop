@@ -31,6 +31,8 @@
  */
 
 var GSI_SRC = 'https://accounts.google.com/gsi/client';
+// How much wider than its purple box Google's button is drawn - see below.
+var GSI_TUCK = 16;
 
 function initGoogleSignIn() {
   var wrap = document.getElementById('google-signin-wrap');
@@ -57,17 +59,16 @@ function initGoogleSignIn() {
       // where this block is revealed late. Put back on failure.
       wrap.hidden = false;
       var host = document.getElementById('google-signin-btn');
-      // data-full-width (customer sign-in, owner request Oct 2026): as wide as
-      // the buttons under it. Google draws the button itself and accepts a
-      // pixel width from 200 to 400.
-      // A box with a border (the purple outline on customer sign-in) gets a
-      // button that wide again, so the button reaches under the border.
-      var cs = getComputedStyle(host);
-      var full = host.hasAttribute('data-full-width') && (host.clientWidth + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0));
+      // The host is a 240px purple pill on every page (styles.css). Google
+      // draws its grey pill a few pixels inside the width it is given, which
+      // showed as a white gap inside the purple (owner request, Oct 2026), so
+      // ask for GSI_TUCK more than the box: the box centres and clips it, and
+      // Google's edge lands under the purple line. Google accepts 200-400px.
+      var outer = host.offsetWidth || 240;
       google.accounts.id.renderButton(host, {
         theme: 'outline',
         size: 'large',
-        width: full ? Math.max(200, Math.min(400, full)) : 280,
+        width: Math.max(200, Math.min(400, outer + GSI_TUCK)),
         text: 'continue_with',
         // Pill ends, like every Mwakete button (owner request, Oct 2026).
         shape: 'pill'
