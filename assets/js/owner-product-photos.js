@@ -18,7 +18,11 @@
 const ProductPhotos = (() => {
   const $ = (id) => document.getElementById(id);
   // Longest side sent, and when a photo is already small enough to send as is.
-  const MAX_SIDE = 1600;
+  // 1280px / WebP 0.75 measured the same size as the old JPEG uploads (about
+  // 100KB for a 12MP phone photo) while keeping transparency - see
+  // docs/product-upload-testing.md. Larger settings doubled the data.
+  const MAX_SIDE = 1280;
+  const WEBP_QUALITY = 0.75;
   const KEEP_AS_IS_BYTES = 400 * 1024;
   const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -91,7 +95,7 @@ const ProductPhotos = (() => {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     if (img.close) img.close();
-    let blob = await toBlob(canvas, 'image/webp', 0.82);
+    let blob = await toBlob(canvas, 'image/webp', WEBP_QUALITY);
     if (!blob || blob.type !== 'image/webp') {
       // No WebP here (older Safari): JPEG, with see-through parts on white.
       const flat = document.createElement('canvas');
@@ -100,7 +104,7 @@ const ProductPhotos = (() => {
       fctx.fillStyle = '#fff';
       fctx.fillRect(0, 0, flat.width, flat.height);
       fctx.drawImage(canvas, 0, 0);
-      blob = await toBlob(flat, 'image/jpeg', 0.82);
+      blob = await toBlob(flat, 'image/jpeg', WEBP_QUALITY);
     }
     if (!blob) throw new Error(`${file.name} could not be prepared for upload.`);
     for (let q = 0.7; blob.size > MAX_UPLOAD_BYTES && q > 0.3; q -= 0.15) blob = await toBlob(canvas, blob.type, q);

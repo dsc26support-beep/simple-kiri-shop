@@ -41,21 +41,24 @@ Baseline test run on `main` at `0a327f9`: all 24 product, inventory and listing 
 | D3 | `uploadProductImage` accepted any `image/*` type, and trusted the browser's type. | Medium | Photos are now checked by their first bytes (JPEG, PNG, WebP, GIF). Anything else is refused. |
 | D4 | Removing the second photo left its file in storage (an orphan). | Low | Removing a photo from the gallery deletes its file, unless another product or variety still uses it. |
 
-## 3. Plan and status
-
-The detailed status for each feature is kept in [product-upload-testing.md](product-upload-testing.md) once a feature lands. The summary:
+## 3. Status
 
 | Feature | Status |
 |---|---|
-| Product photo gallery (up to 6, cover, reorder, replace, remove, drag and drop, camera, retry) | See §4 |
-| Client photo optimisation (resize, WebP where supported, keep transparency, skip small files, readable HEIC message) | See §4 |
-| Server image checks (by first bytes, size, type) and safe replacement order | See §4 |
-| Guided sections with progress, quick add, live preview, completeness meter | See §4 |
-| Drafts (recover unsaved work per seller on this device; server-side "Hidden" stays the saved draft) | See §4 |
-| Likely-duplicate warning | See §4 |
-| Category-aware details (weight, size, brand, condition and so on), stored additively | See §4 |
-| Bulk import, built on the existing Sync Center: product template, per-row category, failure report | See §4 |
-| AI assistant | Not done: the owner declined the paid service. Rule-based tips are in the completeness meter instead. |
+| Product photo gallery: up to 6, cover, reorder, replace, remove, drag and drop, camera, retry | **Done**: `test-product-photos`, `verify-product-photos` |
+| Photo optimiser: resize, WebP keeping transparency, small files sent as they are, HEIC message | **Done**: measured, see the testing doc |
+| Server image checks (actual file type, size) and a safe replacement order | **Done** |
+| Fix D1 (photo fields from the browser) | **Done** |
+| Guided sections, Quick add, Back / Continue, progress bar, focus and keyboard | **Done**: `verify-product-steps` |
+| Review: quality meter, summary, shopper card | **Done** |
+| Details by category, availability, store delivery shown | **Done**: `test-product-details`, `verify-product-steps` |
+| Likely duplicates | **Done** |
+| Drafts: Save hidden on the server; unsaved work kept on the device | **Done** |
+| Bulk import: Category and Description columns, duplicates skipped, template, problems file | **Done**: `test-product-import`, `verify-product-import-page` |
+| Bulk import of photos | **Not done**: a CSV carries no photos. Photos are added in the form. |
+| AI assistant | **Not done**: the owner declined a paid AI service. |
+| Per-product delivery fees or areas | **Not done**: delivery stays per store. See the architecture doc. |
+| Live Apps Script and real devices | **Not verified**. See the testing doc. |
 
 ## 4. Preservation risks and how each is handled
 
