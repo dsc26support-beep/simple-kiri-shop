@@ -30,21 +30,22 @@ function renderProductCard(product, opts) {
     .map((v) => `<option value="${v.variantId}" data-price="${v.price}">${escapeHtml(v.label)} — ${formatMoney(v.price)}</option>`)
     .join('');
 
+  // Every photo the product has (helpers.js productOwnPhotos), cover first.
+  const photos = productOwnPhotos(product);
+  const n = photos.length;
   const media =
-    product.imageUrl && product.imageUrl2
+    n > 1
       ? `<div class="product-gallery-track">
-          ${photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)}
-          ${photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl2, IMG_W.card))}"${srcsetAttr(product.imageUrl2, IMG_SIZES_CARD)} alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)}
+          ${photos.map((u, i) => photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(u, IMG_W.card))}"${srcsetAttr(u, IMG_SIZES_CARD)} alt="Photo ${i + 1} of ${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)).join('')}
         </div>`
-      : product.imageUrl
-      ? photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.card))}"${srcsetAttr(product.imageUrl, IMG_SIZES_CARD)} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)
+      : n === 1
+      ? photoLink(`<img class="product-image" src="${escapeHtml(optimizedImageUrl(photos[0], IMG_W.card))}"${srcsetAttr(photos[0], IMG_SIZES_CARD)} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"${drag}>`)
       : photoLink(`<div class="placeholder-swatch category-${escapeHtml(categoryIdOf(product.category))}" aria-hidden="true">${escapeHtml(initials(product.name))}</div>`);
 
   const thumbs =
-    product.imageUrl && product.imageUrl2
+    n > 1
       ? `<div class="product-gallery-thumbs">
-          <button type="button" class="product-gallery-thumb active" data-index="0"><img src="${escapeHtml(optimizedImageUrl(product.imageUrl, IMG_W.thumb))}" alt="Photo 1 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"></button>
-          <button type="button" class="product-gallery-thumb" data-index="1"><img src="${escapeHtml(optimizedImageUrl(product.imageUrl2, IMG_W.thumb))}" alt="Photo 2 of ${escapeHtml(product.name)}" loading="lazy" decoding="async"></button>
+          ${photos.map((u, i) => `<button type="button" class="product-gallery-thumb${i === 0 ? ' active' : ''}" data-index="${i}"><img src="${escapeHtml(optimizedImageUrl(u, IMG_W.thumb))}" alt="Photo ${i + 1} of ${escapeHtml(product.name)}" loading="lazy" decoding="async"></button>`).join('')}
         </div>`
       : '';
 

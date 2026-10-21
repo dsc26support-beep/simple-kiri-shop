@@ -432,6 +432,8 @@ function getTopProductsCached() {
           options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
+          // Every photo, cover first (Images.gs productGalleryOf).
+          images: productPhotoUrls(p),
           storeSlug: owner.StoreSlug,
           storeName: owner.StoreName,
           storePhone: owner.Phone,
@@ -662,6 +664,8 @@ function actionSearchProducts(params) {
           options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
+          // Every photo, cover first (Images.gs productGalleryOf).
+          images: productPhotoUrls(p),
           storeSlug: owner.StoreSlug,
           storeName: owner.StoreName,
           storePhone: owner.Phone,
@@ -758,6 +762,8 @@ function actionListProducts(params) {
           options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
+          // Every photo, cover first (Images.gs productGalleryOf).
+          images: productPhotoUrls(p),
           variants: productVariants,
           rating: (ratings[p.ProductId] || {}).average != null ? ratings[p.ProductId].average : null,
           reviewCount: (ratings[p.ProductId] || {}).count || 0
@@ -834,6 +840,8 @@ function actionListOwnerProducts(owner, body) {
       listingType: listingTypeOfRow(p),
       imageUrl: p.ImageUrl,
       imageUrl2: p.ImageUrl2,
+      // The photo gallery with ids, so the form can reorder, replace and remove.
+      images: productGalleryOf(p).map(function (i) { return { id: i.id, url: i.url }; }),
       status: p.Status,
       subcategoryId: String(p.SubcategoryId || ''),
       productType: productTypeOfRow(p),
@@ -849,7 +857,8 @@ function actionListOwnerProducts(owner, body) {
   });
 
   // bulkPricing tells the form whether to offer bulk prices at all.
-  return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length, bulkPricing: bulkPricingOn(owner) });
+  return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length, bulkPricing: bulkPricingOn(owner),
+    photoMax: productImagesMax() });
 }
 
 function actionCreateOrUpdateProduct(owner, body) {
@@ -974,15 +983,24 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
         Category: category,
         SubcategoryId: subcategoryId,
         ListingType: listingType,
-        ImageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.ImageUrl,
-        ImageFileId: body.imageFileId !== undefined ? body.imageFileId : existing.ImageFileId,
-        ImageUrl2: body.imageUrl2 !== undefined ? body.imageUrl2 : existing.ImageUrl2,
-        ImageFileId2: body.imageFileId2 !== undefined ? body.imageFileId2 : existing.ImageFileId2,
+        // Photos are not set here: only the photo actions (Images.gs) change
+        // them, so a browser can never name a stored file id (see
+        // actionUploadProductPhoto). imageUrl2: '' from an older form still
+        // removes the second photo, through the gallery.
         Status: held ? 'review' : sellerStatusOf(body, existing),
         RequestedStatus: held ? sellerStatusOf(body, existing) : '',
         SortOrder: body.sortOrder !== undefined ? body.sortOrder : existing.SortOrder,
         UpdatedAt: now
       });
+      if (body.imageUrl2 === '') {
+        var gallery = productGalleryOf(existing);
+        if (gallery.length > 1) {
+          var droppedPhoto = gallery.splice(1, 1);
+          ensureColumn(productsSheet, 'ImagesJson');
+          updateRowFromObject(productsSheet, existing.__row, productGalleryFields(gallery));
+          deleteProductPhotoFiles(droppedPhoto, productId);
+        }
+      }
     } else {
       productId = newId('prod');
       ensureColumn(productsSheet, 'ListingType');
@@ -995,10 +1013,11 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
         Category: category,
         SubcategoryId: subcategoryId,
         ListingType: listingType,
-        ImageUrl: body.imageUrl || '',
-        ImageFileId: body.imageFileId || '',
-        ImageUrl2: body.imageUrl2 || '',
-        ImageFileId2: body.imageFileId2 || '',
+        // Photos are added afterwards with uploadProductPhoto (Images.gs).
+        ImageUrl: '',
+        ImageFileId: '',
+        ImageUrl2: '',
+        ImageFileId2: '',
         Status: held ? 'review' : sellerStatusOf(body, null),
         RequestedStatus: held ? sellerStatusOf(body, null) : '',
         SortOrder: body.sortOrder || 0,

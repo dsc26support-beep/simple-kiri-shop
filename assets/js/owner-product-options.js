@@ -472,7 +472,10 @@ const ProductOptionsEditor = (() => {
 
   async function uploadOne(r, file) {
     let data;
-    try { data = await compressImage(file); } catch (e) { return { ok: false, error: `${file.name} could not be read as a photo.` }; }
+    try {
+      // Same resizing as the product gallery where it is loaded (WebP, smaller).
+      data = typeof ProductPhotos !== 'undefined' ? await ProductPhotos.optimizeProductPhoto(file) : await compressImage(file);
+    } catch (e) { return { ok: false, error: e && e.message ? e.message : `${file.name} could not be read as a photo.` }; }
     const res = await Api.post('uploadVariantImage', { token: Auth.getToken(), productId: $('product-id').value, variantId: r.variantId,
       imageBase64: data.base64, mimeType: data.mimeType });
     if (res.ok) r.images = res.images;
@@ -579,7 +582,11 @@ const ProductOptionsEditor = (() => {
       sp.innerHTML = '';
       if (mode === 'single') {
         single = single || blankRow({});
-        drawPhotoPanel(sp, single, 'this product', () => {});
+        // The product's own photo gallery (owner-product-photos.js) is where
+        // a single product's photos go now. A single product that already
+        // has photos on its one variety keeps this panel, so they can still
+        // be seen, reordered or removed.
+        if (single.images.length) drawPhotoPanel(sp, single, 'this product (older photos)', () => {});
       }
     }
     renderGrid();

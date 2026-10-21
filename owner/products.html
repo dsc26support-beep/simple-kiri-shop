@@ -166,27 +166,23 @@
             <button type="button" id="add-variant-btn" class="btn btn-small">+ Add Variety</button>
           </div>
 
-          <div class="field">
-            <label for="product-image-input">Product Photo</label>
-            <img id="image-preview" class="image-upload-preview hidden" alt="Selected product photo preview">
-            <input type="file" id="product-image-input" accept="image/*">
-            <p id="duplicate-photo-note" class="helper-text duplicate-photo-note" hidden>Photos aren't copied — add one.</p>
-            <p class="helper-text">Max 5MB.</p>
-          </div>
-
-          <!-- No second-photo UPLOAD any more, but products that already have
-               one keep showing it to shoppers, so this block appears only for
-               those. Without it a vendor would be permanently stuck with
-               whatever second photo they uploaded: the form has never sent
-               imageUrl2, so overwriting was the only way to change it and
-               there was no way at all to remove it. Once cleared it cannot
-               come back, so the feature drains away rather than being frozen. -->
-          <div class="field hidden" id="existing-photo2-field">
-            <label>Second photo</label>
-            <img id="image-preview-2" class="image-upload-preview" alt="The second photo already on this product">
-            <p class="helper-text">Second photos can be removed but not replaced.</p>
-            <button type="button" id="remove-photo2-btn" class="btn btn-small">Remove second photo</button>
-          </div>
+          <!-- Product photo gallery (owner-product-photos.js). Arranged here,
+               sent when the product is saved - see that file for the order. -->
+          <section class="field photo-gallery" id="photo-section" aria-labelledby="photos-heading">
+            <h3 id="photos-heading" class="pg-heading">Photos <span id="photo-count" class="helper-text"></span></h3>
+            <p class="helper-text">The first photo is the cover shoppers see. Clear, bright photos sell better.</p>
+            <ul id="photo-list" class="pg-list"></ul>
+            <div id="photo-add-row" class="pg-add">
+              <button type="button" class="btn btn-small pg-add-btn" id="photo-add-btn">Add photos</button>
+              <button type="button" class="btn btn-small pg-add-btn" id="photo-camera-btn" hidden>Take a photo</button>
+              <input type="file" id="photo-input" accept="image/*" multiple hidden>
+              <input type="file" id="photo-camera-input" accept="image/*" capture="environment" hidden>
+              <span class="helper-text pg-drop-hint">or drag photos here</span>
+            </div>
+            <input type="file" id="photo-replace-input" accept="image/*" hidden>
+            <p id="duplicate-photo-note" class="helper-text duplicate-photo-note" hidden>Photos aren't copied — add them again.</p>
+            <p id="photo-msg" class="form-error" role="alert"></p>
+          </section>
 
           <details class="card-preview" id="card-preview">
             <summary>Preview the shopper's card</summary>
@@ -212,6 +208,7 @@
   <script defer src="../assets/js/owner-listing-check.min.js"></script>
   <script defer src="../assets/js/product-options.min.js"></script>
   <script defer src="../assets/js/owner-product-options.min.js"></script>
+  <script defer src="../assets/js/owner-product-photos.min.js"></script>
   <script defer src="../assets/js/owner-products.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

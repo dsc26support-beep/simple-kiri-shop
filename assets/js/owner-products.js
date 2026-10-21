@@ -82,10 +82,6 @@ const PRODUCTS_PAGE_SIZE = 20;
 let ownerProducts = [];
 let productsHasMore = false;
 let productsTotal = 0;
-let selectedImageFile = null;
-// Second photos can no longer be UPLOADED. This only tracks whether the
-// vendor asked to clear an existing one, so the payload can send imageUrl2: ''.
-let clearPhoto2 = false;
 let variantRowSeq = 0;
 
 async function init() {
@@ -107,12 +103,11 @@ async function init() {
   document.getElementById('product-form').addEventListener('input', onFieldEdited);
   document.getElementById('product-description').addEventListener('input', updateDescriptionCount);
   document.getElementById('product-form').addEventListener('change', onFieldEdited);
-  document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
-  document.getElementById('remove-photo2-btn').addEventListener('click', onRemovePhoto2);
   document.getElementById('owner-product-list').addEventListener('click', onListClick);
   document.getElementById('products-load-more').addEventListener('click', onLoadMore);
   wireListingCheck();
   ProductOptionsEditor.init();
+  ProductPhotos.init();
   document.getElementById('card-preview').addEventListener('toggle', renderCardPreview);
 
   await loadProducts();
@@ -261,6 +256,8 @@ async function loadProducts(opts) {
     return;
   }
   ownerProducts = res.products;
+  // How many photos a product may have (Images.gs productImagesMax).
+  if (res.photoMax) ProductPhotos.setMax(res.photoMax);
   // Wholesale prices: only offered when the backend says this store has them.
   ProductOptionsEditor.setWholesale(!!res.bulkPricing);
   productsHasMore = !!res.hasMore;
@@ -336,23 +333,18 @@ async function onArchive(product) {
  * type, category, status and varieties (price and stock included), but no
  * product id and no variant ids, so Save creates rather than edits.
  *
- * The photo is deliberately NOT copied. Photos aren't reference-counted:
- * replacing a product's photo deletes the old file (actionUploadProductImage
- * in Images.gs), so a copy sharing the original's photo would go blank the
- * day the original's photo is changed.
+ * Photos are deliberately NOT copied. Replacing or removing a product's photo
+ * deletes the old file (Images.gs), so a copy sharing the original's photos
+ * would lose them the day the original's are changed.
  */
 function openForm(product, opts) {
   const duplicate = !!(product && opts && opts.duplicate);
   const section = document.getElementById('product-form-section');
   const heading = document.getElementById('product-form-heading');
   section.classList.remove('hidden');
-  selectedImageFile = null;
-  clearPhoto2 = false;
-  document.getElementById('product-image-input').value = '';
   document.getElementById('product-form-error').textContent = '';
   clearFieldErrors();
 
-  const preview = document.getElementById('image-preview');
   document.getElementById('variant-rows').innerHTML = '';
 
   document.getElementById('duplicate-photo-note').hidden = !duplicate;
@@ -375,15 +367,9 @@ function openForm(product, opts) {
     document.getElementById('product-category').value = existing;
     ListingCheck.fillSubcategories(existing, product.subcategoryId || '');
     document.getElementById('product-status').value = product.status || 'active';
-    if (product.imageUrl && !duplicate) {
-      preview.src = optimizedImageUrl(product.imageUrl, IMG_W.card);
-      preview.classList.remove('hidden');
-    } else {
-      preview.classList.add('hidden');
-    }
-    // Shown only for products that already have a second photo - there is no
-    // way to add one any more.
-    showPhoto2(duplicate ? '' : product.imageUrl2);
+    // The gallery; an older list response without images[] still shows the two photos.
+    ProductPhotos.load(product.images || [product.imageUrl && { id: 'main', url: product.imageUrl }, product.imageUrl2 && { id: 'second', url: product.imageUrl2 }].filter(Boolean),
+      { duplicate });
     const activeVariants = product.variants.filter((v) => v.status === 'active');
     if (activeVariants.length === 0 || product.productType) addVariantRow();
     else activeVariants.forEach((v) => addVariantRow(duplicate ? Object.assign({}, v, { variantId: '' }) : v));
@@ -399,8 +385,7 @@ function openForm(product, opts) {
     document.getElementById('product-category').value = '';
     ListingCheck.fillSubcategories('', '');
     document.getElementById('product-status').value = 'active';
-    preview.classList.add('hidden');
-    showPhoto2('');
+    ProductPhotos.load([]);
     addVariantRow();
     ProductOptionsEditor.load(null);
   }
@@ -470,47 +455,6 @@ function updateVarietyLabels() {
     if (label) label.textContent = rowLabel;
     input.placeholder = rowPlaceholder;
   });
-}
-
-function onImageFileChange(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  selectedImageFile = file;
-  UnsavedGuard.markDirty(document.getElementById('product-form'));
-  const preview = document.getElementById('image-preview');
-  const reader = new FileReader();
-  reader.onload = () => {
-    preview.src = reader.result;
-    preview.classList.remove('hidden');
-  };
-  reader.readAsDataURL(file);
-}
-
-/**
- * Shows the existing-second-photo block, or hides it. There is no way to ADD a
- * second photo any more, so this appears only for products that already have
- * one - which is also why it offers removal rather than replacement.
- */
-function showPhoto2(url) {
-  const field = document.getElementById('existing-photo2-field');
-  const img = document.getElementById('image-preview-2');
-  if (!field || !img) return;
-  if (url) {
-    img.src = optimizedImageUrl(url, IMG_W.card);
-    field.classList.remove('hidden');
-  } else {
-    field.classList.add('hidden');
-  }
-}
-
-/**
- * Marks the second photo for removal. Nothing is deleted until Save Product -
- * so Cancel still cancels, which is what a vendor will expect from a form.
- */
-function onRemovePhoto2() {
-  clearPhoto2 = true;
-  showPhoto2('');
-  UnsavedGuard.markDirty(document.getElementById('product-form'));
 }
 
 function setSaveProductBusy(saveBtn, label) {
@@ -712,11 +656,8 @@ async function onSaveProduct(e, flags) {
     if (summary && !confirm('Saving will change the combinations:\n\n' + summary + '\n\nContinue?')) return;
   }
 
-  // Only sent when the vendor actually asked to clear it. updateProduct keeps
-  // the existing value when imageUrl2 is undefined and clears it when the key
-  // is present and empty, so sending it unconditionally would wipe every
-  // second photo on the first edit of any product.
-  if (clearPhoto2) payload.imageUrl2 = '';
+  // No photo fields: photos go up after the product is saved (below), and
+  // the server ignores any it is sent here.
 
   const saveBtn = document.getElementById('save-product-btn');
   setSaveProductBusy(saveBtn, productId ? 'Saving' : 'Adding');
@@ -772,29 +713,14 @@ async function onSaveProduct(e, flags) {
   // (loadProducts() with no opts).
   const reloadOpts = productId ? undefined : { limit: productsTotal + 1 };
 
-  if (selectedImageFile) {
-    setSaveProductBusy(saveBtn, 'Uploading photo 1');
-    let uploadOk = false;
-    try {
-      const { base64, mimeType } = await compressImage(selectedImageFile);
-      const uploadRes = await Api.post('uploadProductImage', {
-        token: Auth.getToken(),
-        productId: res.productId,
-        imageBase64: base64,
-        mimeType,
-        slot: 1
-      });
-      uploadOk = uploadRes.ok;
-      if (!uploadOk) {
-        errorEl.textContent = `Product saved, but photo 1 upload failed: ${uploadRes.error || 'unknown error'}. Click Save Product to try the photo again.`;
-      }
-    } catch (err) {
-      errorEl.textContent = 'Product saved, but photo 1 could not be processed. Click Save Product to try the photo again.';
-    }
-    if (!uploadOk) {
-      // Left open on purpose: closing here would hide #product-form-error,
-      // the very element the message above was just written into, before the
-      // vendor could ever read it.
+  // The photo gallery: replacements, removals, order, new photos.
+  if (ProductPhotos.hasPending()) {
+    setSaveProductBusy(saveBtn, 'Uploading photos');
+    const problems = await ProductPhotos.apply(res.productId, (text) => setSaveProductBusy(saveBtn, text));
+    if (problems.length) {
+      // Left open on purpose: the product is saved, the photos marked
+      // "didn't upload" are still on screen, and Save Product tries them again.
+      errorEl.textContent = `Product saved, but ${problems.length === 1 ? 'a photo' : problems.length + ' photos'} did not upload: ${problems.join('; ')}. Click Save Product to try again.`;
       setSaveProductIdle(saveBtn);
       await loadProducts(reloadOpts);
       return;
@@ -819,12 +745,12 @@ function renderCardPreview() {
   const details = document.getElementById('card-preview');
   if (!details.open) return;
   const slot = document.getElementById('card-preview-slot');
-  const preview = document.getElementById('image-preview');
+  const photos = ProductPhotos.previewUrls();
   const base = {
     productId: 'preview', storeSlug: 'preview', storeName: document.getElementById('store-name-label').textContent,
     name: document.getElementById('product-name').value.trim() || 'Product name',
     category: document.getElementById('product-category').value || 'other', listingType: document.getElementById('product-listing-type').value || 'product',
-    imageUrl: preview && !preview.classList.contains('hidden') && /^https?:/.test(preview.src) ? preview.src : '',
+    imageUrl: photos[0] || '', imageUrl2: photos[1] || '', images: photos,
     variants: Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((row, i) => ({ variantId: 'p' + i,
       label: row.querySelector('.variant-label').value, price: Number(row.querySelector('.variant-price').value) || 0, stockQty: null }))
   };
