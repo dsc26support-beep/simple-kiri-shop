@@ -64,7 +64,7 @@ const SellerShell = (() => {
   ];
   const TABS = ['dashboard.html', 'orders.html', 'products.html', 'messages.html'];
   const COLLAPSE_KEY = 'skiri_seller_sidebar_collapsed';
-  const TYPE_LABEL = { wholesaler: 'Wholesaler', distributor: 'Distributor', retailer: 'Retailer' };
+  const TYPE_LABEL = { wholesaler: 'Wholesaler / Distributor', distributor: 'Wholesaler / Distributor', retailer: 'Retailer' };
 
   function current() {
     const file = location.pathname.split('/').pop() || 'dashboard.html';

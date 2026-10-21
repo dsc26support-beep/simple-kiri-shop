@@ -75,12 +75,26 @@ function showShopperNote() {
   if (!note) return;
   if (typeof CustomerAuth === 'undefined' || !CustomerAuth.getToken()) return;
 
-  const customer = CustomerAuth.getCustomer() || {};
-  const email = customer.email ? ' (' + customer.email + ')' : '';
-  // Owner request (Oct 2026): just who they are signed in as, highlighted.
-  note.textContent = 'You are signed in as a shopper' + email;
+  setShopperNote(CustomerAuth.getCustomer());
+  // Owner request (Oct 2026): a Google button under the note, so a shopper on
+  // the wrong account can switch. Only for a signed-in shopper - everybody
+  // else gets no Google script at all. Stays on this page afterwards: the
+  // register form may already be half filled in.
+  window.onCustomerSignedIn = setShopperNote;
+  if (typeof initGoogleSignIn === 'function') initGoogleSignIn();
+}
+
+// Owner request (Oct 2026): "You are signed in (email)" - just who, highlighted.
+function setShopperNote(customer) {
+  const note = document.getElementById('shopper-note');
+  const email = customer && customer.email ? ' (' + customer.email + ')' : '';
+  note.textContent = 'You are signed in' + email;
   note.hidden = false;
 }
+
+// google-signin.js renders on DOMContentLoaded unless told to wait. Here it
+// waits for showShopperNote, which knows whether anybody is signed in.
+window.GOOGLE_SIGNIN_DEFER = true;
 
 /**
  * "New here? Register your store", under a failed log-in.
@@ -285,5 +299,5 @@ async function onRegister(e) {
 // wholesaler should know a call is coming before committing to the choice.
 function onStoreTypeChange() {
   const picked = document.querySelector('input[name="storeType"]:checked');
-  document.getElementById('wholesaler-note').hidden = !(picked && (picked.value === 'wholesaler' || picked.value === 'distributor'));
+  document.getElementById('wholesaler-note').hidden = !(picked && picked.value === 'wholesaler');
 }

@@ -108,7 +108,7 @@ ok('settings does NOT, so existing stores can still save',
 // "username", not "profile name" (owner's wording, Oct 2026). The written
 // instruction is now a "Help?" popup (fb-help.js); its label says username.
 ok('the Help? button speaks of a Facebook username, not a store name',
-  /data-fb-help aria-label="Help finding your Facebook username"/.test(login) && /data-fb-help aria-label="Help finding your Facebook username"/.test(settings));
+  /data-fb-help[^>]*aria-label="Help finding your Facebook username"/.test(login) && /data-fb-help[^>]*aria-label="Help finding your Facebook username"/.test(settings));
 
 /* ---------- the backend is the one that decides ---------- */
 const auth = fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8');

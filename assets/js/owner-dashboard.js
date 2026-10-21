@@ -24,7 +24,7 @@ window.addEventListener('pageshow', () => {
   });
 });
 
-const STORE_TYPE_LABEL = { wholesaler: 'Wholesaler', distributor: 'Distributor', retailer: 'Retailer' };
+const STORE_TYPE_LABEL = { wholesaler: 'Wholesaler / Distributor', distributor: 'Wholesaler / Distributor', retailer: 'Retailer' };
 
 async function init() {
   const owner = await Auth.guardOwnerAuth();
@@ -197,11 +197,11 @@ function renderWholesale(type, w) {
   const box = document.getElementById('dash-wholesale');
   if (!w) { box.hidden = true; return; }
   box.hidden = false;
-  document.getElementById('wholesale-heading').textContent = type === 'distributor' ? 'Distributor' : 'Wholesale';
+  document.getElementById('wholesale-heading').textContent = 'Wholesale / distribution';
   document.getElementById('dash-wholesale-facts').innerHTML = `
     <div><dt>Verification</dt><dd>${w.verified ? 'Verified by Mwakete' : 'Waiting for Mwakete’s verification call'}</dd></div>
     <div><dt>Units on hand</dt><dd>${w.unitsOnHand} (tracked stock)</dd></div>
-    ${type === 'distributor' ? `<div><dt>Locations</dt><dd>${w.locations} - <a href="inventory.html">manage stock by location</a></dd></div>` : ''}`;
+    <div><dt>Locations</dt><dd>${w.locations} - <a href="inventory.html">manage stock by location</a></dd></div>`;
 }
 
 // Open/Closed store toggle. OPEN = 'active' (visible to customers),
