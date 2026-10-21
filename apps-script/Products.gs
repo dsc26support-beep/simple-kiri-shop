@@ -434,6 +434,8 @@ function getTopProductsCached() {
           imageUrl2: p.ImageUrl2,
           // Every photo, cover first (Images.gs productGalleryOf).
           images: productPhotoUrls(p),
+          // Category details the seller filled in (ProductDetails.gs).
+          details: productDetailsListOf(p),
           storeSlug: owner.StoreSlug,
           storeName: owner.StoreName,
           storePhone: owner.Phone,
@@ -666,6 +668,8 @@ function actionSearchProducts(params) {
           imageUrl2: p.ImageUrl2,
           // Every photo, cover first (Images.gs productGalleryOf).
           images: productPhotoUrls(p),
+          // Category details the seller filled in (ProductDetails.gs).
+          details: productDetailsListOf(p),
           storeSlug: owner.StoreSlug,
           storeName: owner.StoreName,
           storePhone: owner.Phone,
@@ -764,6 +768,8 @@ function actionListProducts(params) {
           imageUrl2: p.ImageUrl2,
           // Every photo, cover first (Images.gs productGalleryOf).
           images: productPhotoUrls(p),
+          // Category details the seller filled in (ProductDetails.gs).
+          details: productDetailsListOf(p),
           variants: productVariants,
           rating: (ratings[p.ProductId] || {}).average != null ? ratings[p.ProductId].average : null,
           reviewCount: (ratings[p.ProductId] || {}).count || 0
@@ -842,6 +848,7 @@ function actionListOwnerProducts(owner, body) {
       imageUrl2: p.ImageUrl2,
       // The photo gallery with ids, so the form can reorder, replace and remove.
       images: productGalleryOf(p).map(function (i) { return { id: i.id, url: i.url }; }),
+      details: productDetailsMapOf(p),
       status: p.Status,
       subcategoryId: String(p.SubcategoryId || ''),
       productType: productTypeOfRow(p),
@@ -871,6 +878,10 @@ function actionCreateOrUpdateProduct(owner, body) {
   var categoryErr = capLength(body.category, 50, 'Category') || capLength(body.subcategoryId, 60, 'Subcategory') ||
     capLength(body.sellerNote, 500, 'Note for the reviewer');
   if (categoryErr) return categoryErr;
+  // Category details (ProductDetails.gs): known keys, short values. Absent =
+  // leave what is stored; {} clears them.
+  var detailsIn = body.details === undefined ? null : cleanProductDetails(body.details);
+  if (detailsIn && detailsIn.error) return fail(detailsIn.error);
 
   // Validated against the register rather than trusted (listing checks,
   // ListingRules.gs): an unknown id is refused instead of quietly becoming
@@ -907,7 +918,9 @@ function actionCreateOrUpdateProduct(owner, body) {
   if (category === 'other' && !(priorRow && categoryIdOf(priorRow.Category) === 'other')) return fail('Please choose a category from the list.');
   var listingInput = {
     name: name, description: String(body.description || ''), categoryId: category, subcategoryId: subcategoryId, listingType: listingType,
-    attributes: cleanListingAttributes(body.attributes),
+    // Details the seller filled in answer the listing checks' "add the
+    // weight / size" tips the same way the older attributes field did.
+    attributes: cleanListingAttributes(listingAttributesFromDetails(detailsIn ? detailsIn.details : {}, body.attributes)),
     optionLabels: body.productType === 'options' && Array.isArray(body.options)
       ? [].concat.apply([], body.options.map(function (o) { return (o && Array.isArray(o.values) ? o.values : []).map(function (v) { return String((v && v.label) || '').slice(0, 60); }); }))
       : (Array.isArray(body.variants) ? body.variants : []).map(function (v) { return String((v && v.label) || '').slice(0, 100); })
@@ -921,7 +934,7 @@ function actionCreateOrUpdateProduct(owner, body) {
     // A retried Save (same requestId) gets the first answer back - never a
     // second product.
     return idempotentResult('product:' + owner.OwnerId, body.requestId, function () {
-      return saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput);
+      return saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput, detailsIn ? detailsIn.details : null);
     });
   } finally {
     lock.releaseLock();
@@ -938,7 +951,7 @@ function sellerStatusOf(body, existing) {
 }
 
 /** The write half of actionCreateOrUpdateProduct. Caller holds the script lock. */
-function saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput) {
+function saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput, details) {
   {
     var productsSheet = getSheet('Products');
     var variantsSheet = getSheet('Variants');
@@ -949,6 +962,7 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
     var held = gate.mode === 'hold';
     var wasHeld = false, hadCase = false;
     ['SubcategoryId', 'RequestedStatus', 'ReviewId', 'ReviewApprovedFingerprint'].forEach(function (h) { ensureColumn(productsSheet, h); });
+    if (details) ensureColumn(productsSheet, 'AttributesJson');
 
     // Stock can't be set below what open orders already hold (Inventory.gs).
     // Checked before anything is written, so a refused save changes nothing.
@@ -990,6 +1004,7 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
         Status: held ? 'review' : sellerStatusOf(body, existing),
         RequestedStatus: held ? sellerStatusOf(body, existing) : '',
         SortOrder: body.sortOrder !== undefined ? body.sortOrder : existing.SortOrder,
+        AttributesJson: details ? JSON.stringify(details) : existing.AttributesJson,
         UpdatedAt: now
       });
       if (body.imageUrl2 === '') {
@@ -1021,6 +1036,7 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
         Status: held ? 'review' : sellerStatusOf(body, null),
         RequestedStatus: held ? sellerStatusOf(body, null) : '',
         SortOrder: body.sortOrder || 0,
+        AttributesJson: details ? JSON.stringify(details) : '',
         CreatedAt: now,
         UpdatedAt: now
       });

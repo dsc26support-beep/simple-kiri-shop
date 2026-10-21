@@ -69,7 +69,7 @@ async function open(browser, opts) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('dialog', (d) => d.accept());
-  await page.addInitScript(() => { try { localStorage.setItem('skiri_owner_token', 'test-token'); localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'test-token'); localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
   await page.goto(BASE + '/owner/products.html', { waitUntil: 'load' });
   await page.waitForSelector('.owner-product-row', { timeout: 6000 });
   return { ctx, page, posted, galleries, errors };
@@ -246,7 +246,8 @@ const photoCalls = (posted) => posted.filter((b) => /ProductPhoto/.test(b.action
     const four = ['s1', 's2', 's3', 's4'].map((k) => 'https://res.cloudinary.com/x/image/upload/' + k + '.jpg');
     const prod = { productId: 'pg1', name: 'Shell lamp', description: 'x', category: 'home', listingType: 'product', status: 'active',
       imageUrl: four[0], imageUrl2: four[1], images: four, storeSlug: 'bong', storeName: 'Bong',
-      variants: [{ variantId: 'v', label: 'Standard', price: 30, stockQty: null }] };
+      variants: [{ variantId: 'v', label: 'Standard', price: 30, stockQty: null }],
+      details: [{ key: 'material', label: 'Material', value: 'Shell <b>&</b> wood' }, { key: 'availability', label: 'Availability', value: 'Ready now' }] };
     await ctx.route('**/macros/s/**', (route) => {
       let a = ''; try { a = new URL(route.request().url()).searchParams.get('action') || ''; } catch (e) {}
       let b = {}; try { b = route.request().postDataJSON() || {}; } catch (e) {}
@@ -260,6 +261,14 @@ const photoCalls = (posted) => posted.filter((b) => /ProductPhoto/.test(b.action
     await page.waitForSelector('.product-card', { timeout: 6000 });
     const srcs = await page.$$eval('.product-card img.product-image, .product-card img.carousel-slide', (els) => els.map((e) => e.getAttribute('src')));
     ok('store page: a product with 4 photos shows all 4 in its card gallery', four.every((u) => srcs.some((x) => x.indexOf(u.split('/').pop()) !== -1)), J(srcs));
+    await page.goto(BASE + '/product.html?store=bong&product=pg1', { waitUntil: 'load' });
+    await page.waitForSelector('#product-detail .product-card, #product-detail article', { timeout: 6000 });
+    await page.waitForTimeout(300);
+    const pdp = await page.evaluate(() => ({
+      imgs: Array.from(document.querySelectorAll('#product-detail img.product-image, #product-detail img.carousel-slide')).map((e) => e.getAttribute('src')),
+      details: Array.from(document.querySelectorAll('#product-detail .product-details div')).map((d) => d.textContent.replace(/\s+/g, ' ').trim()) }));
+    ok('product page: all 4 photos', four.every((u) => pdp.imgs.some((x) => x.indexOf(u.split('/').pop()) !== -1)), J(pdp.imgs));
+    ok('product page: the seller\'s details show as a list, as plain text', J(pdp.details) === J(['MaterialShell <b>&</b> wood', 'AvailabilityReady now']) && !(await page.$('#product-detail .product-details b')), J(pdp.details));
     await ctx.close();
   }
 

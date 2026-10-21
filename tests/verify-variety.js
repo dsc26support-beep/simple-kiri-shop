@@ -49,7 +49,7 @@ const OWNER = {
   await page.addInitScript(() => {
     if (window.__seeded) return;
     window.__seeded = true;
-    try { localStorage.setItem('skiri_owner_token', 'tok-123'); } catch (e) {}
+    try { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'tok-123'); } catch (e) {}
   });
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(String(e)));

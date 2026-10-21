@@ -43,6 +43,28 @@
         <form id="product-form" novalidate>
           <input type="hidden" id="product-id" value="">
 
+          <!-- Guided steps (owner-product-steps.js). "Step by step" shows one
+               section at a time with Back / Continue; "One page" shows them all
+               (quicker for sellers who know what they're adding - and for
+               edits). The sections and field ids are the same either way. -->
+          <div class="pf-top">
+            <div class="pf-mode" role="group" aria-label="How to show the form">
+              <button type="button" class="pf-mode-btn" data-mode="steps" aria-pressed="true">Step by step</button>
+              <button type="button" class="pf-mode-btn" data-mode="page" aria-pressed="false">Quick add (one page)</button>
+            </div>
+            <ol class="pf-progress" id="pf-progress" aria-label="Steps">
+              <li><button type="button" class="pf-progress-btn" data-go="1">Basics</button></li>
+              <li><button type="button" class="pf-progress-btn" data-go="2">Photos</button></li>
+              <li><button type="button" class="pf-progress-btn" data-go="3">Price &amp; stock</button></li>
+              <li><button type="button" class="pf-progress-btn" data-go="4">Details</button></li>
+              <li><button type="button" class="pf-progress-btn" data-go="5">Review</button></li>
+            </ol>
+          </div>
+          <div id="pf-draft-banner" class="pf-draft-banner" role="status" hidden></div>
+
+          <fieldset class="pf-step" id="pf-step-1" data-step="1">
+            <legend class="pf-step-title"><span class="pf-step-num" aria-hidden="true">1</span> Basics</legend>
+            <p class="helper-text pf-step-hint">What it is and where shoppers will find it.</p>
           <div class="field">
             <label for="product-name" class="is-required">Product Name</label>
             <input id="product-name" required>
@@ -54,6 +76,7 @@
                  pasted description short, which is worse than being told. -->
             <p id="description-count" class="helper-text char-count" hidden></p>
           </div>
+          <p id="pf-similar" class="pf-similar" role="status" tabindex="-1" hidden></p>
           <div class="field">
             <label for="product-listing-type" class="is-required">What are you offering?</label>
             <!-- One word each. The sentence-long options wrapped onto two
@@ -67,14 +90,6 @@
             </select>
             <p class="helper-text">Products go in the cart; rentals and services are booked by date.</p>
           </div>
-          <!-- Product options (owner-product-options.js). Products only:
-               rentals and services keep their list of rates below. -->
-          <fieldset class="field product-type-field" id="product-type-field" hidden>
-            <legend>How is it sold?</legend>
-            <label class="radio-row"><input type="radio" name="productType" value="single"> <span><strong>Single product</strong> - one price, one stock count (e.g. bottled water)</span></label>
-            <label class="radio-row"><input type="radio" name="productType" value="options"> <span><strong>Product with options</strong> - colours, sizes or your own (e.g. a T-shirt, rice in 1kg / 5kg)</span></label>
-            <label class="radio-row" id="ptype-list-label" hidden><input type="radio" name="productType" value="list"> <span><strong>List of varieties</strong> - how this listing was set up before options existed</span></label>
-          </fieldset>
           <div class="field">
             <!-- "Category", not "What type is it?" - the field above now
                  offers the TYPES (Product / Rental / Service), so two fields
@@ -118,14 +133,42 @@
             <button type="button" id="cr-send" class="btn btn-small">Send request</button>
             <p class="helper-text">An admin will check. Pick the closest category for now.</p>
           </details>
-          <div class="field">
-            <label for="product-status">Status</label>
-            <select id="product-status">
-              <option value="active">Active (visible to customers)</option>
-              <option value="hidden">Hidden (not visible to customers)</option>
-            </select>
-          </div>
+          </fieldset>
 
+          <fieldset class="pf-step" id="pf-step-2" data-step="2">
+            <legend class="pf-step-title"><span class="pf-step-num" aria-hidden="true">2</span> Photos</legend>
+            
+          <!-- Product photo gallery (owner-product-photos.js). Arranged here,
+               sent when the product is saved - see that file for the order. -->
+          <section class="field photo-gallery" id="photo-section" aria-labelledby="photos-heading">
+            <h3 id="photos-heading" class="pg-heading">Photos <span id="photo-count" class="helper-text"></span></h3>
+            <p class="helper-text">The first photo is the cover shoppers see. Clear, bright photos sell better.</p>
+            <ul id="photo-list" class="pg-list"></ul>
+            <div id="photo-add-row" class="pg-add">
+              <button type="button" class="btn btn-small pg-add-btn" id="photo-add-btn">Add photos</button>
+              <button type="button" class="btn btn-small pg-add-btn" id="photo-camera-btn" hidden>Take a photo</button>
+              <input type="file" id="photo-input" accept="image/*" multiple hidden>
+              <input type="file" id="photo-camera-input" accept="image/*" capture="environment" hidden>
+              <span class="helper-text pg-drop-hint">or drag photos here</span>
+            </div>
+            <input type="file" id="photo-replace-input" accept="image/*" hidden>
+            <p id="duplicate-photo-note" class="helper-text duplicate-photo-note" hidden>Photos aren't copied — add them again.</p>
+            <p id="photo-msg" class="form-error" role="alert"></p>
+          </section>
+
+          </fieldset>
+
+          <fieldset class="pf-step" id="pf-step-3" data-step="3">
+            <legend class="pf-step-title"><span class="pf-step-num" aria-hidden="true">3</span> Price &amp; stock</legend>
+            
+          <!-- Product options (owner-product-options.js). Products only:
+               rentals and services keep their list of rates below. -->
+          <fieldset class="field product-type-field" id="product-type-field" hidden>
+            <legend>How is it sold?</legend>
+            <label class="radio-row"><input type="radio" name="productType" value="single"> <span><strong>Single product</strong> - one price, one stock count (e.g. bottled water)</span></label>
+            <label class="radio-row"><input type="radio" name="productType" value="options"> <span><strong>Product with options</strong> - colours, sizes or your own (e.g. a T-shirt, rice in 1kg / 5kg)</span></label>
+            <label class="radio-row" id="ptype-list-label" hidden><input type="radio" name="productType" value="list"> <span><strong>List of varieties</strong> - how this listing was set up before options existed</span></label>
+          </fieldset>
           <div class="field" id="single-fields" hidden>
             <div class="single-grid">
               <div><label for="single-price" class="is-required">Price</label><input id="single-price" type="number" min="0" step="0.01" inputmode="decimal"></div>
@@ -166,32 +209,43 @@
             <button type="button" id="add-variant-btn" class="btn btn-small">+ Add Variety</button>
           </div>
 
-          <!-- Product photo gallery (owner-product-photos.js). Arranged here,
-               sent when the product is saved - see that file for the order. -->
-          <section class="field photo-gallery" id="photo-section" aria-labelledby="photos-heading">
-            <h3 id="photos-heading" class="pg-heading">Photos <span id="photo-count" class="helper-text"></span></h3>
-            <p class="helper-text">The first photo is the cover shoppers see. Clear, bright photos sell better.</p>
-            <ul id="photo-list" class="pg-list"></ul>
-            <div id="photo-add-row" class="pg-add">
-              <button type="button" class="btn btn-small pg-add-btn" id="photo-add-btn">Add photos</button>
-              <button type="button" class="btn btn-small pg-add-btn" id="photo-camera-btn" hidden>Take a photo</button>
-              <input type="file" id="photo-input" accept="image/*" multiple hidden>
-              <input type="file" id="photo-camera-input" accept="image/*" capture="environment" hidden>
-              <span class="helper-text pg-drop-hint">or drag photos here</span>
-            </div>
-            <input type="file" id="photo-replace-input" accept="image/*" hidden>
-            <p id="duplicate-photo-note" class="helper-text duplicate-photo-note" hidden>Photos aren't copied — add them again.</p>
-            <p id="photo-msg" class="form-error" role="alert"></p>
-          </section>
+          </fieldset>
 
+          <fieldset class="pf-step" id="pf-step-4" data-step="4">
+            <legend class="pf-step-title"><span class="pf-step-num" aria-hidden="true">4</span> Details &amp; availability</legend>
+            <p class="helper-text pf-step-hint">Optional - fill in what you know. Shoppers use these to decide.</p>
+          <div id="pf-details" class="pf-details"></div>
+          <div class="pf-delivery" id="pf-delivery"></div>
+          <div class="field">
+            <label for="product-status">Who can see it</label>
+            <select id="product-status">
+              <option value="active">Active (visible to customers)</option>
+              <option value="hidden">Hidden (not visible to customers)</option>
+            </select>
+          </div>
+
+          </fieldset>
+
+          <fieldset class="pf-step" id="pf-step-5" data-step="5">
+            <legend class="pf-step-title"><span class="pf-step-num" aria-hidden="true">5</span> Review</legend>
+            
+          <div id="pf-quality" class="pf-quality"></div>
+          <div id="pf-review" class="pf-review"></div>
           <details class="card-preview" id="card-preview">
             <summary>Preview the shopper's card</summary>
             <div id="card-preview-slot" class="card-preview-slot"></div>
           </details>
+          </fieldset>
 
           <p id="product-form-error" class="form-error" role="alert"></p>
-          <button type="submit" id="save-product-btn" class="btn btn-primary btn-save">Save Product</button>
-          <button type="button" id="cancel-product-btn" class="btn">Cancel</button>
+          <div class="pf-actions">
+            <button type="button" id="pf-back" class="btn pf-back">Back</button>
+            <button type="button" id="pf-next" class="btn btn-primary pf-next">Continue</button>
+            <button type="submit" id="save-product-btn" class="btn btn-primary btn-save">Save Product</button>
+            <button type="button" id="pf-save-hidden" class="btn pf-save-hidden">Save hidden (draft)</button>
+            <button type="button" id="cancel-product-btn" class="btn">Cancel</button>
+          </div>
+          <p id="pf-autosave" class="helper-text pf-autosave" aria-live="polite"></p>
         </form>
       </section>
     </div>
@@ -209,6 +263,7 @@
   <script defer src="../assets/js/product-options.min.js"></script>
   <script defer src="../assets/js/owner-product-options.min.js"></script>
   <script defer src="../assets/js/owner-product-photos.min.js"></script>
+  <script defer src="../assets/js/owner-product-steps.min.js"></script>
   <script defer src="../assets/js/owner-products.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

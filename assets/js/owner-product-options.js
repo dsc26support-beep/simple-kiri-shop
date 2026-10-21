@@ -538,6 +538,25 @@ const ProductOptionsEditor = (() => {
   }
 
   /**
+   * The editor's state as typed, unchecked - for the draft kept on this
+   * device (owner-product-steps.js). load() takes it back: it has the same
+   * shape as a product from listOwnerProducts.
+   */
+  function snapshot() {
+    const ws = (r) => ({ tiers: r.tiers || [], minQty: r.minQty || '' });
+    if (mode === 'single') {
+      const s0 = single || blankRow({});
+      return { productType: 'single', variants: [Object.assign({ variantId: s0.variantId || '', status: 'active', price: $('single-price').value,
+        stockQty: $('single-stock').value, sku: $('single-sku').value, images: s0.images || [] }, ws(s0))] };
+    }
+    if (mode === 'options') {
+      return { productType: 'options', options: JSON.parse(JSON.stringify(options)), variants: Array.from(rows.values()).map((r) => Object.assign({
+        variantId: r.variantId || '', values: r.values, status: r.active ? 'active' : 'inactive', price: r.price, stockQty: r.stockQty, sku: r.sku || '', images: r.images || [] }, ws(r))) };
+    }
+    return { productType: '' };
+  }
+
+  /**
    * What a save will do to an existing product's variants, in words - shown
    * for confirmation when it creates or switches off anything.
    */
@@ -617,5 +636,5 @@ const ProductOptionsEditor = (() => {
     });
   }
 
-  return { init, load, setListingType, setWholesale, payload, changeSummary, uploadPending, labels, previewProduct, get mode() { return mode; } };
+  return { init, load, setListingType, setWholesale, payload, snapshot, changeSummary, uploadPending, labels, previewProduct, get mode() { return mode; } };
 })();

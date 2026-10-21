@@ -108,6 +108,8 @@ async function init() {
   wireListingCheck();
   ProductOptionsEditor.init();
   ProductPhotos.init();
+  ProductSteps.init();
+  document.getElementById('pf-save-hidden').addEventListener('click', () => onSaveProduct(null, { saveHidden: true }));
   document.getElementById('card-preview').addEventListener('toggle', renderCardPreview);
 
   await loadProducts();
@@ -399,12 +401,36 @@ function openForm(product, opts) {
   ListingCheck.render({ issues: [], suggestions: [] });
   if (product) ListingCheck.schedule(listingInputFromForm);
   UnsavedGuard.watch(document.getElementById('product-form'), { skipWhenHidden: true });
+  // Sections, details, draft offer (owner-product-steps.js).
+  ProductSteps.open(product, { duplicate });
   section.scrollIntoView({ behavior: 'smooth' });
+}
+
+/** "Open it" from the likely-duplicate note: edit that listing instead. */
+function openProductById(productId) {
+  const p = ownerProducts.find((x) => x.productId === productId);
+  if (!p) {
+    document.getElementById('pf-similar').insertAdjacentHTML('beforeend', '<span class="helper-text"> It is further down your product list - use Load More to find it.</span>');
+    return;
+  }
+  if (UnsavedGuard.isDirty() && !confirm('Open the other listing? What you typed here is kept on this device and offered again next time.')) return;
+  ProductSteps.saveDraftNow();
+  UnsavedGuard.release(document.getElementById('product-form'));
+  openForm(p);
+}
+
+/** Variety rows back from the copy kept on this device (owner-product-steps.js). */
+function restoreVarietyRows(rows) {
+  document.getElementById('variant-rows').innerHTML = '';
+  rows.forEach((r) => addVariantRow({ variantId: r.variantId || '', label: r.label || '', price: r.price, stockQty: r.stockQty }));
+  updateVarietyLabels();
 }
 
 function closeForm() {
   // Closing the panel is a decision, so stop watching rather than warn about
-  // a form the vendor has deliberately put away.
+  // a form the vendor has deliberately put away. (A copy of unsaved work stays
+  // on this device and is offered again - owner-product-steps.js.)
+  ProductSteps.close();
   UnsavedGuard.release(document.getElementById('product-form'));
   document.getElementById('product-form-section').classList.add('hidden');
 }
@@ -502,6 +528,8 @@ function clearFieldErrors() {
  */
 function showFieldError(control, message, existingMsg) {
   clearFieldErrors();
+  // Step by step: open the section the field is in first.
+  ProductSteps.reveal(control);
   // existingMsg: a message already on screen that says it (the description
   // counter), so the error points at that rather than repeating it in red.
   let msg = existingMsg;
@@ -535,6 +563,11 @@ function onFieldEdited(e) {
  * Returns false (with the error shown) or the variants to send.
  */
 function validateProductForm() {
+  return validateBasics() && validatePricing();
+}
+
+/** Step 1 (and the first half of Save): name, description, type, category. */
+function validateBasics() {
   const name = document.getElementById('product-name');
   if (!name.value.trim()) {
     showFieldError(name, 'Please enter a name for this listing.');
@@ -561,7 +594,12 @@ function validateProductForm() {
     showFieldError(category, 'Please choose a category.');
     return false;
   }
+  return true;
+}
 
+/** Step 3 (and the second half of Save): prices and stock. Returns false or what to send. */
+function validatePricing() {
+  const type = document.getElementById('product-listing-type');
   // Single products and products with options are checked by their editor.
   if (ProductOptionsEditor.mode !== 'list') {
     const p = ProductOptionsEditor.payload();
@@ -612,10 +650,33 @@ function validateProductForm() {
   return variants;
 }
 
+/** For the listing-quality meter: is there a price yet (no error shown)? */
+function pricingLooksSet() {
+  if (ProductOptionsEditor.mode === 'single') return Number(document.getElementById('single-price').value) > 0;
+  if (ProductOptionsEditor.mode === 'options') return !ProductOptionsEditor.payload().error;
+  return Array.from(document.querySelectorAll('#variant-rows .variant-price')).some((i) => Number(i.value) > 0);
+}
+
+/** For the review: the price, or the range of prices, as shoppers will read it. */
+function pricingSummary() {
+  let prices = [];
+  if (ProductOptionsEditor.mode === 'single') prices = [Number(document.getElementById('single-price').value)];
+  else if (ProductOptionsEditor.mode === 'options') {
+    const p = ProductOptionsEditor.payload();
+    prices = p.error ? [] : p.variants.filter((v) => v.active).map((v) => Number(v.price));
+  } else prices = Array.from(document.querySelectorAll('#variant-rows .variant-price')).map((i) => Number(i.value));
+  prices = prices.filter((x) => x > 0);
+  if (!prices.length) return 'Not set yet';
+  const lo = Math.min.apply(null, prices), hi = Math.max.apply(null, prices);
+  return lo === hi ? formatMoney(lo) : formatMoney(lo) + ' - ' + formatMoney(hi);
+}
+
 // flags (from the listing-check panel): submitForReview + sellerNote, or
 // acknowledgeWarnings - only ever sent after the backend refused a plain Save.
+// saveHidden: the "Save hidden (draft)" button - saved, not shown to shoppers.
 async function onSaveProduct(e, flags) {
   if (e) e.preventDefault();
+
   flags = flags || {};
   const errorEl = document.getElementById('product-form-error');
   errorEl.textContent = '';
@@ -634,10 +695,13 @@ async function onSaveProduct(e, flags) {
     category: document.getElementById('product-category').value,
     subcategoryId: document.getElementById('product-subcategory').value,
     listingType: document.getElementById('product-listing-type').value,
-    status: document.getElementById('product-status').value,
+    status: flags.saveHidden ? 'hidden' : document.getElementById('product-status').value,
     variants,
+    // Category details (owner-product-steps.js / ProductDetails.gs).
+    details: ProductSteps.details(),
     requestId: saveRequestId
   };
+  if (flags.saveHidden) document.getElementById('product-status').value = 'hidden';
   if (flags.submitForReview) {
     payload.submitForReview = true;
     payload.sellerNote = flags.sellerNote || '';
@@ -675,6 +739,7 @@ async function onSaveProduct(e, flags) {
       errorEl.textContent = res.needsCorrection ? res.error : 'Not saved yet - see the note above the Save button.';
       ListingCheck.remember(listingInputFromForm());
       ListingCheck.render(res.validation, { canSubmitForReview: !!res.canSubmitForReview, canSaveAnyway: !!res.canSaveAnyway });
+      ProductSteps.reveal(document.getElementById('listing-check'));
       document.getElementById('listing-check').scrollIntoView({ block: 'center', behavior: 'smooth' });
     } else {
       errorEl.textContent = res.error || 'Could not save this product.';
@@ -729,6 +794,7 @@ async function onSaveProduct(e, flags) {
 
   setSaveProductIdle(saveBtn);
   UnsavedGuard.markSaved(document.getElementById('product-form'));
+  ProductSteps.saved(res.productId, !productId);
   closeForm();
   await loadProducts(reloadOpts);
   // Said after the list reload, which rewrites this same line.

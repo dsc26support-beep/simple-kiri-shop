@@ -690,6 +690,16 @@ function productOwnPhotos(product) {
   return out;
 }
 
+/**
+ * The seller's category details (ProductDetails.gs): [{ label, value }] as a
+ * small definition list, or '' when there are none. Plain text only.
+ */
+function productDetailsHtml(product) {
+  const list = Array.isArray(product.details) ? product.details.filter((d) => d && d.label && d.value) : [];
+  if (!list.length) return '';
+  return `<dl class="product-details">${list.map((d) => `<div><dt>${escapeHtml(d.label)}</dt><dd>${escapeHtml(d.value)}</dd></div>`).join('')}</dl>`;
+}
+
 /** Photos for a card: the product's own first, then each colour's primary photo. [{ url, colourId }] */
 function cardGalleryImages(product) {
   const out = [];

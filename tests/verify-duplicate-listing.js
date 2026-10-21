@@ -23,7 +23,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
   });
   const pg = await ctx.newPage();
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
-  await pg.addInitScript(() => { localStorage.setItem('skiri_owner_token', 'tok'); localStorage.setItem('skiri_cookie_consent', 'true'); });
+  await pg.addInitScript(() => { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'tok'); localStorage.setItem('skiri_cookie_consent', 'true'); });
   await pg.goto(BASE + '/owner/products.html', { waitUntil: 'load' });
   await pg.waitForTimeout(700);
 

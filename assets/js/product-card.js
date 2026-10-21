@@ -79,6 +79,7 @@ function renderProductCard(product, opts) {
           <h3 class="product-name">${nameHtml} ${availabilityBadge}</h3>
           <strong class="product-price">${priceText}</strong>
           ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
+          ${productDetailsHtml(product)}
           <div class="product-controls">
             <label class="sr-only" for="variety-${pid}">Choose a rate for ${escapeHtml(product.name)}</label>
             <select id="variety-${pid}" class="variety-select">${options}</select>
@@ -132,6 +133,7 @@ function renderProductCard(product, opts) {
         <h3 class="product-name">${nameHtml}</h3>
         <strong class="product-price">${priceText}</strong>
         ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
+          ${productDetailsHtml(product)}
         ${isOptions ? OptionsUI.pickerHtml(product) : singleStatus}
         <input type="hidden" id="variety-${pid}" class="variety-select" value="${only && !soldOut ? escapeHtml(only.variantId) : ''}">
         <div class="product-actions">
@@ -154,6 +156,7 @@ function renderProductCard(product, opts) {
         <h3 class="product-name">${nameHtml}</h3>
         <strong class="product-price">${priceText}</strong>
         ${product.description ? `<p class="product-desc">${escapeHtml(product.description)}</p>` : ''}
+          ${productDetailsHtml(product)}
         <div class="product-controls">
           <label class="sr-only" for="variety-${pid}">Choose an option for ${escapeHtml(product.name)}</label>
           <select id="variety-${pid}" class="variety-select">${options}</select>
