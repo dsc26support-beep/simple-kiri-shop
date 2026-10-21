@@ -8095,8 +8095,9 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   color: #fff;
 }
 
-/* Seller login/register: "You are signed in as a shopper (email)",
-   highlighted and centred (owner request, Oct 2026). */
+/* Seller login/register: "You are signed in (email)", highlighted and
+   centred, with a Google button under it to switch account (owner request,
+   Oct 2026). */
 #shopper-note {
   margin: var(--space-3) 0;
   padding: var(--space-2) var(--space-3);
@@ -8108,6 +8109,9 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   text-align: center;
   overflow-wrap: anywhere;
 }
+
+.shopper-switch { margin-top: calc(-1 * var(--space-1)); }
+.shopper-switch-label { margin: 0; }
 
 /* Seller login: the seller's own password hint, after a wrong password. */
 .login-hint {

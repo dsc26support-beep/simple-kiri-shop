@@ -43,8 +43,15 @@
         <!-- Filled by owner-login.js for somebody who is signed in as a shopper:
              a store account is a separate thing with its own username and
              password, and nothing on this form said so. Empty and hidden for
-             everyone else. -->
+             everyone else. Under it, a Google button to switch to another
+             shopper account (owner request, Oct 2026) - google-signin.js
+             renders it only for a signed-in shopper. -->
         <p id="shopper-note" class="auth-note" hidden></p>
+        <div id="google-signin-wrap" class="auth-social shopper-switch" hidden>
+          <p class="helper-text shopper-switch-label">Use a different account</p>
+          <div id="google-signin-btn"></div>
+          <p id="google-signin-error" class="form-error" role="alert"></p>
+        </div>
 
         <form id="login-form" role="tabpanel">
           <div class="field">
@@ -92,13 +99,13 @@
               <input type="radio" name="storeType" value="retailer" checked>
               <span><strong>Retailer</strong> - you sell to shoppers</span>
             </label>
+            <!-- One choice for both (owner request, Oct 2026). The backend
+                 already treats wholesaler and distributor alike (isBulkSeller):
+                 verification call, Food & Groceries anywhere, locations and
+                 transfers. Older distributor stores keep their type. -->
             <label class="store-type-option">
               <input type="radio" name="storeType" value="wholesaler">
-              <span><strong>Wholesaler</strong> - you sell in bulk. Can list Food &amp; Groceries on any island.</span>
-            </label>
-            <label class="store-type-option">
-              <input type="radio" name="storeType" value="distributor">
-              <span><strong>Distributor / multi-location</strong> - you run several shops, branches or warehouses.</span>
+              <span><strong>Wholesaler / Distributor</strong> - you sell in bulk, or run several shops, branches or warehouses. Can list Food &amp; Groceries on any island.</span>
             </label>
             <p id="wholesaler-note" class="wholesaler-note" role="status" hidden>
               Mwakete.com will schedule a verification call with you to confirm your business. We'll reach you on the phone number and email you enter below.
@@ -155,11 +162,12 @@
   <script defer src="../assets/js/helpers.min.js"></script>
   <script defer src="../assets/js/cookie-consent.min.js"></script>
   <script defer src="../assets/js/auth.min.js"></script>
-  <!-- Read-only here: owner-login.js asks whether this device holds a SHOPPER
-       session, to explain that a store account is a separate one. No customer
-       call is made from this page. -->
+  <!-- owner-login.js asks whether this device holds a SHOPPER session, to
+       explain that a store account is a separate one. The only customer call
+       from this page is googleSignIn, when the shopper switches account. -->
   <script defer src="../assets/js/customer-auth.min.js"></script>
   <script defer src="../assets/js/owner-login.min.js"></script>
+  <script defer src="../assets/js/google-signin.min.js"></script>
   <script defer src="../assets/js/fb-help.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

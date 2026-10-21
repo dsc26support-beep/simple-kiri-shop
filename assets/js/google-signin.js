@@ -1,17 +1,19 @@
 /**
  * Google Sign-In button for the customer login page.
  *
- * Customers only. Vendors sign in with username + password + 2FA and this file
- * is not loaded on any owner page - see apps-script/CustomerOAuth.gs for why.
+ * Customers only. Vendors sign in with username + password + 2FA - see
+ * apps-script/CustomerOAuth.gs for why. owner/login.html loads it only so a
+ * signed-in SHOPPER can switch shopper accounts; it never signs in a store.
  *
- * Two pages load this file, and they need different things after a successful
- * sign-in:
+ * Pages that load this file need different things after a successful sign-in:
  *
  *   customer-login.html - signing in IS the task, so go where they were headed.
  *   checkout.html       - the order is already placed and the screen says
  *                         "CALL SELLER NOW". Navigating away from that would be
  *                         actively harmful, so that page supplies
  *                         window.onCustomerSignedIn and nothing redirects.
+ *   owner/login.html     - stays put too (the register form may be half
+ *                         filled in); onCustomerSignedIn updates the note.
  *
  * checkout.html also needs the button rendered LATE: its block starts hidden
  * inside the confirmation section, and Google measures the container when
