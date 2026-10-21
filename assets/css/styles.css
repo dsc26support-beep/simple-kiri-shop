@@ -8164,6 +8164,13 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   font-size: 14px;
   font-weight: 600;
 }
+/* Create Account: no Guest, no "or" line - just Google, then the form
+   (owner request, Oct 2026). Sign In shows both again. */
+html.auth-signup .auth-guest-row,
+html.auth-signup .auth-divider {
+  display: none;
+}
+
 .auth-card--customer .auth-guest-row { justify-content: center; }
 .auth-card--customer .auth-guest-row #guest-continue { flex: 0 0 auto; margin: 0 auto; }
 

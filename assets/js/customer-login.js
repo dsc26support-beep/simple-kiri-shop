@@ -95,6 +95,9 @@ function showTab(which) {
   document.getElementById('panel-signin').classList.toggle('hidden', !signin);
   document.getElementById('panel-signup').classList.toggle('hidden', signin);
   document.getElementById('auth-title').textContent = signin ? 'Sign in to Mwakete' : 'Create your Mwakete account';
+  // Owner request (Oct 2026): Create Account is for making an account, so the
+  // Guest button and the "or" line go; Sign In brings them back.
+  document.documentElement.classList.toggle('auth-signup', !signin);
 }
 
 /* ---------- Sign in ---------- */
