@@ -103,6 +103,10 @@ ok('the seller agrees to $6: the fee locks', r.ok && r.locked && job(b).FeeLocke
 ok('system lines record the proposal and the lock', seller('actionGetTxRoom', { orderId: b }).room.delivery.chat.messages.some((m) => m.by === 'system' && /locked/.test(m.body)));
 ok('a locked fee cannot be proposed again', !seller('actionTxProposeFee', { orderId: b, fee: 3 }).ok && !dan('actionDriverProposeFee', { jobId: jobB, fee: 9 }).ok && job(b).Fee === 6);
 ok('the audit log records the lock', box.__sheets.Audit_Log.objects().some((x) => x.Action === 'DELIVERY_FEE_LOCKED' && x.EntityId === jobB));
+// Phase 3: collecting also needs Mwakete to have confirmed the seller's payment.
+box.__props.MWAKETE_BANK_DETAILS = 'ANZ 000-111 Mwakete Ltd';
+seller('actionTxSubmitJobPayment', { orderId: b, bankRef: 'ANZ123456', amount: 6, requestId: rq() });
+box.actionAdminConfirmJobPayment(A, { jobId: jobB, amountReceived: 6, checkedStatement: true });
 r = dan('actionDriverUpdateJob', { jobId: jobB, act: 'picked_up', requestId: rq() });
 ok('now the driver can collect', r.ok, J(r));
 ok('after pickup the chat stays open to talk but the fee is fixed', dv().canWrite && !dv().fee.canPropose && dan('actionDriverJobMessage', { jobId: jobB, text: 'On my way', requestId: rq() }).ok);

@@ -1,12 +1,12 @@
 # Driver wallet — paying drivers through Mwakete
 
-Owner-approved plan, October 2026. Phase 1 (money ledger) and phase 2 (job chat and fee agreement) are built.
+Owner-approved plan, October 2026. Phases 1 (money ledger), 2 (job chat and fee agreement) and 3 (seller pays Mwakete) are built.
 Both stay invisible until `DELIVERY_PAYMENTS` covers a driver.
 
 | | Where |
 |---|---|
 | Backend | `apps-script/DriverWallet.gs` |
-| Tests | `tests/test-driver-wallet.js` (48), `tests/test-delivery-chat.js` (30), both on the real backend sources |
+| Tests | `tests/test-driver-wallet.js` (48), `tests/test-delivery-chat.js` (30), `tests/test-delivery-payment.js` (41), all on the real backend sources |
 | Pages | `driver.html` (`assets/js/driver.js`) and the delivery panel of `order-room.html` (`assets/js/order-room.js`) |
 | Builds on | `apps-script/Deliveries.gs`, `docs/deliveries.md` |
 
@@ -58,12 +58,33 @@ New columns on `DeliveryJobs` (`FeeProposedBy`, `FeeSellerOk`, `FeeDriverOk`, `F
 
 Messages update when the page reloads or on **Refresh messages** (seller) and every 30 seconds (driver page). There is no live push.
 
+## Phase 3: the seller pays Mwakete
+
+Only for a driver covered by `DELIVERY_PAYMENTS`.
+
+1. **The fee locks** (phase 2) and the job gets a reference code `MWK-XXXXXXXX` and status *awaiting*.
+2. The **seller** (only) sees Mwakete's bank details and the reference in the order room. They pay **exactly** the agreed fee by bank transfer, then enter the reference their bank gave the transfer and tap *I have paid*. Status *submitted*; admins are emailed.
+3. An **admin** opens Admin → Deliveries & drivers → *Payments to check*, looks at the **real bank statement** (a screenshot is never enough), and either:
+   - **Confirm received**, entering the amount that arrived (at least the fee; a small excess is noted so it can be returned by hand), or
+   - **Not received**, with a reason the seller sees. The seller can send the details again.
+4. Only after *received* does the driver see the **pickup place, store phone, buyer name and phone, items and notes**, and only then can they tap *I've collected the goods*. Before that the driver sees just the drop-off village and the payment status. The driver never sees bank details or the reference.
+5. An admin cannot confirm, reject or refund a payment for their own store or their own driver job. Every step is in the audit log (`DELIVERY_PAYMENT_*`).
+
+**If the job ends before the goods are collected** (the seller cancels the job, the order is cancelled, or the driver reports a failed delivery before collecting) and Mwakete has confirmed the money, the job becomes *refund due*. The admin returns it by bank transfer and records the bank reference (*I sent the refund*), then it shows *refunded*. A job that ends before the seller paid owes nothing.
+
+**A failed delivery after collection** does not refund automatically. Who is paid is decided in phase 4 (driver is paid unless the goods were damaged, which an admin decides).
+
+Bank details live in the Script Property `MWAKETE_BANK_DETAILS` (plain text, up to 500 characters; never in front-end code). If it is not set, sellers see "bank details are not set up yet" and Admin shows a warning.
+
+New columns on `DeliveryJobs`: `PayRef`, `PayStatus`, `PayBankRef`, `PayAmount`, `PayNote`, `PaySubmittedAt`, `PayCheckedBy`, `PayCheckedAt`, `PayRefundRef` (appended automatically to an existing sheet). New actions: `txSubmitJobPayment`, `adminConfirmJobPayment`, `adminRejectJobPayment`, `adminMarkJobRefunded`.
+
 ## Script Properties
 
 | Property | Value |
 |---|---|
 | `DELIVERY_PAYMENTS` | `off` (default), `pilot` or `on`. Anything else is off. |
 | `DELIVERY_PAYMENTS_DRIVERS` | For `pilot`: comma-separated `DriverId`s. Only the first 5 count, and only on South Tarawa. |
+| `MWAKETE_BANK_DETAILS` | Where sellers send the fee: bank, account name and number, as plain text. Required before wallet deliveries can be paid for. |
 | `DRIVER_MIN_PAYOUT` | Default 20. Must be 1 to 10000. |
 | `DRIVER_HOLD_HOURS` | Default 48. Must be 0 to 720. |
 | `DRIVER_COMMISSION_PCT` | Default 0. Must be 0 to 100. |
@@ -73,11 +94,11 @@ A bad value falls back to the default.
 ## Switching phase 1 on
 
 1. Add a new file `DriverWallet` and paste `apps-script/DriverWallet.gs` (once, from phase 1).
-2. Update `Deliveries.gs` and `Code.gs`, then deploy a new version.
-3. `?action=getVersion` should show `wallet2-2026-10-21` (or later) and `checkSetup` should show `missingFiles: []`.
-4. The front end (`driver.min.js`, `order-room.min.js`, `styles.min.css`, `sw.js`) goes live when the branch is merged and GitHub Pages rebuilds.
+2. Update `Deliveries.gs`, `Transactions.gs` and `Code.gs`, then deploy a new version.
+3. `?action=getVersion` should show `wallet3-2026-10-21` (or later) and `checkSetup` should show `missingFiles: []`.
+4. The front end (`driver.min.js`, `order-room.min.js`, `admin-deliveries.min.js`, `styles.min.css`, `owner/admin.html`, `sw.js`) goes live when the branch is merged and GitHub Pages rebuilds.
 
-To try phase 2 on one driver: set `DELIVERY_PAYMENTS` = `pilot` and `DELIVERY_PAYMENTS_DRIVERS` = that driver's `DriverId` (South Tarawa only). Phase 2 only adds the chat and the fee lock; no money moves yet. Do **not** set `DELIVERY_PAYMENTS` until phase 5 has rewritten the wording below.
+To try phase 2 on one driver: set `DELIVERY_PAYMENTS` = `pilot` and `DELIVERY_PAYMENTS_DRIVERS` = that driver's `DriverId` (South Tarawa only). Set `MWAKETE_BANK_DETAILS` first. From phase 3 a real bank transfer is expected on every covered job. Do **not** set `DELIVERY_PAYMENTS` until phase 5 has rewritten the wording below.
 
 ## Before this can go live
 
@@ -90,7 +111,7 @@ Every later phase ships behind `DELIVERY_PAYMENTS`.
 
 1. **Ledger** (done).
 2. **Chat and fee agreement** (done).
-3. Seller pays Mwakete; an admin confirms the real bank statement; pickup details are released after.
+3. **Seller pays Mwakete** (done): an admin confirms the real bank statement; pickup details are released after.
 4. Credit on buyer receipt, driver balance page and Claim, admin payout queue.
 5. Wording and terms.
 6. Tests across the whole flow.

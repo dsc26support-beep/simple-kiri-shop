@@ -13,7 +13,9 @@ const DeliveriesAdmin = (() => {
     const c = res.counts;
     const card = (label, v, sub) => `<div class="kpi-card"><span class="kpi-label">${escapeHtml(label)}</span><strong class="kpi-value">${v}</strong>${sub ? `<span class="kpi-sub${/stuck|fail/i.test(sub) && v ? ' is-warning' : ''}">${escapeHtml(sub)}</span>` : ''}</div>`;
     $('dlv-counts').innerHTML = card('Waiting for a driver', c.open, '') + card('On the way', c.active, '') +
-      card('Failed / stuck', c.failed + c.stuck, `${c.failed} failed · ${c.stuck} stuck`) + card('Drivers online', c.driversOnline, `${c.driversPending} waiting for approval`);
+      card('Failed / stuck', c.failed + c.stuck, `${c.failed} failed · ${c.stuck} stuck`) + card('Drivers online', c.driversOnline, `${c.driversPending} waiting for approval`) +
+      card('Payments to check', c.paymentsToCheck, `${c.refundsDue} refund${c.refundsDue === 1 ? '' : 's'} due`);
+    $('dlv-bank').textContent = res.bankDetailsSet ? '' : 'Mwakete’s bank details are not set (Script Property MWAKETE_BANK_DETAILS), so sellers cannot pay for wallet deliveries yet.';
     $('dlv-drivers').innerHTML = res.drivers.length ? `<table class="dash-table"><thead><tr><th scope="col">Driver</th><th scope="col">Vehicle / area</th><th scope="col">Record</th><th scope="col">Status</th></tr></thead><tbody>${res.drivers.map((d) => `<tr>
       <td data-label="Driver">${escapeHtml(d.name)}<span class="dash-table-sub"><a href="tel:${escapeHtml(d.phone)}">${escapeHtml(d.phone)}</a> · ${escapeHtml(d.email)}</span></td>
       <td data-label="Vehicle / area">${escapeHtml(d.vehicle)}<span class="dash-table-sub">${escapeHtml(d.area)}</span></td>
@@ -27,12 +29,42 @@ const DeliveriesAdmin = (() => {
       <td data-label="Order"><a href="../order-room.html?order=${encodeURIComponent(j.orderId)}&amp;as=admin">${escapeHtml(j.orderId)}</a><span class="dash-table-sub">${escapeHtml(j.storeName)} → ${escapeHtml(j.dropoff)}</span></td>
       <td data-label="Driver">${j.driverName ? `${escapeHtml(j.driverName)}<span class="dash-table-sub"><a href="tel:${escapeHtml(j.driverPhone)}">${escapeHtml(j.driverPhone)}</a></span>` : '—'}
         ${j.location ? `<span class="dash-table-sub"><a href="${escapeHtml(j.location.link)}" target="_blank" rel="noopener">Live location</a></span>` : ''}</td>
-      <td data-label="Fee">${formatMoney(j.fee)}<span class="dash-table-sub">${j.feePaid ? 'Paid' : 'Not marked paid'}</span></td>
+      <td data-label="Fee">${formatMoney(j.fee)}<span class="dash-table-sub">${j.payStatus ? escapeHtml(j.payLabel) : (j.feePaid ? 'Paid' : 'Not marked paid')}</span>
+        ${j.payStatus === 'submitted' || j.payStatus === 'rejected' ? `<span class="dash-table-sub">Reference <strong>${escapeHtml(j.payRef)}</strong> · bank ref ${escapeHtml(j.payBankRef)} · ${j.payAmount == null ? '' : formatMoney(j.payAmount)}</span>` : ''}
+        ${j.payNote ? `<span class="dash-table-sub">${escapeHtml(j.payNote)}</span>` : ''}
+        ${j.payStatus === 'submitted' ? `<span class="dlv-actions"><button type="button" class="btn btn-small" data-pay="confirm" data-job="${escapeHtml(j.jobId)}" data-fee="${escapeHtml(j.fee)}">Confirm received</button>
+          <button type="button" class="btn btn-small" data-pay="reject" data-job="${escapeHtml(j.jobId)}">Not received</button></span>` : ''}
+        ${j.payStatus === 'refund_due' ? `<span class="dlv-actions"><button type="button" class="btn btn-small" data-pay="refund" data-job="${escapeHtml(j.jobId)}">I sent the refund</button></span>` : ''}</td>
       <td data-label="Status">${escapeHtml(j.statusLabel)}${j.stuck ? ' <span class="status-badge status-problem">Stuck</span>' : ''}${j.failReason ? `<span class="dash-table-sub">${escapeHtml(j.failReason)}</span>` : ''}</td></tr>`).join('')}</tbody></table>`
       : '<p class="dash-empty">No delivery jobs here.</p>';
   }
 
+  async function onPay(b) {
+    const jobId = b.dataset.job, kind = b.dataset.pay;
+    let action, payload;
+    if (kind === 'confirm') {
+      if (!confirm('Only confirm after you have checked the REAL bank statement (not a screenshot) and the money is in Mwakete’s account. Continue?')) return;
+      const got = prompt('Amount that arrived ($):', b.dataset.fee);
+      if (got === null || got === '') return;
+      action = 'adminConfirmJobPayment'; payload = { amountReceived: got, checkedStatement: true };
+    } else if (kind === 'reject') {
+      const reason = prompt('What is wrong? (the seller will see it)');
+      if (!reason) return;
+      action = 'adminRejectJobPayment'; payload = { reason };
+    } else {
+      const bankRef = prompt('Bank reference of the refund you sent:');
+      if (!bankRef) return;
+      action = 'adminMarkJobRefunded'; payload = { bankRef };
+    }
+    b.disabled = true;
+    const res = await Api.post(action, Object.assign({ token: Auth.getToken(), jobId }, payload));
+    if (!res.ok) { alert(res.error || 'Not saved.'); b.disabled = false; return; }
+    await load();
+  }
+
   async function onClick(e) {
+    const pay = e.target.closest('[data-pay]');
+    if (pay) { await onPay(pay); return; }
     const b = e.target.closest('[data-driver]');
     if (!b) return;
     const status = b.dataset.set;
@@ -51,6 +83,7 @@ const DeliveriesAdmin = (() => {
     if (!$('deliveries')) return;
     $('dlv-filter').addEventListener('change', load);
     $('dlv-drivers').addEventListener('click', onClick);
+    $('dlv-jobs').addEventListener('click', onClick);
     load();
   }
 

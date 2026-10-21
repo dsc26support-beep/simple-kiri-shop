@@ -118,12 +118,13 @@ const DriverPage = (() => {
     document.querySelectorAll('[data-chat-input]').forEach((el) => { if (el.value) typed[el.dataset.chatInput] = el.value; });
     $('drv-mine').innerHTML = list.length ? list.map((j) => `<article class="drv-job is-mine" data-job="${esc(j.jobId)}">
       <p><strong>${esc(j.statusLabel)}</strong> · fee ${formatMoney(j.fee)}</p>
-      <dl class="dash-facts">
+      ${j.detailsLocked ? `<p class="tx-warn" role="status">The pickup place and the buyer’s details appear here once Mwakete confirms the seller’s payment${j.chat && j.chat.payment ? ' (' + esc(j.chat.payment.label.toLowerCase()) + ')' : ''}.</p>
+        <dl class="dash-facts"><div><dt>Deliver to</dt><dd>${esc(j.dropoff)}</dd></div></dl>` : `<dl class="dash-facts">
         <div><dt>Collect from</dt><dd>${esc(j.storeName)} - ${esc(j.pickup)}${j.storePhone ? ` · <a href="tel:${esc(j.storePhone)}">${esc(j.storePhone)}</a>` : ''}</dd></div>
         <div><dt>Deliver to</dt><dd>${esc(j.buyerName)}, ${esc(j.dropoff)} · <a href="tel:${esc(j.buyerPhone)}">${esc(j.buyerPhone)}</a> · <a href="${esc(j.mapSearch)}" target="_blank" rel="noopener">Map</a></dd></div>
         <div><dt>Items</dt><dd>${j.items.map(esc).join(', ')}</dd></div>
         ${j.notes ? `<div><dt>Notes</dt><dd>${esc(j.notes)}</dd></div>` : ''}
-      </dl>
+      </dl>`}
       ${chatHtml(j)}
       <div class="tx-check"><input type="checkbox" id="share-${esc(j.jobId)}" data-share="${esc(j.jobId)}" ${watchJob === j.jobId ? 'checked' : ''}>
         <label for="share-${esc(j.jobId)}">Share my live location with the buyer and seller for this job (while this page is open)</label></div>
