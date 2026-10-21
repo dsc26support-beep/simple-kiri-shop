@@ -42,6 +42,11 @@ var DRIVER_HEADERS = ['DriverId', 'CustomerId', 'Name', 'Phone', 'Email', 'Vehic
 var DELIVERY_JOB_HEADERS = ['JobId', 'OrderId', 'OwnerId', 'StoreSlug', 'Status', 'DriverId', 'Fee', 'Pickup', 'Dropoff', 'Notes',
   'FeePaid', 'FailReason', 'Sharing', 'LastLat', 'LastLng', 'LastAccuracy', 'LastLocAt', 'Version', 'CreatedAt', 'AcceptedAt',
   'PickedUpAt', 'DeliveredAt', 'ClosedAt', 'UpdatedAt'];
+// Fee agreement (driver wallet phase 2, docs/driver-wallet.md). Added to live
+// sheets with ensureColumn; nothing reads them unless the driver is covered by
+// DELIVERY_PAYMENTS (DriverWallet.gs).
+var DELIVERY_JOB_FEE_COLUMNS = ['FeeProposedBy', 'FeeSellerOk', 'FeeDriverOk', 'FeeLocked'];
+var DELIVERY_MESSAGE_HEADERS = ['MessageId', 'JobId', 'SenderType', 'SenderId', 'Body', 'RequestId', 'CreatedAt'];
 var DRIVER_VEHICLES = { motorbike: 'Motorbike', car: 'Car', truck: 'Truck / van', bicycle: 'Bicycle', other: 'Other' };
 var DELIVERY_JOB_ACTIVE = ['open', 'accepted', 'picked_up'];
 var DELIVERY_JOB_LABEL = {
@@ -55,7 +60,13 @@ var DELIVERY_FAIL_REASONS = {
 var DRIVER_MAX_ACTIVE_JOBS = 3;
 
 function driversSheet() { return getSheetCreating('Drivers', DRIVER_HEADERS); }
-function deliveryJobsSheet() { return getSheetCreating('DeliveryJobs', DELIVERY_JOB_HEADERS); }
+function deliveryJobsSheet() {
+  var sheet = getSheetCreating('DeliveryJobs', DELIVERY_JOB_HEADERS);
+  // A sheet made before the fee columns existed gets them appended (no existing column moves).
+  DELIVERY_JOB_FEE_COLUMNS.forEach(function (c) { ensureColumn(sheet, c); });
+  return sheet;
+}
+function deliveryMessagesSheet() { return getSheetCreating('DeliveryMessages', DELIVERY_MESSAGE_HEADERS); }
 function deliveryRows(name) { var s = SpreadsheetApp.getActive().getSheetByName(name); return s ? sheetToObjects(s) : []; }
 
 function deliveriesEnabled() {
@@ -205,7 +216,8 @@ function driverJobView(j, o, storeName) {
     buyerName: active ? o.CustomerName : '', buyerPhone: active ? o.CustomerPhone : '',
     items: active ? txOrderItems(o).map(function (l) { return l.qty + ' × ' + l.label; }) : [],
     mapSearch: 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(String(j.Dropoff || '')),
-    failReason: j.FailReason ? (DELIVERY_FAIL_REASONS[j.FailReason.split(':')[0]] || j.FailReason) : '', updatedAt: j.UpdatedAt
+    failReason: j.FailReason ? (DELIVERY_FAIL_REASONS[j.FailReason.split(':')[0]] || j.FailReason) : '', updatedAt: j.UpdatedAt,
+    chat: deliveryChatView(j, 'driver')
   };
 }
 
@@ -298,6 +310,7 @@ function actionDriverUpdateJob(body) {
     if (act === 'picked_up') {
       if (j.Status !== 'accepted') return fail('This job is not waiting for pickup.');
       if (txIsFinal(ctx.order)) return fail('This order was cancelled. Please do not collect it.');
+      if (deliveryFeeChatOn(j) && j.FeeLocked !== 'yes') return fail('Agree the delivery fee with the seller first (open the job chat).');
       var f = String(ctx.state.FulfilmentState || '');
       if (['preparing', 'ready_dispatch'].indexOf(f) === -1) return fail('The seller has not got this order ready yet.');
       var stock = txMarkStockSold(ctx);
@@ -439,7 +452,7 @@ function actionTxRequestDriver(body) {
     var pickup = txCleanText(body.pickup, 300);
     if (pickup.length < 5) return txFail('Tell the driver where to collect the goods.');
     var job = { JobId: newId('dlv'), OrderId: ctx.order.OrderId, OwnerId: ctx.order.OwnerId, StoreSlug: ctx.order.StoreSlug, Status: 'open', DriverId: '',
-      Fee: deliveryMoney(fee), Pickup: pickup, Dropoff: [ctx.order.Village, ctx.order.Island].filter(Boolean).join(', '), Notes: txCleanText(body.notes, 300),
+      Fee: deliveryMoney(fee), FeeProposedBy: 'seller', FeeSellerOk: 'yes', Pickup: pickup, Dropoff: [ctx.order.Village, ctx.order.Island].filter(Boolean).join(', '), Notes: txCleanText(body.notes, 300),
       FeePaid: '', FailReason: '', Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '', Version: 1, CreatedAt: nowIso(),
       AcceptedAt: '', PickedUpAt: '', DeliveredAt: '', ClosedAt: '', UpdatedAt: nowIso() };
     appendRowFromObject(deliveryJobsSheet(), job);
@@ -525,7 +538,8 @@ function deliveryRoomView(order, state, viewer) {
     location: live && j.LastLat !== '' ? { link: deliveryOsmLink(j.LastLat, j.LastLng), at: j.LastLocAt, accuracy: Number(j.LastAccuracy) || 0 } : null,
     canCancel: (viewer === 'seller' && ['open', 'accepted'].indexOf(String(j.Status)) !== -1) || (viewer === 'admin' && DELIVERY_JOB_ACTIVE.indexOf(String(j.Status)) !== -1),
     canMarkPaid: viewer === 'seller' && j.Status === 'delivered' && j.FeePaid !== 'yes',
-    failReason: j.Status === 'failed' ? (DELIVERY_FAIL_REASONS[String(j.FailReason).split(':')[0]] || '') : ''
+    failReason: j.Status === 'failed' ? (DELIVERY_FAIL_REASONS[String(j.FailReason).split(':')[0]] || '') : '',
+    chat: viewer === 'buyer' ? null : deliveryChatView(j, viewer)
   };
 }
 
@@ -609,4 +623,167 @@ function actionAdminSetDriverStatus(owner, body) {
   } finally {
     lock.releaseLock();
   }
+}
+
+
+/* ==================== Job chat and fee agreement (driver wallet, phase 2) ====================
+ *
+ * A private chat between the seller and the driver of one job, and a two-step
+ * fee agreement. The buyer never sees either. Both exist only for drivers the
+ * wallet covers (DELIVERY_PAYMENTS, DriverWallet.gs); for everyone else the
+ * job works exactly as before.
+ *
+ * The seller's booking fee is the first offer (the seller has agreed to it).
+ * Either side can propose a new fee while the job is accepted and the fee is
+ * not locked; that resets the other side's agreement. The other side agrees
+ * to the exact amount they see (a stale amount is refused). When both have
+ * agreed the fee LOCKS and cannot change. The driver cannot collect the goods
+ * until it is locked.
+ */
+
+var DELIVERY_CHAT_MAX_FEE = 500;
+
+function deliveryJobDriver(job) {
+  if (!job || !job.DriverId) return null;
+  return deliveryRows('Drivers').filter(function (d) { return d.DriverId === job.DriverId; })[0] || null;
+}
+
+/** True when this job uses chat and fee agreement: deliveries on, driver covered by the wallet switch. */
+function deliveryFeeChatOn(job) {
+  if (!deliveriesEnabled() || typeof walletEnabledForDriver !== 'function') return false;
+  var d = deliveryJobDriver(job);
+  return !!d && walletEnabledForDriver(d);
+}
+
+function deliveryChatMessages(jobId) {
+  var s = SpreadsheetApp.getActive().getSheetByName('DeliveryMessages');
+  if (!s) return [];
+  return sheetToObjects(s).filter(function (m) { return m.JobId === jobId; });
+}
+
+function deliveryChatPost(job, senderType, senderId, text, requestId) {
+  appendRowFromObject(deliveryMessagesSheet(), { MessageId: newId('dmg'), JobId: job.JobId, SenderType: senderType, SenderId: senderId || '',
+    Body: txCleanText(text, 1000), RequestId: requestId || '', CreatedAt: nowIso() });
+}
+
+/** The chat panel for one side ('seller' | 'driver' | 'admin'), or null when the job does not use it. */
+function deliveryChatView(job, viewer) {
+  if (!deliveryFeeChatOn(job)) return null;
+  var status = String(job.Status);
+  var live = status === 'accepted';
+  var locked = job.FeeLocked === 'yes';
+  var me = viewer === 'driver' ? 'driver' : 'seller';
+  var other = me === 'driver' ? 'seller' : 'driver';
+  var meOk = job[me === 'driver' ? 'FeeDriverOk' : 'FeeSellerOk'] === 'yes';
+  var msgs = deliveryChatMessages(job.JobId).slice(-100).map(function (m) {
+    return { id: m.MessageId, by: m.SenderType, mine: m.SenderType === me, body: m.Body, at: m.CreatedAt };
+  });
+  return {
+    messages: msgs,
+    canWrite: viewer !== 'admin' && (status === 'accepted' || status === 'picked_up'),
+    fee: { amount: deliveryMoney(job.Fee), locked: locked, proposedBy: job.FeeProposedBy || '', agreedByMe: meOk,
+      agreedByOther: job[other === 'driver' ? 'FeeDriverOk' : 'FeeSellerOk'] === 'yes',
+      canPropose: viewer !== 'admin' && live && !locked,
+      canAgree: viewer !== 'admin' && live && !locked && !meOk && job.FeeProposedBy === other }
+  };
+}
+
+function deliveryChatNotify(job, toType, subject, text) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var key = 'v1:dlv:chat:' + job.JobId + ':' + toType;
+    if (cache.get(key)) return;
+    cache.put(key, '1', 600);
+    var email = '', link = '';
+    if (toType === 'driver') {
+      var d = deliveryJobDriver(job);
+      email = d && d.Email;
+      link = siteBaseUrl() ? siteBaseUrl() + '/driver.html' : '';
+    } else {
+      var o = findRowById(getSheet('Owners'), 'OwnerId', job.OwnerId);
+      email = o && o.Email;
+      link = siteBaseUrl() ? siteBaseUrl() + '/order-room.html?order=' + encodeURIComponent(job.OrderId) + '&as=seller' : '';
+    }
+    if (email) sendAppEmail(email, subject, text + (link ? '\n\nOpen it: ' + link : ''));
+  } catch (e) { /* best effort */ }
+}
+
+/** Common checks. side: 'seller' | 'driver'. Returns an error result or null. */
+function deliveryChatGuard(job, side, needAccepted) {
+  if (!deliveryFeeChatOn(job)) return fail('Job chat is not switched on for this delivery.');
+  var st = String(job.Status);
+  if (needAccepted ? st !== 'accepted' : ['accepted', 'picked_up'].indexOf(st) === -1) {
+    return fail(needAccepted ? 'The fee can only be changed before the driver collects the goods.' : 'This chat is closed.');
+  }
+  return null;
+}
+
+function deliverySendMessage(job, side, senderId, body, requestId) {
+  var bad = deliveryChatGuard(job, side, false);
+  if (bad) return bad;
+  var text = txCleanText(body && body.text, 1000);
+  if (!text) return fail('Write a message first.');
+  if (rateLimitHit('ratelimit:dlvchat:' + job.JobId + ':' + side, 20, 60)) return fail('You are sending messages too fast - please wait a moment.');
+  deliveryChatPost(job, side, senderId, text, requestId);
+  deliveryChatNotify(job, side === 'driver' ? 'seller' : 'driver', 'New message about a delivery', (side === 'driver' ? 'The driver' : 'The seller') + ' sent you a message about a delivery.');
+  return ok({});
+}
+
+function deliveryProposeFee(job, side, senderId, body) {
+  var bad = deliveryChatGuard(job, side, true);
+  if (bad) return bad;
+  if (job.FeeLocked === 'yes') return fail('The fee is agreed and locked.');
+  var fee = Number(body && body.fee);
+  if (!isFinite(fee) || fee <= 0 || fee > DELIVERY_CHAT_MAX_FEE) return fail('Enter a fee above 0 and up to ' + DELIVERY_CHAT_MAX_FEE + '.');
+  fee = deliveryMoney(fee);
+  saveJob(job, { Fee: fee, FeeProposedBy: side, FeeSellerOk: side === 'seller' ? 'yes' : '', FeeDriverOk: side === 'driver' ? 'yes' : '' });
+  deliveryChatPost(job, 'system', '', (side === 'driver' ? 'The driver' : 'The seller') + ' proposed a fee of ' + orderMoney(fee) + '. The other side needs to agree.');
+  deliveryChatNotify(job, side === 'driver' ? 'seller' : 'driver', 'A delivery fee was proposed', (side === 'driver' ? 'The driver' : 'The seller') + ' proposed a fee of ' + orderMoney(fee) + '.');
+  return ok({ fee: fee });
+}
+
+function deliveryAgreeFee(job, side, senderId, body) {
+  var bad = deliveryChatGuard(job, side, true);
+  if (bad) return bad;
+  if (job.FeeLocked === 'yes') return fail('The fee is already agreed and locked.');
+  if (job.FeeProposedBy === side) return fail('You proposed this fee. The other side needs to agree to it.');
+  if (deliveryMoney(body && body.fee) !== deliveryMoney(job.Fee)) return txFail('The fee changed. Please check the new amount.', { stale: true });
+  var patch = side === 'driver' ? { FeeDriverOk: 'yes' } : { FeeSellerOk: 'yes' };
+  var both = (side === 'driver' ? job.FeeSellerOk : job.FeeDriverOk) === 'yes';
+  if (both) patch.FeeLocked = 'yes';
+  saveJob(job, patch);
+  deliveryChatPost(job, 'system', '', (side === 'driver' ? 'The driver' : 'The seller') + ' agreed to ' + orderMoney(job.Fee) + '.' + (both ? ' The fee is agreed and locked.' : ''));
+  deliveryChatNotify(job, side === 'driver' ? 'seller' : 'driver', both ? 'The delivery fee is agreed' : 'A delivery fee was agreed',
+    (side === 'driver' ? 'The driver' : 'The seller') + ' agreed to ' + orderMoney(job.Fee) + '.' + (both ? ' The fee is locked.' : ''));
+  appendAudit({ actorId: senderId, actorRole: side, action: both ? 'DELIVERY_FEE_LOCKED' : 'DELIVERY_FEE_AGREED', entityType: 'delivery', entityId: job.JobId, next: String(job.Fee) });
+  return ok({ locked: both });
+}
+
+/* Seller side: through the order room's own checks (runTxWrite). */
+function deliverySellerJob(ctx) {
+  var deny = txRoleOnly(ctx, ['seller']);
+  if (deny) return { error: deny };
+  var job = activeDeliveryJob(ctx.order.OrderId);
+  if (!job) return { error: txFail('There is no active driver job on this order.') };
+  return { job: job };
+}
+function actionTxJobMessage(body) {
+  return runTxWrite(body, 'jobMessage', function (ctx) { var r = deliverySellerJob(ctx); return r.error || deliverySendMessage(r.job, 'seller', ctx.actor.id, body, ctx.requestId); });
+}
+function actionTxProposeFee(body) {
+  return runTxWrite(body, 'proposeFee', function (ctx) { var r = deliverySellerJob(ctx); return r.error || deliveryProposeFee(r.job, 'seller', ctx.actor.id, body); });
+}
+function actionTxAgreeFee(body) {
+  return runTxWrite(body, 'agreeFee', function (ctx) { var r = deliverySellerJob(ctx); return r.error || deliveryAgreeFee(r.job, 'seller', ctx.actor.id, body); });
+}
+
+/* Driver side: through runDriverWrite (their own job only). */
+function actionDriverJobMessage(body) {
+  return runDriverWrite(body, 'jobMessage', function (ctx) { return deliverySendMessage(ctx.job, 'driver', ctx.driver.DriverId, body, ctx.requestId); });
+}
+function actionDriverProposeFee(body) {
+  return runDriverWrite(body, 'proposeFee', function (ctx) { return deliveryProposeFee(ctx.job, 'driver', ctx.driver.DriverId, body); });
+}
+function actionDriverAgreeFee(body) {
+  return runDriverWrite(body, 'agreeFee', function (ctx) { return deliveryAgreeFee(ctx.job, 'driver', ctx.driver.DriverId, body); });
 }
