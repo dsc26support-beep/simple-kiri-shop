@@ -410,6 +410,23 @@ header.site-header .container.store-branding {
   min-height: 68px;
 }
 
+/* Owner request (Oct 2026): the store logo sits top-left in the first header
+   row, level with Home and the menu; the name, phone and icons sit under it. */
+header.site-header .container.header-top-row:has(.store-logo) {
+  align-items: center;
+  /* Room for the logo from first paint: it arrives with the store ~900ms
+     later, and growing then would push the page down (see .store-branding-info). */
+  box-sizing: border-box;
+  min-height: calc(64px + var(--space-3) + var(--space-1));
+}
+
+/* ...and the menu dots level with Home, not pinned to the top of the taller row. */
+header.site-header .container.header-top-row:has(.store-logo) .header-menu {
+  /* The row's top padding plus half the 64px logo: the logo's middle. */
+  top: calc(var(--space-3) + 32px);
+  transform: translateY(-50%);
+}
+
 .store-logo {
   width: 64px;
   height: 64px;
