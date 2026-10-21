@@ -4,7 +4,7 @@
 
 | Part | Files | How it goes live |
 |---|---|---|
-| Apps Script | `Images.gs`, `Products.gs`, `ProductDetails.gs` (new), `InventorySync.gs`, `Code.gs` (`APP_VERSION = 'photos1-2026-10-21'`) | Manually (below) |
+| Apps Script | `Images.gs`, `Products.gs`, `ProductDetails.gs` (new), `InventorySync.gs`, `Code.gs` (`APP_VERSION = 'photos1-2026-10-21'`), `Auth.gs` (wording only: "Help and support link" instead of "Enquiry link") | Manually (below) |
 | Website | `owner/products.html`, `owner/inventory-sync.html`; the files `owner-products`, `owner-product-photos` (new), `owner-product-steps` (new), `owner-product-options`, `owner-inventory-sync`, `helpers`, `product-card`, `product-options-ui` and `auth` (each a `.js` with its `.min.js`); `styles.css` and `owner.css`; `sw.js` | GitHub Pages, after merging |
 
 ## Sheets (all additive, made on first use)
@@ -20,7 +20,7 @@ Nothing else is added, renamed or removed. Existing photos keep working without 
 ## Deploy order
 
 1. **Apps Script first.** The new website calls `uploadProductPhoto`, `setProductPhotos` and `findSimilarProducts`, which an older backend doesn't have.
-   1. Paste `Images.gs`, `Products.gs`, `InventorySync.gs` and `Code.gs`.
+   1. Paste `Images.gs`, `Products.gs`, `InventorySync.gs`, `Code.gs` and `Auth.gs`.
    2. Add a new file `ProductDetails.gs` and paste it in.
    3. Go to **Deploy → Manage deployments → Edit → New version**.
    4. Open `<web app URL>?action=getVersion`. It should show **`photos1-2026-10-21`**.
