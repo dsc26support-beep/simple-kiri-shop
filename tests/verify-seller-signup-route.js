@@ -180,6 +180,9 @@ const tabState = (page) => page.evaluate(() => ({
     ok('a Google button shows under the note', g.shown && g.below, JSON.stringify(g));
     ok('...labelled "Use a different account"', g.label === 'Use a different account', g.label);
     ok('...set up once, never auto-selecting the last account, pill ends', g.inits === 1 && g.autoSelect === false && g.shape === 'pill', JSON.stringify(g));
+    const pill = await page.evaluate(() => { const h = document.getElementById('google-signin-btn'); const cs = getComputedStyle(h); const r = h.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height), border: cs.borderTopWidth + ' ' + cs.borderTopColor, clip: cs.overflow, asked: __gsi.renders[0].width }; });
+    ok('...in the same purple 240x40 pill as customer sign-in, Google asked 16px wider', pill.w === 240 && pill.h === 40 && pill.border === '2px rgb(51, 45, 99)' && pill.clip === 'hidden' && pill.asked === 256, JSON.stringify(pill));
 
     // Pretend some of the store form is filled in, then switch account.
     await page.fill('#register-store-name', 'Half typed');

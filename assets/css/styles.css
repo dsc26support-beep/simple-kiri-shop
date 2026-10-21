@@ -8068,7 +8068,7 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 }
 
 .auth-card--customer #google-signin-btn[data-full-width] > * {
-  margin: -2px;
+  margin: -2px 0;
 }
 
 /* Admin: Store checks (admin.js storeTrustRowHtml). */
@@ -8164,6 +8164,37 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   font-size: 14px;
   font-weight: 600;
 }
+/* Every Google button: one purple pill, 240x40, like the other sign-in
+   buttons (owner request, Oct 2026) - customer sign-in, checkout and the
+   seller page's "Use a different account". Google draws its own grey pill a
+   few pixels inside the size it is given, which left a white gap inside the
+   purple. google-signin.js asks for a button 16px wider than this box; it is
+   centred and the box clips it, so Google's grey edge sits under the purple
+   line on phone, tablet and PC alike (the box is 240px on all of them). */
+#google-signin-btn {
+  box-sizing: border-box;
+  width: 240px;
+  max-width: 100%;
+  height: 40px;
+  min-height: 40px;
+  margin-left: auto;
+  margin-right: auto;
+  align-self: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid var(--color-purple);
+  border-radius: 999px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+/* Wider than the box on purpose: centred, overflowing evenly both sides. */
+#google-signin-btn > * {
+  flex: 0 0 auto;
+  margin: -2px 0;
+}
+
 /* Create Account: no Guest, no "or" line - just Google, then the form
    (owner request, Oct 2026). Sign In shows both again. */
 html.auth-signup .auth-guest-row,
