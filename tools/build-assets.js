@@ -59,7 +59,9 @@ async function buildJs(rel) {
   const out = await minify(src, {
     compress: false,
     mangle: false,
-    format: { comments: false },
+    // Only "/*! ... */" licence notices survive - a vendored library's
+    // licence (e.g. qrcode-lib.js, MIT) must ship with it.
+    format: { comments: /^!/ },
     sourceMap: false
   });
   if (typeof out.code !== 'string') throw new Error('terser returned no code for ' + rel);

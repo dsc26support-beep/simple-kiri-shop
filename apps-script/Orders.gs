@@ -335,7 +335,11 @@ function actionCreateOrder(body) {
     // checkouts at once can't both take the same reference.
     var ordersSheet = getSheet('Orders');
     var orderId = generateOrderRef(slug, function (ref) { return !!findRowById(ordersSheet, 'OrderId', ref); });
+    // "I need an invoice" (Invoices.gs): kept only for a store that offers invoices.
+    var wantsInvoice = body.wantInvoice === true && typeof invSettings === 'function' && invSettings(owner).enabled;
+    if (wantsInvoice) ensureColumn(ordersSheet, 'InvoiceRequested');
     appendRowFromObject(ordersSheet, {
+      InvoiceRequested: wantsInvoice ? 'yes' : '',
       OrderId: orderId,
       OwnerId: owner.OwnerId,
       StoreSlug: slug,
@@ -401,6 +405,7 @@ function actionCreateOrder(body) {
       owner.Email,
       'New order ' + orderId + ' — ' + customerName,
       buildSellerOrderEmail(owner, orderId, customerName, customerPhone, body.customerEmail, island, village, deliveryMethod, deliveryCost, lineItems, subtotal, total, body.notes, shippingNegotiated)
+        + (wantsInvoice ? '\n\nThe buyer asked for an INVOICE. Send it from this order in your Mwakete orders before they pay.' : '')
     );
   }
 
@@ -470,6 +475,7 @@ function actionListOwnerOrders(owner, body) {
 
 function actionUpdateOrderStatus(owner, body) {
   if (VALID_ORDER_STATUSES.indexOf(body.status) === -1) return fail('Invalid status');
+  var receipt = null;
   // Locked like checkout: the stock move (Inventory.gs) and the status must
   // land together, and must not interleave with a customer reserving the same
   // variety.
@@ -488,8 +494,14 @@ function actionUpdateOrderStatus(owner, body) {
       if (!stock.ok) return stock; // stock unchanged, status unchanged
     }
     updateRowFromObject(sheet, existing.__row, { Status: body.status, UpdatedAt: nowIso() });
+    // Just paid: the store's receipt (Invoices.gs), issued here and emailed after the lock.
+    var wasPaid = ['Paid', 'Fulfilled'].indexOf(String(existing.Status)) !== -1;
+    if (!wasPaid && ['Paid', 'Fulfilled'].indexOf(body.status) !== -1 && typeof invIssueReceipt === 'function') {
+      receipt = invIssueReceipt(Object.assign({}, existing, { Status: body.status }));
+    }
     return ok({});
   } finally {
     lock.releaseLock();
+    if (receipt) invSendIssued(receipt);
   }
 }

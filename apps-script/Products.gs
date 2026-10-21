@@ -714,7 +714,10 @@ function actionGetStorePublicInfo(params) {
     // Added here rather than inside publicStoreFields, which lives in Auth.gs
     // and is shared with the chat window's store lookup - this is a display
     // concern, and Auth.gs stays out of it.
-    return attachSellerBadges(publicStoreFields(owner), sellerBadgeIndex(), owner.OwnerId);
+    var info = attachSellerBadges(publicStoreFields(owner), sellerBadgeIndex(), owner.OwnerId);
+    // Checkout offers "I need an invoice" only for a store that sends them (Invoices.gs).
+    info.invoicesOffered = typeof invSettings === 'function' && invSettings(owner).enabled;
+    return info;
   });
   if (!store) return fail('Store not found');
   return ok({ store: store });
