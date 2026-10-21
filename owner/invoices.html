@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invoices &amp; Receipts — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Invoices</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Invoices &amp; receipts</h1>
+      <p class="helper-text">Buyers who need an invoice tick a box at checkout - you then send it from <a href="orders.html">Orders</a>. When an order is paid, the buyer gets a receipt automatically. Both carry your own numbers, your logo, and a QR code anyone can scan to check they are genuine.</p>
+      <p id="iv-status" class="helper-text" role="status" aria-live="polite"></p>
+
+      <div class="iv-layout" id="iv-layout" hidden>
+        <form id="iv-form" class="iv-form" novalidate>
+          <label class="iv-switch"><input type="checkbox" id="iv-enabled"> <span><strong>Offer invoices and send receipts</strong><br><small>Off: buyers see no invoice box and get no receipts.</small></span></label>
+
+          <fieldset class="iv-templates">
+            <legend>Template</legend>
+            <label class="iv-template"><input type="radio" name="iv-template" value="classic"> <span><strong>Classic</strong><small>Colour band, boxed table</small></span></label>
+            <label class="iv-template"><input type="radio" name="iv-template" value="modern"> <span><strong>Modern</strong><small>Big colour header, rounded cards</small></span></label>
+            <label class="iv-template"><input type="radio" name="iv-template" value="minimal"> <span><strong>Minimal</strong><small>White, thin coloured lines</small></span></label>
+          </fieldset>
+
+          <fieldset class="iv-colours">
+            <legend>Colours</legend>
+            <div class="iv-colour"><label for="iv-color">Main colour</label><input type="color" id="iv-color"></div>
+            <div class="iv-colour"><label for="iv-accent">Accent colour</label><input type="color" id="iv-accent"></div>
+            <button type="button" class="btn btn-small" id="iv-store-colour" hidden>Use my store colour</button>
+            <p class="helper-text">Text on your colours is always made white or dark, whichever reads better.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Business details <small class="helper-text">(optional)</small></legend>
+            <div class="field"><label for="iv-bname">Business name</label><input id="iv-bname" maxlength="80" placeholder="Shown instead of your store name"></div>
+            <div class="field"><label for="iv-baddr">Address</label><input id="iv-baddr" maxlength="200"></div>
+            <div class="field"><label for="iv-bphone">Phone</label><input id="iv-bphone" maxlength="30" inputmode="tel"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Invoice</legend>
+            <div class="field"><label for="iv-due">Days to pay</label><input id="iv-due" type="number" min="0" max="90" step="1"><p class="helper-text">0 = no due date.</p></div>
+            <div class="field"><label for="iv-inote">Note on invoices</label><textarea id="iv-inote" rows="3" maxlength="300" placeholder="e.g. How to pay you"></textarea></div>
+            <label class="iv-switch"><input type="checkbox" id="iv-vat"> <span>Show VAT (prices already include it)</span></label>
+            <div class="iv-vat" id="iv-vat-fields" hidden>
+              <div class="field"><label for="iv-vatno">VAT number</label><input id="iv-vatno" maxlength="30"></div>
+              <div class="field"><label for="iv-vatrate">VAT rate (%)</label><input id="iv-vatrate" type="number" min="0" max="30" step="0.01"></div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Receipt</legend>
+            <div class="field"><label for="iv-rnote">Note on receipts</label><textarea id="iv-rnote" rows="2" maxlength="300"></textarea></div>
+          </fieldset>
+
+          <p id="iv-error" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary" id="iv-save">Save</button>
+        </form>
+
+        <section class="iv-preview" aria-labelledby="iv-preview-heading">
+          <div class="iv-preview-head">
+            <h2 id="iv-preview-heading">Preview</h2>
+            <div class="iv-tabs" role="group" aria-label="Preview">
+              <button type="button" class="cs-chip is-on" data-kind="invoice" aria-pressed="true">Invoice</button>
+              <button type="button" class="cs-chip" data-kind="receipt" aria-pressed="false">Receipt</button>
+            </div>
+          </div>
+          <iframe id="iv-frame" class="iv-frame" title="Preview of your invoice or receipt" sandbox=""></iframe>
+          <p class="helper-text">A sample. Real invoices and receipts also show a QR code and your logo faintly behind them.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/owner-invoices.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>

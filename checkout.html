@@ -159,6 +159,11 @@
               <p id="delivery-negotiated-note" class="delivery-negotiated-note hidden"></p>
             </div>
 
+            <!-- Shown only for a store that sends invoices (checkout.js, Invoices.gs). -->
+            <div class="field checkout-invoice" id="checkout-invoice" hidden>
+              <label class="checkout-invoice-row"><input type="checkbox" id="want-invoice"> <span>I need an invoice <small class="helper-text">- this store will send one before you pay. You get a receipt once paid.</small></span></label>
+            </div>
+
             <div class="field">
               <label for="notes">Order Notes (optional)</label>
               <textarea id="notes" name="notes"></textarea>

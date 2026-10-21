@@ -11,6 +11,7 @@ async function init() {
   document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
 
   document.getElementById('order-list').addEventListener('change', onStatusChange);
+  document.getElementById('order-list').addEventListener('click', onSendInvoice);
   document.getElementById('orders-load-more').addEventListener('click', onLoadMore);
   await loadOrders();
 }
@@ -82,6 +83,7 @@ function render() {
             <select id="status-${escapeHtml(o.orderId)}" class="order-status-select" style="width:auto; min-height:36px;">${options}</select>`}
           </div>
           ${roomLink(o)}
+          ${docsHtml(o)}
           <dl>
             <dt>Customer</dt><dd>${escapeHtml(o.customerName)}</dd>
             <dt>Phone</dt><dd>${escapeHtml(o.customerPhone)}</dd>
@@ -99,6 +101,40 @@ function render() {
     .join('');
 }
 
+/**
+ * Invoices.gs: an invoice is only sent when the buyer ticked "I need an
+ * invoice" at checkout; the receipt arrives by itself once the order is paid.
+ */
+function docsHtml(o) {
+  const docs = o.documents || [];
+  const inv = docs.find((d) => d.kind === 'invoice');
+  const link = (d) => `<a class="btn btn-small" href="${escapeHtml(d.link || '../invoice.html?d=' + d.token)}" target="_blank" rel="noopener">${d.kind === 'invoice' ? 'Invoice' : 'Receipt'} ${escapeHtml(d.number)}</a>`;
+  const parts = [];
+  if (o.invoiceRequested && !inv) parts.push('<span class="order-invoice-flag">Buyer asked for an invoice</span>');
+  if (o.invoiceRequested && o.status !== 'Cancelled') parts.push(`<button type="button" class="btn btn-small btn-primary" data-send-invoice="${escapeHtml(o.orderId)}">${inv ? 'Send invoice again' : 'Send invoice'}</button>`);
+  docs.forEach((d) => parts.push(link(d)));
+  return parts.length ? `<div class="order-docs">${parts.join('')}</div>` : '';
+}
+
+async function onSendInvoice(e) {
+  const btn = e.target.closest('[data-send-invoice]');
+  if (!btn) return;
+  const orderId = btn.dataset.sendInvoice;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  const res = await Api.post('sendInvoice', { token: Auth.getToken(), orderId });
+  if (!res.ok) {
+    alert(res.error || 'Could not send the invoice.');
+    btn.disabled = false;
+    btn.textContent = 'Send invoice';
+    return;
+  }
+  const order = ownerOrders.find((o) => o.orderId === orderId);
+  if (order) order.documents = (order.documents || []).filter((d) => d.docId !== res.document.docId).concat([res.document]);
+  render();
+  alert(res.emailed ? `Invoice ${res.document.number} sent to the buyer.` : `Invoice ${res.document.number} is ready, but the buyer has no email - share its link with them.`);
+}
+
 async function onStatusChange(e) {
   if (!e.target.classList.contains('order-status-select')) return;
   const card = e.target.closest('.order-card');
@@ -114,4 +150,6 @@ async function onStatusChange(e) {
   const order = ownerOrders.find((o) => o.orderId === orderId);
   if (order) order.status = status;
   render();
+  // Just paid: the receipt is issued on the server - load it into the card.
+  if (status === 'Paid' || status === 'Fulfilled') loadOrders();
 }
