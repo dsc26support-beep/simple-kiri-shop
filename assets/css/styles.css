@@ -7999,54 +7999,9 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 .cart-line-bulk { flex-basis: 100%; margin: 0; }
 .cart-line-bulk:empty { display: none; }
 
-/* ===== "Help?" popup under the Messenger box (fb-help.js) ===== */
-.fbh-back {
-  position: fixed;
-  inset: 0;
-  z-index: 1005;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3);
-  background: rgba(26, 26, 26, 0.55);
-}
-.fbh-box {
-  position: relative;
-  width: 100%;
-  max-width: 340px;
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  border-radius: var(--radius);
-  background: var(--color-bg);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-.fbh-title { margin: 0 0 var(--space-1); font-size: 1.2rem; color: var(--color-ink); }
-.fbh-note { margin: 0 0 var(--space-3); color: var(--color-muted); font-size: 0.9rem; }
-.fbh-options { display: grid; gap: var(--space-2); }
-.fbh-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 48px;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius);
-  background: var(--color-purple);
-  color: #fff;
-  font-weight: 600;
-  text-decoration: none;
-}
-.fbh-option:hover, .fbh-option:focus-visible { background: var(--color-purple-light); }
-.fbh-close {
-  position: absolute;
-  top: var(--space-1);
-  right: var(--space-1);
-  width: 44px;
-  height: 44px;
-  border: 0;
-  background: none;
-  color: var(--color-muted);
-  font-size: 1.5rem;
-  cursor: pointer;
-}
+/* ===== "Help?" under the Messenger box (fb-help.js): one line of steps ===== */
+.fbh-steps { display: block; margin-top: var(--space-1); color: var(--color-ink); font-weight: 600; }
+.fbh-steps[hidden] { display: none; }
 
 /* Customer sign-in (owner request, Oct 2026): Google, "Continue as guest" and
    "Send me a code" are all the same size. Google draws its own button at a
