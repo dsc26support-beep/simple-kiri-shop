@@ -85,7 +85,7 @@ var PROTECTED_POST_ACTIONS = [
   'adminInventoryOverview',
   // Marketing engine - every one checks isOwnerAdmin inside (Marketing.gs).
   'getMarketingOverview', 'createMarketingCampaign', 'setMarketingCampaignStatus', 'setMarketingPaused',
-  'getCampaignStudio', 'setStoreBrandColor', 'getStoreLogoData', 'saveCampaignDraft', 'startCampaignPayment', 'submitCampaignPayment', 'campaignAction',
+  'getInvoiceSettings', 'saveInvoiceSettings', 'previewInvoiceDesign', 'sendInvoice', 'listOrderDocuments', 'getCampaignStudio', 'setStoreBrandColor', 'getStoreLogoData', 'saveCampaignDraft', 'startCampaignPayment', 'submitCampaignPayment', 'campaignAction',
   'extendCampaign', 'getCampaignDetail', 'estimateCampaignReach', 'previewSellerCampaign',
   'adminListCampaigns', 'adminGetCampaign', 'adminDecideCampaignPayment', 'adminReviewCampaign', 'adminCampaignAction', 'adminRecordCampaignRefund',
   'previewMarketingCampaign', 'getMarketingStats', 'runMarketingGeneration',
@@ -122,7 +122,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'orderref1-2026-10-20';
+var APP_VERSION = 'invoices1-2026-10-21';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -415,6 +415,7 @@ function doGet(e) {
       case 'listStores': return jsonOut(actionListStores(params));
       case 'listProducts': return jsonOut(markPaidFeatured(actionListProducts(params)));
       case 'getStorePublicInfo': return jsonOut(actionGetStorePublicInfo(params));
+      case 'getInvoiceDocument': return jsonOut(actionGetInvoiceDocument(params));
       case 'searchProducts': return jsonOut(markPaidFeatured(actionSearchProducts(params)));
       case 'listTopProducts': return jsonOut(markPaidFeatured(actionListTopProducts()));
       case 'listTopStores': return jsonOut(actionListTopStores());
@@ -605,6 +606,11 @@ function doPost(e) {
         case 'getMarketingOverview': return jsonOut(actionGetMarketingOverview(owner));
         // Seller Campaign Studio (SellerCampaigns.gs)
         case 'getCampaignStudio': return jsonOut(actionGetCampaignStudio(owner));
+        case 'getInvoiceSettings': return jsonOut(actionGetInvoiceSettings(owner));
+        case 'saveInvoiceSettings': return jsonOut(actionSaveInvoiceSettings(owner, body));
+        case 'previewInvoiceDesign': return jsonOut(actionPreviewInvoiceDesign(owner, body));
+        case 'sendInvoice': return jsonOut(actionSendInvoice(owner, body));
+        case 'listOrderDocuments': return jsonOut(actionListOrderDocuments(owner, body));
         case 'setStoreBrandColor': return jsonOut(actionSetStoreBrandColor(owner, body));
         case 'getStoreLogoData': return jsonOut(actionGetStoreLogoData(owner));
         case 'saveCampaignDraft': return jsonOut(actionSaveCampaignDraft(owner, body));

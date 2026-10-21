@@ -1,0 +1,87 @@
+// The invoice / receipt page (backend Invoices.gs getInvoiceDocument). Opened
+// from the emailed link or by scanning the document's QR code, it shows the
+// document exactly as Mwakete holds it - so it doubles as the check that a
+// printed or forwarded copy is genuine.
+//
+// The server renders the document (everything the seller and buyer typed is
+// escaped there); it is shown in a sandboxed frame with scripts off. This page
+// then adds what only a browser can draw: the QR code with the store's logo in
+// its middle, and the logo printed faintly behind the document.
+document.addEventListener('DOMContentLoaded', invInit);
+
+async function invInit() {
+  const status = document.getElementById('inv-status');
+  const token = getQueryParam('d') || '';
+  if (!/^[a-f0-9]{40}$/.test(token)) { status.textContent = 'This link is not complete. Open it again from your email or scan the code again.'; return; }
+  const res = await Api.get('getInvoiceDocument', { d: token });
+  if (!res || !res.ok) { status.textContent = res && res.error === 'Document not found' ? 'We could not find this document. It may be a fake, or the link is incomplete.' : 'Could not load this document. Please try again.'; return; }
+  status.textContent = '';
+  const what = res.kind === 'invoice' ? 'Invoice' : 'Receipt';
+  document.title = what + ' ' + res.number + ' — Mwakete';
+  const genuine = document.getElementById('inv-genuine');
+  genuine.innerHTML = `<strong>✓ Genuine Mwakete ${escapeHtml(what.toLowerCase())}</strong> - ${escapeHtml(res.number)}, issued by ${escapeHtml(res.storeName)} on ${escapeHtml(new Date(res.issuedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }))}.`;
+  genuine.hidden = false;
+  document.getElementById('inv-actions').hidden = false;
+
+  const frame = document.getElementById('inv-frame');
+  frame.hidden = false;
+  frame.addEventListener('load', () => {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    decorate(doc, res, location.origin + location.pathname + '?d=' + token);
+    fit(frame);
+    // Images (logo) arrive later and change the height.
+    doc.querySelectorAll('img').forEach((img) => img.addEventListener('load', () => fit(frame)));
+  }, { once: true });
+  frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<style>body{margin:0;padding:8px;background:#fff}@media print{body{padding:0}}</style></head><body>' + res.html + '</body></html>';
+  window.addEventListener('resize', () => fit(frame));
+  document.getElementById('inv-print').addEventListener('click', () => { fit(frame); window.print(); });
+}
+
+/** Grows the frame to its content, so the page (and its print) shows the whole document. */
+function fit(frame) {
+  const doc = frame.contentDocument;
+  if (doc && doc.body) frame.style.height = Math.ceil(doc.documentElement.scrollHeight) + 'px';
+}
+
+function decorate(doc, res, url) {
+  const sheet = doc.querySelector('.inv-doc');
+  if (!sheet) return;
+  // Watermark: the store's logo, faint and behind everything.
+  if (/^https:\/\//.test(res.logoUrl || '')) {
+    sheet.style.position = 'relative';
+    sheet.style.zIndex = '0';
+    const mark = doc.createElement('div');
+    mark.className = 'inv-watermark';
+    mark.setAttribute('aria-hidden', 'true');
+    Object.assign(mark.style, { position: 'absolute', inset: '0', zIndex: '-1', opacity: '0.07', pointerEvents: 'none',
+      backgroundRepeat: 'no-repeat', backgroundPosition: 'center 55%', backgroundSize: '55%' });
+    mark.style.backgroundImage = 'url("' + res.logoUrl.replace(/["\\]/g, '') + '")';
+    sheet.insertBefore(mark, sheet.firstChild);
+  }
+  // QR code to this page, with the logo in the middle (high error correction leaves room for it).
+  const slot = doc.querySelector('.inv-qr');
+  if (!slot || typeof qrcode !== 'function') return;
+  const qr = qrcode(0, 'H');
+  qr.addData(url);
+  qr.make();
+  const box = doc.createElement('div');
+  Object.assign(box.style, { position: 'relative', width: '120px', height: '120px', display: 'inline-block', verticalAlign: 'middle' });
+  box.innerHTML = qr.createSvgTag({ cellSize: 3, margin: 2, scalable: true });
+  const svg = box.querySelector('svg');
+  if (svg) { svg.setAttribute('width', '120'); svg.setAttribute('height', '120'); svg.setAttribute('aria-label', 'QR code to check this document'); svg.setAttribute('role', 'img'); }
+  if (/^https:\/\//.test(res.logoUrl || '')) {
+    const logo = doc.createElement('img');
+    logo.src = res.logoUrl;
+    logo.alt = '';
+    Object.assign(logo.style, { position: 'absolute', left: '50%', top: '50%', width: '30px', height: '30px', marginLeft: '-17px', marginTop: '-17px',
+      padding: '2px', background: '#fff', borderRadius: '6px', objectFit: 'contain', border: '0' });
+    box.appendChild(logo);
+  }
+  const cap = doc.createElement('span');
+  Object.assign(cap.style, { display: 'inline-block', verticalAlign: 'middle', marginLeft: '12px', fontSize: '12px', color: '#5f6368', maxWidth: '260px' });
+  cap.textContent = 'Scan to check this ' + (res.kind === 'invoice' ? 'invoice' : 'receipt') + ' is genuine on Mwakete.';
+  slot.appendChild(box);
+  slot.appendChild(cap);
+}

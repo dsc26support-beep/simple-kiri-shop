@@ -716,6 +716,7 @@ function runTxWrite(body, name, fn) {
     flushTxNotify(queue);
     if (ctxOrder) txInvalidateBuyerLists(ctxOrder);
   }
+  if (ctx && ctx.docMail) ctx.docMail.forEach(invSendIssued);
   return result;
 }
 
@@ -746,8 +747,14 @@ function txSetOrderStatus(ctx, status) {
     var stock = applyOrderStatusStock(owner, ctx.order, status);
     if (!stock.ok) return stock;
   }
+  var wasPaid = ['Paid', 'Fulfilled'].indexOf(String(ctx.order.Status)) !== -1;
   updateRowFromObject(ctx.ordersSheet, ctx.order.__row, { Status: status, UpdatedAt: nowIso() });
   ctx.order.Status = status;
+  // Just paid: the store's receipt (Invoices.gs), emailed after the lock (runTxWrite).
+  if (!wasPaid && (status === 'Paid' || status === 'Fulfilled') && typeof invIssueReceipt === 'function') {
+    var receipt = invIssueReceipt(ctx.order);
+    if (receipt) (ctx.docMail = ctx.docMail || []).push(receipt);
+  }
   return ok({});
 }
 

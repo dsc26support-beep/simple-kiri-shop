@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invoice / Receipt — Mwakete</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.min.css">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <meta name="theme-color" content="#332d63">
+</head>
+<body class="page-invoice">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header inv-noprint">
+    <div class="container header-top-row">
+      <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
+        <img src="assets/img/favicon.svg" alt="" class="header-logo-mark"><span class="header-wordmark" aria-hidden="true">wakete</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="container inv-page">
+    <!-- invoice-view.js (backend Invoices.gs getInvoiceDocument): the document
+         exactly as Mwakete holds it, opened from its emailed link or QR code. -->
+    <p id="inv-status" class="helper-text inv-noprint" role="status" aria-live="polite">Loading…</p>
+    <div id="inv-genuine" class="inv-genuine inv-noprint" hidden></div>
+    <div class="inv-actions inv-noprint" id="inv-actions" hidden>
+      <button type="button" class="btn btn-primary" id="inv-print">Print or save as PDF</button>
+    </div>
+    <iframe id="inv-frame" class="inv-frame" title="Invoice or receipt" sandbox="allow-same-origin" hidden></iframe>
+  </main>
+
+  <script defer src="assets/js/config.min.js"></script>
+  <script defer src="assets/js/api.min.js"></script>
+  <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/qrcode-lib.min.js"></script>
+  <script defer src="assets/js/invoice-view.min.js"></script>
+</body>
+</html>
