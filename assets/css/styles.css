@@ -8201,3 +8201,11 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   .inv-page { padding: 0; max-width: none; }
   .inv-frame { border: 0; border-radius: 0; }
 }
+
+/* Checkout "I need an invoice" and the order room's invoice / receipt links (Invoices.gs) */
+.checkout-invoice-row { display: flex; gap: 0.6rem; align-items: flex-start; font-weight: 600; cursor: pointer; }
+.checkout-invoice-row input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.checkout-invoice-row small { display: block; font-weight: 400; }
+.tx-docs { margin-top: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); }
+.tx-docs p { margin: var(--space-1) 0 0; }
+.tx-docs .btn { margin: 2px 4px 2px 0; }

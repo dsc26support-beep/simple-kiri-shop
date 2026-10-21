@@ -62,6 +62,8 @@ async function init() {
     return;
   }
   storeInfo = res.store;
+  // Invoices.gs: "I need an invoice" only for a store that sends them.
+  document.getElementById('checkout-invoice').hidden = !storeInfo.invoicesOffered;
   // publicOwnerFields exposes isOpen; share it with the chat window.
   window.__storeOpen = storeInfo.isOpen !== false;
   document.getElementById('store-name-tagline').textContent = `Checkout — ${shortStoreName(storeInfo.storeName)}`;
@@ -560,6 +562,7 @@ async function onSubmit(e) {
     deliveryAddress: `${village}, ${island}`,
     deliveryMethod: deliveryMethodInput.value,
     notes: form.notes.value.trim(),
+    wantInvoice: !document.getElementById('checkout-invoice').hidden && document.getElementById('want-invoice').checked,
     items: cart.map((line) => ({ variantId: line.variantId, qty: line.qty }))
   };
 

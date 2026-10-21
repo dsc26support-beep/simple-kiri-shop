@@ -203,7 +203,18 @@ const OrderRoom = (function () {
       ${r.dispatchInfo ? `<p class="helper-text">Sent ${esc(r.dispatchInfo.date)} by ${esc(r.dispatchInfo.method)}${r.dispatchInfo.tracking ? ' · tracking ' + esc(r.dispatchInfo.tracking) : ''}</p>` : ''}
       ${sub}${flags}${buyerBlock}${legacy}
       ${r.hold && r.hold.on ? `<p class="tx-flag">On hold: ${esc(r.hold.reason)}</p>` : ''}
-      ${deliveryHtml(r.delivery)}`;
+      ${deliveryHtml(r.delivery)}
+      ${invoiceHtml(r.invoice)}`;
+  }
+
+  /** Invoices.gs: the invoice the buyer asked for and the receipt, each with its own page. */
+  function invoiceHtml(v) {
+    if (!v || (!v.requested && !(v.documents || []).length)) return '';
+    const docs = v.documents || [];
+    const links = docs.map((d) => `<a class="btn btn-small" href="${esc(d.link || 'invoice.html?d=' + d.token)}" target="_blank" rel="noopener">${d.kind === 'invoice' ? 'Invoice' : 'Receipt'} ${esc(d.number)}</a>`).join(' ');
+    const waiting = v.requested && !docs.some((d) => d.kind === 'invoice')
+      ? `<p class="helper-text">${side === 'seller' ? 'The buyer asked for an invoice - send it from <a href="owner/orders.html">your Orders</a>.' : 'You asked for an invoice - the seller will send it here and by email.'}</p>` : '';
+    return `<div class="tx-docs" role="group" aria-label="Invoice and receipt"><strong>Invoice &amp; receipt</strong>${waiting}${links ? `<p>${links}</p>` : ''}</div>`;
   }
 
   /** Mwakete driver panel (Deliveries.gs): status, driver, last shared location. */

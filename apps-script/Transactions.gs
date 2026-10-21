@@ -990,6 +990,8 @@ function actionGetTxRoom(body) {
     .map(function (k) { return { id: k, label: TX_DISPUTE_CATEGORIES[k].label }; });
   view.outcomes = viewer === 'admin' ? Object.keys(TX_DISPUTE_OUTCOMES).map(function (k) { return { id: k, label: TX_DISPUTE_OUTCOMES[k] }; }) : undefined;
   view.exceptionKeys = viewer === 'admin' ? String(cfg['exceptions.allowed']).split(',').filter(Boolean) : undefined;
+  // Invoices.gs: the invoice the buyer asked for and the receipt, with their links.
+  view.invoice = typeof invRoomView === 'function' ? invRoomView(order) : null;
   view.isParty = txIsParty(ctx.actor, order);
   view.actions = txNextActions(viewer, order, state, dispute, records);
   // Mwakete drivers (Deliveries.gs): the delivery panel and its steps.

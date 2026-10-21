@@ -2169,3 +2169,33 @@ body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 
 .payment-option { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; box-sizing: border-box; padding: 0.45rem 0.8rem; border: 1px solid var(--color-border); border-radius: 999px; cursor: pointer; }
 .payment-option:has(input:checked) { border-color: var(--color-purple); background: var(--color-purple-soft); }
 .payment-option small { color: var(--color-muted); font-weight: 400; }
+
+/* Seller: invoice & receipt design (owner-invoices.js) */
+.iv-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--space-4); align-items: start; margin-top: var(--space-3); }
+.iv-form fieldset { border: 1px solid var(--color-border); border-radius: 12px; padding: var(--space-3); margin: 0 0 var(--space-3); }
+.iv-form legend { font-weight: 700; padding: 0 6px; }
+.iv-switch { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0 0 var(--space-3); cursor: pointer; }
+.iv-switch input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.iv-templates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.iv-template { display: flex; gap: 0.4rem; align-items: flex-start; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 12px; cursor: pointer; }
+.iv-template:has(input:checked) { border-color: var(--color-purple); background: var(--color-purple-soft); }
+.iv-template small { display: block; color: var(--color-muted); font-weight: 400; }
+.iv-colours { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; }
+.iv-colour { display: flex; flex-direction: column; gap: 4px; }
+.iv-colour input[type="color"] { width: 64px; height: 44px; padding: 2px; border: 1px solid var(--color-border); border-radius: 10px; background: #fff; }
+.iv-colours .helper-text { flex-basis: 100%; margin: 0; }
+.iv-preview { position: sticky; top: var(--space-3); }
+.iv-preview-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.iv-preview-head h2 { margin: 0; font-size: 1.1rem; }
+.iv-tabs { display: flex; gap: 6px; }
+.iv-frame { width: 100%; height: 820px; border: 1px solid var(--color-border); border-radius: 12px; background: #fff; margin-top: var(--space-2); }
+@media (max-width: 900px) {
+  .iv-layout { grid-template-columns: minmax(0, 1fr); }
+  .iv-preview { position: static; }
+  .iv-frame { height: 640px; }
+}
+@media (max-width: 520px) { .iv-templates { grid-template-columns: minmax(0, 1fr); } }
+
+/* Seller orders: invoice request and documents (owner-orders.js) */
+.order-docs { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0 0 var(--space-2); }
+.order-invoice-flag { display: inline-block; padding: 0.15em 0.7em; border-radius: 999px; background: var(--color-gold-soft); color: #6b5300; font-size: 0.85rem; font-weight: 700; }

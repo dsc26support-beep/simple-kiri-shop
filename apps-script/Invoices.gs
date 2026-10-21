@@ -315,6 +315,20 @@ function invPublic(doc) {
     total: invMoney(doc.Total), sentAt: doc.SentAt || '', token: doc.Token, link: invLink(doc) };
 }
 
+/** { orderId: [public documents] } for many orders - one read of the Invoices sheet. */
+function invDocsIndex() {
+  var s = SpreadsheetApp.getActive().getSheetByName('Invoices');
+  var out = {};
+  if (!s) return out;
+  sheetToObjects(s).forEach(function (d) { (out[d.OrderId] = out[d.OrderId] || []).push(invPublic(d)); });
+  return out;
+}
+
+/** What the order room shows about invoices: whether one was asked for, and the documents. */
+function invRoomView(order) {
+  return { requested: String(order.InvoiceRequested) === 'yes', documents: invDocsForOrder(order.OrderId).map(invPublic) };
+}
+
 /** The seller's documents for one order. */
 function actionListOrderDocuments(owner, body) {
   var order = findRowById(getSheet('Orders'), 'OrderId', String(body.orderId || ''));

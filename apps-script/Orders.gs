@@ -443,6 +443,7 @@ function actionListOwnerOrders(owner, body) {
   var offset = Math.max(0, Number(body.offset) || 0);
   var orders = allOrders.slice(offset, offset + limit);
   var tx = typeof txSummariesFor === 'function' ? txSummariesFor(orders, 'seller') : {};
+  var docs = typeof invDocsIndex === 'function' ? invDocsIndex() : {};
 
   var result = orders.map(function (o) {
     var items = [];
@@ -465,6 +466,9 @@ function actionListOwnerOrders(owner, body) {
       total: o.Total,
       status: o.Status,
       createdAt: o.CreatedAt,
+      // Invoices.gs: did the buyer ask for an invoice, and what has been issued.
+      invoiceRequested: String(o.InvoiceRequested) === 'yes',
+      documents: docs[o.OrderId] || [],
       // Order room summary, or null when rooms are off for this store.
       room: typeof txRoomAvailable === 'function' && txRoomAvailable(o) ? (tx[o.OrderId] || { flow: 'none' }) : null
     };
