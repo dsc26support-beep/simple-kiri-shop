@@ -108,9 +108,9 @@ async function makeContext(browser, opts) {
     // job - separating the guest route from the email form - and belongs here.
     ok('the "or" divider stays, because guest is above it',
       await page.locator('.auth-divider').isVisible());
-    ok('and it sits between guest and the tabs', await page.evaluate(() => {
+    ok('and it sits between guest and the email form', await page.evaluate(() => {
       const y = (sel) => document.querySelector(sel).getBoundingClientRect().top;
-      return y('#guest-continue') < y('.auth-divider') && y('.auth-divider') < y('.auth-tabs');
+      return y('#guest-continue') < y('.auth-divider') && y('.auth-divider') < y('#login-form');
     }));
     ok('the email form still works', await page.locator('#login-form').isVisible());
     ok('and the guest route is still offered', await page.locator('#guest-continue').isVisible());
@@ -292,9 +292,9 @@ async function makeContext(browser, opts) {
 
     const order = await page.$$eval('.auth-quick > *, .auth-tabs',
       (els) => els.map((e) => e.id || e.className.split(' ')[0]));
-    ok(label + ': Google, then guest, then the divider, then the tabs',
+    ok(label + ': the tabs, then Google, then guest, then the divider',
       JSON.stringify(order) === JSON.stringify(
-        ['google-signin-wrap', 'auth-guest-row', 'auth-divider', 'auth-tabs']), JSON.stringify(order));
+        ['auth-tabs', 'google-signin-wrap', 'auth-guest-row', 'auth-divider']), JSON.stringify(order));
 
     // The one that matters. The guest button is the fallback for exactly the
     // person who cannot use Google, so it must never be hidden along with it.

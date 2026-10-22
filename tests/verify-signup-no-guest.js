@@ -14,7 +14,7 @@ const seen = (page) => page.evaluate(() => {
   const vis = (el) => !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 0;
   const g = document.getElementById('google-signin-wrap'), t = document.querySelector('.auth-tabs');
   return { guest: vis(document.getElementById('guest-continue')), divider: vis(document.querySelector('.auth-divider')),
-    google: vis(g), googleAboveTabs: g.getBoundingClientRect().bottom <= t.getBoundingClientRect().top,
+    google: vis(g), googleBelowTabs: g.getBoundingClientRect().top >= t.getBoundingClientRect().bottom,
     title: document.getElementById('auth-title').textContent.trim(),
     signup: !document.getElementById('panel-signup').classList.contains('hidden') };
 });
@@ -38,7 +38,7 @@ const seen = (page) => page.evaluate(() => {
   s = await seen(page);
   ok('Create Account: no Guest', !s.guest && s.signup, JSON.stringify(s));
   ok('...no "or" line', !s.divider, JSON.stringify(s));
-  ok('...Google still there, above the tabs', s.google && s.googleAboveTabs, JSON.stringify(s));
+  ok('...Google still there, under the tabs', s.google && s.googleBelowTabs, JSON.stringify(s));
   ok('...title "Create your Mwakete account"', s.title === 'Create your Mwakete account', s.title);
 
   await page.click('#tab-signin');

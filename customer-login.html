@@ -65,7 +65,14 @@
       <div class="auth-split-form">
       <section class="container auth-card-wrap">
         <div class="auth-card auth-card--customer">
-          <h1 id="auth-title">Sign in to Mwakete</h1>
+          <!-- Owner request (Oct 2026): same layout as the seller sign-in - the
+               tabs come first and there is no big heading. The heading stays
+               for screen readers. -->
+          <h1 id="auth-title" class="sr-only">Sign in to Mwakete</h1>
+          <div class="auth-tabs" role="tablist" aria-label="Sign in or create an account">
+            <button type="button" class="auth-tab is-active" id="tab-signin" role="tab" aria-selected="true">Sign In</button>
+            <button type="button" class="auth-tab" id="tab-signup" role="tab" aria-selected="false">Create Account</button>
+          </div>
           <!-- Why they're here, when chat sent them to request a meeting. Filled
                synchronously right here, before first paint, so it can't shift
                the form down after load. textContent only - the store name
@@ -91,8 +98,8 @@
             })();
           </script>
 
-          <!-- The two ways in that need no typing, then the divider, then the
-               email form. The Google half is hidden until google-signin.js
+          <!-- Under the tabs: the two ways in that need no typing, then the
+               divider, then the email form. The Google half is hidden until google-signin.js
                confirms both a configured client id and that Google's script
                actually loaded; on a blocked or slow connection it never appears.
                The guest row and the divider sit OUTSIDE that wrapper on purpose -
@@ -109,11 +116,6 @@
             </div>
 
             <p class="auth-divider"><span>or</span></p>
-          </div>
-
-          <div class="auth-tabs" role="tablist" aria-label="Sign in or create an account">
-            <button type="button" class="auth-tab is-active" id="tab-signin" role="tab" aria-selected="true">Sign In</button>
-            <button type="button" class="auth-tab" id="tab-signup" role="tab" aria-selected="false">Create Account</button>
           </div>
 
           <!-- Sign in -->
