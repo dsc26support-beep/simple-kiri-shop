@@ -133,7 +133,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'wallet5-2026-10-22';
+var APP_VERSION = 'wallet6-2026-10-22';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
