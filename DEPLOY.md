@@ -256,3 +256,11 @@ Everything else about the listing checks is in [docs/listing-review.md](docs/lis
 | `PRODUCT_OPTION_VALUES_MAX` | 20 | Values per option (1-50). |
 | `PRODUCT_VARIANTS_MAX` | 100 | Combinations per product (1-250). |
 | `VARIANT_IMAGES_MAX` | 4 | Photos per combination (0-10; 0 = off). |
+
+
+---
+
+## POS & Integrations hub (Oct 2026)
+
+New backend files to paste (create a new script file for each): `IntegrationHub.gs`, `IntegrationOutbox.gs`, `Pos.gs`. Changed: `Code.gs`, `Auth.gs`, `Inventory.gs`, `InventorySync.gs`, `Orders.gs`, `Reminders.gs`. After deploying, `?action=getVersion` must show `pos1-2026-10-22` and `?action=checkSetup` must list no missing files.
+Script Properties: `POS_HUB` (`on`/`off`, default off), optional `POS_TZ_OFFSET_HOURS` (default 12). See [docs/pos-integration-setup.md](docs/pos-integration-setup.md) and [docs/pos-integration-runbook.md](docs/pos-integration-runbook.md).
