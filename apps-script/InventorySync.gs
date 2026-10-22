@@ -39,7 +39,11 @@ var INVENTORY_FIELDS = {
   price: { label: 'Selling price', kind: 'money' },
   costPrice: { label: 'Cost price', kind: 'money' },
   reorderLevel: { label: 'Low-stock level', kind: 'whole' },
-  reorderQty: { label: 'Reorder quantity', kind: 'whole' }
+  reorderQty: { label: 'Reorder quantity', kind: 'whole' },
+  // New products only (product import, Oct 2026): which category each row
+  // goes in (a category or subcategory name or id), and its description.
+  category: { label: 'Category', kind: 'text' },
+  description: { label: 'Description', kind: 'longtext' }
 };
 
 /* ==================== Connector registry ==================== */
@@ -191,6 +195,7 @@ function parseFieldValue(kind, raw) {
   var s = String(raw == null ? '' : raw).trim();
   if (s === '') return { blank: true };
   if (kind === 'id' || kind === 'text') return { value: s.slice(0, 150) };
+  if (kind === 'longtext') return { value: s.slice(0, 2000) };
   var n = Number(s.replace(/[$,\s]/g, ''));
   if (isNaN(n) || n < 0) return { error: 'is not a number of 0 or more' };
   if (kind === 'whole') {
@@ -259,8 +264,8 @@ function buildImportPlan(records, variants, products, opts) {
   // 'twoWay' (stock both ways; a change on both sides is a conflict to decide).
   var mode = opts.mode || 'import';
   var snapshot = opts.snapshot || {};
-  var plan = { mode: mode, updates: [], newItems: [], unmatched: [], errors: [], conflicts: [], writes: [], syncConflicts: [], agreed: {}, unchanged: 0,
-    counts: { read: records.length, existing: 0, stockChanges: 0, priceChanges: 0, otherChanges: 0, newProducts: 0, unmatched: 0, errors: 0, conflicts: 0, writes: 0, syncConflicts: 0 } };
+  var plan = { mode: mode, updates: [], newItems: [], unmatched: [], errors: [], conflicts: [], writes: [], syncConflicts: [], duplicates: [], agreed: {}, unchanged: 0,
+    counts: { read: records.length, existing: 0, stockChanges: 0, priceChanges: 0, otherChanges: 0, newProducts: 0, unmatched: 0, errors: 0, conflicts: 0, writes: 0, syncConflicts: 0, duplicates: 0 } };
   var seen = {};
 
   records.forEach(function (rec) {
@@ -269,7 +274,23 @@ function buildImportPlan(records, variants, products, opts) {
     var m = matchImportRecord(rec, index);
     if (!m) {
       if (opts.createNew && rec.fields.productName && rec.fields.price > 0) {
-        plan.newItems.push({ line: rec.line, fields: rec.fields });
+        // The row's own category, else the one chosen for the whole file.
+        var place = rec.fields.category !== undefined ? importCategoryOf(rec.fields.category, opts.register) : { category: opts.category || '', subcategoryId: '' };
+        if (place.error) { plan.errors.push({ line: rec.line, message: place.error }); return; }
+        if (!place.category) {
+          plan.unmatched.push({ line: rec.line, name: rec.fields.productName, key: '', reason: 'needs a category - add a Category column or choose one for the whole file' });
+          return;
+        }
+        if (place.category === 'food' && opts.canListFood === false) { plan.errors.push({ line: rec.line, message: FOOD_CLOSED_MESSAGE }); return; }
+        // Already listed under this name: adding it again would make a
+        // duplicate (and importing the same file twice would double up).
+        var existingName = (opts.existingNames || {})[importNameKey(rec.fields.productName)];
+        if (existingName) {
+          plan.duplicates.push({ line: rec.line, name: rec.fields.productName,
+            reason: 'already on Mwakete as "' + existingName + '" - add its SKU or Mwakete ID column to update it instead' });
+          return;
+        }
+        plan.newItems.push({ line: rec.line, fields: rec.fields, category: place.category, subcategoryId: place.subcategoryId });
       } else {
         plan.unmatched.push({ line: rec.line, name: rec.fields.productName || '', key: rec.fields.sku || rec.fields.externalId || rec.fields.barcode || rec.fields.mwaketeId || '',
           reason: opts.createNew ? 'needs a product name and a price above 0 to be added' : 'not on Mwakete yet' });
@@ -352,13 +373,18 @@ function buildImportPlan(records, variants, products, opts) {
     plan.errors.push({ line: 0, message: 'At most ' + IMPORT_MAX_NEW_PRODUCTS + ' new items per import. Split the file and import the rest after.' });
     plan.newItems = [];
   }
+  // Rows with the same name (and category) become varieties of one product.
   var groups = {};
+  var order = [];
   plan.newItems.forEach(function (it) {
-    var k = String(it.fields.productName).toLowerCase();
-    (groups[k] = groups[k] || []).push(it);
+    var k = importNameKey(it.fields.productName) + '|' + it.category;
+    if (!groups[k]) { groups[k] = []; order.push(k); }
+    groups[k].push(it);
   });
-  plan.newProducts = Object.keys(groups).map(function (k) {
-    return { name: groups[k][0].fields.productName, category: opts.category || 'other', items: groups[k] };
+  plan.newProducts = order.map(function (k) {
+    var items = groups[k];
+    var desc = items.map(function (it) { return it.fields.description || ''; }).filter(function (d) { return !!d; })[0] || '';
+    return { name: items[0].fields.productName, category: items[0].category, subcategoryId: items[0].subcategoryId || '', description: desc, items: items };
   });
   plan.counts.newProducts = plan.newProducts.length;
   plan.counts.unmatched = plan.unmatched.length;
@@ -366,8 +392,32 @@ function buildImportPlan(records, variants, products, opts) {
   plan.counts.conflicts = plan.conflicts.length;
   plan.counts.writes = plan.writes.length;
   plan.counts.syncConflicts = plan.syncConflicts.length;
+  plan.counts.duplicates = plan.duplicates.length;
   plan.counts.unchanged = plan.unchanged;
   return plan;
+}
+
+/** Pure: a product name as compared for duplicates ("Rice  1KG" = "rice 1kg"). */
+function importNameKey(name) {
+  return String(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Pure: a Category cell -> { category, subcategoryId } or { error }. Accepts a
+ * category or subcategory id or name from the register ("Food & Groceries",
+ * "food", "Canned Fish & Tuna"), any case. A subcategory files the product in
+ * its parent category with that subcategory.
+ */
+function importCategoryOf(raw, register) {
+  var s = String(raw || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (!s) return { category: '', subcategoryId: '' };
+  var rows = register && register.list ? register.list : [];
+  var hit = rows.filter(function (r) { return r.active && (r.id.toLowerCase() === s || r.name.toLowerCase() === s); })[0];
+  if (!hit && CATEGORY_IDS.indexOf(s) !== -1 && s !== 'other') return { category: s, subcategoryId: '' };
+  if (!hit) return { error: 'Category "' + String(raw).slice(0, 60) + '" is not one Mwakete has. Use a name from the category list, e.g. Food & Groceries.' };
+  if (hit.parentId) return { category: hit.parentId, subcategoryId: hit.id };
+  if (hit.id === 'other') return { error: 'Choose a real category instead of Other.' };
+  return { category: hit.id, subcategoryId: '' };
 }
 
 /** Pure: a short fingerprint of what a plan will do - apply must reproduce it exactly. */
@@ -376,7 +426,7 @@ function importPlanToken(plan) {
     u: plan.updates.map(function (c) { return [c.variantId, c.set]; }),
     w: plan.writes.map(function (w) { return [w.variantId, w.line, w.value]; }),
     c: plan.syncConflicts.map(function (x) { return [x.variantId, x.external, x.mwakete]; }),
-    n: plan.newProducts.map(function (p) { return [p.name, p.category, p.items.map(function (i) { return i.fields; })]; })
+    n: plan.newProducts.map(function (p) { return [p.name, p.category, p.subcategoryId, p.items.map(function (i) { return i.fields; })]; })
   });
   var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, basis, Utilities.Charset.UTF_8);
   return digest.slice(0, 12).map(function (b) { var h = (b & 0xff).toString(16); return h.length === 1 ? '0' + h : h; }).join('');
@@ -435,15 +485,26 @@ function planFromRequest(owner, body) {
   if (mode !== 'import' && !Object.keys(mapping).some(function (h) { return mapping[h] === 'physicalStock'; })) {
     return { error: 'To send stock back, match the column that holds your stock on hand.' };
   }
-  var category = categoryIdOf(body.category);
+  var category = body.category ? categoryIdOf(body.category) : '';
+  var hasCategoryColumn = Object.keys(mapping).some(function (h) { return mapping[h] === 'category'; });
   if (body.createNew) {
-    if (!body.category || CATEGORY_IDS.indexOf(String(body.category)) === -1) return { error: 'Choose a category for the new products.' };
+    if (body.category && CATEGORY_IDS.indexOf(String(body.category)) === -1) return { error: 'Choose a category for the new products.' };
+    if (!body.category && !hasCategoryColumn) return { error: 'Choose a category for the new products, or match a Category column.' };
     if (category === 'food' && !canListFood(owner)) return { error: FOOD_CLOSED_MESSAGE + ' Choose another category for the new products.' };
   }
   var ctx = sellerImportContext(owner);
   var records = normalizeImportRows(data.headers, data.rows, mapping, data.firstLine);
+  // Names already listed by this seller (any listing that isn't archived), so
+  // a new-product row can't create a second copy of one.
+  var existingNames = {};
+  if (body.createNew) {
+    sheetToObjects(getSheet('Products')).forEach(function (p) {
+      if (p.OwnerId === owner.OwnerId && p.Status !== 'archived' && p.Status !== 'deleted') existingNames[importNameKey(p.Name)] = p.Name;
+    });
+  }
   var plan = buildImportPlan(records, ctx.variants, ctx.products,
-    { createNew: !!body.createNew && mode !== 'export', category: category, mode: mode, snapshot: conn ? conn.snapshot : {} });
+    { createNew: !!body.createNew && mode !== 'export', category: category, mode: mode, snapshot: conn ? conn.snapshot : {},
+      register: body.createNew ? getListingRegister() : null, existingNames: existingNames, canListFood: canListFood(owner) });
   var stockHeader = Object.keys(mapping).filter(function (h) { return mapping[h] === 'physicalStock'; })[0] || '';
   return { plan: plan, ctx: ctx, type: type, mapping: mapping, mode: mode, conn: conn, connector: connector, stockHeader: stockHeader,
     settings: conn ? conn.settings : (body.settings || {}) };
@@ -455,10 +516,13 @@ function planPreviewShape(plan) {
   return {
     counts: plan.counts,
     updates: cap(plan.updates, 50).map(function (c) { return { line: c.line, name: c.name, matchedBy: c.matchedBy, set: c.set, before: c.before }; }),
-    newProducts: cap(plan.newProducts, 50).map(function (p) { return { name: p.name, category: p.category, varieties: p.items.length }; }),
-    unmatched: cap(plan.unmatched, 50),
-    errors: cap(plan.errors, 50),
-    conflicts: cap(plan.conflicts, 50),
+    newProducts: cap(plan.newProducts, 50).map(function (p) { return { name: p.name, category: p.category, subcategoryId: p.subcategoryId || '', varieties: p.items.length }; }),
+    duplicates: cap(plan.duplicates || [], 500),
+    // Up to 500 of each problem, so "Download the problems" can list them all
+    // for a full-size import (IMPORT_MAX_ROWS is 2000; counts are always exact).
+    unmatched: cap(plan.unmatched, 500),
+    errors: cap(plan.errors, 500),
+    conflicts: cap(plan.conflicts, 500),
     writes: cap(plan.writes, 50),
     syncConflicts: cap(plan.syncConflicts, 50),
     mode: plan.mode
@@ -594,14 +658,15 @@ function runSyncPlan(owner, r, meta) {
   var c = plan.counts;
   var status = writeError && !result.updated && !written ? SYNC_STATUS.FAILED
     : c.syncConflicts ? SYNC_STATUS.CONFLICT
-    : (writeError || c.errors || c.conflicts || c.unmatched) ? SYNC_STATUS.PARTIAL : SYNC_STATUS.SUCCESS;
+    : (writeError || c.errors || c.conflicts || c.unmatched || c.duplicates) ? SYNC_STATUS.PARTIAL : SYNC_STATUS.SUCCESS;
   recordSyncJob(owner, {
     SyncId: syncId, ConnectionId: r.conn ? r.conn.id : '', ConnectorType: r.type, Direction: r.mode, StartedAt: started,
     RecordsRead: c.read, RecordsCreated: result.created, RecordsUpdated: result.updated + written,
-    RecordsSkipped: c.unchanged + c.unmatched, RecordsFailed: c.errors + (writeError ? plan.writes.length : 0),
+    RecordsSkipped: c.unchanged + c.unmatched + (c.duplicates || 0), RecordsFailed: c.errors + (writeError ? plan.writes.length : 0),
     Conflicts: c.conflicts + c.syncConflicts, Status: status, ErrorCount: c.errors + (writeError ? 1 : 0),
     SummaryJson: JSON.stringify({ trigger: meta.trigger, writeError: writeError, written: written,
-      errors: plan.errors.slice(0, 20), conflicts: plan.conflicts.slice(0, 20).concat(plan.syncConflicts.slice(0, 20)), unmatched: plan.unmatched.slice(0, 20) })
+      errors: plan.errors.slice(0, 20), conflicts: plan.conflicts.slice(0, 20).concat(plan.syncConflicts.slice(0, 20)), unmatched: plan.unmatched.slice(0, 20),
+      duplicates: (plan.duplicates || []).slice(0, 20) })
   });
   if (r.conn) markConnectionSynced(owner, r.conn.id, status, writeError);
   return { syncId: syncId, status: status, created: result.created, updated: result.updated, written: written,
@@ -656,19 +721,19 @@ function applyImportPlan(owner, plan, ctx, meta) {
   if (plan.newProducts.length) {
     var productsSheet = getSheet('Products');
     ensureColumn(productsSheet, 'ListingType');
-    ['RequestedStatus', 'ReviewId'].forEach(function (h) { ensureColumn(productsSheet, h); });
+    ['RequestedStatus', 'ReviewId', 'SubcategoryId'].forEach(function (h) { ensureColumn(productsSheet, h); });
     var register = getListingRegister();
     plan.newProducts.forEach(function (np) {
       var productId = newId('prod');
       // Listing checks (ListingRules.gs): an imported name that clearly does
       // not belong in the chosen category is created held, with a case for an
       // admin, rather than going live.
-      var input = { name: np.name, description: '', categoryId: np.category, subcategoryId: '', listingType: 'product',
+      var input = { name: np.name, description: np.description || '', categoryId: np.category, subcategoryId: np.subcategoryId || '', listingType: 'product',
         optionLabels: np.items.map(function (it) { return it.fields.variantLabel || ''; }) };
       var check = validateListing(input, register);
       var hold = check.blocked && check.overridable;
       appendRowFromObject(productsSheet, { ProductId: productId, OwnerId: owner.OwnerId, StoreSlug: owner.StoreSlug, Name: np.name,
-        Description: '', Category: np.category, ListingType: 'product', ImageUrl: '', ImageFileId: '', ImageUrl2: '', ImageFileId2: '',
+        Description: np.description || '', Category: np.category, SubcategoryId: np.subcategoryId || '', ListingType: 'product', ImageUrl: '', ImageFileId: '', ImageUrl2: '', ImageFileId2: '',
         Status: hold ? 'review' : 'active', RequestedStatus: hold ? 'active' : '', SortOrder: 0, CreatedAt: now, UpdatedAt: now });
       if (hold) {
         var reviewId = upsertListingCase(owner, productId, input, check, { disputed: false, role: 'import', sellerNote: 'Created by an inventory import' });
