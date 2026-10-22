@@ -143,6 +143,9 @@ const snapshot = (page) => page.evaluate((props) => {
       }, { isLogin });
       await page.goto(BASE + p, { waitUntil: 'load' }).catch(() => {});
       await page.waitForTimeout(2200);
+      // Moving parts (the loading dots) are caught mid-animation at slightly
+      // different moments in the two runs; compare them at rest.
+      await page.addStyleTag({ content: '*, *::before, *::after { animation: none !important; transition: none !important; }' }).catch(() => {});
       shots.push(await snapshot(page));
       await ctx.close();
     }
