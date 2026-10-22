@@ -132,7 +132,7 @@ const HELP_FAQS = [
     id: 'general-businesses', category: 'general',
     title: 'Is Mwakete for businesses?',
     subtitle: 'Retailers, wholesalers and distributors',
-    description: 'Yes. When you open a store you choose your business type: retailer, wholesaler or distributor. Wholesalers and distributors get extra tools, such as several locations and stock transfers between them.',
+    description: 'Yes. When you open a store you choose your business type: Retailer, or Wholesaler / Distributor. Wholesalers and distributors get extra tools, such as several locations and stock transfers between them.',
     keywords: ['business', 'company', 'shop', 'retailer', 'wholesaler', 'distributor'],
     related: ['business-store', 'business-wholesale']
   },
@@ -389,7 +389,7 @@ const HELP_FAQS = [
     id: 'business-wholesale', category: 'business',
     title: 'Can wholesalers use Mwakete?',
     subtitle: 'Yes - choose Wholesaler when you sign up',
-    description: 'Yes. Choose Wholesaler (or Distributor) as your business type. Mwakete contacts new wholesalers to verify them. Wholesalers and distributors can list Food & Groceries, add several locations and move stock between them.',
+    description: 'Yes. Choose Wholesaler / Distributor as your business type. Mwakete contacts new wholesalers to verify them. Wholesalers and distributors can list Food & Groceries, add several locations and move stock between them.',
     keywords: ['wholesale', 'wholesaler', 'distributor', 'bulk', 'supplier', 'verification'],
     related: ['general-businesses', 'business-inventory']
   },
@@ -520,7 +520,7 @@ const HELP_GUIDES = [
     description: 'Everything you need to get your first product, service or rental online.',
     keywords: ['listing', 'create', 'first', 'sell', 'add product', 'store', 'start'],
     steps: [
-      'Open the menu and choose Create Store. Pick your business type: retailer, wholesaler or distributor.',
+      'Open the menu and choose Create Store. Pick your business type: Retailer, or Wholesaler / Distributor.',
       'Add your store name, location, contact numbers and logo.',
       'In Settings, turn on the delivery methods you can offer and set a cost for each, or leave it to be negotiated.',
       'Open Products and add your first listing: product, service or rental, with a clear photo, a plain name and the real price.',

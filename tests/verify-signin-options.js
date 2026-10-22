@@ -193,7 +193,16 @@ async function makeContext(browser, opts) {
       const r = document.querySelector(sel).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
     ok(`${w}px: Google, guest and "Send me a code" are the same width`, Math.abs(g[0][0] - g[1][0]) <= 1 && Math.abs(g[1][0] - g[2][0]) <= 1, JSON.stringify(g));
     ok(`${w}px: ...and the same height (40px)`, g.every((x) => x[1] === 40), JSON.stringify(g));
-    ok(`${w}px: Google was asked for that width (within its 200-400px limits)`, await page.evaluate(() => window.__gsiButton.width) === Math.max(200, Math.min(400, g[1][0])));
+    // 16px wider than the purple box (GSI_TUCK), so Google's own grey edge
+    // is tucked under the purple line (owner request, Oct 2026).
+    ok(`${w}px: Google was asked for that width plus 16px (within its 200-400px limits)`, await page.evaluate(() => window.__gsiButton.width) === Math.max(200, Math.min(400, g[1][0] + 16)));
+    const tuck = await page.evaluate(() => {
+      const box = document.getElementById('google-signin-btn').getBoundingClientRect();
+      const btn = document.getElementById('fake-google-btn').getBoundingClientRect();
+      const cs = getComputedStyle(document.getElementById('google-signin-btn'));
+      return { l: btn.left - box.left, r: box.right - btn.right, border: cs.borderTopColor, radius: cs.borderTopLeftRadius, clip: cs.overflow };
+    });
+    ok(`${w}px: Google's button overhangs both sides evenly, under the purple line`, tuck.l < -1 && Math.abs(tuck.l - tuck.r) <= 1 && tuck.clip === 'hidden', JSON.stringify(tuck));
     ok(`${w}px: Google's box has the same purple outline`, await page.evaluate(() => {
       const cs = getComputedStyle(document.getElementById('google-signin-btn'));
       return cs.borderTopColor === 'rgb(51, 45, 99)' && cs.borderTopWidth === '2px';

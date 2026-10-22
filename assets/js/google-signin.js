@@ -1,17 +1,19 @@
 /**
  * Google Sign-In button for the customer login page.
  *
- * Customers only. Vendors sign in with username + password + 2FA and this file
- * is not loaded on any owner page - see apps-script/CustomerOAuth.gs for why.
+ * Customers only. Vendors sign in with username + password + 2FA - see
+ * apps-script/CustomerOAuth.gs for why. owner/login.html loads it only so a
+ * signed-in SHOPPER can switch shopper accounts; it never signs in a store.
  *
- * Two pages load this file, and they need different things after a successful
- * sign-in:
+ * Pages that load this file need different things after a successful sign-in:
  *
  *   customer-login.html - signing in IS the task, so go where they were headed.
  *   checkout.html       - the order is already placed and the screen says
  *                         "CALL SELLER NOW". Navigating away from that would be
  *                         actively harmful, so that page supplies
  *                         window.onCustomerSignedIn and nothing redirects.
+ *   owner/login.html     - stays put too (the register form may be half
+ *                         filled in); onCustomerSignedIn updates the note.
  *
  * checkout.html also needs the button rendered LATE: its block starts hidden
  * inside the confirmation section, and Google measures the container when
@@ -29,6 +31,8 @@
  */
 
 var GSI_SRC = 'https://accounts.google.com/gsi/client';
+// How much wider than its purple box Google's button is drawn - see below.
+var GSI_TUCK = 16;
 
 function initGoogleSignIn() {
   var wrap = document.getElementById('google-signin-wrap');
@@ -55,17 +59,16 @@ function initGoogleSignIn() {
       // where this block is revealed late. Put back on failure.
       wrap.hidden = false;
       var host = document.getElementById('google-signin-btn');
-      // data-full-width (customer sign-in, owner request Oct 2026): as wide as
-      // the buttons under it. Google draws the button itself and accepts a
-      // pixel width from 200 to 400.
-      // A box with a border (the purple outline on customer sign-in) gets a
-      // button that wide again, so the button reaches under the border.
-      var cs = getComputedStyle(host);
-      var full = host.hasAttribute('data-full-width') && (host.clientWidth + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0));
+      // The host is a 240px purple pill on every page (styles.css). Google
+      // draws its grey pill a few pixels inside the width it is given, which
+      // showed as a white gap inside the purple (owner request, Oct 2026), so
+      // ask for GSI_TUCK more than the box: the box centres and clips it, and
+      // Google's edge lands under the purple line. Google accepts 200-400px.
+      var outer = host.offsetWidth || 240;
       google.accounts.id.renderButton(host, {
         theme: 'outline',
         size: 'large',
-        width: full ? Math.max(200, Math.min(400, full)) : 280,
+        width: Math.max(200, Math.min(400, outer + GSI_TUCK)),
         text: 'continue_with',
         // Pill ends, like every Mwakete button (owner request, Oct 2026).
         shape: 'pill'

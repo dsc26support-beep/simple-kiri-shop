@@ -17,7 +17,7 @@ const BASE = 'http://127.0.0.1:8099';
 
   const page = await ctx.newPage();
   // Seed the owner token before any script runs so guardOwnerAuth proceeds.
-  await page.addInitScript(() => { try { localStorage.setItem('skiri_owner_token', 'test-token'); } catch (e) {} });
+  await page.addInitScript(() => { try { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'test-token'); } catch (e) {} });
   await page.goto(BASE + '/owner/products.html', { waitUntil: 'load' });
 
   const results = [];

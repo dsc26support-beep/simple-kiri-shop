@@ -17,7 +17,9 @@ const FIELD_OPTIONS = [
   ['price', 'Selling price'],
   ['costPrice', 'Cost price'],
   ['reorderLevel', 'Low-stock level'],
-  ['reorderQty', 'Reorder quantity']
+  ['reorderQty', 'Reorder quantity'],
+  ['category', 'Category (new products)'],
+  ['description', 'Description (new products)']
 ];
 // First header word-match wins. Covers common till / spreadsheet names.
 // Most specific first; each field is used once. Covers common till and
@@ -33,7 +35,18 @@ const GUESSES = [
   [/cost/i, 'costPrice'],
   [/(stock|qty|quantity|on\s*hand|balance|count)/i, 'physicalStock'],
   [/(price|selling|retail)/i, 'price'],
+  [/categor|department|section/i, 'category'],
+  [/^(description|details|about)$/i, 'description'],
   [/(name|description|product|item)/i, 'productName']
+];
+
+// The product template (Download the product template): these headers are
+// matched by GUESSES above with no changes needed.
+const PRODUCT_TEMPLATE = [
+  ['Product name', 'Variety / size', 'Selling price', 'Stock on hand', 'SKU', 'Category', 'Description', 'Barcode', 'Cost price'],
+  ['Coconut soap', 'Small', '2.00', '50', 'SOAP-S', 'Personal Care', 'Made in Abaiang with virgin coconut oil', '', '1.20'],
+  ['Coconut soap', 'Large', '3.50', '30', 'SOAP-L', 'Personal Care', '', '', '2.00'],
+  ['Woven fan', '', '8.00', '20', 'FAN-1', 'Handicrafts', 'Hand woven from pandanus', '', '']
 ];
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -63,6 +76,9 @@ async function init() {
   document.getElementById('sync-apply-btn').addEventListener('click', onApply);
   document.getElementById('sync-again-btn').addEventListener('click', resetFile);
   document.getElementById('sync-export-btn').addEventListener('click', onExport);
+  document.getElementById('sync-template-btn').addEventListener('click', () => downloadCsv(PRODUCT_TEMPLATE, 'mwakete-product-template.csv'));
+  document.getElementById('sync-problems-btn').addEventListener('click', () =>
+    downloadCsv([['Line', 'Item', 'Problem']].concat(problemRows(lastPreview)), `mwakete-import-problems-${new Date().toISOString().slice(0, 10)}.csv`));
   document.getElementById('sync-sheet-check').addEventListener('click', () => checkSheet(false));
   document.getElementById('sync-sheet-tab').addEventListener('change', () => checkSheet(true));
   document.getElementById('sync-header-row').addEventListener('change', () => checkSheet(true));
@@ -264,6 +280,10 @@ function guessMapping(headers) {
     const g = GUESSES.find(([re, field]) => re.test(h) && !used.has(field));
     if (g) { mapping[h] = g[1]; used.add(g[1]); }
   });
+  // Many till exports call the item's name "Description". Only when the file
+  // also has its own name column is "Description" the longer text.
+  const desc = Object.keys(mapping).find((h) => mapping[h] === 'description');
+  if (desc && !used.has('productName')) mapping[desc] = 'productName';
   return { mapping, from: null };
 }
 
@@ -344,6 +364,7 @@ function renderPreview(p) {
       ${stat(c.priceChanges, 'price changes')}
       ${p.mode !== 'import' ? stat(c.writes, 'written to your sheet') : stat(c.newProducts, 'new products')}
       ${p.mode === 'twoWay' ? stat(c.syncConflicts, 'need your decision', c.syncConflicts ? 'out' : '') : ''}
+      ${c.duplicates ? stat(c.duplicates, 'already on Mwakete', 'low') : ''}
       ${stat(c.unmatched, 'not matched', c.unmatched ? 'low' : '')}
       ${stat(c.conflicts, 'conflicts', c.conflicts ? 'out' : '')}
       ${stat(c.errors, 'errors', c.errors ? 'out' : '')}
@@ -354,6 +375,7 @@ function renderPreview(p) {
     ${list({ text: 'Changed in both places - you decide after applying', open: true }, p.syncConflicts || [], (x) => `<li><strong>${escapeHtml(x.name)}</strong> - ${escapeHtml(x.message)}</li>`)}
     ${list({ text: 'New products to add' }, p.newProducts, (n) => `<li>${escapeHtml(n.name)} (${n.varieties} variet${n.varieties === 1 ? 'y' : 'ies'})</li>`)}
     ${list({ text: 'Conflicts - left as they are', open: true }, p.conflicts, (x) => `<li>Line ${x.line}: <strong>${escapeHtml(x.name)}</strong> - ${escapeHtml(x.message)}</li>`)}
+    ${list({ text: 'Already on Mwakete - skipped', open: true }, p.duplicates || [], (d) => `<li>Line ${d.line}: ${escapeHtml(d.name)} - ${escapeHtml(d.reason)}</li>`)}
     ${list({ text: 'Not matched - skipped' }, p.unmatched, (u) => `<li>Line ${u.line}: ${escapeHtml(u.name || u.key || '(no name)')} - ${escapeHtml(u.reason)}</li>`)}
     ${list({ text: 'Errors - skipped', open: true }, p.errors, (e) => `<li>${e.line ? 'Line ' + e.line + ': ' : ''}${escapeHtml(e.message)}</li>`)}
     ${c.unchanged ? `<p class="helper-text">${c.unchanged} matched item${c.unchanged === 1 ? ' is' : 's are'} already the same - no change.</p>` : ''}`;
@@ -362,6 +384,7 @@ function renderPreview(p) {
   const nothing = !p.updates.length && !p.newProducts.length && !(p.writes || []).length && !(p.syncConflicts || []).length && source !== 'googleSheets';
   const applyBtn = document.getElementById('sync-apply-btn');
   applyBtn.disabled = nothing;
+  document.getElementById('sync-problems-row').hidden = !problemRows(p).length;
   applyBtn.textContent = nothing ? 'Nothing to apply' : 'Apply changes';
   document.getElementById('sync-apply-error').textContent = '';
 }
@@ -404,6 +427,7 @@ async function onApply() {
 function syncResultText(res) {
   const parts = [`Updated ${res.updated} item${res.updated === 1 ? '' : 's'} on Mwakete`];
   if (res.created) parts.push(`added ${res.created} new product${res.created === 1 ? '' : 's'}`);
+  if (res.counts && res.counts.duplicates) parts.push(`skipped ${res.counts.duplicates} already on Mwakete`);
   if (res.written) parts.push(`wrote ${res.written} to your sheet`);
   let text = parts.join(', ') + '.';
   if (res.writeError) text += ' ' + res.writeError;
@@ -432,6 +456,29 @@ function resetFile() {
 }
 
 /* ---------- export + history ---------- */
+
+/** Every row the import will skip, with why: [line, item, problem]. */
+function problemRows(p) {
+  if (!p) return [];
+  return [].concat(
+    (p.errors || []).map((e) => [e.line || '', '', e.message]),
+    (p.duplicates || []).map((d) => [d.line, d.name, d.reason]),
+    (p.unmatched || []).map((u) => [u.line, u.name || u.key || '', u.reason]),
+    (p.conflicts || []).map((x) => [x.line, x.name, x.message])
+  ).sort((a, b) => (Number(a[0]) || 0) - (Number(b[0]) || 0));
+}
+
+function downloadCsv(rows, name) {
+  const text = '\ufeff' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
 
 function csvCell(v) {
   const s = String(v == null ? '' : v);

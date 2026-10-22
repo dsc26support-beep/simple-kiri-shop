@@ -38,6 +38,9 @@
       // Sent here to order, book or message a seller: guests can't, so the
       // guest route is hidden for these too.
       if (/^(meeting|order|book|message)$/.test(why || '')) document.documentElement.classList.add('auth-required');
+      // Create Account shows no Guest and no "or" line (owner request, Oct
+      // 2026). Set here too, before first paint, so they never flash in.
+      if (new URLSearchParams(location.search).get('tab') === 'signup') document.documentElement.classList.add('auth-signup');
     } catch (e) { /* the explanation just does not show */ }
   </script>
 </head>

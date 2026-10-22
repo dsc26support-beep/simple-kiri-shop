@@ -17,9 +17,7 @@ const OptionsUI = (() => {
   const PDP_SIZES = '(max-width: 700px) 100vw, 520px';
 
   function ownImages(product) {
-    const out = [];
-    [product.imageUrl, product.imageUrl2].forEach((u) => { if (u && out.indexOf(u) === -1) out.push(u); });
-    return out;
+    return productOwnPhotos(product);
   }
 
   /** The photos for what is chosen so far. Never another colour's photos. */

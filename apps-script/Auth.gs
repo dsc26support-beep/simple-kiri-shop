@@ -401,7 +401,7 @@ function actionLoginOwner(body) {
   }
 
   if (!loginSucceeded) {
-    if (owner && owner.Status === 'closed') return fail('This store has been deleted. Contact now via the Enquiry link below if this is a mistake.');
+    if (owner && owner.Status === 'closed') return fail('This store has been deleted. Contact now via the Help and support link below if this is a mistake.');
     // The seller's own hint, after a wrong password for a real store (owner
     // decision, Oct 2026). It does tell the person typing that this username
     // exists; the attempt lockout above still limits guessing.
@@ -697,10 +697,10 @@ function actionRequestEmailChange(owner, body) {
       'code we sent to the new address is entered in Settings.\n\n' +
       'IF THIS WAS NOT YOU, someone may be signed in to your store account. ' +
       'Change your password now from Settings, or use "Forgot your password?" ' +
-      'on the login page, then tell us through the Enquiry link at the bottom ' +
+      'on the login page, then tell us through the Help and support link at the bottom ' +
       'of any Mwakete page.');
   // The address itself is deliberately not written here. It lives in the
-  // Enquiry link in the page footers, and verify-deletedmsg asserts no script
+  // Help and support link in the page footers, and verify-deletedmsg asserts no script
   // file pastes it into a message - one place to change it, one place to get
   // it wrong.
   }

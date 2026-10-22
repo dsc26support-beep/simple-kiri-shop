@@ -85,6 +85,10 @@
           <label for="sync-file">CSV file (from Excel, Google Sheets, your till or system: File &gt; Save as / Download as CSV)</label>
           <input type="file" id="sync-file" accept=".csv,text/csv">
         </div>
+        <!-- Adding many products at once (owner-inventory-sync.js PRODUCT_TEMPLATE):
+             a ready-made file whose columns are matched automatically. -->
+        <p class="helper-text sync-template-row">Adding lots of new products? <button type="button" id="sync-template-btn" class="btn btn-small">Download the product template</button>
+          Fill one row per variety (same name = one product), save as CSV, choose it above and tick "Add items that aren't on Mwakete yet".</p>
         <p id="sync-file-info" class="helper-text"></p>
         <div id="sync-mapping" class="sync-mapping hidden"></div>
         <div id="sync-options" class="sync-options hidden">
@@ -98,6 +102,7 @@
           <label class="sync-check" id="sync-create-new-row"><input type="checkbox" id="sync-create-new"> Add items that aren't on Mwakete yet as new products</label>
           <div class="field hidden" id="sync-category-field">
             <label for="sync-category">Category for the new products</label>
+            <p class="helper-text">Or leave this and match a Category column, so each row can have its own.</p>
             <select id="sync-category"></select>
           </div>
           <div class="field">
@@ -114,6 +119,7 @@
         <h2 id="sync-preview-heading">3. Check the changes</h2>
         <p class="helper-text">Nothing has changed yet.</p>
         <div id="sync-preview"></div>
+        <p id="sync-problems-row" class="helper-text" hidden><button type="button" id="sync-problems-btn" class="btn btn-small">Download the problems (CSV)</button> Fix those rows in your file and import it again.</p>
         <p id="sync-apply-error" class="form-error" role="alert"></p>
         <p class="sync-confirm-q"><strong>Apply these changes?</strong></p>
         <div class="inv-panel-buttons">
