@@ -4,7 +4,7 @@
 Owner (small startup, Kiribati, AUD) wanted drivers paid THROUGH Mwakete: seller+driver chat, agree fee, seller pays Mwakete (bank transfer), driver claims at a minimum. All 6 phases built, merged to main, backend DEPLOYED by owner (getVersion wallet6-2026-10-22, checkSetup ok, missingFiles []). Wallet still OFF.
 
 ## Next steps
-1. Owner sets Script Properties (no redeploy): MWAKETE_BANK_DETAILS, DELIVERY_JOBS=on, DELIVERY_PAYMENTS=pilot, DELIVERY_PAYMENTS_DRIVERS=<DriverId of one South Tarawa driver, max 5>.
+1. DONE: owner set Script Properties (MWAKETE_BANK_DETAILS, DELIVERY_JOBS=on, DELIVERY_PAYMENTS=pilot, DELIVERY_PAYMENTS_DRIVERS). I gave the 8-step pilot checklist; waiting for owner's results/screenshots.
 2. Owner runs one small real order end to end (fee agree -> seller pays -> admin confirms real bank statement -> deliver -> buyer confirms -> claim -> admin pays). Quick test: DRIVER_HOLD_HOURS=0, DRIVER_MIN_PAYOUT=1, then restore 48/20.
 3. Owner reads terms.html#drivers and gets legal advice before going beyond pilot.
 4. Help owner fix whatever the pilot shows. Not built: blocking phone numbers/links in chat (was in plan).
