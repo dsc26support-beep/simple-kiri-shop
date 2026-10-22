@@ -119,7 +119,7 @@ ok('every entry has a unique id', new Set(ids).size === ids.length);
 let threw = false; try { box.walletAppend({ DriverId: 'drv_1', EntryType: 'CREDIT', Amount: 1 }); } catch (e) { threw = true; }
 ok('a row with no idempotency key is rejected', threw);
 ok('the file is probed by checkSetup', box.actionCheckSetup().missingFiles.indexOf('DriverWallet.gs') === -1);
-ok('and the version moved on', /^wallet1-/.test(box.APP_VERSION));
+ok('and the version moved on', /^wallet\d-/.test(box.APP_VERSION));
 
 R.forEach((x) => console.log(x[0] + '  ' + x[1] + (x[0] === 'FAIL' ? '  ' + x[2] : '')));
 const failed = R.filter((x) => x[0] === 'FAIL').length;

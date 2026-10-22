@@ -71,6 +71,8 @@ const OrderRoom = (function () {
     const back = $('tx-back-link');
     if (side === 'seller') { back.href = 'owner/orders.html'; back.textContent = 'Orders'; }
     if (side === 'admin') { back.href = 'owner/admin.html#tx-disputes'; back.textContent = 'Admin'; }
+    document.addEventListener('click', onJobChat);
+    document.addEventListener('submit', onJobChat);
     if (!orderId) { setStatus('No order was chosen.'); return; }
     if (!token()) { showSignIn(); return; }
     $('tx-composer').addEventListener('submit', onSend);
@@ -229,7 +231,58 @@ const OrderRoom = (function () {
       ${d.fee !== undefined ? `<br><span class="helper-text">Fee ${formatMoney(d.fee)}, paid by the seller${d.feePaid ? ' - marked paid' : ''}</span>` : ''}
       ${d.failReason ? `<br><span class="helper-text">Reason: ${esc(d.failReason)}</span>` : ''}
       ${loc ? '<br>' + loc : ''}
+      ${chatHtml(d.chat)}
     </div>`;
+  }
+
+  /** Private seller/driver chat and fee agreement (driver wallet phase 2). Shown only when the backend sends it; never to the buyer. */
+  function chatHtml(c) {
+    if (!c) return '';
+    const f = c.fee;
+    const state = f.locked ? 'Agreed and locked' : f.agreedByMe && !f.agreedByOther ? 'Waiting for the driver to agree' : f.canAgree ? 'The driver proposed this fee' : 'Not agreed yet';
+    const msgs = c.messages.length ? c.messages.map((m) => `<li class="tx-jc-msg tx-jc-${esc(m.by === 'system' ? 'system' : m.mine ? 'mine' : 'theirs')}">
+        <span class="helper-text">${m.by === 'system' ? 'Mwakete' : m.mine ? 'You' : 'Driver'} · ${esc(when(m.at))}</span><br>${esc(m.body)}</li>`).join('')
+      : '<li class="helper-text">No messages yet. Talk to the driver here and agree the fee.</li>';
+    return `<div class="tx-jobchat" role="group" aria-label="Chat with the driver">
+      <p><strong>Delivery fee ${formatMoney(f.amount)}</strong> · <span class="helper-text">${esc(state)}</span></p>
+      ${f.canAgree ? `<button type="button" class="btn btn-small btn-primary" data-jc="agree" data-fee="${esc(f.amount)}">Agree to ${formatMoney(f.amount)}</button>` : ''}
+      ${f.canPropose ? `<form class="tx-jc-form" data-jc-form="propose"><label class="helper-text" for="jc-fee">Propose a different fee ($)</label>
+        <input id="jc-fee" type="number" min="0.5" max="500" step="0.5" inputmode="decimal" required>
+        <button type="submit" class="btn btn-small btn-outline">Propose</button></form>` : ''}
+      <ul class="tx-jc-list">${msgs}</ul>
+      ${c.canWrite ? `<form class="tx-jc-form" data-jc-form="message"><label class="helper-text" for="jc-text">Message the driver (the buyer cannot see this)</label>
+        <textarea id="jc-text" rows="2" maxlength="1000" required></textarea>
+        <button type="submit" class="btn btn-small btn-primary">Send</button></form>` : ''}
+      <p class="form-error" id="jc-error" role="alert"></p>
+      <button type="button" class="btn btn-small btn-outline" data-jc="refresh">Refresh messages</button>
+    </div>`;
+  }
+
+  async function onJobChat(e) {
+    const btn = e.target.closest('[data-jc]');
+    const form = e.type === 'submit' ? e.target.closest('[data-jc-form]') : null;
+    if (!btn && !form) return;
+    if (form) e.preventDefault();
+    const err = $('jc-error');
+    if (err) err.textContent = '';
+    let res;
+    if (btn && btn.dataset.jc === 'refresh') { await load(); return; }
+    if (btn && btn.dataset.jc === 'agree') {
+      btn.disabled = true;
+      res = await call('txAgreeFee', { fee: btn.dataset.fee, requestId: rid() });
+    } else if (form && form.dataset.jcForm === 'propose') {
+      res = await call('txProposeFee', { fee: $('jc-fee').value, requestId: rid() });
+    } else if (form && form.dataset.jcForm === 'message') {
+      res = await call('txJobMessage', { text: $('jc-text').value.trim(), requestId: rid() });
+    } else return;
+    if (!res.ok) {
+      if (res.authRequired) { showSignIn(res.error); return; }
+      if (err) err.textContent = res.error || 'Not saved - check your connection and try again.';
+      if (res.stale) await load();
+      if (btn) btn.disabled = false;
+      return;
+    }
+    await load();
   }
 
   function flagText(f) {

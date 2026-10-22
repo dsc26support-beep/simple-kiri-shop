@@ -62,7 +62,9 @@ var PUBLIC_POST_ACTIONS = [
   // customer session and the approved driver record inside; the tx* ones go
   // through the order room's own checks (runTxWrite).
   'driverApply', 'getDriverHome', 'driverSetAvailable', 'driverAcceptJob', 'driverUpdateJob', 'driverUploadProof', 'driverShareLocation',
-  'txRequestDriver', 'txCancelDriverJob', 'txMarkDriverPaid'
+  'txRequestDriver', 'txCancelDriverJob', 'txMarkDriverPaid',
+  // Job chat and fee agreement (Deliveries.gs, driver wallet phase 2). Off unless the wallet covers the driver.
+  'txJobMessage', 'txProposeFee', 'txAgreeFee', 'driverJobMessage', 'driverProposeFee', 'driverAgreeFee'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -126,7 +128,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'wallet1-2026-10-21';
+var APP_VERSION = 'wallet2-2026-10-21';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -529,6 +531,12 @@ function doPost(e) {
         case 'txRequestDriver': return jsonOut(actionTxRequestDriver(body));
         case 'txCancelDriverJob': return jsonOut(actionTxCancelDriverJob(body));
         case 'txMarkDriverPaid': return jsonOut(actionTxMarkDriverPaid(body));
+        case 'txJobMessage': return jsonOut(actionTxJobMessage(body));
+        case 'txProposeFee': return jsonOut(actionTxProposeFee(body));
+        case 'txAgreeFee': return jsonOut(actionTxAgreeFee(body));
+        case 'driverJobMessage': return jsonOut(actionDriverJobMessage(body));
+        case 'driverProposeFee': return jsonOut(actionDriverProposeFee(body));
+        case 'driverAgreeFee': return jsonOut(actionDriverAgreeFee(body));
       }
     }
 

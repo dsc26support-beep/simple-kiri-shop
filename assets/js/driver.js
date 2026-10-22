@@ -88,7 +88,34 @@ const DriverPage = (() => {
     $('drv-online-hint').textContent = on ? 'You can see and accept new jobs.' : 'Go online to see new jobs on your island.';
   }
 
+  /** Chat and fee agreement for one job (driver wallet phase 2); empty when the backend does not send it. */
+  function chatHtml(j) {
+    const c = j.chat;
+    if (!c) return '';
+    const f = c.fee, id = esc(j.jobId);
+    const state = f.locked ? 'Agreed and locked' : f.agreedByMe && !f.agreedByOther ? 'Waiting for the seller to agree' : f.canAgree ? 'The seller proposed this fee' : 'Not agreed yet';
+    const msgs = c.messages.length ? c.messages.map((m) => `<li class="tx-jc-msg tx-jc-${m.by === 'system' ? 'system' : m.mine ? 'mine' : 'theirs'}">
+        <span class="helper-text">${m.by === 'system' ? 'Mwakete' : m.mine ? 'You' : 'Seller'}</span><br>${esc(m.body)}</li>`).join('')
+      : '<li class="helper-text">No messages yet. Say hello and agree the fee.</li>';
+    return `<div class="tx-jobchat" role="group" aria-label="Chat with the seller">
+      <p><strong>Delivery fee ${formatMoney(f.amount)}</strong> · <span class="helper-text">${esc(state)}</span></p>
+      ${!f.locked && j.status === 'accepted' ? '<p class="helper-text">You can collect the goods once you and the seller have both agreed the fee.</p>' : ''}
+      ${f.canAgree ? `<button type="button" class="btn btn-small btn-primary" data-jc="agree" data-job-id="${id}" data-fee="${esc(f.amount)}">Agree to ${formatMoney(f.amount)}</button>` : ''}
+      ${f.canPropose ? `<div class="tx-jc-form"><label class="helper-text" for="jcfee-${id}">Propose a different fee ($)</label>
+        <input id="jcfee-${id}" type="number" min="0.5" max="500" step="0.5" inputmode="decimal">
+        <button type="button" class="btn btn-small btn-outline" data-jc="propose" data-job-id="${id}">Propose</button></div>` : ''}
+      <ul class="tx-jc-list">${msgs}</ul>
+      ${c.canWrite ? `<div class="tx-jc-form"><label class="helper-text" for="jctext-${id}">Message the seller</label>
+        <textarea id="jctext-${id}" rows="2" maxlength="1000" data-chat-input="${id}"></textarea>
+        <button type="button" class="btn btn-small btn-primary" data-jc="message" data-job-id="${id}">Send</button></div>` : ''}
+      <p class="form-error" id="jcerr-${id}" role="alert"></p>
+    </div>`;
+  }
+
   function renderMine(list) {
+    // The page refreshes every 30 seconds: keep anything half-typed in a chat box.
+    const typed = {};
+    document.querySelectorAll('[data-chat-input]').forEach((el) => { if (el.value) typed[el.dataset.chatInput] = el.value; });
     $('drv-mine').innerHTML = list.length ? list.map((j) => `<article class="drv-job is-mine" data-job="${esc(j.jobId)}">
       <p><strong>${esc(j.statusLabel)}</strong> · fee ${formatMoney(j.fee)}</p>
       <dl class="dash-facts">
@@ -97,6 +124,7 @@ const DriverPage = (() => {
         <div><dt>Items</dt><dd>${j.items.map(esc).join(', ')}</dd></div>
         ${j.notes ? `<div><dt>Notes</dt><dd>${esc(j.notes)}</dd></div>` : ''}
       </dl>
+      ${chatHtml(j)}
       <div class="tx-check"><input type="checkbox" id="share-${esc(j.jobId)}" data-share="${esc(j.jobId)}" ${watchJob === j.jobId ? 'checked' : ''}>
         <label for="share-${esc(j.jobId)}">Share my live location with the buyer and seller for this job (while this page is open)</label></div>
       <p class="form-error" id="err-${esc(j.jobId)}" role="alert"></p>
@@ -114,6 +142,23 @@ const DriverPage = (() => {
         <button type="button" class="btn btn-outline" data-act="failed" data-job-id="${esc(j.jobId)}">Report failed delivery</button>
       </details>
     </article>`).join('') : '<p class="dash-empty">No active jobs.</p>';
+    document.querySelectorAll('[data-chat-input]').forEach((el) => { if (typed[el.dataset.chatInput]) el.value = typed[el.dataset.chatInput]; });
+  }
+
+  async function onChat(btn) {
+    const jobId = btn.dataset.jobId, kind = btn.dataset.jc;
+    const err = $('jcerr-' + jobId);
+    err.textContent = '';
+    let action, payload;
+    if (kind === 'agree') { action = 'driverAgreeFee'; payload = { fee: btn.dataset.fee }; }
+    else if (kind === 'propose') { action = 'driverProposeFee'; payload = { fee: $('jcfee-' + jobId).value }; }
+    else { action = 'driverJobMessage'; payload = { text: $('jctext-' + jobId).value.trim() }; }
+    btn.disabled = true;
+    const res = await call(action, Object.assign({ jobId, requestId: rid() }, payload));
+    btn.disabled = false;
+    if (!res.ok) { err.textContent = res.error || 'Not saved - check your connection and try again.'; if (res.stale) await load(); return; }
+    if (kind === 'message') $('jctext-' + jobId).value = '';
+    await load();
   }
 
   async function onApply(e) {
@@ -143,6 +188,8 @@ const DriverPage = (() => {
       await load();
       return;
     }
+    const chat = e.target.closest('[data-jc]');
+    if (chat) { await onChat(chat); return; }
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     const jobId = btn.dataset.jobId, act = btn.dataset.act;
