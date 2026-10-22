@@ -123,7 +123,7 @@ async function onMktCampaignClick(e) {
   if (!b) return;
   const op = b.dataset.mktOp;
   if (op === 'cancel' && !window.confirm('Cancel this campaign? It will not send to anyone else.')) return;
-  b.disabled = true;
+  const busyDone = setButtonBusy(b, 'Working');
   const res = await mktPost('setMarketingCampaignStatus', { campaignId: b.dataset.id, op });
   document.getElementById('mkt-msg').textContent = res.ok ? 'Campaign is now ' + res.status.toLowerCase() + '.' : (res.error || 'Could not change it.');
   loadMarketing();
@@ -132,7 +132,7 @@ async function onMktCampaignClick(e) {
 async function showMktPreview(id) {
   const box = document.getElementById('mkt-preview');
   box.hidden = false;
-  box.textContent = 'Loading preview…';
+  box.innerHTML = loadingMessageHtml();
   const res = await mktPost('previewMarketingCampaign', { campaignId: id });
   if (!res.ok) { box.textContent = res.error || 'Could not load the preview.'; return; }
   const reasons = Object.keys(res.reasons || {}).map((r) => `<li>${escapeHtml(res.reasons[r])} × ${escapeHtml(r)}</li>`).join('');
@@ -153,9 +153,9 @@ async function onMktPauseToggle() {
 
 async function onMktGenerate() {
   const btn = document.getElementById('mkt-generate-btn');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Checking');
   const res = await mktPost('runMarketingGeneration');
-  btn.disabled = false;
+  busyDone();
   document.getElementById('mkt-msg').textContent = !res.ok ? (res.error || 'Could not check.')
     : res.created.length ? res.created.length + ' new campaign(s) added for your approval.' : 'No new opportunities right now.';
   loadMarketing();

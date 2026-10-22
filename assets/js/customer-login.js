@@ -112,9 +112,9 @@ async function onLoginRequest(e) {
     return;
   }
   const btn = e.target.querySelector('button[type="submit"]');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Sending');
   const res = await Api.post('loginCustomer', { email });
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not send a code. Please try again.';
     return;
@@ -132,10 +132,10 @@ async function onLoginVerify(e) {
   errorEl.textContent = '';
   const code = document.getElementById('login-code').value.trim();
   const btn = e.target.querySelector('button[type="submit"]');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Checking');
   const res = await Api.post('verifyCustomerLogin',
     { token: loginPendingToken, code });
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not verify the code.';
     return;
@@ -170,9 +170,9 @@ async function onSignupRequest(e) {
     return;
   }
   const btn = e.target.querySelector('button[type="submit"]');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Sending');
   const res = await Api.post('registerCustomer', { name, email, phone });
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not send a code. Please try again.';
     return;
@@ -190,10 +190,10 @@ async function onSignupVerify(e) {
   errorEl.textContent = '';
   const code = document.getElementById('signup-code').value.trim();
   const btn = e.target.querySelector('button[type="submit"]');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Checking');
   const res = await Api.post('verifyCustomerEmail',
     { token: signupPendingToken, code });
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not verify the code.';
     return;

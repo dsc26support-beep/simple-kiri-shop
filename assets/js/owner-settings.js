@@ -83,17 +83,14 @@ async function init() {
 
 let emailChangeToken = null;
 
-// Local rather than shared: setButtonBusy/setButtonIdle live in owner-login.js,
-// which this page does not load. Same dots markup as everywhere else.
+// The shared busy button (helpers.js setButtonBusy); done() puts the label back.
 function setEmailButtonBusy(btn, label) {
-  btn.dataset.idleLabel = btn.textContent;
-  btn.disabled = true;
-  btn.innerHTML = label + '<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+  btn.busyDone = setButtonBusy(btn, label);
 }
 
 function setEmailButtonIdle(btn) {
-  btn.disabled = false;
-  btn.textContent = btn.dataset.idleLabel;
+  if (btn.busyDone) btn.busyDone();
+  btn.busyDone = null;
 }
 
 function renderContactEmail(owner) {
@@ -247,7 +244,7 @@ async function onLogoFileChange(e) {
 
   const statusEl = document.getElementById('logo-upload-status');
   const preview = document.getElementById('logo-preview');
-  statusEl.textContent = 'Uploading logo…';
+  statusEl.innerHTML = loadingMessageHtml('Uploading logo');
 
   try {
     const { base64, mimeType } = await compressImage(file, 512, 0.85);
@@ -276,7 +273,7 @@ async function onIdLicenseFileChange(e) {
 
   const statusEl = document.getElementById('idlicense-upload-status');
   const preview = document.getElementById('idlicense-preview');
-  statusEl.textContent = 'Uploading…';
+  statusEl.innerHTML = loadingMessageHtml('Uploading');
 
   try {
     const { base64, mimeType } = await compressImage(file, 1024, 0.85);
@@ -369,8 +366,6 @@ function wireLocationFields() {
   });
 }
 
-const SAVE_SETTINGS_IDLE_HTML = 'Save Settings';
-const SAVE_SETTINGS_BUSY_HTML = 'Saving<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
 
 /**
  * Every field in #settings-form is required unless its section heading
@@ -474,13 +469,11 @@ async function onSaveSettings(e) {
     }
   });
 
-  saveBtn.disabled = true;
-  saveBtn.innerHTML = SAVE_SETTINGS_BUSY_HTML;
+  const saveDone = setButtonBusy(saveBtn, 'Saving');
 
   const res = await Api.post('updateOwnerProfile', payload);
 
-  saveBtn.disabled = false;
-  saveBtn.innerHTML = SAVE_SETTINGS_IDLE_HTML;
+  saveDone();
 
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not save your settings.';

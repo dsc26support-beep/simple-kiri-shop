@@ -46,6 +46,7 @@ function setStatus(msg) { $('hub-status').textContent = msg || ''; }
 async function refreshAll() {
   const res = await call('posHubStatus');
   if (!res.ok) { setStatus(res.error || 'Could not load. Try again.'); return; }
+  setStatus('');   // the Loading message from the page's HTML
   hub = res;
   show('hub-off', !res.enabled);
   show('hub-main', !!res.enabled);
@@ -116,9 +117,9 @@ function closeWizard() {
 }
 async function createConnection() {
   if (busy) return;
-  busy = true; $('wiz-create').disabled = true; $('wiz-error').textContent = '';
+  busy = true; const busyDone = setButtonBusy($('wiz-create'), 'Creating'); $('wiz-error').textContent = '';
   const res = await call('createPosConnection', { name: $('wiz-name').value, providerName: $('wiz-provider').value, accountKey: $('wiz-account').value });
-  busy = false; $('wiz-create').disabled = false;
+  busy = false; busyDone();
   if (!res.ok) { $('wiz-error').textContent = res.error || 'Could not create it.'; return; }
   wizardId = res.connectionId;
   $('wiz-id').textContent = res.connectionId;
@@ -203,7 +204,7 @@ async function saveDetail(c) {
   openDetail(c.connectionId);
 }
 async function testHook(c) {
-  $('d-test-out').textContent = 'Sending…';
+  $('d-test-out').innerHTML = loadingMessageHtml('Sending');
   const res = await call('testPosWebhook', { connectionId: c.connectionId });
   $('d-test-out').textContent = !res.ok ? (res.error || 'Could not send.') : (res.reachable ? 'Your system answered. Orders can now be sent.' : (res.message || 'Your system did not accept it.'));
   if (res.ok && res.reachable) refreshAll();
@@ -266,7 +267,7 @@ async function loadEvents() {
     const id = b.closest('tr').dataset.id;
     const action = b.dataset.do;
     if (action === 'accept_external' && !confirm('Change your stock to match their count? This is recorded in your stock history.')) return;
-    b.disabled = true;
+    const busyDone = setButtonBusy(b, 'Working');
     const r = await call('resolveIntegrationEvent', { eventId: id, resolution: action });
     setStatus(r.ok ? (r.message || 'Done.') : (r.error || 'Could not do that.'));
     await refreshAll();
@@ -291,9 +292,9 @@ async function loadOutbox() {
   }));
 }
 async function sendNow() {
-  $('out-now').disabled = true;
+  const busyDone = setButtonBusy($('out-now'), 'Sending');
   const r = await call('sendIntegrationOutboxNow');
-  $('out-now').disabled = false;
+  busyDone();
   setStatus(r.ok ? `Processed ${r.processed || 0} message${r.processed === 1 ? '' : 's'}.` : (r.error || 'Could not send.'));
   loadOutbox(); loadEvents();
 }

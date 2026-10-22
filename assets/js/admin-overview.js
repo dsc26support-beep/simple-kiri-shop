@@ -7,7 +7,7 @@ const AdminOverview = (() => {
 
   async function load(days) {
     const status = $('ov-status');
-    status.textContent = 'Loading…';
+    status.innerHTML = loadingMessageHtml();
     const res = await Api.post('getAdminOverview', { token: Auth.getToken(), days });
     // An answer without figures (an old backend, a proxy page) is a failure too.
     if (!res.ok || !res.kpis) {

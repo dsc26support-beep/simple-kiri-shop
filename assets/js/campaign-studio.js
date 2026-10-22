@@ -180,7 +180,7 @@ function renderBrandCard(colours, note) {
   if (input) input.addEventListener('input', () => { cs.pickColour = input.value; renderBrandCard(colours); document.getElementById('cs-brand-input').focus(); });
   document.getElementById('cs-brand-cancel').addEventListener('click', () => renderBrandCard());
   document.getElementById('cs-brand-save').addEventListener('click', async (e) => {
-    e.target.disabled = true;
+    const busyDone = setButtonBusy(e.target, 'Saving');
     const res = await Api.post('setStoreBrandColor', { token: Auth.getToken(), color: cs.pickColour });
     if (!res.ok) { renderBrandCard(colours, res.error || 'Not saved. Please try again.'); return; }
     cs.brand = res.brand;
@@ -190,7 +190,7 @@ function renderBrandCard(colours, note) {
 
 async function openBrandPicker() {
   const btn = document.getElementById('cs-brand-pick');
-  if (btn) { btn.disabled = true; btn.textContent = 'Reading your logo…'; }
+  setButtonBusy(btn, 'Reading your logo');   // the card is redrawn when done
   let colours = [];
   const res = await Api.post('getStoreLogoData', { token: Auth.getToken() });
   if (res.ok && res.readable) {
@@ -407,13 +407,13 @@ async function saveDraft(opts) {
   };
   if (d.status === 'DRAFT' || d.status === 'AWAITING_PAYMENT' || d.status === 'PAYMENT_REJECTED') body.days = d.days;
   const btn = document.getElementById('cs-save-btn');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Saving');
   let res = await Api.post('saveCampaignDraft', body);
   if (!res.ok && res.needsConfirmation) {
-    if (!window.confirm(res.error)) { btn.disabled = false; return false; }
+    if (!window.confirm(res.error)) { busyDone(); return false; }
     res = await Api.post('saveCampaignDraft', Object.assign(body, { confirmReapproval: true }));
   }
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) { errEl.textContent = res.error || 'Could not save. Please try again.'; return false; }
   cs.draft.campaignId = res.campaign.campaignId;
   cs.draft.status = res.campaign.status;
@@ -938,11 +938,9 @@ async function onUpload(payment) {
   if (!file) { errEl.textContent = 'Choose the screenshot of your payment receipt first.'; return; }
   if (file.size > CS_MAX_UPLOAD_BYTES) { errEl.textContent = 'That image is too large (max 5MB).'; return; }
   const btn = document.getElementById('cs-upload-btn');
-  btn.disabled = true;
-  btn.textContent = 'Uploading…';
+  const done = setButtonBusy(btn, 'Uploading');
   const res = await Api.post('submitCampaignPayment', { token: Auth.getToken(), paymentId: payment.paymentId, imageBase64: await csReadAsBase64(file), mimeType: file.type });
-  btn.disabled = false;
-  btn.textContent = 'Submit payment evidence';
+  done();
   if (!res.ok) { errEl.textContent = res.error || 'Could not upload. Please try again.'; return; }
   if (res.payment.status === 'Rejected') { errEl.textContent = res.message; return; }
   showPaySubmitted(res.message);

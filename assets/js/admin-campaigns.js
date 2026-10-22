@@ -29,7 +29,7 @@ const CampaignsAdmin = (() => {
   const safeLink = (url) => (/^https:\/\//i.test(String(url || '')) ? url : '');
 
   async function load() {
-    $('scad-status').textContent = 'Loading…';
+    $('scad-status').innerHTML = loadingMessageHtml();
     const res = await Api.post('adminListCampaigns', { token: Auth.getToken(), q: $('scad-q').value.trim(), filter: $('scad-filter').value });
     if (!res.ok) { $('scad-status').textContent = res.error || 'Could not load campaigns.'; return; }
     label = res.currencyLabel || label;
@@ -46,7 +46,7 @@ const CampaignsAdmin = (() => {
   async function open(id) {
     openId = id;
     $('scad-detail').hidden = false;
-    $('scad-detail').innerHTML = '<p class="helper-text">Loading…</p>';
+    $('scad-detail').innerHTML = `<p class="helper-text" role="status">${loadingMessageHtml()}</p>`;
     const res = await Api.post('adminGetCampaign', { token: Auth.getToken(), campaignId: id });
     if (!res.ok) { $('scad-detail').innerHTML = `<p class="form-error">${escapeHtml(res.error || 'Could not load the campaign.')}</p>`; return; }
     current = res;

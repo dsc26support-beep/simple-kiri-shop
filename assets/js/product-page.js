@@ -393,8 +393,7 @@ async function onRequestBooking(btn) {
     return;
   }
 
-  btn.disabled = true;
-  btn.innerHTML = 'Sending<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+  const busyDone = setButtonBusy(btn, 'Sending');
   setFormStatus(statusEl, '');
 
   const res = await Api.post('createBookingRequest', {
@@ -416,10 +415,11 @@ async function onRequestBooking(btn) {
 
   if (!res.ok) {
     setFormStatus(statusEl, res.error || 'Could not send this booking request.', 'error');
-    btn.disabled = false;
-    btn.textContent = 'Request Booking';
+    busyDone();
     return;
   }
+  busyDone({ keep: true });
+  btn.disabled = true;
   btn.textContent = 'Requested';
   setFormStatus(statusEl, 'Booking request sent — the vendor will confirm or decline.', 'success');
 
@@ -594,8 +594,7 @@ async function onSubmitReview(e, productId) {
     return;
   }
 
-  btn.disabled = true;
-  btn.innerHTML = 'Submitting<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+  const busyDone = setButtonBusy(btn, 'Submitting');
 
   const res = await Api.post('submitReview', {
     token: CustomerAuth.getToken(),
@@ -604,8 +603,7 @@ async function onSubmitReview(e, productId) {
     comment: document.getElementById('review-comment').value.trim()
   });
 
-  btn.disabled = false;
-  btn.textContent = 'Submit review';
+  busyDone();
 
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not submit your review.';

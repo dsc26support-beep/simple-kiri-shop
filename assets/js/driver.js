@@ -121,15 +121,15 @@ const DriverPage = (() => {
   async function onWallet(btn) {
     const err = $('drv-wallet-error');
     err.textContent = '';
-    btn.disabled = true;
+    const busyDone = setButtonBusy(btn, 'Saving');
     let res;
     if (btn.dataset.wallet === 'save') {
       res = await call('driverSetPayoutDetails', { details: $('drv-payout-input').value.trim() });
     } else {
-      if (!confirm('Ask Mwakete to pay you your available balance by bank transfer?')) { btn.disabled = false; return; }
+      if (!confirm('Ask Mwakete to pay you your available balance by bank transfer?')) { busyDone(); return; }
       res = await call('driverClaimPayout', { requestId: btn.dataset.rid || (btn.dataset.rid = rid()) });
     }
-    btn.disabled = false;
+    busyDone();
     if (!res.ok) { err.textContent = res.error || 'Not saved - check your connection and try again.'; return; }
     await load();
   }
@@ -201,9 +201,9 @@ const DriverPage = (() => {
     if (kind === 'agree') { action = 'driverAgreeFee'; payload = { fee: btn.dataset.fee }; }
     else if (kind === 'propose') { action = 'driverProposeFee'; payload = { fee: $('jcfee-' + jobId).value }; }
     else { action = 'driverJobMessage'; payload = { text: $('jctext-' + jobId).value.trim() }; }
-    btn.disabled = true;
+    const busyDone = setButtonBusy(btn, 'Sending');
     const res = await call(action, Object.assign({ jobId, requestId: rid() }, payload));
-    btn.disabled = false;
+    busyDone();
     if (!res.ok) { err.textContent = res.error || 'Not saved - check your connection and try again.'; if (res.stale) await load(); return; }
     if (kind === 'message') $('jctext-' + jobId).value = '';
     await load();
@@ -248,9 +248,9 @@ const DriverPage = (() => {
     if (act === 'failed') { payload.reason = $('why-' + jobId).value; payload.note = $('note-' + jobId).value.trim(); }
     if (act === 'picked_up' && !confirm('Confirm you have collected the goods from the store?')) return;
     if (act === 'delivered' && !confirm('Confirm the goods were handed over?')) return;
-    btn.disabled = true;
+    const busyDone = setButtonBusy(btn, 'Saving');
     const res = await call('driverUpdateJob', payload);
-    btn.disabled = false;
+    busyDone();
     if (!res.ok) { $('err-' + jobId).textContent = res.error || 'Not saved - check your connection and try again.'; return; }
     if (act !== 'picked_up' && watchJob === jobId) stopSharing(false);
     await load();
@@ -263,7 +263,7 @@ const DriverPage = (() => {
     if (proof && proof.files && proof.files[0]) {
       const jobId = proof.dataset.proof;
       const note = $('proof-' + jobId);
-      note.textContent = 'Uploading…';
+      note.innerHTML = loadingMessageHtml('Uploading');
       try {
         const { blob, thumb } = await shrink(proof.files[0]);
         const res = await call('driverUploadProof', { jobId, mimeType: 'image/jpeg', dataBase64: await toB64(blob), thumbBase64: await toB64(thumb), requestId: rid() });

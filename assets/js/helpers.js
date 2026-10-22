@@ -265,6 +265,59 @@ function startLoadingMessage(el) {
   };
 }
 
+/**
+ * The same two-stage message as markup, for code that writes HTML (a list or
+ * panel being filled) rather than into a status line, and for placeholders
+ * written straight into a page's HTML (<span class="loading-msg">). The word
+ * (default "Loading") + moving dots; if it is still on screen after
+ * LOADING_MESSAGE_STAGE2_DELAY_MS it becomes "Please wait". Nothing to stop:
+ * once real content replaces it, the timer finds nothing to change.
+ */
+let loadingMessageSeq = 0;
+function loadingMessageHtml(word) {
+  const id = 'loading-msg-' + (++loadingMessageSeq);
+  setTimeout(() => loadingMessageStage2(document.getElementById(id)), LOADING_MESSAGE_STAGE2_DELAY_MS);
+  return `<span class="loading-msg" id="${id}">${escapeHtml(word || 'Loading')}${LOADING_DOTS_HTML}</span>`;
+}
+function loadingMessageStage2(span) {
+  if (span && span.isConnected) span.innerHTML = 'Please wait' + LOADING_DOTS_HTML;
+}
+// Placeholders in the HTML count their three seconds from when the page
+// started loading, not from when this script ran.
+document.addEventListener('DOMContentLoaded', () => {
+  const spans = Array.from(document.querySelectorAll('.loading-msg:not([id^="loading-msg-"])'));
+  if (!spans.length) return;
+  const elapsed = (window.performance && performance.now) ? performance.now() : 0;
+  setTimeout(() => spans.forEach(loadingMessageStage2), Math.max(0, LOADING_MESSAGE_STAGE2_DELAY_MS - elapsed));
+});
+
+/**
+ * The universal busy button: disabled and aria-busy, showing its word (e.g.
+ * "Saving") + moving dots in the button's own colour (.btn-saving-dots), and
+ * "Please wait" if it is still busy after LOADING_MESSAGE_STAGE2_DELAY_MS.
+ * Returns done(), which puts the button back exactly as it was - call it as
+ * soon as the request settles. done({ keep: true }) leaves the busy text
+ * (for a caller that replaces the button's content itself).
+ */
+const BUTTON_BUSY_DOTS_HTML = '<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
+function setButtonBusy(btn, word) {
+  if (!btn) return () => {};
+  const html = btn.innerHTML;
+  const wasDisabled = btn.disabled;
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  btn.innerHTML = escapeHtml(word || 'Saving') + BUTTON_BUSY_DOTS_HTML;
+  const timer = setTimeout(() => {
+    if (btn.getAttribute('aria-busy') === 'true') btn.innerHTML = 'Please wait' + BUTTON_BUSY_DOTS_HTML;
+  }, LOADING_MESSAGE_STAGE2_DELAY_MS);
+  return function buttonDone(opts) {
+    clearTimeout(timer);
+    btn.removeAttribute('aria-busy');
+    if (!(opts && opts.keep)) btn.innerHTML = html;
+    btn.disabled = wasDisabled;
+  };
+}
+
 // A centered, full-screen "Loading… / Please wait…" overlay (moving dots),
 // for waits where there's no inline status element to write into - e.g. the
 // checkout page's initial load and while an order is being placed. Reuses

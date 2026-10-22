@@ -120,13 +120,11 @@ async function onSendInvoice(e) {
   const btn = e.target.closest('[data-send-invoice]');
   if (!btn) return;
   const orderId = btn.dataset.sendInvoice;
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
+  const done = setButtonBusy(btn, 'Sending');
   const res = await Api.post('sendInvoice', { token: Auth.getToken(), orderId });
+  done();
   if (!res.ok) {
     alert(res.error || 'Could not send the invoice.');
-    btn.disabled = false;
-    btn.textContent = 'Send invoice';
     return;
   }
   const order = ownerOrders.find((o) => o.orderId === orderId);

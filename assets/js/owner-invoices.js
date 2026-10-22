@@ -76,9 +76,9 @@ async function ivPreview() {
 async function ivSave(e) {
   e.preventDefault();
   const btn = $iv('iv-save');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Saving');
   const res = await Api.post('saveInvoiceSettings', Object.assign({ token: Auth.getToken() }, ivValues()));
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) { $iv('iv-error').textContent = res.error || 'Not saved. Please try again.'; return; }
   ivFill(res.settings);
   ivPreview();

@@ -35,7 +35,7 @@
     </div>
     <div class="container store-branding">
       <div class="store-branding-info">
-        <p class="site-tagline" id="store-name-tagline">Loading store…</p>
+        <p class="site-tagline" id="store-name-tagline"><span class="loading-msg">Loading<span class="loading-dots"><span></span><span></span><span></span></span></span></p>
         <p class="store-phone hidden" id="store-phone-line"></p>
         <span id="store-delivery-icons"></span>
         <p id="store-payment-line" class="store-payment-line" hidden></p>
@@ -80,7 +80,7 @@
 
       <div id="chat-loading" class="chat-loading hidden">
         <span class="chat-spinner" aria-hidden="true"></span>
-        <span>Loading conversation…</span>
+        <span><span class="loading-msg">Loading<span class="loading-dots"><span></span><span></span><span></span></span></span></span>
       </div>
 
       <div id="meeting-panel-host" class="meeting-panel hidden"></div>
@@ -129,7 +129,7 @@
             <span class="search-submit-label">Search</span>
           </button>
         </form>
-        <p id="products-status" class="helper-text is-reserving-space" role="status">Loading products…</p>
+        <p id="products-status" class="helper-text is-reserving-space" role="status"><span class="loading-msg">Loading<span class="loading-dots"><span></span><span></span><span></span></span></span></p>
         <!-- Directly above the grid, and NOT above the search box where it
              started: filled after the fetch, it pushed the search box, the
              status line and the whole grid down - 0.01 CLS on a phone against

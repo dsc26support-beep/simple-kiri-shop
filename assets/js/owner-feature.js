@@ -146,9 +146,9 @@ async function onContinue() {
   if (!(days >= 1 && days <= MAX_DAYS)) { errorEl.textContent = `Choose between 1 and ${MAX_DAYS} days.`; return; }
 
   const btn = document.getElementById('feature-continue-btn');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Starting');
   const res = await Api.post('startFeaturePurchase', { token: Auth.getToken(), productIds, days });
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) { errorEl.textContent = res.error || 'Could not start this purchase. Please try again.'; return; }
   // Its own URL, so a refresh or a trip to the bank app and back lands on
   // the payment step with the same reference - never a second purchase.
@@ -240,8 +240,7 @@ async function onUpload(p) {
   if (file.size > MAX_UPLOAD_BYTES) { errorEl.textContent = 'That image is too large (max 5MB).'; return; }
 
   const btn = document.getElementById('feature-upload-btn');
-  btn.disabled = true;
-  btn.textContent = 'Checking payment…';
+  const busyDone = setButtonBusy(btn, 'Checking payment');
   let res;
   try {
     // Sent as-is, not compressed: OCR needs the receipt's text sharp, and the
@@ -252,8 +251,7 @@ async function onUpload(p) {
   } catch (e) {
     res = { ok: false, error: 'That file could not be read. Please choose it again.' };
   }
-  btn.disabled = false;
-  btn.textContent = 'Upload payment screenshot';
+  busyDone();
   if (!res.ok) { errorEl.textContent = res.error || 'Upload failed. Please try again.'; return; }
 
   const updated = res.purchase;

@@ -8,7 +8,7 @@ const TxAdmin = (() => {
   let settings = [];
 
   async function loadDisputes() {
-    $('txa-status').textContent = 'Loading…';
+    $('txa-status').innerHTML = loadingMessageHtml();
     const res = await Api.post('adminListTxDisputes', { token: Auth.getToken(), status: $('txa-filter').value });
     if (!res.ok) { $('txa-status').textContent = res.error || 'Could not load problem reports.'; return; }
     const modeText = { off: 'Order rooms are OFF (Script Property TX_ROOMS).', pilot: 'Order rooms are on for pilot stores only (TX_PILOT_STORES).', on: 'Order rooms are ON for every store.' }[res.mode] || '';
@@ -51,9 +51,9 @@ const TxAdmin = (() => {
     const values = {};
     settings.forEach((s, i) => { const v = $('txc-' + i).value; if (String(v) !== String(s.value)) values[s.key] = v; });
     if (!Object.keys(values).length) { $('txc-status').textContent = 'Nothing changed.'; return; }
-    $('txc-save').disabled = true;
+    const busyDone = setButtonBusy($('txc-save'), 'Saving');
     const res = await Api.post('adminSaveTxConfig', { token: Auth.getToken(), values });
-    $('txc-save').disabled = false;
+    busyDone();
     if (!res.ok) { $('txc-status').textContent = res.error || 'Not saved.'; return; }
     $('txc-status').textContent = 'Saved. Each change is recorded in the audit log.';
     await loadConfig();

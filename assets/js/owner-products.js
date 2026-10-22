@@ -207,7 +207,7 @@ async function onRequestCategory() {
     return;
   }
   btn.disabled = true;
-  status.textContent = 'Sending…';
+  status.innerHTML = loadingMessageHtml('Sending');
   const res = await Api.post('requestCategory', payload);
   btn.disabled = false;
   if (!res.ok) {

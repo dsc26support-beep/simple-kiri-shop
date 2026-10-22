@@ -5,7 +5,7 @@ const DeliveriesAdmin = (() => {
   const $ = (id) => document.getElementById(id);
 
   async function load() {
-    $('dlv-status').textContent = 'Loading…';
+    $('dlv-status').innerHTML = loadingMessageHtml();
     const res = await Api.post('adminListDeliveries', { token: Auth.getToken(), status: $('dlv-filter').value });
     if (!res.ok || !res.counts) { $('dlv-status').textContent = (res && res.error) || 'Could not load deliveries.'; return; }
     $('dlv-status').textContent = '';
@@ -79,9 +79,9 @@ const DeliveriesAdmin = (() => {
       if (!reason) return;
       action = 'adminAdjustDriverWallet'; payload = { driverId: b.dataset.driverId, amount, reason, requestId: 'adj' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) };
     }
-    b.disabled = true;
+    const busyDone = setButtonBusy(b, 'Saving');
     const res = await Api.post(action, Object.assign({ token: Auth.getToken() }, payload));
-    if (!res.ok) { alert(res.error || 'Not saved.'); b.disabled = false; return; }
+    if (!res.ok) { alert(res.error || 'Not saved.'); busyDone(); return; }
     await load();
   }
 
@@ -107,9 +107,9 @@ const DeliveriesAdmin = (() => {
       if (!bankRef) return;
       action = 'adminMarkJobRefunded'; payload = { bankRef };
     }
-    b.disabled = true;
+    const busyDone = setButtonBusy(b, 'Saving');
     const res = await Api.post(action, Object.assign({ token: Auth.getToken(), jobId }, payload));
-    if (!res.ok) { alert(res.error || 'Not saved.'); b.disabled = false; return; }
+    if (!res.ok) { alert(res.error || 'Not saved.'); busyDone(); return; }
     await load();
   }
 
@@ -126,9 +126,9 @@ const DeliveriesAdmin = (() => {
       reason = prompt(`Reason to ${status === 'rejected' ? 'reject' : 'suspend'} this driver (they will see it):`) || '';
       if (!reason) return;
     } else if (!confirm('Approve this driver? Only approve someone you have spoken to.')) return;
-    b.disabled = true;
+    const busyDone = setButtonBusy(b, 'Saving');
     const res = await Api.post('adminSetDriverStatus', { token: Auth.getToken(), driverId: b.dataset.driver, status, reason });
-    if (!res.ok) { alert(res.error || 'Not saved.'); b.disabled = false; return; }
+    if (!res.ok) { alert(res.error || 'Not saved.'); busyDone(); return; }
     await load();
   }
 

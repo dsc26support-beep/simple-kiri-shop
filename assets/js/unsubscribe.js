@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('unsub-btn');
   const token = getQueryParam('t') || '';
   btn.addEventListener('click', async () => {
-    btn.disabled = true;
+    const busyDone = setButtonBusy(btn, 'Saving');
     document.getElementById('unsub-error').textContent = '';
     let res = null;
     try { res = await Api.post('unsubscribeMarketing', { t: token }); } catch (e) { res = null; }
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('unsub-ask').hidden = true;
       document.getElementById('unsub-done').hidden = false;
     } else {
-      btn.disabled = false;
+      busyDone();
       document.getElementById('unsub-error').textContent = 'That did not go through. Please try again, or untick the box on your account page.';
     }
   });

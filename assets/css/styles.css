@@ -3053,6 +3053,13 @@ textarea.meeting-request-input {
   cursor: not-allowed;
 }
 
+/* Busy (setButtonBusy in helpers.js): disabled so it can't be pressed twice,
+   but it is working, not unavailable - so it keeps its full colour. */
+.btn[aria-busy="true"]:disabled {
+  opacity: 1;
+  cursor: progress;
+}
+
 /* Outlined (owner's call, Oct 2026): white inside, dark purple border and
    text, a soft lavender fill on hover/tap. The few steps that complete a
    purchase or a payment add .btn-solid and stay filled, so the one thing to
@@ -3248,6 +3255,13 @@ textarea.meeting-request-input {
   0%, 33% { background: var(--color-red); }
   34%, 66% { background: var(--color-gold); }
   67%, 100% { background: #8b5cf6; }
+}
+
+/* The universal "Loading / Please wait" message (loadingMessageHtml in
+   helpers.js, and the placeholders written into each page's HTML): the word
+   and its dots never split across two lines. */
+.loading-msg {
+  white-space: nowrap;
 }
 
 /*

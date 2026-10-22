@@ -337,11 +337,9 @@ async function onRecomputeBadges() {
   const btn = document.getElementById('badge-recompute-btn');
   const errorEl = document.getElementById('badge-error');
   errorEl.textContent = '';
-  btn.disabled = true;
-  btn.textContent = 'Working…';
+  const done = setButtonBusy(btn, 'Working');
   const res = await Api.post('recomputeBadges', { token: Auth.getToken() });
-  btn.disabled = false;
-  btn.textContent = 'Recompute now';
+  done();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not recompute.';
     return;
@@ -393,10 +391,10 @@ function wholesalerRowHtml(w) {
 async function setWholesaleVerified(ownerId, verified, btn) {
   const errorEl = document.getElementById('wholesale-error');
   errorEl.textContent = '';
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Saving');
   const res = await Api.post('setWholesaleVerified', { token: Auth.getToken(), ownerId, verified });
   if (!res.ok) {
-    btn.disabled = false;
+    busyDone();
     errorEl.textContent = res.error || 'Could not update that store.';
     return;
   }
@@ -489,10 +487,10 @@ async function onStoreTrust(btn) {
     reason = window.prompt(op === 'removeNew' ? 'Why remove New from this store?' : 'Why remove Verified from this store? (It will not come back from ratings until you allow it.)') || '';
     if (!reason.trim()) return;
   }
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Saving');
   const res = await Api.post('setStoreTrust', { token: Auth.getToken(), ownerId: btn.dataset.ownerId, op, check: btn.dataset.check || '', reason });
   if (!res.ok) {
-    btn.disabled = false;
+    busyDone();
     errorEl.textContent = res.error || 'Could not update that store.';
     return;
   }
@@ -597,10 +595,10 @@ async function setFeaturePaymentStatus(purchaseId, approve, btn, bankSeen) {
   errorEl.textContent = '';
   if (!approve && !window.confirm('Reject this payment? If it was approved, the products stop being featured now.')) return;
   if (approve && bankSeen && !window.confirm('Have you seen this payment (reference and amount) arrive in the Mwakete bank account?')) return;
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Saving');
   const res = await Api.post('setFeaturePurchaseStatus', { token: Auth.getToken(), purchaseId, approve, bankSeen: !!bankSeen });
   if (!res.ok) {
-    btn.disabled = false;
+    busyDone();
     errorEl.textContent = res.error || 'Could not update that payment.';
     return;
   }
@@ -610,10 +608,10 @@ async function setFeaturePaymentStatus(purchaseId, approve, btn, bankSeen) {
 async function setFeatureBankMatched(purchaseId, matched, btn) {
   const errorEl = document.getElementById('feature-payments-error');
   errorEl.textContent = '';
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Saving');
   const res = await Api.post('setFeatureBankMatched', { token: Auth.getToken(), purchaseId, matched });
   if (!res.ok) {
-    btn.disabled = false;
+    busyDone();
     errorEl.textContent = res.error || 'Could not update that payment.';
     return;
   }
@@ -802,7 +800,7 @@ function initAdminJump() {
 async function loadStoreAnalytics(ownerId, productId) {
   const el = document.getElementById('admin-analytics');
   el.classList.remove('hidden');
-  el.innerHTML = '<p class="helper-text">Loading store details…</p>';
+  el.innerHTML = `<p class="helper-text" role="status">${loadingMessageHtml()}</p>`;
   const res = await Api.post('adminStoreAnalytics', { token: Auth.getToken(), ownerId });
   if (!res.ok) {
     el.innerHTML = `<p class="form-error">${escapeHtml(res.error || 'Could not load this store.')}</p>`;
