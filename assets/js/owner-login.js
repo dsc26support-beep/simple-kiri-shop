@@ -19,7 +19,7 @@ function init() {
   } else if (getQueryParam('deleted')) {
     // Same words as the backend's login error (Auth.gs). A seller can reach this
     // page two ways and should not meet two different messages.
-    document.getElementById('session-message').textContent = 'This store has been deleted. Contact now via the Enquiry link below if this is a mistake.';
+    document.getElementById('session-message').textContent = 'This store has been deleted. Contact now via the Help and support link below if this is a mistake.';
   }
 
   document.getElementById('tab-login').addEventListener('click', () => switchTab('login'));
@@ -180,7 +180,8 @@ async function onLogin(e) {
   const hintEl = document.getElementById('login-password-hint');
   if (!res.ok) {
     setButtonIdle(submitBtn);
-    errorEl.textContent = res.error || 'Could not log in.';
+    // An older backend still says "the Enquiry link"; the link is now called Help and support.
+    errorEl.textContent = (res.error || 'Could not log in.').replace('the Enquiry link', 'the Help and support link');
     // The seller's own password hint, after a wrong password (Oct 2026).
     if (hintEl) {
       hintEl.textContent = res.passwordHint ? 'Your password hint: ' + res.passwordHint : '';

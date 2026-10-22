@@ -408,6 +408,9 @@ async function setWholesaleVerified(ownerId, verified, btn) {
 const TRUST_LABEL = { unchecked: 'Not yet checked', new: 'New', verified: 'Verified' };
 const TRUST_CHECKS = [['call', 'Call'], ['email', 'Email'], ['visit', 'Visit']];
 let storeTrustRows = [];
+// Stores the admin has opened (owner request, Oct 2026: one line each, details
+// on tap). Kept across re-draws so a store stays open after Give New etc.
+const trustOpen = new Set();
 
 async function loadStoreTrust() {
   const statusEl = document.getElementById('trust-status');
@@ -433,6 +436,9 @@ function renderStoreTrust() {
   const listEl = document.getElementById('trust-list');
   listEl.innerHTML = rows.map(storeTrustRowHtml).join('');
   listEl.querySelectorAll('[data-trust-op]').forEach((btn) => btn.addEventListener('click', () => onStoreTrust(btn)));
+  listEl.querySelectorAll('details.trust-row').forEach((d) => d.addEventListener('toggle', () => {
+    if (d.open) trustOpen.add(d.dataset.ownerId); else trustOpen.delete(d.dataset.ownerId);
+  }));
 }
 
 function storeTrustRowHtml(s) {
@@ -453,12 +459,16 @@ function storeTrustRowHtml(s) {
   if (s.trust !== 'verified') actions.push(btn('giveVerified', 'Give Verified'));
   else actions.push(btn('removeVerified', 'Remove Verified'));
   if (s.verifiedSetting === 'false') actions.push(btn('ratingsDecide', 'Let ratings decide again'));
+  // One line - name and status - that opens to the details and actions.
   return `
-    <div class="wholesale-row trust-row is-${escapeAttr(s.trust)}">
-      <div class="wholesale-row-info">
+    <details class="trust-row is-${escapeAttr(s.trust)}" data-owner-id="${escapeAttr(s.ownerId)}"${trustOpen.has(s.ownerId) ? ' open' : ''}>
+      <summary class="trust-summary">
         <strong>${escapeHtml(s.storeName)}</strong>
         <span class="status-badge ${s.trust === 'unchecked' ? 'status-hidden' : 'status-active'}">${TRUST_LABEL[s.trust]}</span>
         ${s.verifiedSetting === 'false' ? '<span class="helper-text">Verified removed</span>' : ''}
+      </summary>
+      <div class="wholesale-row trust-body">
+      <div class="wholesale-row-info">
         <div class="helper-text">
           ${s.phone ? `<a href="tel:${escapeAttr(phoneHref)}">${escapeHtml(s.phone)}</a> · ` : ''}${s.email ? `<a href="mailto:${escapeAttr(s.email)}">${escapeHtml(s.email)}</a> · ` : ''}${escapeHtml([s.village, s.island].filter(Boolean).join(', '))}
         </div>
@@ -466,7 +476,8 @@ function storeTrustRowHtml(s) {
         <div class="trust-checks" role="group" aria-label="Checks done for ${escapeAttr(s.storeName)}">${checks}</div>
       </div>
       <div class="trust-actions">${actions.join('')}</div>
-    </div>`;
+      </div>
+    </details>`;
 }
 
 async function onStoreTrust(btn) {

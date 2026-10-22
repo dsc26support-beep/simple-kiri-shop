@@ -1,0 +1,441 @@
+// Guided product form (owner/products.html): the five sections, Back /
+// Continue, the details for each kind of listing, the listing-quality meter,
+// the review summary, the "you already have this" warning, and the copy of an
+// unsaved listing kept on this device.
+//
+// owner-products.js still owns loading, checking and saving; this file only
+// arranges the form around it and is called at a few points (open, reveal,
+// details, saved, close).
+const ProductSteps = (() => {
+  const $ = (id) => document.getElementById(id);
+  const STEPS = 5;
+  const MODE_KEY = 'mwk_pform_mode';
+  const DRAFT_PREFIX = 'mwk_pdraft_v1:';
+  const DRAFT_MAX_AGE_MS = 30 * 24 * 3600 * 1000;
+
+  // Labels and lists must match apps-script/ProductDetails.gs
+  // PRODUCT_DETAIL_FIELDS (tests/verify-product-steps.js checks they do).
+  const FIELDS = {
+    netQuantity: { label: 'Weight / size of pack', hint: 'e.g. 185g, 1kg, 600ml, 24 pack', max: 40 },
+    volume: { label: 'Volume', hint: 'e.g. 600ml, 1.5L', max: 40 },
+    unitOfSale: { label: 'Sold by', hint: 'e.g. each, per kg, per carton', max: 30 },
+    bestBefore: { label: 'Best before', hint: 'e.g. Dec 2027', max: 30 },
+    storage: { label: 'Storage', options: ['Room temperature', 'Keep cool', 'Chilled', 'Frozen'] },
+    brand: { label: 'Brand', max: 40 },
+    model: { label: 'Model', max: 40 },
+    condition: { label: 'Condition', options: ['New', 'Used - like new', 'Used - good', 'Used - fair', 'For parts'] },
+    warranty: { label: 'Warranty', hint: 'e.g. 6 months from the seller', max: 60 },
+    size: { label: 'Size', hint: 'e.g. S-XL, age 4-5', max: 40 },
+    colour: { label: 'Colour', max: 40 },
+    material: { label: 'Material', hint: 'e.g. cotton, pandanus, steel', max: 40 },
+    dimensions: { label: 'Dimensions', hint: 'e.g. 120 x 60 x 75 cm', max: 60 },
+    species: { label: 'Species', hint: 'e.g. yellowfin tuna', max: 40 },
+    freshness: { label: 'Fresh or frozen', options: ['Fresh', 'Frozen', 'Dried', 'Smoked', 'Salted'] },
+    deliveryNote: { label: 'Delivery needs', hint: 'e.g. needs a truck, two people to carry', max: 120 },
+    serviceArea: { label: 'Service area', hint: 'e.g. Betio to Bairiki', max: 80 },
+    duration: { label: 'Duration', hint: 'e.g. about 2 hours, per day', max: 40 },
+    pricingModel: { label: 'Priced', options: ['Fixed price', 'Per hour', 'Per day', 'Per job', 'By quote'] },
+    deposit: { label: 'Deposit', hint: 'e.g. $50, returned on return', max: 30 },
+    bookingNotes: { label: 'Booking notes', hint: 'e.g. book a day ahead', max: 120 },
+    availability: { label: 'Availability', options: ['Ready now', 'Ready in 1-2 days', 'Ready in 3-7 days', 'Made to order'] }
+  };
+  // Which details each category offers (products). Rentals and services get
+  // their own set whatever the category.
+  const SETS = {
+    food: ['netQuantity', 'unitOfSale', 'bestBefore', 'storage', 'brand'],
+    fishing: ['species', 'freshness', 'netQuantity', 'unitOfSale'],
+    agriculture: ['netQuantity', 'unitOfSale', 'freshness'],
+    fashion: ['size', 'colour', 'material', 'brand', 'condition'],
+    electronics: ['brand', 'model', 'condition', 'warranty'],
+    solar: ['brand', 'model', 'condition', 'warranty'],
+    home: ['material', 'dimensions', 'brand', 'condition', 'deliveryNote'],
+    building: ['material', 'dimensions', 'netQuantity', 'unitOfSale', 'deliveryNote'],
+    vehicles: ['brand', 'model', 'condition'],
+    handicrafts: ['material', 'dimensions'],
+    events: ['duration', 'bookingNotes'],
+    education: ['duration', 'bookingNotes']
+  };
+  const RENTAL_SET = ['condition', 'deposit', 'duration', 'bookingNotes'];
+  const SERVICE_SET = ['serviceArea', 'duration', 'pricingModel', 'bookingNotes'];
+
+  let mode = 'steps';
+  let step = 1;
+  let ctx = { product: null, duplicate: false };
+  let detailValues = {};   // everything typed this session, also for fields hidden by a category change
+  let draftTimer = null;
+  let similarTimer = null;
+  let similarFor = '';
+  let reviewTimer = null;
+
+  /* ---------- mode and steps ---------- */
+
+  function readModePref() { try { return localStorage.getItem(MODE_KEY) || ''; } catch (e) { return ''; } }
+  function writeModePref(m) { try { localStorage.setItem(MODE_KEY, m); } catch (e) { /* private mode */ } }
+
+  function setMode(next, remember) {
+    mode = next === 'page' ? 'page' : 'steps';
+    if (remember) writeModePref(mode);
+    document.querySelectorAll('.pf-mode-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+    $('product-form').classList.toggle('pf--steps', mode === 'steps');
+    $('product-form').classList.toggle('pf--page', mode === 'page');
+    show(mode === 'page' ? 0 : step);
+  }
+
+  // n = 0 shows every section (one page).
+  function show(n) {
+    if (n) step = Math.max(1, Math.min(STEPS, n));
+    for (let i = 1; i <= STEPS; i++) $('pf-step-' + i).hidden = mode === 'steps' && i !== step;
+    document.querySelectorAll('.pf-progress-btn').forEach((b) => {
+      const k = Number(b.dataset.go);
+      b.classList.toggle('is-done', mode === 'steps' && k < step);
+      if (mode === 'steps' && k === step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+    });
+    $('pf-progress').hidden = mode !== 'steps';
+    const steps = mode === 'steps';
+    $('pf-back').hidden = !steps || step === 1;
+    $('pf-next').hidden = !steps || step === STEPS;
+    // Save is always there (a seller who has everything in can save from
+    // any step - the whole form is checked and the first problem opened).
+    // Before Review it is the quieter button; Continue leads.
+    $('save-product-btn').classList.toggle('pf-save-early', steps && step !== STEPS);
+    $('pf-save-hidden').hidden = steps && step !== STEPS;
+    if (step === STEPS || !steps) refreshReview();
+    if (step === 4 || !steps) renderDelivery();
+  }
+
+  function goTo(n, focus) {
+    show(n);
+    if (mode !== 'steps') return;
+    const legend = $('pf-step-' + step).querySelector('.pf-step-title');
+    $('product-form-section').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    if (focus !== false && legend) { legend.setAttribute('tabindex', '-1'); legend.focus({ preventScroll: true }); }
+  }
+
+  /**
+   * Continue: checks only this step (owner-products.js validators). Leaving
+   * Basics, a listing that looks like one the seller already has stops ONCE
+   * on the note, so they can open it instead; Continue again carries on.
+   */
+  let similarSeen = '';
+  async function next() {
+    const check = step === 1 ? window.validateBasics : step === 3 ? window.validatePricing : null;
+    if (check && !check()) return;
+    if (step === 1) {
+      $('pf-next').disabled = true;
+      const list = await checkSimilar(true);
+      $('pf-next').disabled = false;
+      if (list && list.length && similarSeen !== similarFor) {
+        similarSeen = similarFor;
+        $('pf-similar').focus();
+        return;
+      }
+    }
+    goTo(step + 1);
+  }
+
+  /** Before an error is shown: make sure its field is on screen. */
+  function reveal(control) {
+    if (mode !== 'steps' || !control || !control.closest) return;
+    const sec = control.closest('.pf-step');
+    if (sec && Number(sec.dataset.step) !== step) show(Number(sec.dataset.step));
+  }
+
+  /* ---------- details ---------- */
+
+  function detailKeys() {
+    const type = $('product-listing-type').value;
+    if (type === 'rental') return RENTAL_SET;
+    if (type === 'service') return SERVICE_SET;
+    const cat = $('product-category').value;
+    return (SETS[cat] || []).concat(['availability']);
+  }
+
+  function readDetailInputs() {
+    document.querySelectorAll('#pf-details [data-detail]').forEach((el) => { detailValues[el.dataset.detail] = el.value; });
+  }
+
+  function renderDetails() {
+    readDetailInputs();
+    const keys = detailKeys();
+    const host = $('pf-details');
+    if (!$('product-listing-type').value || (!$('product-category').value && $('product-listing-type').value === 'product')) {
+      host.innerHTML = '<p class="helper-text">Choose what you’re offering and a category (step 1) to see the details that fit.</p>';
+      return;
+    }
+    host.innerHTML = '<div class="pf-details-grid">' + keys.map((k) => {
+      const f = FIELDS[k];
+      const id = 'pd-' + k;
+      const v = detailValues[k] || '';
+      const control = f.options
+        ? `<select id="${id}" data-detail="${k}"><option value="">Not set</option>${f.options.map((o) => `<option${o === v ? ' selected' : ''}>${escapeHtml(o)}</option>`).join('')}</select>`
+        : `<input id="${id}" data-detail="${k}" maxlength="${f.max}" value="${escapeAttr(v)}"${f.hint ? ` placeholder="${escapeAttr(f.hint)}"` : ''} autocomplete="off">`;
+      return `<div class="field pf-detail"><label for="${id}">${escapeHtml(f.label)}</label>${control}</div>`;
+    }).join('') + '</div>';
+  }
+
+  /** What Save sends: only the fields shown for this listing, filled ones. */
+  function details() {
+    readDetailInputs();
+    const out = {};
+    detailKeys().forEach((k) => {
+      const v = String(detailValues[k] || '').trim();
+      if (v) out[k] = FIELDS[k].max ? v.slice(0, FIELDS[k].max) : v;
+    });
+    return out;
+  }
+
+  /* ---------- delivery (read only: the store's own settings) ---------- */
+
+  function renderDelivery() {
+    const host = $('pf-delivery');
+    if (!host) return;
+    const o = (typeof Auth !== 'undefined' && Auth.getOwner && Auth.getOwner()) || {};
+    if ($('product-listing-type').value && $('product-listing-type').value !== 'product') { host.innerHTML = ''; return; }
+    const ways = [];
+    if (o.deliveryPickPay) ways.push('Pick up and pay');
+    if (o.deliveryTruck) ways.push('Truck' + (o.deliveryTruckCost != null ? ' (' + formatMoney(o.deliveryTruckCost) + ')' : ''));
+    if (o.deliveryShip) ways.push('Ship' + (o.deliveryShipCost != null ? ' (' + formatMoney(o.deliveryShipCost) + ')' : ''));
+    if (o.deliveryAirCargo) ways.push('Air cargo' + (o.deliveryAirCargoCost != null ? ' (' + formatMoney(o.deliveryAirCargoCost) + ')' : ''));
+    host.innerHTML = `<p class="helper-text"><strong>Delivery:</strong> ${ways.length ? escapeHtml(ways.join(' · ')) : 'not set yet'} - from your store settings, for every product. <a href="settings.html">Change in Settings</a></p>`;
+  }
+
+  /* ---------- listing quality and review ---------- */
+
+  function words(s) { return String(s || '').trim().split(/\s+/).filter(Boolean); }
+
+  function quality() {
+    const name = $('product-name').value.trim();
+    const desc = $('product-description').value.trim();
+    const type = $('product-listing-type').value;
+    const photos = typeof ProductPhotos !== 'undefined' ? ProductPhotos.count() : 0;
+    const subField = $('subcategory-field');
+    const keys = detailKeys();
+    const filled = Object.keys(details()).length;
+    const priced = typeof window.pricingLooksSet === 'function' ? window.pricingLooksSet() : true;
+    const items = [
+      [name.length >= 12 || words(name).length >= 3, 'A clear name (what it is, plus brand or size)'],
+      [desc.length >= 40, 'A short description (40+ characters)'],
+      [photos >= 1, 'A cover photo'],
+      [photos >= 3, 'Three or more photos'],
+      [!!$('product-category').value && (subField.hidden || !!$('product-subcategory').value), 'A category' + (subField.hidden ? '' : ' and subcategory')],
+      [priced, 'A price'],
+      [!keys.length || filled >= Math.ceil(keys.length / 2), 'Details shoppers look for (step 4)']
+    ];
+    if (type === 'product' || !type) items.push([stockTracked(), 'A stock count, so you never sell what you don’t have']);
+    const done = items.filter((x) => x[0]).length;
+    return { pct: Math.round((done / items.length) * 100), missing: items.filter((x) => !x[0]).map((x) => x[1]) };
+  }
+
+  function stockTracked() {
+    const single = $('single-fields');
+    if (single && !single.hidden) return $('single-stock').value.trim() !== '';
+    const grid = document.querySelectorAll('#variant-grid .vg-stock');
+    if (grid.length) return Array.from(grid).some((i) => i.value.trim() !== '');
+    return Array.from(document.querySelectorAll('#variant-rows .variant-stock')).some((i) => i.value.trim() !== '');
+  }
+
+  function refreshReview() {
+    const q = quality();
+    $('pf-quality').innerHTML = `<div class="pf-meter" role="img" aria-label="Listing quality ${q.pct} percent"><span style="width:${q.pct}%"></span></div>
+      <p class="pf-meter-label"><strong>Listing quality: ${q.pct}%</strong>${q.missing.length ? ' - you can save now, these would help it sell:' : ' - looks great.'}</p>
+      ${q.missing.length ? `<ul class="pf-tips">${q.missing.map((m) => `<li>${escapeHtml(m)}</li>`).join('')}</ul>` : ''}`;
+    const catSel = $('product-category');
+    const subSel = $('product-subcategory');
+    const cat = catSel.selectedIndex > 0 ? catSel.options[catSel.selectedIndex].text : '';
+    const sub = !$('subcategory-field').hidden && subSel.value ? subSel.options[subSel.selectedIndex].text : '';
+    const d = details();
+    const status = $('product-status').value === 'hidden' ? 'Hidden - only you can see it' : 'Visible to shoppers once saved';
+    const rows = [['Name', $('product-name').value.trim() || '-'], ['Category', [cat, sub].filter(Boolean).join(' › ') || '-'],
+      ['Price', typeof window.pricingSummary === 'function' ? window.pricingSummary() : '-'], ['Photos', String(typeof ProductPhotos !== 'undefined' ? ProductPhotos.count() : 0)]]
+      .concat(Object.keys(d).map((k) => [FIELDS[k].label, d[k]]))
+      .concat([['Visibility', status]]);
+    const similar = similarList.length
+      ? `<p class="pf-similar">Looks like a listing you already have: ${similarList.map((x) => escapeHtml(x.name)).join(', ')}. Different size or colour? Then it's fine to save.</p>` : '';
+    $('pf-review').innerHTML = `<p class="pf-not-saved">Preview - not saved yet</p>${similar}<dl class="pf-review-list">${rows.map((r) => `<div><dt>${escapeHtml(r[0])}</dt><dd>${escapeHtml(r[1])}</dd></div>`).join('')}</dl>`;
+    const prev = $('card-preview');
+    if (mode === 'steps' && step === STEPS && !prev.open) prev.open = true;
+    else if (prev.open && typeof window.renderCardPreview === 'function') window.renderCardPreview();
+  }
+
+  function scheduleReview() {
+    clearTimeout(reviewTimer);
+    reviewTimer = setTimeout(() => { if (!$('pf-step-5').hidden) refreshReview(); }, 250);
+  }
+
+  /* ---------- likely duplicates ---------- */
+
+  let similarList = [];
+  function checkSimilar(now) {
+    clearTimeout(similarTimer);
+    const run = async () => {
+      const name = $('product-name').value.trim();
+      const key = name.toLowerCase() + '|' + $('product-category').value;
+      if (!name || key === similarFor) return similarList;
+      similarFor = key;
+      const res = await Api.post('findSimilarProducts', { token: Auth.getToken(), name, category: $('product-category').value,
+        productId: $('product-id').value || '', details: details() });
+      if (key !== similarFor) return similarList;   // the name changed while asking
+      const box = $('pf-similar');
+      const list = res.ok ? res.similar || [] : [];
+      similarList = list;
+      if (!list.length) { box.hidden = true; box.innerHTML = ''; return list; }
+      box.innerHTML = `<strong>You may already have this listing:</strong> ${list.map((s) => `<span class="pf-similar-item">${escapeHtml(s.name)}${s.status === 'hidden' ? ' (hidden)' : ''} <button type="button" class="btn btn-small" data-open-product="${escapeAttr(s.productId)}">Open it</button></span>`).join(' ')}
+        <span class="helper-text">Different size or colour? Then carry on - it's not a duplicate.</span>`;
+      box.hidden = false;
+      return list;
+    };
+    if (now) return run();
+    similarTimer = setTimeout(run, 900);
+    return null;
+  }
+
+  /* ---------- the copy kept on this device ---------- */
+
+  function draftKey(productId) {
+    const o = (typeof Auth !== 'undefined' && Auth.getOwner && Auth.getOwner()) || {};
+    return o.ownerId ? DRAFT_PREFIX + o.ownerId + ':' + (productId || 'new') : '';
+  }
+
+  // A fingerprint of the listing as the server had it when the form opened,
+  // so a draft made against an older version says so before it is restored.
+  function baseSig(p) {
+    if (!p) return '';
+    return JSON.stringify([p.name, p.description, p.category, p.status, (p.variants || []).map((v) => [v.variantId, v.price, v.stockQty, v.status])]);
+  }
+
+  function collectDraft() {
+    readDetailInputs();
+    return {
+      v: 1, at: Date.now(), base: baseSig(ctx.product),
+      f: {
+        name: $('product-name').value, description: $('product-description').value, listingType: $('product-listing-type').value,
+        category: $('product-category').value, subcategoryId: $('product-subcategory').value, status: $('product-status').value
+      },
+      editor: typeof ProductOptionsEditor !== 'undefined' ? ProductOptionsEditor.snapshot() : null,
+      rows: Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((r) => ({ variantId: r.dataset.variantId || '',
+        label: r.querySelector('.variant-label').value, price: r.querySelector('.variant-price').value, stockQty: r.querySelector('.variant-stock').value })),
+      details: Object.assign({}, detailValues),
+      photosPending: typeof ProductPhotos !== 'undefined' && ProductPhotos.hasPending()
+    };
+  }
+
+  function saveDraftSoon() {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(saveDraftNow, 800);
+  }
+
+  function saveDraftNow() {
+    const key = draftKey(ctx.duplicate ? '' : $('product-id').value);
+    if (!key || $('product-form-section').classList.contains('hidden')) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(collectDraft()));
+      $('pf-autosave').textContent = 'Unsaved changes kept on this device · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. Not on Mwakete until you save.';
+    } catch (e) {
+      $('pf-autosave').textContent = '';
+    }
+  }
+
+  function readDraft(key) {
+    try {
+      const d = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!d || d.v !== 1 || Date.now() - d.at > DRAFT_MAX_AGE_MS) { if (d) localStorage.removeItem(key); return null; }
+      return d;
+    } catch (e) { return null; }
+  }
+
+  function dropDraft(productId) {
+    const key = draftKey(productId);
+    try { if (key) localStorage.removeItem(key); } catch (e) { /* ignore */ }
+    $('pf-autosave').textContent = '';
+  }
+
+  function offerDraft() {
+    const banner = $('pf-draft-banner');
+    banner.hidden = true;
+    const key = draftKey(ctx.duplicate ? '' : (ctx.product && ctx.product.productId));
+    const d = key && readDraft(key);
+    if (!d) return;
+    const when = new Date(d.at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const stale = ctx.product && d.base && d.base !== baseSig(ctx.product);
+    banner.innerHTML = `<p><strong>You have unsaved changes from ${escapeHtml(when)}</strong> on this device${d.f && d.f.name ? ` (“${escapeHtml(d.f.name)}”)` : ''}.</p>
+      ${stale ? '<p class="helper-text">This listing was changed on Mwakete since then - restoring brings back your older version of it.</p>' : ''}
+      ${d.photosPending ? '<p class="helper-text">Photos you had picked are not kept - add them again after restoring.</p>' : ''}
+      <p class="pf-draft-actions"><button type="button" class="btn btn-small btn-primary" id="pf-draft-restore">Restore</button>
+      <button type="button" class="btn btn-small" id="pf-draft-discard">Discard</button></p>`;
+    banner.hidden = false;
+    $('pf-draft-restore').addEventListener('click', () => { restore(d); banner.hidden = true; });
+    $('pf-draft-discard').addEventListener('click', () => { try { localStorage.removeItem(key); } catch (e) { /* ignore */ } banner.hidden = true; });
+  }
+
+  function restore(d) {
+    const f = d.f || {};
+    $('product-name').value = f.name || '';
+    $('product-description').value = f.description || '';
+    $('product-listing-type').value = f.listingType || '';
+    if (typeof window.onListingTypeChange === 'function') window.onListingTypeChange();
+    if (typeof fillCategoryOptions === 'function') fillCategoryOptions(f.listingType || '', f.category || '');
+    $('product-category').value = f.category || '';
+    if (typeof ListingCheck !== 'undefined') ListingCheck.fillSubcategories(f.category || '', f.subcategoryId || '');
+    $('product-status').value = f.status === 'hidden' ? 'hidden' : 'active';
+    if (d.editor && d.editor.productType && typeof ProductOptionsEditor !== 'undefined') {
+      ProductOptionsEditor.load(Object.assign({ listingType: f.listingType || 'product', category: f.category || '' }, d.editor));
+    }
+    if (Array.isArray(d.rows) && d.rows.length && typeof window.restoreVarietyRows === 'function') window.restoreVarietyRows(d.rows);
+    detailValues = Object.assign({}, d.details || {});
+    renderDetails();
+    if (typeof updateDescriptionCount === 'function') updateDescriptionCount();
+    if (typeof UnsavedGuard !== 'undefined') UnsavedGuard.markDirty($('product-form'));
+    show(mode === 'page' ? 0 : step);
+  }
+
+  /* ---------- called by owner-products.js ---------- */
+
+  function open(product, opts) {
+    ctx = { product: product || null, duplicate: !!(opts && opts.duplicate) };
+    detailValues = Object.assign({}, (product && product.details) || {});
+    similarFor = product && !ctx.duplicate ? product.name.toLowerCase() + '|' + (product.category || '') : '';
+    $('pf-similar').hidden = true;
+    similarList = [];
+    similarSeen = '';
+    $('pf-autosave').textContent = '';
+    renderDetails();
+    step = 1;
+    // Editing is usually a quick change: everything on one page. A new
+    // listing follows the seller's last choice, step by step the first time.
+    setMode(product && !ctx.duplicate ? 'page' : (readModePref() || 'steps'));
+    offerDraft();
+  }
+
+  function saved(productId, wasNew) {
+    // The local copy is only ever a stand-in for an unsaved listing.
+    dropDraft(wasNew ? '' : productId);
+    if (wasNew) dropDraft(productId);
+  }
+
+  function close() { clearTimeout(draftTimer); clearTimeout(similarTimer); }
+
+  function init() {
+    document.querySelectorAll('.pf-mode-btn').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode, true)));
+    document.querySelectorAll('.pf-progress-btn').forEach((b) => b.addEventListener('click', () => {
+      const n = Number(b.dataset.go);
+      // Forward jumps check the steps passed, like Continue does.
+      if (n > step && step <= 1 && typeof window.validateBasics === 'function' && !window.validateBasics()) return;
+      if (n > 3 && step <= 3 && typeof window.validatePricing === 'function' && !window.validatePricing()) return;
+      goTo(n);
+    }));
+    $('pf-next').addEventListener('click', next);
+    $('pf-back').addEventListener('click', () => goTo(step - 1));
+    $('product-listing-type').addEventListener('change', renderDetails);
+    $('product-category').addEventListener('change', () => { renderDetails(); checkSimilar(); });
+    $('product-name').addEventListener('input', () => checkSimilar());
+    $('pf-similar').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-open-product]');
+      if (b && typeof window.openProductById === 'function') window.openProductById(b.dataset.openProduct);
+    });
+    const form = $('product-form');
+    form.addEventListener('input', () => { saveDraftSoon(); scheduleReview(); });
+    form.addEventListener('change', () => { saveDraftSoon(); scheduleReview(); });
+  }
+
+  return { init, open, reveal, details, saved, close, refreshReview, saveDraftNow, get mode() { return mode; }, get step() { return step; }, DRAFT_PREFIX, FIELDS, SETS };
+})();

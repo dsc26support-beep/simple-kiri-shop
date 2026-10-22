@@ -54,7 +54,8 @@ const SellerShell = (() => {
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     admin: '<path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6z"/>',
     more: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
-    collapse: '<path d="m15 6-6 6 6 6"/>'
+    collapse: '<path d="m15 6-6 6 6 6"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>'
   };
   const svg = (name) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
   const ITEMS = [
@@ -114,6 +115,27 @@ const SellerShell = (() => {
     });
 
     const more = tabs.querySelector('.seller-tab-more');
+    // ☰ left of the store name in the purple top bar (owner request, Oct
+    // 2026): opens the same menu as More. Phones and tablets only - on a
+    // wide screen the menu is always shown.
+    const topRow = document.querySelector('.owner-topbar .container');
+    let menuBtn = null;
+    if (topRow) {
+      menuBtn = document.createElement('button');
+      menuBtn.type = 'button';
+      menuBtn.className = 'seller-menu-btn';
+      menuBtn.setAttribute('aria-controls', 'seller-sidebar');
+      menuBtn.setAttribute('aria-expanded', 'false');
+      menuBtn.setAttribute('aria-label', 'Store menu');
+      menuBtn.innerHTML = svg('menu');
+      const title = topRow.firstElementChild;
+      const lead = document.createElement('div');
+      lead.className = 'seller-topbar-lead';
+      topRow.insertBefore(lead, title);
+      lead.appendChild(menuBtn);
+      if (title) lead.appendChild(title);
+    }
+    let opener = more;
     const scrim = document.createElement('div');
     scrim.className = 'seller-scrim';
     scrim.hidden = true;
@@ -121,10 +143,11 @@ const SellerShell = (() => {
     const setDrawer = (open) => {
       body.classList.toggle('seller-drawer-open', open);
       scrim.hidden = !open;
-      more.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) { const first = side.querySelector('.seller-link'); if (first) first.focus(); } else more.focus();
+      [more, menuBtn].forEach((b) => { if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+      if (open) { const first = side.querySelector('.seller-link'); if (first) first.focus(); } else opener.focus();
     };
-    more.addEventListener('click', () => setDrawer(!body.classList.contains('seller-drawer-open')));
+    more.addEventListener('click', () => { opener = more; setDrawer(!body.classList.contains('seller-drawer-open')); });
+    if (menuBtn) menuBtn.addEventListener('click', () => { opener = menuBtn; setDrawer(!body.classList.contains('seller-drawer-open')); });
     scrim.addEventListener('click', () => setDrawer(false));
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && body.classList.contains('seller-drawer-open')) setDrawer(false); });
   }

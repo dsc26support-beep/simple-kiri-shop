@@ -23,7 +23,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
   });
   const pg = await ctx.newPage();
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
-  await pg.addInitScript(() => { localStorage.setItem('skiri_owner_token', 'tok'); localStorage.setItem('skiri_cookie_consent', 'true'); });
+  await pg.addInitScript(() => { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'tok'); localStorage.setItem('skiri_cookie_consent', 'true'); });
   await pg.goto(BASE + '/owner/products.html', { waitUntil: 'load' });
   await pg.waitForTimeout(700);
 
@@ -42,8 +42,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
     cat: document.getElementById('product-category').value,
     rows: [...document.querySelectorAll('#variant-rows .variant-row')].map((r) => ({ id: r.dataset.variantId,
       label: r.querySelector('.variant-label').value, price: r.querySelector('.variant-price').value, stock: r.querySelector('.variant-stock').value })),
-    previewHidden: document.getElementById('image-preview').classList.contains('hidden'),
-    photo2Hidden: document.getElementById('existing-photo2-field').classList.contains('hidden'),
+    photos: document.querySelectorAll('#photo-list .pg-item').length,
     noteShown: !document.getElementById('duplicate-photo-note').hidden
   }));
   ok('heading says Duplicate', f.heading === 'Duplicate: Pandanus mat', f.heading);
@@ -53,7 +52,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
   ok('active varieties copied, deleted one left out', f.rows.length === 2 && f.rows.map((r) => r.label).join() === 'Large,Small', JSON.stringify(f.rows));
   ok('price and stock carried over', f.rows[0].price === '40' && f.rows[0].stock === '3' && f.rows[1].stock === '', JSON.stringify(f.rows));
   ok('no variant ids carried over', f.rows.every((r) => r.id === ''));
-  ok('photo NOT copied (preview and second photo hidden)', f.previewHidden && f.photo2Hidden);
+  ok('photos NOT copied (the gallery starts empty)', f.photos === 0, f.photos);
   ok('note tells the seller the photo is not copied', f.noteShown);
 
   await pg.click('#save-product-btn'); await pg.waitForTimeout(600);
@@ -71,7 +70,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
   await pg.click(row('p1') + ' [data-action="edit"]'); await pg.waitForTimeout(300);
   const e = await pg.evaluate(() => ({ id: document.getElementById('product-id').value, name: document.getElementById('product-name').value,
     note: document.getElementById('duplicate-photo-note').hidden, vid: document.querySelector('#variant-rows .variant-row').dataset.variantId,
-    preview: !document.getElementById('image-preview').classList.contains('hidden') }));
+    preview: document.querySelectorAll('#photo-list .pg-item').length > 0 }));
   ok('Edit after Duplicate is a normal edit again', e.id === 'p1' && e.name === 'Pandanus mat' && e.note && e.vid === 'v1' && e.preview, JSON.stringify(e));
   ok('no page errors', errs.length === 0, errs.join(' | '));
 

@@ -129,7 +129,7 @@ const probe = (page) => page.evaluate(() => {
   }
 
   // Phones and tablets (<= 1024px): no customer footer at all. The seller
-  // sign-in pages keep theirs - its Enquiry link is a deleted store's way back.
+  // sign-in pages keep theirs - its Help and support link is a deleted store's way back.
   for (const w of [390, 768, 1024, 1025]) {
     const ctx3 = await browser.newContext({ viewport: { width: w, height: 844 } });
     await ctx3.route('**/script.google.com/**', (r) => r.fulfill({ status: 200,

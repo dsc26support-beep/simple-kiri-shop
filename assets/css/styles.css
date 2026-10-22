@@ -420,8 +420,13 @@ header.site-header .container.header-top-row:has(.store-logo) {
   min-height: calc(64px + var(--space-3) + var(--space-1));
 }
 
-/* ...and the menu dots level with Home, not pinned to the top of the taller row. */
-header.site-header .container.header-top-row:has(.store-logo) .header-menu {
+/* ...and everything on the right - Home, Tips, My Account, the cart and the
+   menu - in one row level with the logo's middle, not pinned to the top of
+   the taller row (owner request, Oct 2026: on a computer Tips, My Account and
+   the cart sat along the top while Home sat lower). */
+header.site-header .container.header-top-row:has(.store-logo) .header-menu,
+header.site-header .container.header-top-row:has(.store-logo) .header-cart,
+header.site-header .container.header-top-row:has(.store-logo) .header-bar-links {
   /* The row's top padding plus half the 64px logo: the logo's middle. */
   top: calc(var(--space-3) + 32px);
   transform: translateY(-50%);
@@ -4369,6 +4374,14 @@ body.has-header-menu header.site-header > .container:first-of-type {
   }
 }
 
+/* Store header with its logo: Home sits the same distance from Tips as Tips
+   from My Account, so the five read as one evenly spaced row. */
+@media (min-width: 701px) {
+  body.has-header-menu header.site-header > .container.header-top-row:has(.store-logo) {
+    padding-right: 260px;
+  }
+}
+
 .bottom-nav { display: none; }
 
 .bottom-nav-item {
@@ -8094,9 +8107,38 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 }
 
 .trust-row {
-  padding: var(--space-2) 0;
+  padding: 0;
   border-bottom: 1px solid var(--color-border);
 }
+
+/* Store checks: one line per store (name + status), tap to open (owner
+   request, Oct 2026). Full-width row, 44px tap target, chevron on the right. */
+.trust-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) 28px var(--space-2) 0;
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+}
+.trust-summary::-webkit-details-marker { display: none; }
+.trust-summary::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--color-muted);
+  border-bottom: 2px solid var(--color-muted);
+  transform: translateY(-70%) rotate(45deg);
+}
+.trust-row[open] > .trust-summary::after { transform: translateY(-30%) rotate(-135deg); }
+.trust-summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.trust-body { border-bottom: 0; padding-top: 0; }
 
 .trust-checks,
 .trust-actions {
@@ -8223,3 +8265,10 @@ html.auth-signup .auth-divider {
 .tx-docs { margin-top: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); }
 .tx-docs p { margin: var(--space-1) 0 0; }
 .tx-docs .btn { margin: 2px 4px 2px 0; }
+
+/* Category details on product cards and the product page (helpers.js productDetailsHtml). */
+.product-details { display: grid; gap: 2px; margin: var(--space-1) 0 var(--space-2); font-size: 0.85rem; }
+.product-details div { display: flex; gap: var(--space-2); }
+.product-details dt { color: var(--color-muted); min-width: 0; }
+.product-details dt::after { content: ':'; }
+.product-details dd { margin: 0; overflow-wrap: anywhere; }

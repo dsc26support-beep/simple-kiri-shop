@@ -472,7 +472,10 @@ const ProductOptionsEditor = (() => {
 
   async function uploadOne(r, file) {
     let data;
-    try { data = await compressImage(file); } catch (e) { return { ok: false, error: `${file.name} could not be read as a photo.` }; }
+    try {
+      // Same resizing as the product gallery where it is loaded (WebP, smaller).
+      data = typeof ProductPhotos !== 'undefined' ? await ProductPhotos.optimizeProductPhoto(file) : await compressImage(file);
+    } catch (e) { return { ok: false, error: e && e.message ? e.message : `${file.name} could not be read as a photo.` }; }
     const res = await Api.post('uploadVariantImage', { token: Auth.getToken(), productId: $('product-id').value, variantId: r.variantId,
       imageBase64: data.base64, mimeType: data.mimeType });
     if (res.ok) r.images = res.images;
@@ -535,6 +538,25 @@ const ProductOptionsEditor = (() => {
   }
 
   /**
+   * The editor's state as typed, unchecked - for the draft kept on this
+   * device (owner-product-steps.js). load() takes it back: it has the same
+   * shape as a product from listOwnerProducts.
+   */
+  function snapshot() {
+    const ws = (r) => ({ tiers: r.tiers || [], minQty: r.minQty || '' });
+    if (mode === 'single') {
+      const s0 = single || blankRow({});
+      return { productType: 'single', variants: [Object.assign({ variantId: s0.variantId || '', status: 'active', price: $('single-price').value,
+        stockQty: $('single-stock').value, sku: $('single-sku').value, images: s0.images || [] }, ws(s0))] };
+    }
+    if (mode === 'options') {
+      return { productType: 'options', options: JSON.parse(JSON.stringify(options)), variants: Array.from(rows.values()).map((r) => Object.assign({
+        variantId: r.variantId || '', values: r.values, status: r.active ? 'active' : 'inactive', price: r.price, stockQty: r.stockQty, sku: r.sku || '', images: r.images || [] }, ws(r))) };
+    }
+    return { productType: '' };
+  }
+
+  /**
    * What a save will do to an existing product's variants, in words - shown
    * for confirmation when it creates or switches off anything.
    */
@@ -579,7 +601,11 @@ const ProductOptionsEditor = (() => {
       sp.innerHTML = '';
       if (mode === 'single') {
         single = single || blankRow({});
-        drawPhotoPanel(sp, single, 'this product', () => {});
+        // The product's own photo gallery (owner-product-photos.js) is where
+        // a single product's photos go now. A single product that already
+        // has photos on its one variety keeps this panel, so they can still
+        // be seen, reordered or removed.
+        if (single.images.length) drawPhotoPanel(sp, single, 'this product (older photos)', () => {});
       }
     }
     renderGrid();
@@ -610,5 +636,5 @@ const ProductOptionsEditor = (() => {
     });
   }
 
-  return { init, load, setListingType, setWholesale, payload, changeSummary, uploadPending, labels, previewProduct, get mode() { return mode; } };
+  return { init, load, setListingType, setWholesale, payload, snapshot, changeSummary, uploadPending, labels, previewProduct, get mode() { return mode; } };
 })();

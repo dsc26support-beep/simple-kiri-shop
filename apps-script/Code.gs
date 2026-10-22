@@ -95,6 +95,10 @@ var PROTECTED_POST_ACTIONS = [
   'listReviewCases', 'getReviewCase', 'reviewCaseAction', 'adminListCategories', 'adminSaveCategory', 'listAuditLog',
   // Per-variant photo galleries (ProductVariants.gs) - owner of the product only.
   'uploadVariantImage', 'setVariantImages',
+  // Product photo gallery (Images.gs) - owner of the product only.
+  'uploadProductPhoto', 'setProductPhotos',
+  // Likely-duplicate check while writing a listing (ProductDetails.gs) - own products only.
+  'findSimilarProducts',
   // Header adverts (HeaderAds.gs) - every one checks isOwnerAdmin inside.
   'adminListHeaderAds', 'adminSaveHeaderAd', 'adminReorderHeaderAds', 'adminDeleteHeaderAd',
   // Order rooms admin lists and settings (Transactions.gs) - isOwnerAdmin inside.
@@ -122,7 +126,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'invoices2-2026-10-21';
+var APP_VERSION = 'photos1-2026-10-21';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -645,6 +649,9 @@ function doPost(e) {
         case 'listAuditLog': return jsonOut(actionListAuditLog(owner, body));
         case 'uploadVariantImage': return jsonOut(actionUploadVariantImage(owner, body));
         case 'setVariantImages': return jsonOut(actionSetVariantImages(owner, body));
+        case 'uploadProductPhoto': return jsonOut(actionUploadProductPhoto(owner, body));
+        case 'setProductPhotos': return jsonOut(actionSetProductPhotos(owner, body));
+        case 'findSimilarProducts': return jsonOut(actionFindSimilarProducts(owner, body));
         case 'adminListHeaderAds': return jsonOut(actionAdminListHeaderAds(owner));
         case 'adminSaveHeaderAd': return jsonOut(actionAdminSaveHeaderAd(owner, body));
         case 'adminReorderHeaderAds': return jsonOut(actionAdminReorderHeaderAds(owner, body));

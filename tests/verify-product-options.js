@@ -43,7 +43,7 @@ async function page(browser, handler, path, seed) {
   const errs = [];
   pg.on('pageerror', (e) => errs.push(e.message));
   pg.on('dialog', (d) => { pg.__dialogs = (pg.__dialogs || []).concat(d.message()); d.accept(); });
-  await pg.addInitScript((s) => { localStorage.setItem('skiri_cookie_consent', 'true'); localStorage.setItem('skiri_owner_token', 'tok'); if (s) Object.keys(s).forEach((k) => localStorage.setItem(k, s[k])); }, seed || null);
+  await pg.addInitScript((s) => { localStorage.setItem('skiri_cookie_consent', 'true'); localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'tok'); if (s) Object.keys(s).forEach((k) => localStorage.setItem(k, s[k])); }, seed || null);
   await pg.goto(BASE + path, { waitUntil: 'load' });
   await pg.waitForTimeout(900);
   return { ctx, pg, posted, errs };
