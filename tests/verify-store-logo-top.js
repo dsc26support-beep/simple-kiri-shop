@@ -73,6 +73,32 @@ const STORE = { ok: true, storeName: 'Teaube', storeIsland: 'Abaiang', storePhon
     ok(pg.split('?')[0] + ': logo top-left, level with the links', r.shown && r.x <= 20 && r.y <= 24 && r.level <= 4 && r.scrollW <= 390, JSON.stringify(r));
   }
 
+  // Computer screens: Home, Tips, My Account, cart and menu in one row,
+  // level with the logo's middle, in that order (owner request, Oct 2026).
+  for (const w of [1366, 1920, 800]) {
+    const c2 = await browser.newContext({ viewport: { width: w, height: 700 } });
+    await c2.route('**/script.google.com/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(STORE) }));
+    const p2 = await c2.newPage();
+    await p2.goto(BASE + '/index.html');
+    await p2.evaluate(() => localStorage.setItem('skiri_cookie_consent', 'true'));
+    await p2.goto(BASE + '/store.html?store=teaube', { waitUntil: 'load' });
+    await p2.waitForFunction(() => !document.getElementById('store-logo-img').classList.contains('hidden'), null, { timeout: 5000 });
+    await p2.waitForTimeout(300);
+    const row = await p2.evaluate(() => {
+      const mid = (el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top + r.height / 2), right: Math.round(r.right) }; };
+      const q = (sel) => document.querySelector(sel);
+      const items = [['Home', q('header .site-nav a')], ['Tips', [...document.querySelectorAll('header a.header-bar-link')].find((a) => /Tips/.test(a.textContent))],
+        ['My Account', [...document.querySelectorAll('header a.header-bar-link')].find((a) => /Account/.test(a.textContent))],
+        ['cart', q('header .header-cart')], ['menu', q('header .header-menu-btn') || q('header .header-menu')]];
+      return { logo: mid(q('#store-logo-img')), items: items.map(([n, el]) => Object.assign({ n }, el ? mid(el) : { x: -1, y: -1 })) };
+    });
+    const ys = row.items.map((i) => i.y);
+    const xs = row.items.map((i) => i.x);
+    ok(`${w}px: Home, Tips, My Account, cart and menu are level with the logo's middle`, ys.every((y) => Math.abs(y - row.logo.y) <= 3), JSON.stringify(row));
+    ok(`${w}px: ...in that order, left to right, without overlapping`, xs.every((x, i) => i === 0 || x > xs[i - 1]) && row.items.every((it, i) => i === 0 || it.x >= row.items[i - 1].right), JSON.stringify(row.items));
+    await c2.close();
+  }
+
   await browser.close();
   let f = 0; console.log('\n--- store logo top-left ---');
   for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e && s === 'FAIL' ? '  [' + e + ']' : ''}`); }
