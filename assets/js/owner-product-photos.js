@@ -211,6 +211,7 @@ const ProductPhotos = (() => {
     list.innerHTML = items.map(itemHtml).join('');
     $('photo-count').textContent = `${items.length} of ${max}`;
     $('photo-add-row').hidden = items.length >= max;
+    $('photo-add-row').classList.toggle('pg-add--empty', items.length === 0);
     // Keep keyboard focus on the moved photo's same button.
     const k = focusKey || (active && active.dataset.key);
     if (k && act) {
@@ -311,6 +312,9 @@ const ProductPhotos = (() => {
     $('photo-list').addEventListener('click', onListClick);
     $('photo-add-btn').addEventListener('click', () => $('photo-input').click());
     $('photo-camera-btn').addEventListener('click', () => $('photo-camera-input').click());
+    // The whole tile is a target, not just its button - a big thumb-sized
+    // place to tap on a phone.
+    $('photo-add-row').addEventListener('click', (e) => { if (!e.target.closest('button, input')) $('photo-input').click(); });
     $('photo-input').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
     $('photo-camera-input').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
     $('photo-replace-input').addEventListener('change', (e) => {

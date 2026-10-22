@@ -344,6 +344,8 @@ function openForm(product, opts) {
   const section = document.getElementById('product-form-section');
   const heading = document.getElementById('product-form-heading');
   section.classList.remove('hidden');
+  // Its own view: the product list steps aside until "Back to products".
+  document.getElementById('products-main').classList.add('is-editing');
   document.getElementById('product-form-error').textContent = '';
   clearFieldErrors();
 
@@ -433,6 +435,8 @@ function closeForm() {
   ProductSteps.close();
   UnsavedGuard.release(document.getElementById('product-form'));
   document.getElementById('product-form-section').classList.add('hidden');
+  document.getElementById('products-main').classList.remove('is-editing');
+  window.scrollTo(0, 0);
 }
 
 function addVariantRow(variant) {

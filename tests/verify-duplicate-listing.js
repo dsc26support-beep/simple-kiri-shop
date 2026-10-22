@@ -2,6 +2,9 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = process.env.AUDIT_BASE || 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
+// The form is its own view (Oct 2026): back to the list before picking another row.
+const backToList = async (pg) => { if (await pg.locator('#cancel-product-btn').isVisible()) await pg.click('#cancel-product-btn'); };
+
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
@@ -32,7 +35,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
   const actionsFit = await pg.$eval(row('p1') + ' .row-actions', (el) => el.scrollWidth <= el.clientWidth + 1 && document.documentElement.scrollWidth <= window.innerWidth);
   ok('three buttons fit the row at 390px, no sideways scroll', actionsFit);
 
-  await pg.click(row('p1') + ' [data-action="duplicate"]'); await pg.waitForTimeout(300);
+  await backToList(pg); await pg.click(row('p1') + ' [data-action="duplicate"]'); await pg.waitForTimeout(300);
   const f = await pg.evaluate(() => ({
     heading: document.getElementById('product-form-heading').textContent,
     id: document.getElementById('product-id').value,
@@ -62,12 +65,12 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === unde
   ok('payload carries the copied varieties', create && JSON.stringify(create.variants.map((v) => [v.label, v.price, v.stockQty])) === JSON.stringify([['Large', 40, 3], ['Small', 25, '']]), JSON.stringify(create && create.variants));
 
   // legacy "Other" is not inherited by a new listing
-  await pg.click(row('p9') + ' [data-action="duplicate"]'); await pg.waitForTimeout(300);
+  await backToList(pg); await pg.click(row('p9') + ' [data-action="duplicate"]'); await pg.waitForTimeout(300);
   ok('a duplicate of an "Other" listing must choose a real category', (await pg.$eval('#product-category', (s) => s.value)) === '');
   ok('and "Other" is not offered', !(await pg.$$eval('#product-category option', (os) => os.some((o) => o.value === 'other'))));
 
   // Edit afterwards is still a normal edit
-  await pg.click(row('p1') + ' [data-action="edit"]'); await pg.waitForTimeout(300);
+  await backToList(pg); await pg.click(row('p1') + ' [data-action="edit"]'); await pg.waitForTimeout(300);
   const e = await pg.evaluate(() => ({ id: document.getElementById('product-id').value, name: document.getElementById('product-name').value,
     note: document.getElementById('duplicate-photo-note').hidden, vid: document.querySelector('#variant-rows .variant-row').dataset.variantId,
     preview: document.querySelectorAll('#photo-list .pg-item').length > 0 }));

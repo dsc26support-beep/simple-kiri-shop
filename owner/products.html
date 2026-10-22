@@ -30,7 +30,7 @@
   </div>
 
   <main id="main" class="owner-main">
-    <div class="container">
+    <div class="container" id="products-main">
       <h1>Your Products</h1>
       <p class="add-product-row"><button type="button" id="add-product-btn" class="btn btn-primary">+ Add New Product</button>
         <a href="inventory-sync.html" class="btn">Add many at once (CSV)</a></p>
@@ -38,7 +38,11 @@
       <div id="owner-product-list" class="owner-product-list"></div>
       <p class="load-more-row"><button type="button" id="products-load-more" class="btn btn-small hidden">Load More Products</button></p>
 
-      <section id="product-form-section" class="hidden" aria-labelledby="product-form-heading" style="margin-top:2rem; border-top:2px solid var(--color-border); padding-top:1.5rem;">
+      <!-- Opens as its own view (owner request, Oct 2026): the list above is
+           hidden while a product is added or edited; "Back to products" (the
+           old Cancel) brings it back. -->
+      <section id="product-form-section" class="hidden" aria-labelledby="product-form-heading">
+        <button type="button" id="cancel-product-btn" class="pf-back-link"><span aria-hidden="true">&larr;</span> Back to products</button>
         <h2 id="product-form-heading">Add Product</h2>
         <p class="helper-text form-required-note"><span class="req-mark" aria-hidden="true">*</span> Required</p>
         <form id="product-form" novalidate>
@@ -56,7 +60,7 @@
             <ol class="pf-progress" id="pf-progress" aria-label="Steps">
               <li><button type="button" class="pf-progress-btn" data-go="1">Basics</button></li>
               <li><button type="button" class="pf-progress-btn" data-go="2">Photos</button></li>
-              <li><button type="button" class="pf-progress-btn" data-go="3">Price &amp; stock</button></li>
+              <li><button type="button" class="pf-progress-btn" data-go="3">Price<span class="pf-progress-more"> &amp; stock</span></button></li>
               <li><button type="button" class="pf-progress-btn" data-go="4">Details</button></li>
               <li><button type="button" class="pf-progress-btn" data-go="5">Review</button></li>
             </ol>
@@ -145,12 +149,17 @@
             <h3 id="photos-heading" class="pg-heading">Photos <span id="photo-count" class="helper-text"></span></h3>
             <p class="helper-text">The first photo is the cover shoppers see. Clear, bright photos sell better.</p>
             <ul id="photo-list" class="pg-list"></ul>
+            <!-- The big drop tile. A tap anywhere on it opens the photo picker. -->
             <div id="photo-add-row" class="pg-add">
-              <button type="button" class="btn btn-small pg-add-btn" id="photo-add-btn">Add photos</button>
-              <button type="button" class="btn btn-small pg-add-btn" id="photo-camera-btn" hidden>Take a photo</button>
+              <svg class="pg-add-icon" viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>
+              <span class="pg-add-buttons">
+                <button type="button" class="btn btn-small btn-primary pg-add-btn" id="photo-add-btn">Add photos</button>
+                <button type="button" class="btn btn-small btn-primary pg-add-btn" id="photo-camera-btn" hidden>Take a photo</button>
+              </span>
               <input type="file" id="photo-input" accept="image/*" multiple hidden>
               <input type="file" id="photo-camera-input" accept="image/*" capture="environment" hidden>
               <span class="helper-text pg-drop-hint">or drag photos here</span>
+              <span class="helper-text pg-add-types">JPG, PNG or WebP</span>
             </div>
             <input type="file" id="photo-replace-input" accept="image/*" hidden>
             <p id="duplicate-photo-note" class="helper-text duplicate-photo-note" hidden>Photos aren't copied — add them again.</p>
@@ -172,7 +181,7 @@
           </fieldset>
           <div class="field" id="single-fields" hidden>
             <div class="single-grid">
-              <div><label for="single-price" class="is-required">Price</label><input id="single-price" type="number" min="0" step="0.01" inputmode="decimal"></div>
+              <div><label for="single-price" class="is-required">Price</label><span class="input-money"><span class="input-money-sign" aria-hidden="true">$</span><input id="single-price" type="number" min="0" step="0.01" inputmode="decimal"></span></div>
               <div><label for="single-stock">Stock <span class="helper-text">(blank = unlimited)</span></label><input id="single-stock" type="number" min="0" step="1" inputmode="numeric"></div>
               <div><label for="single-sku">SKU <span class="helper-text">(optional)</span></label><input id="single-sku" maxlength="60"></div>
             </div>
@@ -192,7 +201,7 @@
             <p id="options-status" class="helper-text" role="status" aria-live="polite"></p>
             <div class="vg-tools">
               <div><label for="vg-filter">Find</label><input id="vg-filter" type="search" placeholder="e.g. Red"></div>
-              <div><label for="bulk-price">Price</label><input id="bulk-price" type="number" min="0" step="0.01" inputmode="decimal"></div>
+              <div><label for="bulk-price">Price</label><span class="input-money"><span class="input-money-sign" aria-hidden="true">$</span><input id="bulk-price" type="number" min="0" step="0.01" inputmode="decimal"></span></div>
               <div><label for="bulk-stock">Stock</label><input id="bulk-stock" type="number" min="0" step="1" inputmode="numeric"></div>
               <div><button type="button" id="bulk-apply-btn" class="btn btn-small">Apply to ticked rows</button></div>
             </div>
@@ -241,10 +250,9 @@
           <p id="product-form-error" class="form-error" role="alert"></p>
           <div class="pf-actions">
             <button type="button" id="pf-back" class="btn pf-back">Back</button>
-            <button type="button" id="pf-next" class="btn btn-primary pf-next">Continue</button>
+            <button type="button" id="pf-next" class="btn btn-primary btn-solid pf-next">Continue</button>
             <button type="submit" id="save-product-btn" class="btn btn-primary btn-save">Save Product</button>
             <button type="button" id="pf-save-hidden" class="btn pf-save-hidden">Save hidden (draft)</button>
-            <button type="button" id="cancel-product-btn" class="btn">Cancel</button>
           </div>
           <p id="pf-autosave" class="helper-text pf-autosave" aria-live="polite"></p>
         </form>

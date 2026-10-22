@@ -38,6 +38,9 @@ async function page(browser, path, opts) {
   return { ctx, pg, posted };
 }
 
+// The form is its own view (Oct 2026): back to the list before picking another row.
+const backToList = async (pg) => { if (await pg.locator('#cancel-product-btn').isVisible()) await pg.click('#cancel-product-btn'); };
+
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 
@@ -75,9 +78,9 @@ async function page(browser, path, opts) {
     await pg.click('#add-product-btn'); await pg.selectOption('#product-listing-type', 'product'); await pg.waitForTimeout(150);
     ok('a retailer is not offered Food & Groceries for a new listing', !(await foodOffered(pg)));
     ok('...and is told why', await pg.locator('#food-wholesale-hint').isVisible());
-    await pg.click('.owner-product-row[data-product-id="pf"] [data-action="edit"]'); await pg.waitForTimeout(200);
+    await backToList(pg); await pg.click('.owner-product-row[data-product-id="pf"] [data-action="edit"]'); await pg.waitForTimeout(200);
     ok('editing their existing Food listing keeps it in Food (grandfathered)', (await pg.$eval('#product-category', (s) => s.value)) === 'food');
-    await pg.click('.owner-product-row[data-product-id="pf"] [data-action="duplicate"]'); await pg.waitForTimeout(200);
+    await backToList(pg); await pg.click('.owner-product-row[data-product-id="pf"] [data-action="duplicate"]'); await pg.waitForTimeout(200);
     ok('a duplicate of it is a NEW listing, so it must leave Food', (await pg.$eval('#product-category', (s) => s.value)) === '' && !(await foodOffered(pg)));
     await ctx.close();
   }

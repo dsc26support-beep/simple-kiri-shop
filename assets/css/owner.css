@@ -2271,6 +2271,67 @@ body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 
 .pf-autosave { margin-top: var(--space-1); }
 @media (max-width: 480px) { .pf-actions .btn-primary { flex: 1 1 auto; } }
 #product-form .btn-save.pf-save-early { background: transparent; color: var(--color-purple); border: 2px solid var(--color-purple); }
+
+/* Product form, Oct 2026 (owner liked a template: sections as cards, a big
+   photo tile, $ in the price box, one clear button). It opens as its own view;
+   the buttons stay pinned to the bottom of the screen; on a wide screen
+   Quick add (one page) uses two columns. */
+#products-main.is-editing > :not(#product-form-section) { display: none; }
+.pf-back-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; border: 0; background: none;
+  color: var(--color-purple); font: inherit; font-weight: 600; cursor: pointer; }
+.pf-back-link:hover { text-decoration: underline; }
+.pf-back-link:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; border-radius: 4px; }
+#product-form-heading { margin-top: var(--space-1); }
+
+.pf-step { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-3); }
+/* Floated, the legend sits inside the card rather than on its border. */
+.pf-step-title { float: left; width: 100%; }
+.pf-step-title + * { clear: both; }
+.pf--page .pf-step + .pf-step { border-top: 1px solid var(--color-border); }
+.pf-step .photo-gallery { border: 0; padding: 0; }
+.pf-step .photo-gallery.is-dropping { outline: 2px dashed var(--color-purple); outline-offset: 6px; }
+
+.pg-add { flex-direction: column; justify-content: center; text-align: center; gap: 6px; min-height: 130px; padding: var(--space-3);
+  border: 2px dashed var(--color-border); border-radius: var(--radius); background: var(--color-bg-alt); cursor: pointer; }
+.pg-add[hidden] { display: none; }
+.pg-add--empty { min-height: 190px; }
+.pg-add:hover { border-color: var(--color-purple-light); background: var(--color-purple-soft); }
+.pg-add-icon { fill: none; stroke: var(--color-purple); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.pg-add-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+.pg-add-types { font-size: 0.8rem; }
+
+.input-money { position: relative; display: block; }
+.input-money-sign { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-muted); font-weight: 600; pointer-events: none; }
+.input-money input { padding-left: 1.75rem; }
+
+@media (max-width: 599px) { .pf-progress-more { display: none; } }
+@media (max-width: 480px) { .pf-step { padding: var(--space-2); } }
+
+.pf-actions { position: sticky; bottom: 0; z-index: 5; margin-top: var(--space-3); padding: var(--space-2) 0;
+  background: var(--color-bg); border-top: 1px solid var(--color-border); box-shadow: 0 -6px 12px -10px rgba(0, 0, 0, 0.25); }
+@media (max-width: 1023px) { body.has-seller-shell .pf-actions { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 480px) { .pf-actions { gap: 6px; } .pf-actions .btn { padding: 0.5em 0.9em; } }
+
+@media (min-width: 1024px) {
+  #product-form.pf--steps { max-width: 48rem; }
+  #product-form.pf--steps .pf-top { flex-direction: column; align-items: stretch; }
+  #product-form.pf--steps .pf-progress { max-width: none; }
+}
+@media (min-width: 1200px) {
+  #product-form.pf--page { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); column-gap: var(--space-4); align-items: start;
+    grid-template-areas: "top top" "banner banner" "s1 s2" "s1 s5" "s3 s5" "s4 s5" "err err" "act act" "auto auto"; }
+  #product-form.pf--page > .pf-top { grid-area: top; }
+  #product-form.pf--page > #pf-draft-banner { grid-area: banner; }
+  #product-form.pf--page > #pf-step-1 { grid-area: s1; }
+  #product-form.pf--page > #pf-step-2 { grid-area: s2; }
+  #product-form.pf--page > #pf-step-3 { grid-area: s3; }
+  #product-form.pf--page > #pf-step-4 { grid-area: s4; }
+  #product-form.pf--page > #pf-step-5 { grid-area: s5; }
+  #product-form.pf--page > #product-form-error { grid-area: err; }
+  #product-form.pf--page > .pf-actions { grid-area: act; }
+  #product-form.pf--page > #pf-autosave { grid-area: auto; }
+  #product-form.pf--page .pf-step + .pf-step { margin-top: 0; }
+}
 .add-product-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .sync-template-row .btn { margin: 0 4px; }
 
