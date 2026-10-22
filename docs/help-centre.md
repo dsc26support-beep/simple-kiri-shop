@@ -20,7 +20,7 @@
 3. Bump `CACHE` in `sw.js` so installed copies pick it up.
 4. `node tests/test-help.js && node tests/verify-help.js`.
 
-Keep answers true to the Terms of Service: Mwakete never takes payment, holds money, refunds or delivers; prices, delivery and timing are the seller's. `tests/test-help.js` rejects common over-promises ("guarantee", "buyer protection", ...).
+Keep answers true to the Terms of Service: Mwakete never takes payment for goods, holds the price of purchases, refunds purchases or delivers (the only money it holds is a delivery fee paid through Mwakete for a Mwakete driver); prices, delivery and timing are the seller's. `tests/test-help.js` rejects common over-promises ("guarantee", "buyer protection", ...).
 
 An FAQ's `id` is its public URL (`help.html#faq-<id>`) - do not rename one that has been shared.
 

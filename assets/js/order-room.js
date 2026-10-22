@@ -742,7 +742,7 @@ const OrderRoom = (function () {
     adminComplete: () => field('f-reason', 'Why complete without the buyer’s confirmation?', area('f-reason', 'maxlength="500"')),
     adminNote: () => field('f-text', 'Note (only admins see it)', area('f-text', 'maxlength="1500"')),
     requestDriver: () => `
-      <p class="helper-text">An approved independent driver on ${esc((room.delivery && room.delivery.island) || 'your island')} collects from you and delivers. Drivers only deliver within one island. You pay the driver this fee directly - Mwakete does not handle the money. The driver sees the buyer's name, phone and village once they accept.</p>
+      <p class="helper-text">An approved independent driver on ${esc((room.delivery && room.delivery.island) || 'your island')} collects from you and delivers. Drivers only deliver within one island. If a driver is booked through Mwakete\'s payments, you and the driver agree the final fee in the chat, you pay it to Mwakete, and Mwakete pays the driver after the buyer confirms (see the Terms); otherwise you pay the driver directly. The driver sees the buyer's name, phone and village once they accept.</p>
       ${field('f-fee', 'Fee you will pay the driver ($)', '<input id="f-fee" type="number" min="0" max="500" step="0.5" inputmode="decimal">')}
       ${field('f-pickup', 'Where the driver collects the goods', area('f-pickup', 'maxlength="300"'))}
       ${field('f-notes', 'Notes for the driver (optional)', area('f-notes', 'maxlength="300"'), 'For example: fragile, call on arrival.')}`,

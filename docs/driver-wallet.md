@@ -1,12 +1,12 @@
 # Driver wallet — paying drivers through Mwakete
 
-Owner-approved plan, October 2026. Phases 1 (money ledger), 2 (job chat and fee agreement), 3 (seller pays Mwakete) and 4 (credit, claim, pay out) are built.
+Owner-approved plan, October 2026. Phases 1 (money ledger), 2 (job chat and fee agreement), 3 (seller pays Mwakete) and 4 (credit, claim, pay out) are built; phase 5 (wording) is drafted.
 Both stay invisible until `DELIVERY_PAYMENTS` covers a driver.
 
 | | Where |
 |---|---|
 | Backend | `apps-script/DriverWallet.gs` |
-| Tests | `tests/test-driver-wallet.js` (48), `tests/test-delivery-chat.js` (30), `tests/test-delivery-payment.js` (41), `tests/test-driver-payouts.js` (44), all on the real backend sources |
+| Tests | `tests/test-driver-wallet.js` (48), `tests/test-delivery-chat.js` (30), `tests/test-delivery-payment.js` (41), `tests/test-driver-payouts.js` (44), all on the real backend sources; `tests/test-wallet-wording.js` (24) checks the wording |
 | Pages | `driver.html` (`assets/js/driver.js`) and the delivery panel of `order-room.html` (`assets/js/order-room.js`) |
 | Builds on | `apps-script/Deliveries.gs`, `docs/deliveries.md` |
 
@@ -123,17 +123,29 @@ A bad value falls back to the default.
 
 1. Add a new file `DriverWallet` and paste `apps-script/DriverWallet.gs` (once, from phase 1).
 2. Update `DriverWallet.gs`, `Deliveries.gs`, `Transactions.gs` and `Code.gs`, then deploy a new version.
-3. `?action=getVersion` should show `wallet4-2026-10-22` (or later) and `checkSetup` should show `missingFiles: []`.
+3. `?action=getVersion` should show `wallet5-2026-10-22` (or later) and `checkSetup` should show `missingFiles: []`.
 4. The front end (`driver.html`, `driver.min.js`, `order-room.min.js`, `admin-deliveries.min.js`, `styles.min.css`, `owner/admin.html`, `sw.js`) goes live when the branch is merged and GitHub Pages rebuilds.
 
 To try phase 2 on one driver: set `DELIVERY_PAYMENTS` = `pilot` and `DELIVERY_PAYMENTS_DRIVERS` = that driver's `DriverId` (South Tarawa only). Set `MWAKETE_BANK_DETAILS` first. From phase 3 a real bank transfer is expected on every covered job. Do **not** set `DELIVERY_PAYMENTS` until phase 5 has rewritten the wording below.
 
 ## Before this can go live
 
-Mwakete currently says it **never holds money**. That sentence is in `terms.html`, `order-room.html`,
-`customer-dashboard.html`, `docs/transaction-rooms.md`, `docs/deliveries.md` and the comments in
-`Transactions.gs`. Phase 5 rewrites it, limited to delivery fees, and legal advice comes first.
-Every later phase ships behind `DELIVERY_PAYMENTS`.
+The wording (phase 5) is **drafted**, not approved. It must be read by the owner, and legal advice taken, before `DELIVERY_PAYMENTS` goes beyond a pilot.
+
+Where it changed, and what it now says (everything about *goods* is unchanged: Mwakete never holds the price of what a shopper buys):
+
+| Where | Change |
+|---|---|
+| `terms.html` | The headline promise is limited to goods. The money Mwakete receives now lists delivery fees. New section **Mwakete drivers and delivery fees** (anchor `#drivers`): independent drivers; the seller and driver agree the fee; the seller pays Mwakete by bank transfer; Mwakete holds the delivery fee only; credited after the buyer confirms and a 48-hour wait; claim at $20; refunds and failed-delivery rules; not escrow, insurance or a guarantee. The Fees section says so too. "Last updated" moved to 22 October 2026. |
+| `privacy.html` | New: what Mwakete keeps about drivers (including payout details and live location), and what a driver can see about a buyer. |
+| `order-room.html`, `assets/js/order-room.js` | The "does not hold payments" lines now say it is the *order's* payment, and link to the delivery-fee section. |
+| `driver.html` | The apply text describes the new money flow and links to the Terms. |
+| `customer-dashboard.html`, `assets/js/help-content.js` (and the generated `help.html`) | "Never holds your money" now says "what you buy". |
+| `docs/` and code comments | `transaction-rooms.md`, `deliveries.md`, `help-centre.md`, `Transactions.gs`, `DriverWallet.gs`. |
+
+`tests/test-wallet-wording.js` fails if a blanket "never holds money" promise comes back in a user-facing file, or if the Terms section loses its key statements.
+
+**Note:** the Terms did not mention drivers at all before this, even for the first version of the feature, and the Privacy page did not mention driver data. Both are now covered.
 
 ## Phases
 
@@ -141,5 +153,5 @@ Every later phase ships behind `DELIVERY_PAYMENTS`.
 2. **Chat and fee agreement** (done).
 3. **Seller pays Mwakete** (done): an admin confirms the real bank statement; pickup details are released after.
 4. **Credit, claim and pay out** (done): credit when the order completes, the failed-delivery rules, driver balance page and Claim, admin payout queue.
-5. Wording and terms. Still to change: `terms.html`, `order-room.html`, `customer-dashboard.html`, the driver apply text in `driver.html` ("Mwakete does not hold or pay money"), `docs/transaction-rooms.md`, `docs/deliveries.md`, and the comments in `Transactions.gs`.
+5. **Wording and terms** (drafted, needs the owner's approval and legal advice): see above.
 6. Tests across the whole flow.

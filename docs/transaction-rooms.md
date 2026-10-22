@@ -15,7 +15,7 @@ Every order gets a private **order room** where the buyer and seller:
 
 Mwakete admins review those problems.
 
-**What Mwakete is not.** Payment is arranged directly between the buyer and the seller, and Mwakete never holds the money. Nothing here is escrow, insurance or a guarantee.
+**What Mwakete is not.** Payment for the goods is arranged directly between the buyer and the seller, and Mwakete never holds that money. Nothing here is escrow, insurance or a guarantee. The only money Mwakete holds is a delivery fee a seller pays through Mwakete for a Mwakete driver ([driver-wallet.md](driver-wallet.md)).
 - A screenshot is what the buyer *says* they paid. Only the seller, looking at their own account (or the cash in their hand), confirms the money arrived.
 - A dispatch record is what the seller *says* they sent. Only the buyer confirms it arrived.
 

@@ -5,7 +5,8 @@
  * (Owner request, Oct 2026. Design and guides: docs/transaction-rooms.md.)
  *
  * WHAT MWAKETE IS AND IS NOT. Payment is arranged directly between buyer and
- * seller (checkout.html says so); Mwakete never holds the money. So nothing
+ * seller (checkout.html says so); Mwakete never holds the money for goods. (Only a
+ * delivery fee paid through Mwakete for a driver is held: DriverWallet.gs.) So nothing
  * here is escrow, insurance or a guarantee, and no wording may say it is. A
  * screenshot is what the buyer SAYS they paid; only the seller, looking at
  * their own bank or wallet (or the cash in their hand), can say the money
