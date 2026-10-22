@@ -72,11 +72,22 @@ const get = (q) => { try { return box.doGet({ parameter: q }).s; } catch (e) { r
   const names = async () => p.$$eval('#trust-list .trust-row strong', (els) => els.map((e) => e.textContent));
   ok('the admin page lists stores not yet checked first (the default view)', (await names()).includes('Coco Mart') && (await names()).includes('Aroita Shop'), (await names()).join(','));
   const rowOf = (name) => p.locator('#trust-list .trust-row', { hasText: name });
+  // One line per store, details on tap (owner request, Oct 2026).
+  const shut = await p.$$eval('#trust-list .trust-row', (els) => els.map((d) => ({ open: d.open,
+    line: d.querySelector('summary').textContent.replace(/\s+/g, ' ').trim(), detailsShown: d.querySelector('.trust-checks').checkVisibility() })));
+  ok('every store starts as one closed line: name and status only', shut.length > 0 && shut.every((r) => !r.open && !r.detailsShown), JSON.stringify(shut));
+  ok('...the line reads "<name> Not yet checked"', shut.some((r) => r.line === 'Coco Mart Not yet checked'), JSON.stringify(shut.map((r) => r.line)));
+  const openRow = async (name) => { if (!(await rowOf(name).evaluate((d) => d.open))) await rowOf(name).locator('summary').click(); };
+  await openRow('Coco Mart');
+  ok('tapping the line opens the phone, email, ratings, ticks and actions', await rowOf('Coco Mart').locator('.trust-checks').isVisible()
+    && await rowOf('Coco Mart').locator('a[href^="tel:"]').isVisible() && /Ratings:/.test(await rowOf('Coco Mart').textContent()));
+  ok('...others stay closed', await rowOf('Aroita Shop').evaluate((d) => !d.open));
   ok('Give New is disabled until Call, Email and Visit are ticked', await rowOf('Coco Mart').locator('[data-trust-op="giveNew"]').isDisabled());
   for (const k of ['call', 'email', 'visit']) {
     await rowOf('Coco Mart').locator(`[data-check="${k}"]`).click();
     await p.waitForTimeout(400);
   }
+  ok('the store stays open while the list refreshes after each tick', await rowOf('Coco Mart').evaluate((d) => d.open));
   ok('each tick shows as done', await rowOf('Coco Mart').locator('.trust-check.is-done').count() === 3);
   ok('...and Give New is now enabled', await rowOf('Coco Mart').locator('[data-trust-op="giveNew"]').isEnabled());
   await rowOf('Coco Mart').locator('[data-trust-op="giveNew"]').click();
@@ -84,14 +95,17 @@ const get = (q) => { try { return box.doGet({ parameter: q }).s; } catch (e) { r
   ok('Give New moves the store out of "Not yet checked"', !(await names()).includes('Coco Mart'), (await names()).join(','));
   await p.check('input[name="trust-filter"][value="new"]');
   ok('...into New', (await names()).join(',') === 'Coco Mart', (await names()).join(','));
+  await openRow('Coco Mart');
   await rowOf('Coco Mart').locator('[data-trust-op="giveVerified"]').click();
   await p.waitForTimeout(600);
   await p.check('input[name="trust-filter"][value="verified"]');
   ok('Give Verified makes it Verified', (await names()).join(',') === 'Coco Mart');
+  await openRow('Coco Mart');
   await rowOf('Coco Mart').locator('[data-trust-op="removeVerified"]').click();   // the prompt is answered with a reason
   await p.waitForTimeout(600);
   ok('Remove Verified asks for a reason and records it', box.__sheets.TrustLog.objects().some((l) => l.Action === 'removeVerified' && l.Detail === 'Selling fake stock'));
   await p.check('input[name="trust-filter"][value="new"]');
+  await openRow('Coco Mart');
   ok('...and offers "Let ratings decide again"', await rowOf('Coco Mart').locator('[data-trust-op="ratingsDecide"]').isVisible());
   await ctx.close();
 

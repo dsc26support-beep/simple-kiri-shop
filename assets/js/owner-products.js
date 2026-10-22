@@ -82,10 +82,6 @@ const PRODUCTS_PAGE_SIZE = 20;
 let ownerProducts = [];
 let productsHasMore = false;
 let productsTotal = 0;
-let selectedImageFile = null;
-// Second photos can no longer be UPLOADED. This only tracks whether the
-// vendor asked to clear an existing one, so the payload can send imageUrl2: ''.
-let clearPhoto2 = false;
 let variantRowSeq = 0;
 
 async function init() {
@@ -107,12 +103,13 @@ async function init() {
   document.getElementById('product-form').addEventListener('input', onFieldEdited);
   document.getElementById('product-description').addEventListener('input', updateDescriptionCount);
   document.getElementById('product-form').addEventListener('change', onFieldEdited);
-  document.getElementById('product-image-input').addEventListener('change', onImageFileChange);
-  document.getElementById('remove-photo2-btn').addEventListener('click', onRemovePhoto2);
   document.getElementById('owner-product-list').addEventListener('click', onListClick);
   document.getElementById('products-load-more').addEventListener('click', onLoadMore);
   wireListingCheck();
   ProductOptionsEditor.init();
+  ProductPhotos.init();
+  ProductSteps.init();
+  document.getElementById('pf-save-hidden').addEventListener('click', () => onSaveProduct(null, { saveHidden: true }));
   document.getElementById('card-preview').addEventListener('toggle', renderCardPreview);
 
   await loadProducts();
@@ -261,6 +258,8 @@ async function loadProducts(opts) {
     return;
   }
   ownerProducts = res.products;
+  // How many photos a product may have (Images.gs productImagesMax).
+  if (res.photoMax) ProductPhotos.setMax(res.photoMax);
   // Wholesale prices: only offered when the backend says this store has them.
   ProductOptionsEditor.setWholesale(!!res.bulkPricing);
   productsHasMore = !!res.hasMore;
@@ -336,23 +335,18 @@ async function onArchive(product) {
  * type, category, status and varieties (price and stock included), but no
  * product id and no variant ids, so Save creates rather than edits.
  *
- * The photo is deliberately NOT copied. Photos aren't reference-counted:
- * replacing a product's photo deletes the old file (actionUploadProductImage
- * in Images.gs), so a copy sharing the original's photo would go blank the
- * day the original's photo is changed.
+ * Photos are deliberately NOT copied. Replacing or removing a product's photo
+ * deletes the old file (Images.gs), so a copy sharing the original's photos
+ * would lose them the day the original's are changed.
  */
 function openForm(product, opts) {
   const duplicate = !!(product && opts && opts.duplicate);
   const section = document.getElementById('product-form-section');
   const heading = document.getElementById('product-form-heading');
   section.classList.remove('hidden');
-  selectedImageFile = null;
-  clearPhoto2 = false;
-  document.getElementById('product-image-input').value = '';
   document.getElementById('product-form-error').textContent = '';
   clearFieldErrors();
 
-  const preview = document.getElementById('image-preview');
   document.getElementById('variant-rows').innerHTML = '';
 
   document.getElementById('duplicate-photo-note').hidden = !duplicate;
@@ -375,15 +369,9 @@ function openForm(product, opts) {
     document.getElementById('product-category').value = existing;
     ListingCheck.fillSubcategories(existing, product.subcategoryId || '');
     document.getElementById('product-status').value = product.status || 'active';
-    if (product.imageUrl && !duplicate) {
-      preview.src = optimizedImageUrl(product.imageUrl, IMG_W.card);
-      preview.classList.remove('hidden');
-    } else {
-      preview.classList.add('hidden');
-    }
-    // Shown only for products that already have a second photo - there is no
-    // way to add one any more.
-    showPhoto2(duplicate ? '' : product.imageUrl2);
+    // The gallery; an older list response without images[] still shows the two photos.
+    ProductPhotos.load(product.images || [product.imageUrl && { id: 'main', url: product.imageUrl }, product.imageUrl2 && { id: 'second', url: product.imageUrl2 }].filter(Boolean),
+      { duplicate });
     const activeVariants = product.variants.filter((v) => v.status === 'active');
     if (activeVariants.length === 0 || product.productType) addVariantRow();
     else activeVariants.forEach((v) => addVariantRow(duplicate ? Object.assign({}, v, { variantId: '' }) : v));
@@ -399,8 +387,7 @@ function openForm(product, opts) {
     document.getElementById('product-category').value = '';
     ListingCheck.fillSubcategories('', '');
     document.getElementById('product-status').value = 'active';
-    preview.classList.add('hidden');
-    showPhoto2('');
+    ProductPhotos.load([]);
     addVariantRow();
     ProductOptionsEditor.load(null);
   }
@@ -414,12 +401,36 @@ function openForm(product, opts) {
   ListingCheck.render({ issues: [], suggestions: [] });
   if (product) ListingCheck.schedule(listingInputFromForm);
   UnsavedGuard.watch(document.getElementById('product-form'), { skipWhenHidden: true });
+  // Sections, details, draft offer (owner-product-steps.js).
+  ProductSteps.open(product, { duplicate });
   section.scrollIntoView({ behavior: 'smooth' });
+}
+
+/** "Open it" from the likely-duplicate note: edit that listing instead. */
+function openProductById(productId) {
+  const p = ownerProducts.find((x) => x.productId === productId);
+  if (!p) {
+    document.getElementById('pf-similar').insertAdjacentHTML('beforeend', '<span class="helper-text"> It is further down your product list - use Load More to find it.</span>');
+    return;
+  }
+  if (UnsavedGuard.isDirty() && !confirm('Open the other listing? What you typed here is kept on this device and offered again next time.')) return;
+  ProductSteps.saveDraftNow();
+  UnsavedGuard.release(document.getElementById('product-form'));
+  openForm(p);
+}
+
+/** Variety rows back from the copy kept on this device (owner-product-steps.js). */
+function restoreVarietyRows(rows) {
+  document.getElementById('variant-rows').innerHTML = '';
+  rows.forEach((r) => addVariantRow({ variantId: r.variantId || '', label: r.label || '', price: r.price, stockQty: r.stockQty }));
+  updateVarietyLabels();
 }
 
 function closeForm() {
   // Closing the panel is a decision, so stop watching rather than warn about
-  // a form the vendor has deliberately put away.
+  // a form the vendor has deliberately put away. (A copy of unsaved work stays
+  // on this device and is offered again - owner-product-steps.js.)
+  ProductSteps.close();
   UnsavedGuard.release(document.getElementById('product-form'));
   document.getElementById('product-form-section').classList.add('hidden');
 }
@@ -472,47 +483,6 @@ function updateVarietyLabels() {
   });
 }
 
-function onImageFileChange(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  selectedImageFile = file;
-  UnsavedGuard.markDirty(document.getElementById('product-form'));
-  const preview = document.getElementById('image-preview');
-  const reader = new FileReader();
-  reader.onload = () => {
-    preview.src = reader.result;
-    preview.classList.remove('hidden');
-  };
-  reader.readAsDataURL(file);
-}
-
-/**
- * Shows the existing-second-photo block, or hides it. There is no way to ADD a
- * second photo any more, so this appears only for products that already have
- * one - which is also why it offers removal rather than replacement.
- */
-function showPhoto2(url) {
-  const field = document.getElementById('existing-photo2-field');
-  const img = document.getElementById('image-preview-2');
-  if (!field || !img) return;
-  if (url) {
-    img.src = optimizedImageUrl(url, IMG_W.card);
-    field.classList.remove('hidden');
-  } else {
-    field.classList.add('hidden');
-  }
-}
-
-/**
- * Marks the second photo for removal. Nothing is deleted until Save Product -
- * so Cancel still cancels, which is what a vendor will expect from a form.
- */
-function onRemovePhoto2() {
-  clearPhoto2 = true;
-  showPhoto2('');
-  UnsavedGuard.markDirty(document.getElementById('product-form'));
-}
-
 function setSaveProductBusy(saveBtn, label) {
   saveBtn.disabled = true;
   saveBtn.innerHTML = `${label}<span class="btn-saving-dots"><span></span><span></span><span></span></span>`;
@@ -558,6 +528,8 @@ function clearFieldErrors() {
  */
 function showFieldError(control, message, existingMsg) {
   clearFieldErrors();
+  // Step by step: open the section the field is in first.
+  ProductSteps.reveal(control);
   // existingMsg: a message already on screen that says it (the description
   // counter), so the error points at that rather than repeating it in red.
   let msg = existingMsg;
@@ -591,6 +563,11 @@ function onFieldEdited(e) {
  * Returns false (with the error shown) or the variants to send.
  */
 function validateProductForm() {
+  return validateBasics() && validatePricing();
+}
+
+/** Step 1 (and the first half of Save): name, description, type, category. */
+function validateBasics() {
   const name = document.getElementById('product-name');
   if (!name.value.trim()) {
     showFieldError(name, 'Please enter a name for this listing.');
@@ -617,7 +594,12 @@ function validateProductForm() {
     showFieldError(category, 'Please choose a category.');
     return false;
   }
+  return true;
+}
 
+/** Step 3 (and the second half of Save): prices and stock. Returns false or what to send. */
+function validatePricing() {
+  const type = document.getElementById('product-listing-type');
   // Single products and products with options are checked by their editor.
   if (ProductOptionsEditor.mode !== 'list') {
     const p = ProductOptionsEditor.payload();
@@ -668,10 +650,33 @@ function validateProductForm() {
   return variants;
 }
 
+/** For the listing-quality meter: is there a price yet (no error shown)? */
+function pricingLooksSet() {
+  if (ProductOptionsEditor.mode === 'single') return Number(document.getElementById('single-price').value) > 0;
+  if (ProductOptionsEditor.mode === 'options') return !ProductOptionsEditor.payload().error;
+  return Array.from(document.querySelectorAll('#variant-rows .variant-price')).some((i) => Number(i.value) > 0);
+}
+
+/** For the review: the price, or the range of prices, as shoppers will read it. */
+function pricingSummary() {
+  let prices = [];
+  if (ProductOptionsEditor.mode === 'single') prices = [Number(document.getElementById('single-price').value)];
+  else if (ProductOptionsEditor.mode === 'options') {
+    const p = ProductOptionsEditor.payload();
+    prices = p.error ? [] : p.variants.filter((v) => v.active).map((v) => Number(v.price));
+  } else prices = Array.from(document.querySelectorAll('#variant-rows .variant-price')).map((i) => Number(i.value));
+  prices = prices.filter((x) => x > 0);
+  if (!prices.length) return 'Not set yet';
+  const lo = Math.min.apply(null, prices), hi = Math.max.apply(null, prices);
+  return lo === hi ? formatMoney(lo) : formatMoney(lo) + ' - ' + formatMoney(hi);
+}
+
 // flags (from the listing-check panel): submitForReview + sellerNote, or
 // acknowledgeWarnings - only ever sent after the backend refused a plain Save.
+// saveHidden: the "Save hidden (draft)" button - saved, not shown to shoppers.
 async function onSaveProduct(e, flags) {
   if (e) e.preventDefault();
+
   flags = flags || {};
   const errorEl = document.getElementById('product-form-error');
   errorEl.textContent = '';
@@ -690,10 +695,13 @@ async function onSaveProduct(e, flags) {
     category: document.getElementById('product-category').value,
     subcategoryId: document.getElementById('product-subcategory').value,
     listingType: document.getElementById('product-listing-type').value,
-    status: document.getElementById('product-status').value,
+    status: flags.saveHidden ? 'hidden' : document.getElementById('product-status').value,
     variants,
+    // Category details (owner-product-steps.js / ProductDetails.gs).
+    details: ProductSteps.details(),
     requestId: saveRequestId
   };
+  if (flags.saveHidden) document.getElementById('product-status').value = 'hidden';
   if (flags.submitForReview) {
     payload.submitForReview = true;
     payload.sellerNote = flags.sellerNote || '';
@@ -712,11 +720,8 @@ async function onSaveProduct(e, flags) {
     if (summary && !confirm('Saving will change the combinations:\n\n' + summary + '\n\nContinue?')) return;
   }
 
-  // Only sent when the vendor actually asked to clear it. updateProduct keeps
-  // the existing value when imageUrl2 is undefined and clears it when the key
-  // is present and empty, so sending it unconditionally would wipe every
-  // second photo on the first edit of any product.
-  if (clearPhoto2) payload.imageUrl2 = '';
+  // No photo fields: photos go up after the product is saved (below), and
+  // the server ignores any it is sent here.
 
   const saveBtn = document.getElementById('save-product-btn');
   setSaveProductBusy(saveBtn, productId ? 'Saving' : 'Adding');
@@ -734,6 +739,7 @@ async function onSaveProduct(e, flags) {
       errorEl.textContent = res.needsCorrection ? res.error : 'Not saved yet - see the note above the Save button.';
       ListingCheck.remember(listingInputFromForm());
       ListingCheck.render(res.validation, { canSubmitForReview: !!res.canSubmitForReview, canSaveAnyway: !!res.canSaveAnyway });
+      ProductSteps.reveal(document.getElementById('listing-check'));
       document.getElementById('listing-check').scrollIntoView({ block: 'center', behavior: 'smooth' });
     } else {
       errorEl.textContent = res.error || 'Could not save this product.';
@@ -772,29 +778,14 @@ async function onSaveProduct(e, flags) {
   // (loadProducts() with no opts).
   const reloadOpts = productId ? undefined : { limit: productsTotal + 1 };
 
-  if (selectedImageFile) {
-    setSaveProductBusy(saveBtn, 'Uploading photo 1');
-    let uploadOk = false;
-    try {
-      const { base64, mimeType } = await compressImage(selectedImageFile);
-      const uploadRes = await Api.post('uploadProductImage', {
-        token: Auth.getToken(),
-        productId: res.productId,
-        imageBase64: base64,
-        mimeType,
-        slot: 1
-      });
-      uploadOk = uploadRes.ok;
-      if (!uploadOk) {
-        errorEl.textContent = `Product saved, but photo 1 upload failed: ${uploadRes.error || 'unknown error'}. Click Save Product to try the photo again.`;
-      }
-    } catch (err) {
-      errorEl.textContent = 'Product saved, but photo 1 could not be processed. Click Save Product to try the photo again.';
-    }
-    if (!uploadOk) {
-      // Left open on purpose: closing here would hide #product-form-error,
-      // the very element the message above was just written into, before the
-      // vendor could ever read it.
+  // The photo gallery: replacements, removals, order, new photos.
+  if (ProductPhotos.hasPending()) {
+    setSaveProductBusy(saveBtn, 'Uploading photos');
+    const problems = await ProductPhotos.apply(res.productId, (text) => setSaveProductBusy(saveBtn, text));
+    if (problems.length) {
+      // Left open on purpose: the product is saved, the photos marked
+      // "didn't upload" are still on screen, and Save Product tries them again.
+      errorEl.textContent = `Product saved, but ${problems.length === 1 ? 'a photo' : problems.length + ' photos'} did not upload: ${problems.join('; ')}. Click Save Product to try again.`;
       setSaveProductIdle(saveBtn);
       await loadProducts(reloadOpts);
       return;
@@ -803,6 +794,7 @@ async function onSaveProduct(e, flags) {
 
   setSaveProductIdle(saveBtn);
   UnsavedGuard.markSaved(document.getElementById('product-form'));
+  ProductSteps.saved(res.productId, !productId);
   closeForm();
   await loadProducts(reloadOpts);
   // Said after the list reload, which rewrites this same line.
@@ -819,12 +811,12 @@ function renderCardPreview() {
   const details = document.getElementById('card-preview');
   if (!details.open) return;
   const slot = document.getElementById('card-preview-slot');
-  const preview = document.getElementById('image-preview');
+  const photos = ProductPhotos.previewUrls();
   const base = {
     productId: 'preview', storeSlug: 'preview', storeName: document.getElementById('store-name-label').textContent,
     name: document.getElementById('product-name').value.trim() || 'Product name',
     category: document.getElementById('product-category').value || 'other', listingType: document.getElementById('product-listing-type').value || 'product',
-    imageUrl: preview && !preview.classList.contains('hidden') && /^https?:/.test(preview.src) ? preview.src : '',
+    imageUrl: photos[0] || '', imageUrl2: photos[1] || '', images: photos,
     variants: Array.from(document.querySelectorAll('#variant-rows .variant-row')).map((row, i) => ({ variantId: 'p' + i,
       label: row.querySelector('.variant-label').value, price: Number(row.querySelector('.variant-price').value) || 0, stockQty: null }))
   };

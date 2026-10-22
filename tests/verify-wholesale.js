@@ -32,7 +32,7 @@ async function page(browser, path, opts) {
     return J({ ok: true, stores: [], featured: [], sellers: [], config: {} });
   });
   const pg = await ctx.newPage();
-  await pg.addInitScript((tok) => { localStorage.setItem('skiri_cookie_consent', 'true'); if (tok) localStorage.setItem('skiri_owner_token', 'tok'); }, opts.signedIn !== false);
+  await pg.addInitScript((tok) => { localStorage.setItem('skiri_cookie_consent', 'true'); if (tok) { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'tok'); } }, opts.signedIn !== false);
   await pg.goto(BASE + path, { waitUntil: 'load' });
   await pg.waitForTimeout(700);
   return { ctx, pg, posted };

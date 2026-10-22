@@ -211,7 +211,7 @@ const ph = (page) => page.$eval('#search-input', (el) => el.placeholder);
     ok('footer keeps only Terms and Privacy: ' + path,
       f && f.links.join('|') === 'Terms|Privacy', f ? f.links.join(' | ') : 'no footer');
     ok('and none of the removed links survive: ' + path,
-      f && !/Browse All Stores|Vendor Login|Enquiry/.test(f.text), f && f.text);
+      f && !/Browse All Stores|Vendor Login|Enquiry|Help and support/.test(f.text), f && f.text);
     await ctx.close();
   }
   {

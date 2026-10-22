@@ -106,15 +106,19 @@ let who = { OwnerId: 'own_d', StoreSlug: 'd', StoreType: 'distributor' };
   await page.click('[data-act="receive"]');
   ok('...receive has no location field', !(await page.$('#inv-loc')));
 
-  // Sign-up offers Distributor and promises the call.
+  // Sign-up offers the combined choice and promises the call.
   // Signed out, or the login page goes straight to the dashboard.
   const out = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   out.on('pageerror', (e) => errors.push(String(e)));
   await out.goto(BASE + '/owner/login.html', { waitUntil: 'load' });
   const types = await out.$$eval('input[name="storeType"]', (r) => r.map((x) => x.value));
-  ok('sign-up offers Retailer, Wholesaler, Distributor', types.join() === 'retailer,wholesaler,distributor', types.join());
-  await out.evaluate(() => { const r = document.querySelector('input[name="storeType"][value="distributor"]'); r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); });
-  ok('picking Distributor shows the verification-call note', !(await out.$eval('#wholesaler-note', (n) => n.hidden)));
+  // One combined choice since Oct 2026 (owner request): stored as wholesaler,
+  // which gets the same locations and transfers (isBulkSeller).
+  ok('sign-up offers Retailer and one Wholesaler / Distributor choice', types.join() === 'retailer,wholesaler', types.join());
+  ok('...labelled for bulk and for branches', /Wholesaler \/ Distributor[\s\S]*several shops, branches or warehouses/.test(
+    await out.$eval('input[name="storeType"][value="wholesaler"]', (r) => r.parentElement.textContent)));
+  await out.evaluate(() => { const r = document.querySelector('input[name="storeType"][value="wholesaler"]'); r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); });
+  ok('picking it shows the verification-call note', !(await out.$eval('#wholesaler-note', (n) => n.hidden)));
   ok('no page errors', errors.length === 0, errors.join('; '));
 
   await browser.close();

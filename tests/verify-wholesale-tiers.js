@@ -43,7 +43,7 @@ const rice = () => box.__sheets.Variants.objects().find((v) => v.VariantId === '
     await signInShopper(ctx);
     await ctx.addInitScript((t) => {
       localStorage.setItem('skiri_cookie_consent', 'true');
-      if (t) { localStorage.setItem('skiri_owner_token', t); localStorage.setItem('skiri_owner_profile', JSON.stringify({ storeName: 'S', storeSlug: 's', status: 'active' })); }
+      if (t) { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', t); localStorage.setItem('skiri_owner_profile', JSON.stringify({ storeName: 'S', storeSlug: 's', status: 'active' })); }
     }, token || '');
     await ctx.route('**/macros/s/**', (route) => {
       fresh();

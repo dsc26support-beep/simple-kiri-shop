@@ -678,6 +678,28 @@ function colourOptionOf(product) {
   return (product.options || []).filter((o) => o.kind === 'colour')[0] || null;
 }
 
+/**
+ * The product's own photos, cover first: images[] (the photo gallery, up to 6)
+ * where the backend sends it, else the older imageUrl / imageUrl2 pair.
+ */
+function productOwnPhotos(product) {
+  const out = [];
+  [product.imageUrl, product.imageUrl2].concat(Array.isArray(product.images) ? product.images : []).forEach((u) => {
+    if (typeof u === 'string' && u && out.indexOf(u) === -1) out.push(u);
+  });
+  return out;
+}
+
+/**
+ * The seller's category details (ProductDetails.gs): [{ label, value }] as a
+ * small definition list, or '' when there are none. Plain text only.
+ */
+function productDetailsHtml(product) {
+  const list = Array.isArray(product.details) ? product.details.filter((d) => d && d.label && d.value) : [];
+  if (!list.length) return '';
+  return `<dl class="product-details">${list.map((d) => `<div><dt>${escapeHtml(d.label)}</dt><dd>${escapeHtml(d.value)}</dd></div>`).join('')}</dl>`;
+}
+
 /** Photos for a card: the product's own first, then each colour's primary photo. [{ url, colourId }] */
 function cardGalleryImages(product) {
   const out = [];
@@ -696,8 +718,7 @@ function cardGalleryImages(product) {
       if (v && !product.imageUrl && !out.length) add(v.images[0], val.id);
     });
   }
-  add(product.imageUrl);
-  add(product.imageUrl2);
+  productOwnPhotos(product).forEach((u) => add(u));
   if (colour) {
     colour.values.forEach((val) => {
       const v = variants.filter((x) => x.values && x.values[colour.id] === val.id && x.images && x.images.length)[0];
