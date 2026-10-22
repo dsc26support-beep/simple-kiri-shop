@@ -275,6 +275,8 @@ function runReminderSweep() {
   try { recordFeatureEndViews(); } catch (e) { Logger.log('feature end views failed: ' + e); }
   try { sweepFeatureBankMatches(); } catch (e) { Logger.log('feature bank matching failed: ' + e); }
   try { runScheduledInventorySyncs(); } catch (e) { Logger.log('inventory syncs failed: ' + e); }
+  // Orders waiting to be sent to sellers' POS systems (IntegrationOutbox.gs).
+  try { if (typeof runPosOutbox === 'function') runPosOutbox(); } catch (e) { Logger.log('pos outbox failed: ' + e); }
 
   // Runs after the reminder logic above so a cart/order gets its chance to
   // be reminded in this same run before either cleanup step touches it -

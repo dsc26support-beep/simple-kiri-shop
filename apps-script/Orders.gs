@@ -338,7 +338,7 @@ function actionCreateOrder(body) {
     // "I need an invoice" (Invoices.gs): kept only for a store that offers invoices.
     var wantsInvoice = body.wantInvoice === true && typeof invSettings === 'function' && invSettings(owner).enabled;
     if (wantsInvoice) ensureColumn(ordersSheet, 'InvoiceRequested');
-    appendRowFromObject(ordersSheet, {
+    var newOrderRow = {
       InvoiceRequested: wantsInvoice ? 'yes' : '',
       OrderId: orderId,
       OwnerId: owner.OwnerId,
@@ -363,7 +363,10 @@ function actionCreateOrder(body) {
       Status: 'Pending Payment',
       CreatedAt: nowIso(),
       UpdatedAt: nowIso()
-    });
+    };
+    appendRowFromObject(ordersSheet, newOrderRow);
+    // POS & Integration Hub (IntegrationOutbox.gs): sellers who export orders get order.created. Guarded, never throws.
+    if (typeof posOutboxOrderCreated === 'function') posOutboxOrderCreated(newOrderRow);
     // Opens the order room when rooms are switched on for this store
     // (Transactions.gs). Never fails the order.
     if (typeof txOnOrderCreated === 'function') txOnOrderCreated({ OrderId: orderId, StoreSlug: slug, Status: 'Pending Payment' });
