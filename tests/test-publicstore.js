@@ -177,7 +177,11 @@ for (const [file, re] of [
   const src = read(JS + file);
   let m; while ((m = re.exec(src))) reads.add(file + ':' + m[1]);
 }
-const missing = [...reads].filter((r) => !Object.prototype.hasOwnProperty.call(store, r.split(':')[1]));
+// getStorePublicInfo adds a few display fields on top (e.g. invoicesOffered,
+// Invoices.gs) - checkout.js reads those through the same storeInfo object.
+const infoSrc = (prod.match(/function actionGetStorePublicInfo[\s\S]*?\n}/) || [''])[0];
+const added = new Set([...infoSrc.matchAll(/info\.([A-Za-z]\w*)\s*=/g)].map((m) => m[1]));
+const missing = [...reads].filter((r) => !Object.prototype.hasOwnProperty.call(store, r.split(':')[1]) && !added.has(r.split(':')[1]));
 ok(`all ${reads.size} consumer field reads resolve against publicStoreFields`, missing.length === 0, missing.join(' '));
 
 /* 7. No PUBLIC action may still hand out publicOwnerFields. */

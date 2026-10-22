@@ -19,7 +19,7 @@ function init() {
   } else if (getQueryParam('deleted')) {
     // Same words as the backend's login error (Auth.gs). A seller can reach this
     // page two ways and should not meet two different messages.
-    document.getElementById('session-message').textContent = 'This store has been deleted. Contact now via the Enquiry link below if this is a mistake.';
+    document.getElementById('session-message').textContent = 'This store has been deleted. Contact now via the Help and support link below if this is a mistake.';
   }
 
   document.getElementById('tab-login').addEventListener('click', () => switchTab('login'));
@@ -75,12 +75,26 @@ function showShopperNote() {
   if (!note) return;
   if (typeof CustomerAuth === 'undefined' || !CustomerAuth.getToken()) return;
 
-  const customer = CustomerAuth.getCustomer() || {};
-  const email = customer.email ? ' (' + customer.email + ')' : '';
-  // Owner request (Oct 2026): just who they are signed in as, highlighted.
-  note.textContent = 'You are signed in as a shopper' + email;
+  setShopperNote(CustomerAuth.getCustomer());
+  // Owner request (Oct 2026): a Google button under the note, so a shopper on
+  // the wrong account can switch. Only for a signed-in shopper - everybody
+  // else gets no Google script at all. Stays on this page afterwards: the
+  // register form may already be half filled in.
+  window.onCustomerSignedIn = setShopperNote;
+  if (typeof initGoogleSignIn === 'function') initGoogleSignIn();
+}
+
+// Owner request (Oct 2026): "You are signed in (email)" - just who, highlighted.
+function setShopperNote(customer) {
+  const note = document.getElementById('shopper-note');
+  const email = customer && customer.email ? ' (' + customer.email + ')' : '';
+  note.textContent = 'You are signed in' + email;
   note.hidden = false;
 }
+
+// google-signin.js renders on DOMContentLoaded unless told to wait. Here it
+// waits for showShopperNote, which knows whether anybody is signed in.
+window.GOOGLE_SIGNIN_DEFER = true;
 
 /**
  * "New here? Register your store", under a failed log-in.
@@ -166,7 +180,8 @@ async function onLogin(e) {
   const hintEl = document.getElementById('login-password-hint');
   if (!res.ok) {
     setButtonIdle(submitBtn);
-    errorEl.textContent = res.error || 'Could not log in.';
+    // An older backend still says "the Enquiry link"; the link is now called Help and support.
+    errorEl.textContent = (res.error || 'Could not log in.').replace('the Enquiry link', 'the Help and support link');
     // The seller's own password hint, after a wrong password (Oct 2026).
     if (hintEl) {
       hintEl.textContent = res.passwordHint ? 'Your password hint: ' + res.passwordHint : '';
@@ -285,5 +300,5 @@ async function onRegister(e) {
 // wholesaler should know a call is coming before committing to the choice.
 function onStoreTypeChange() {
   const picked = document.querySelector('input[name="storeType"]:checked');
-  document.getElementById('wholesaler-note').hidden = !(picked && (picked.value === 'wholesaler' || picked.value === 'distributor'));
+  document.getElementById('wholesaler-note').hidden = !(picked && picked.value === 'wholesaler');
 }

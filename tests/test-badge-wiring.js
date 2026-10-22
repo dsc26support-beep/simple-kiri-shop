@@ -90,6 +90,9 @@ function ctx(extra) {
   };
   vm.createContext(sandbox);
   vm.runInContext(products, sandbox);
+  // Photo gallery and details helpers the public payloads now call (Oct 2026).
+  vm.runInContext(fs.readFileSync(REPO + 'apps-script/Images.gs', 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(REPO + 'apps-script/ProductDetails.gs', 'utf8'), sandbox);
   vm.runInContext(admin, sandbox);
   vm.runInContext(inventory, sandbox); // publicVariantFields -> availableOf
   vm.runInContext(featuring, sandbox); // buildTips -> activePaidFeaturedProductIds

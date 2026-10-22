@@ -33,17 +33,31 @@ const ok = (name, cond, detail) => {
 
 const CUSTOMER = { customerId: 'c1', name: 'Aroita', email: 'aroita@example.com', phone: '73012345' };
 
+// Stands in for Google's script, which this sandbox can't reach. It records
+// what the page asked for and draws a button that hands the page's callback a
+// credential, the way Google's own button does after an account is picked.
+const FAKE_GSI = `window.__gsi = { inits: [], renders: [] };
+window.google = { accounts: { id: {
+  initialize: function (o) { __gsi.inits.push(o); __gsi.cb = o.callback; },
+  renderButton: function (host, o) { __gsi.renders.push(o);
+    var b = document.createElement('button'); b.type = 'button'; b.id = 'fake-gsi'; b.textContent = 'Sign in with Google';
+    b.style.height = '40px'; b.onclick = function () { __gsi.cb({ credential: 'jwt-other' }); }; host.appendChild(b); }
+} } };`;
+
 /** opts: { shopper, ownerToken, loginReply, registerReply } */
 async function open(browser, path, opts) {
   opts = opts || {};
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const seen = [];
+  const gsiLoads = [];
+  await ctx.route('**/accounts.google.com/gsi/client', (r) => { gsiLoads.push(1); r.fulfill({ status: 200, contentType: 'text/javascript', body: FAKE_GSI }); });
   await ctx.route('**/script.google.com/**', (r) => {
     let body = {}; try { body = r.request().postDataJSON() || {}; } catch (e) {}
     if (body.action) seen.push(body);
     const J = (o) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
     if (body.action === 'loginOwner') return J(opts.loginReply || { ok: false, error: 'Invalid username or password' });
     if (body.action === 'registerOwner') return J(opts.registerReply || { ok: false, error: 'That username is already taken' });
+    if (body.action === 'googleSignIn') return J({ ok: true, token: 'ct2', customer: { customerId: 'c2', name: 'Other', email: 'other@example.com' } });
     if (body.action === 'getOwnerProfile') {
       return opts.ownerProfile
         ? J({ ok: true, owner: { ownerId: 'o1', storeName: 'Bong', storeSlug: 'bong', email: 'b@x.com', status: 'active' } })
@@ -64,7 +78,7 @@ async function open(browser, path, opts) {
   } catch (e) {} }, { shopper: !!opts.shopper, ownerToken: opts.ownerToken || '', customer: CUSTOMER });
   await page.goto(BASE + path, { waitUntil: 'load' });
   await page.waitForTimeout(600);
-  return { ctx, page, seen };
+  return { ctx, page, seen, gsiLoads };
 }
 
 const tabState = (page) => page.evaluate(() => ({
@@ -137,9 +151,10 @@ const tabState = (page) => page.evaluate(() => ({
       const n = document.getElementById('shopper-note');
       return { hidden: n.hidden, text: n.textContent.trim() };
     });
-    // Owner request (Oct 2026): just this line, highlighted and centred.
-    ok('a signed-in shopper sees exactly "You are signed in as a shopper (their email)", no full stop',
-      note.hidden === false && note.text === 'You are signed in as a shopper (' + CUSTOMER.email + ')', note.text);
+    // Owner request (Oct 2026): just this line, highlighted and centred -
+    // "a shopper" dropped later the same month.
+    ok('a signed-in shopper sees exactly "You are signed in (their email)", no full stop',
+      note.hidden === false && note.text === 'You are signed in (' + CUSTOMER.email + ')', note.text);
     ok('...highlighted and centred', await page.evaluate(() => {
       const cs = getComputedStyle(document.getElementById('shopper-note'));
       return cs.textAlign === 'center' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)';
@@ -150,13 +165,47 @@ const tabState = (page) => page.evaluate(() => ({
     ok('their customer token is never sent anywhere from this page',
       !seen.some((b) => b.token === 'ct'), JSON.stringify(seen.map((b) => b.action)));
     ok('in fact no customer call is made at all',
-      !seen.some((b) => /Customer/i.test(b.action || '')), JSON.stringify(seen.map((b) => b.action)));
+      !seen.some((b) => /Customer|google/i.test(b.action || '')), JSON.stringify(seen.map((b) => b.action)));
+
+    // Owner request (Oct 2026): a Google button to switch account, under the note.
+    const g = await page.evaluate(() => {
+      const w = document.getElementById('google-signin-wrap');
+      const n = document.getElementById('shopper-note');
+      return { shown: !w.hidden && w.getBoundingClientRect().height > 0,
+        below: w.getBoundingClientRect().top >= n.getBoundingClientRect().bottom,
+        label: w.querySelector('.shopper-switch-label').textContent.trim(),
+        inits: window.__gsi && __gsi.inits.length, autoSelect: window.__gsi && __gsi.inits[0] && __gsi.inits[0].auto_select,
+        shape: window.__gsi && __gsi.renders[0] && __gsi.renders[0].shape };
+    });
+    ok('a Google button shows under the note', g.shown && g.below, JSON.stringify(g));
+    ok('...labelled "Use a different account"', g.label === 'Use a different account', g.label);
+    ok('...set up once, never auto-selecting the last account, pill ends', g.inits === 1 && g.autoSelect === false && g.shape === 'pill', JSON.stringify(g));
+    const pill = await page.evaluate(() => { const h = document.getElementById('google-signin-btn'); const cs = getComputedStyle(h); const r = h.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height), border: cs.borderTopWidth + ' ' + cs.borderTopColor, clip: cs.overflow, asked: __gsi.renders[0].width }; });
+    ok('...in the same purple 240x40 pill as customer sign-in, Google asked 16px wider', pill.w === 240 && pill.h === 40 && pill.border === '2px rgb(51, 45, 99)' && pill.clip === 'hidden' && pill.asked === 256, JSON.stringify(pill));
+
+    // Pretend some of the store form is filled in, then switch account.
+    await page.fill('#register-store-name', 'Half typed');
+    await page.click('#fake-gsi');
+    await page.waitForFunction(() => /other@example\.com/.test(document.getElementById('shopper-note').textContent), null, { timeout: 5000 });
+    const after = await page.evaluate(() => ({ url: location.pathname, store: document.getElementById('register-store-name').value,
+      note: document.getElementById('shopper-note').textContent.trim(), token: localStorage.getItem('skiri_customer_token'),
+      ownerToken: localStorage.getItem('skiri_owner_token') }));
+    ok('switching updates the note to the new account', after.note === 'You are signed in (other@example.com)', after.note);
+    ok('...saves the new shopper session', after.token === 'ct2', String(after.token));
+    ok('...stays on this page with the form as it was', after.url.endsWith('/owner/login.html') && after.store === 'Half typed', JSON.stringify(after));
+    ok('...and never makes a store session', !after.ownerToken, String(after.ownerToken));
+    const gs = seen.filter((b) => b.action === 'googleSignIn');
+    ok('the only customer call is googleSignIn, with Google\'s credential and no old token',
+      gs.length === 1 && gs[0].credential === 'jwt-other' && !gs[0].token, JSON.stringify(gs));
     await ctx.close();
   }
   {
-    const { ctx, page } = await open(browser, '/owner/login.html?tab=register');
+    const { ctx, page, gsiLoads } = await open(browser, '/owner/login.html?tab=register');
     ok('somebody who is not signed in as a shopper sees no note',
       await page.evaluate(() => document.getElementById('shopper-note').hidden === true));
+    ok('...no Google button, and Google\'s script is never loaded',
+      gsiLoads.length === 0 && await page.evaluate(() => document.getElementById('google-signin-wrap').hidden === true), String(gsiLoads.length));
     await ctx.close();
   }
 
