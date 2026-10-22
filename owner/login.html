@@ -31,120 +31,136 @@
   </header>
 
   <main id="main">
-    <div class="container">
-      <div class="auth-card">
-        <div class="auth-tabs" role="tablist">
-          <button type="button" class="auth-tab" id="tab-login" role="tab" aria-selected="true" aria-controls="login-form">Log In</button>
-          <button type="button" class="auth-tab" id="tab-register" role="tab" aria-selected="false" aria-controls="register-form">Register Store</button>
-        </div>
-
-        <p id="session-message" class="helper-text"></p>
-
-        <!-- Filled by owner-login.js for somebody who is signed in as a shopper:
-             a store account is a separate thing with its own username and
-             password, and nothing on this form said so. Empty and hidden for
-             everyone else. Under it, a Google button to switch to another
-             shopper account (owner request, Oct 2026) - google-signin.js
-             renders it only for a signed-in shopper. -->
-        <p id="shopper-note" class="auth-note" hidden></p>
-        <div id="google-signin-wrap" class="auth-social shopper-switch" hidden>
-          <p class="helper-text shopper-switch-label">Use a different account</p>
-          <div id="google-signin-btn"></div>
-          <p id="google-signin-error" class="form-error" role="alert"></p>
-        </div>
-
-        <form id="login-form" role="tabpanel">
-          <div class="field">
-            <label for="login-username">Username</label>
-            <input id="login-username" name="username" type="text" autocomplete="username" required>
+    <div class="auth-split">
+      <div class="auth-split-form">
+      <div class="container">
+        <div class="auth-card">
+          <div class="auth-tabs" role="tablist">
+            <button type="button" class="auth-tab" id="tab-login" role="tab" aria-selected="true" aria-controls="login-form">Log In</button>
+            <button type="button" class="auth-tab" id="tab-register" role="tab" aria-selected="false" aria-controls="register-form">Register Store</button>
           </div>
-          <div class="field">
-            <label for="login-password">Password</label>
-            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
-          </div>
-          <p id="login-error" class="form-error" role="alert"></p>
-          <p id="login-password-hint" class="login-hint" role="status" hidden></p>
-          <button type="submit" id="login-submit-btn" class="btn btn-primary btn-block">Log In</button>
-          <p class="helper-text" style="text-align:center; margin-top:0.75rem;"><a href="forgot-password.html">Forgot your password?</a></p>
-          <!-- Shown only after a log-in fails. The error above stays vague on
-               purpose - the backend compares against a dummy hash so this form
-               cannot be used to find out which usernames exist - so this says
-               nothing about the account and only offers the route a brand new
-               vendor was missing. -->
-          <p id="login-register-hint" class="helper-text" hidden>
-            New here?
-            <button type="button" id="login-go-register" class="link-button">Register your store</button>
-          </p>
-        </form>
 
-        <form id="twofa-form" class="hidden" role="tabpanel">
-          <input type="hidden" id="twofa-pending-token">
-          <p class="helper-text">Enter the 6-digit code we emailed you.</p>
-          <div class="field">
-            <label for="twofa-code">Verification Code</label>
-            <input id="twofa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
-          </div>
-          <p id="twofa-error" class="form-error" role="alert"></p>
-          <button type="submit" class="btn btn-primary btn-block">Verify &amp; Log In</button>
-        </form>
+          <p id="session-message" class="helper-text"></p>
 
-        <form id="register-form" class="hidden" role="tabpanel">
-          <div class="field">
-            <label for="register-store-name">Store Name</label>
-            <input id="register-store-name" name="storeName" type="text" required>
+          <!-- Filled by owner-login.js for somebody who is signed in as a shopper:
+               a store account is a separate thing with its own username and
+               password, and nothing on this form said so. Empty and hidden for
+               everyone else. Under it, a Google button to switch to another
+               shopper account (owner request, Oct 2026) - google-signin.js
+               renders it only for a signed-in shopper. -->
+          <p id="shopper-note" class="auth-note" hidden></p>
+          <div id="google-signin-wrap" class="auth-social shopper-switch" hidden>
+            <p class="helper-text shopper-switch-label">Use a different account</p>
+            <div id="google-signin-btn"></div>
+            <p id="google-signin-error" class="form-error" role="alert"></p>
           </div>
-          <fieldset class="field store-type-field">
-            <legend>What kind of store is this?</legend>
-            <label class="store-type-option">
-              <input type="radio" name="storeType" value="retailer" checked>
-              <span><strong>Retailer</strong> - you sell to shoppers</span>
-            </label>
-            <!-- One choice for both (owner request, Oct 2026). The backend
-                 already treats wholesaler and distributor alike (isBulkSeller):
-                 verification call, Food & Groceries anywhere, locations and
-                 transfers. Older distributor stores keep their type. -->
-            <label class="store-type-option">
-              <input type="radio" name="storeType" value="wholesaler">
-              <span><strong>Wholesaler / Distributor</strong> - you sell in bulk, or run several shops, branches or warehouses. Can list Food &amp; Groceries on any island.</span>
-            </label>
-            <p id="wholesaler-note" class="wholesaler-note" role="status" hidden>
-              Mwakete.com will schedule a verification call with you to confirm your business. We'll reach you on the phone number and email you enter below.
+
+          <form id="login-form" role="tabpanel">
+            <div class="field">
+              <label for="login-username">Username</label>
+              <input id="login-username" name="username" type="text" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label for="login-password">Password</label>
+              <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <p id="login-error" class="form-error" role="alert"></p>
+            <p id="login-password-hint" class="login-hint" role="status" hidden></p>
+            <button type="submit" id="login-submit-btn" class="btn btn-primary btn-block">Log In</button>
+            <p class="helper-text" style="text-align:center; margin-top:0.75rem;"><a href="forgot-password.html">Forgot your password?</a></p>
+            <!-- Shown only after a log-in fails. The error above stays vague on
+                 purpose - the backend compares against a dummy hash so this form
+                 cannot be used to find out which usernames exist - so this says
+                 nothing about the account and only offers the route a brand new
+                 vendor was missing. -->
+            <p id="login-register-hint" class="helper-text" hidden>
+              New here?
+              <button type="button" id="login-go-register" class="link-button">Register your store</button>
             </p>
-          </fieldset>
-          <div class="field">
-            <label for="register-username">Username</label>
-            <input id="register-username" name="username" type="text" autocomplete="username" required>
-          </div>
-          <div class="field">
-            <label for="register-password">Password</label>
-            <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
-            <p class="helper-text">At least 8 characters.</p>
-          </div>
-          <div class="field">
-            <label for="register-password-hint">Password hint</label>
-            <input id="register-password-hint" name="passwordHint" type="text" maxlength="100" autocomplete="off" aria-describedby="register-password-hint-help" required>
-            <p class="helper-text" id="register-password-hint-help">Shown if you get your password wrong. Never the password itself.</p>
-          </div>
-          <div class="field">
-            <label for="register-email">Contact Email</label>
-            <input id="register-email" name="email" type="email" autocomplete="email" required>
-            <p class="helper-text">Orders are emailed here.</p>
-          </div>
-          <div class="field">
-            <label for="register-phone">Contact Phone</label>
-            <input id="register-phone" name="phone" type="tel" autocomplete="tel" required>
-            <p class="helper-text">A backup contact, e.g. WhatsApp.</p>
-          </div>
-          <div class="field">
-            <label for="register-messenger">Facebook Messenger</label>
-            <input id="register-messenger" name="messenger" type="text" placeholder="e.g. https://m.me/username" aria-describedby="register-messenger-help" required>
-            <p class="helper-text" id="register-messenger-help"><button type="button" class="link-button" data-fb-help aria-expanded="false" aria-label="Help finding your Facebook username">Help?</button></p>
-          </div>
-          <p id="register-error" class="form-error" role="alert"></p>
-          <p class="helper-text auth-terms-note">By creating a store you agree to the <a href="../terms.html">Terms of Service</a> and the <a href="../privacy.html">Privacy Policy</a>.</p>
-          <button type="submit" id="register-submit-btn" class="btn btn-primary btn-block">Create Store Account</button>
-        </form>
+          </form>
+
+          <form id="twofa-form" class="hidden" role="tabpanel">
+            <input type="hidden" id="twofa-pending-token">
+            <p class="helper-text">Enter the 6-digit code we emailed you.</p>
+            <div class="field">
+              <label for="twofa-code">Verification Code</label>
+              <input id="twofa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+            </div>
+            <p id="twofa-error" class="form-error" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-block">Verify &amp; Log In</button>
+          </form>
+
+          <form id="register-form" class="hidden" role="tabpanel">
+            <div class="field">
+              <label for="register-store-name">Store Name</label>
+              <input id="register-store-name" name="storeName" type="text" required>
+            </div>
+            <fieldset class="field store-type-field">
+              <legend>What kind of store is this?</legend>
+              <label class="store-type-option">
+                <input type="radio" name="storeType" value="retailer" checked>
+                <span><strong>Retailer</strong> - you sell to shoppers</span>
+              </label>
+              <!-- One choice for both (owner request, Oct 2026). The backend
+                   already treats wholesaler and distributor alike (isBulkSeller):
+                   verification call, Food & Groceries anywhere, locations and
+                   transfers. Older distributor stores keep their type. -->
+              <label class="store-type-option">
+                <input type="radio" name="storeType" value="wholesaler">
+                <span><strong>Wholesaler / Distributor</strong> - you sell in bulk, or run several shops, branches or warehouses. Can list Food &amp; Groceries on any island.</span>
+              </label>
+              <p id="wholesaler-note" class="wholesaler-note" role="status" hidden>
+                Mwakete.com will schedule a verification call with you to confirm your business. We'll reach you on the phone number and email you enter below.
+              </p>
+            </fieldset>
+            <div class="field">
+              <label for="register-username">Username</label>
+              <input id="register-username" name="username" type="text" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label for="register-password">Password</label>
+              <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+              <p class="helper-text">At least 8 characters.</p>
+            </div>
+            <div class="field">
+              <label for="register-password-hint">Password hint</label>
+              <input id="register-password-hint" name="passwordHint" type="text" maxlength="100" autocomplete="off" aria-describedby="register-password-hint-help" required>
+              <p class="helper-text" id="register-password-hint-help">Shown if you get your password wrong. Never the password itself.</p>
+            </div>
+            <div class="field">
+              <label for="register-email">Contact Email</label>
+              <input id="register-email" name="email" type="email" autocomplete="email" required>
+              <p class="helper-text">Orders are emailed here.</p>
+            </div>
+            <div class="field">
+              <label for="register-phone">Contact Phone</label>
+              <input id="register-phone" name="phone" type="tel" autocomplete="tel" required>
+              <p class="helper-text">A backup contact, e.g. WhatsApp.</p>
+            </div>
+            <div class="field">
+              <label for="register-messenger">Facebook Messenger</label>
+              <input id="register-messenger" name="messenger" type="text" placeholder="e.g. https://m.me/username" aria-describedby="register-messenger-help" required>
+              <p class="helper-text" id="register-messenger-help"><button type="button" class="link-button" data-fb-help aria-expanded="false" aria-label="Help finding your Facebook username">Help?</button></p>
+            </div>
+            <p id="register-error" class="form-error" role="alert"></p>
+            <p class="helper-text auth-terms-note">By creating a store you agree to the <a href="../terms.html">Terms of Service</a> and the <a href="../privacy.html">Privacy Policy</a>.</p>
+            <button type="submit" id="register-submit-btn" class="btn btn-primary btn-block">Create Store Account</button>
+          </form>
+        </div>
       </div>
+      </div>
+      <!-- Welcome panel (owner request, Oct 2026: two-panel sign-in). On a
+           computer it sits beside the form with a picture of Mwakete; on a
+           phone it is a slim purple band above the form and the picture is
+           not shown (or downloaded - it is lazy and display:none there). -->
+      <aside class="auth-split-panel" aria-label="About Mwakete">
+        <h2 class="auth-panel-title">Sell to all of Kiribati</h2>
+        <p class="auth-panel-text">Open your store for free, list your products and get orders straight to your phone.</p>
+        <div class="auth-panel-shot" aria-hidden="true">
+          <div class="auth-panel-shot-bar"><span></span><span></span><span></span></div>
+          <img src="../assets/img/auth-seller.jpg" alt="" width="1100" height="720" loading="lazy" decoding="async">
+        </div>
+      </aside>
     </div>
   </main>
 
