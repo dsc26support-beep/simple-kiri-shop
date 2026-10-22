@@ -99,6 +99,10 @@ var PROTECTED_POST_ACTIONS = [
   'listReviewCases', 'getReviewCase', 'reviewCaseAction', 'adminListCategories', 'adminSaveCategory', 'listAuditLog',
   // Per-variant photo galleries (ProductVariants.gs) - owner of the product only.
   'uploadVariantImage', 'setVariantImages',
+  // Product photo gallery (Images.gs) - owner of the product only.
+  'uploadProductPhoto', 'setProductPhotos',
+  // Likely-duplicate check while writing a listing (ProductDetails.gs) - own products only.
+  'findSimilarProducts',
   // Header adverts (HeaderAds.gs) - every one checks isOwnerAdmin inside.
   'adminListHeaderAds', 'adminSaveHeaderAd', 'adminReorderHeaderAds', 'adminDeleteHeaderAd',
   // Order rooms admin lists and settings (Transactions.gs) - isOwnerAdmin inside.
@@ -657,6 +661,9 @@ function doPost(e) {
         case 'listAuditLog': return jsonOut(actionListAuditLog(owner, body));
         case 'uploadVariantImage': return jsonOut(actionUploadVariantImage(owner, body));
         case 'setVariantImages': return jsonOut(actionSetVariantImages(owner, body));
+        case 'uploadProductPhoto': return jsonOut(actionUploadProductPhoto(owner, body));
+        case 'setProductPhotos': return jsonOut(actionSetProductPhotos(owner, body));
+        case 'findSimilarProducts': return jsonOut(actionFindSimilarProducts(owner, body));
         case 'adminListHeaderAds': return jsonOut(actionAdminListHeaderAds(owner));
         case 'adminSaveHeaderAd': return jsonOut(actionAdminSaveHeaderAd(owner, body));
         case 'adminReorderHeaderAds': return jsonOut(actionAdminReorderHeaderAds(owner, body));

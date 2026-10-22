@@ -432,6 +432,10 @@ function getTopProductsCached() {
           options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
+          // Every photo, cover first (Images.gs productGalleryOf).
+          images: productPhotoUrls(p),
+          // Category details the seller filled in (ProductDetails.gs).
+          details: productDetailsListOf(p),
           storeSlug: owner.StoreSlug,
           storeName: owner.StoreName,
           storePhone: owner.Phone,
@@ -662,6 +666,10 @@ function actionSearchProducts(params) {
           options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
+          // Every photo, cover first (Images.gs productGalleryOf).
+          images: productPhotoUrls(p),
+          // Category details the seller filled in (ProductDetails.gs).
+          details: productDetailsListOf(p),
           storeSlug: owner.StoreSlug,
           storeName: owner.StoreName,
           storePhone: owner.Phone,
@@ -758,6 +766,10 @@ function actionListProducts(params) {
           options: productTypeOfRow(p) === 'options' ? productOptionsOf(p) : undefined,
           imageUrl: p.ImageUrl,
           imageUrl2: p.ImageUrl2,
+          // Every photo, cover first (Images.gs productGalleryOf).
+          images: productPhotoUrls(p),
+          // Category details the seller filled in (ProductDetails.gs).
+          details: productDetailsListOf(p),
           variants: productVariants,
           rating: (ratings[p.ProductId] || {}).average != null ? ratings[p.ProductId].average : null,
           reviewCount: (ratings[p.ProductId] || {}).count || 0
@@ -834,6 +846,9 @@ function actionListOwnerProducts(owner, body) {
       listingType: listingTypeOfRow(p),
       imageUrl: p.ImageUrl,
       imageUrl2: p.ImageUrl2,
+      // The photo gallery with ids, so the form can reorder, replace and remove.
+      images: productGalleryOf(p).map(function (i) { return { id: i.id, url: i.url }; }),
+      details: productDetailsMapOf(p),
       status: p.Status,
       subcategoryId: String(p.SubcategoryId || ''),
       productType: productTypeOfRow(p),
@@ -849,7 +864,8 @@ function actionListOwnerProducts(owner, body) {
   });
 
   // bulkPricing tells the form whether to offer bulk prices at all.
-  return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length, bulkPricing: bulkPricingOn(owner) });
+  return ok({ products: result, total: allProducts.length, hasMore: offset + limit < allProducts.length, bulkPricing: bulkPricingOn(owner),
+    photoMax: productImagesMax() });
 }
 
 function actionCreateOrUpdateProduct(owner, body) {
@@ -862,6 +878,10 @@ function actionCreateOrUpdateProduct(owner, body) {
   var categoryErr = capLength(body.category, 50, 'Category') || capLength(body.subcategoryId, 60, 'Subcategory') ||
     capLength(body.sellerNote, 500, 'Note for the reviewer');
   if (categoryErr) return categoryErr;
+  // Category details (ProductDetails.gs): known keys, short values. Absent =
+  // leave what is stored; {} clears them.
+  var detailsIn = body.details === undefined ? null : cleanProductDetails(body.details);
+  if (detailsIn && detailsIn.error) return fail(detailsIn.error);
 
   // Validated against the register rather than trusted (listing checks,
   // ListingRules.gs): an unknown id is refused instead of quietly becoming
@@ -898,7 +918,9 @@ function actionCreateOrUpdateProduct(owner, body) {
   if (category === 'other' && !(priorRow && categoryIdOf(priorRow.Category) === 'other')) return fail('Please choose a category from the list.');
   var listingInput = {
     name: name, description: String(body.description || ''), categoryId: category, subcategoryId: subcategoryId, listingType: listingType,
-    attributes: cleanListingAttributes(body.attributes),
+    // Details the seller filled in answer the listing checks' "add the
+    // weight / size" tips the same way the older attributes field did.
+    attributes: cleanListingAttributes(listingAttributesFromDetails(detailsIn ? detailsIn.details : {}, body.attributes)),
     optionLabels: body.productType === 'options' && Array.isArray(body.options)
       ? [].concat.apply([], body.options.map(function (o) { return (o && Array.isArray(o.values) ? o.values : []).map(function (v) { return String((v && v.label) || '').slice(0, 60); }); }))
       : (Array.isArray(body.variants) ? body.variants : []).map(function (v) { return String((v && v.label) || '').slice(0, 100); })
@@ -912,7 +934,7 @@ function actionCreateOrUpdateProduct(owner, body) {
     // A retried Save (same requestId) gets the first answer back - never a
     // second product.
     return idempotentResult('product:' + owner.OwnerId, body.requestId, function () {
-      return saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput);
+      return saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput, detailsIn ? detailsIn.details : null);
     });
   } finally {
     lock.releaseLock();
@@ -929,7 +951,7 @@ function sellerStatusOf(body, existing) {
 }
 
 /** The write half of actionCreateOrUpdateProduct. Caller holds the script lock. */
-function saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput) {
+function saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput, details) {
   {
     var productsSheet = getSheet('Products');
     var variantsSheet = getSheet('Variants');
@@ -940,6 +962,7 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
     var held = gate.mode === 'hold';
     var wasHeld = false, hadCase = false;
     ['SubcategoryId', 'RequestedStatus', 'ReviewId', 'ReviewApprovedFingerprint'].forEach(function (h) { ensureColumn(productsSheet, h); });
+    if (details) ensureColumn(productsSheet, 'AttributesJson');
 
     // Stock can't be set below what open orders already hold (Inventory.gs).
     // Checked before anything is written, so a refused save changes nothing.
@@ -974,15 +997,25 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
         Category: category,
         SubcategoryId: subcategoryId,
         ListingType: listingType,
-        ImageUrl: body.imageUrl !== undefined ? body.imageUrl : existing.ImageUrl,
-        ImageFileId: body.imageFileId !== undefined ? body.imageFileId : existing.ImageFileId,
-        ImageUrl2: body.imageUrl2 !== undefined ? body.imageUrl2 : existing.ImageUrl2,
-        ImageFileId2: body.imageFileId2 !== undefined ? body.imageFileId2 : existing.ImageFileId2,
+        // Photos are not set here: only the photo actions (Images.gs) change
+        // them, so a browser can never name a stored file id (see
+        // actionUploadProductPhoto). imageUrl2: '' from an older form still
+        // removes the second photo, through the gallery.
         Status: held ? 'review' : sellerStatusOf(body, existing),
         RequestedStatus: held ? sellerStatusOf(body, existing) : '',
         SortOrder: body.sortOrder !== undefined ? body.sortOrder : existing.SortOrder,
+        AttributesJson: details ? JSON.stringify(details) : existing.AttributesJson,
         UpdatedAt: now
       });
+      if (body.imageUrl2 === '') {
+        var gallery = productGalleryOf(existing);
+        if (gallery.length > 1) {
+          var droppedPhoto = gallery.splice(1, 1);
+          ensureColumn(productsSheet, 'ImagesJson');
+          updateRowFromObject(productsSheet, existing.__row, productGalleryFields(gallery));
+          deleteProductPhotoFiles(droppedPhoto, productId);
+        }
+      }
     } else {
       productId = newId('prod');
       ensureColumn(productsSheet, 'ListingType');
@@ -995,13 +1028,15 @@ function saveProductLocked(owner, body, name, category, subcategoryId, listingTy
         Category: category,
         SubcategoryId: subcategoryId,
         ListingType: listingType,
-        ImageUrl: body.imageUrl || '',
-        ImageFileId: body.imageFileId || '',
-        ImageUrl2: body.imageUrl2 || '',
-        ImageFileId2: body.imageFileId2 || '',
+        // Photos are added afterwards with uploadProductPhoto (Images.gs).
+        ImageUrl: '',
+        ImageFileId: '',
+        ImageUrl2: '',
+        ImageFileId2: '',
         Status: held ? 'review' : sellerStatusOf(body, null),
         RequestedStatus: held ? sellerStatusOf(body, null) : '',
         SortOrder: body.sortOrder || 0,
+        AttributesJson: details ? JSON.stringify(details) : '',
         CreatedAt: now,
         UpdatedAt: now
       });

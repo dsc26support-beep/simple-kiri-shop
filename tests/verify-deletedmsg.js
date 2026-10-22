@@ -1,13 +1,13 @@
-// "This store has been deleted" now points at the Enquiry link instead of
+// "This store has been deleted" now points at the Help and support link (was Enquiry) instead of
 // spelling out an email address.
 //
-// The rule that matters: a message that says "the Enquiry link below" is a lie
+// The rule that matters: a message that says "the Help and support link below" is a lie
 // unless that link is actually on the page it appears on. Every assertion here
 // pairs the wording with the link's existence.
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const fs = require('fs');
 const BASE = 'http://127.0.0.1:8099';
-const WANT = 'This store has been deleted. Contact now via the Enquiry link below if this is a mistake.';
+const WANT = 'This store has been deleted. Contact now via the Help and support link below if this is a mistake.';
 
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
@@ -27,17 +27,17 @@ const WANT = 'This store has been deleted. Contact now via the Enquiry link belo
 
     // The words promise a link "below". It has to be there.
     const link = await page.evaluate(() => {
-      const a = [...document.querySelectorAll('a')].find((x) => /Enquiry/i.test(x.textContent));
+      const a = [...document.querySelectorAll('a')].find((x) => /Help and support/i.test(x.textContent));
       if (!a) return null;
       const m = document.getElementById('session-message').getBoundingClientRect();
       return { href: a.getAttribute('href'), below: a.getBoundingClientRect().top > m.top,
                visible: a.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true }) };
     });
-    ok('THE ONE THAT MATTERS: an Enquiry link really exists on this page',
+    ok('THE ONE THAT MATTERS: a Help and support link really exists on this page',
       link !== null && link.visible === true, JSON.stringify(link));
     ok('and it is genuinely BELOW the message, as the words claim',
       link && link.below === true, JSON.stringify(link));
-    ok('the Enquiry link opens a mail composer', link && /^mailto:/.test(link.href), link && link.href);
+    ok('the Help and support link opens a mail composer', link && /^mailto:/.test(link.href), link && link.href);
     await ctx.close();
   }
 
@@ -71,18 +71,18 @@ const WANT = 'This store has been deleted. Contact now via the Enquiry link belo
     await page.click('#store-status-delete-btn');
     await page.waitForTimeout(400);
 
-    ok('the delete popup uses the Enquiry wording',
-      dialogText && /Enquiry link below/.test(dialogText), String(dialogText));
+    ok('the delete popup uses the Help and support wording',
+      dialogText && /Help and support link below/.test(dialogText), String(dialogText));
     ok('and drops the email address', dialogText && !/admin@/.test(dialogText), String(dialogText));
 
     const link = await page.evaluate(() => {
-      const a = [...document.querySelectorAll('a')].find((x) => /Enquiry/i.test(x.textContent));
+      const a = [...document.querySelectorAll('a')].find((x) => /Help and support/i.test(x.textContent));
       if (!a) return null;
       const btn = document.getElementById('store-status-delete-btn').getBoundingClientRect();
       return { href: a.getAttribute('href'), belowButton: a.getBoundingClientRect().top > btn.top,
                visible: a.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true }) };
     });
-    ok('the settings page now HAS an Enquiry link for those words to mean anything',
+    ok('the settings page now HAS a Help and support link for those words to mean anything',
       link !== null && link.visible === true, JSON.stringify(link));
     ok('and it sits below the Delete Store button', link && link.belowButton === true, JSON.stringify(link));
 
@@ -133,7 +133,7 @@ const WANT = 'This store has been deleted. Contact now via the Enquiry link belo
       .execSync("grep -rno \"[^\\n]\\{0,8\\}admin@mwakete.com\" /home/user/simple-kiri-shop/assets/js /home/user/simple-kiri-shop/apps-script || true",
         { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
     const stray = hits.filter((h) => !/mailto:admin@mwakete\.com$/.test(h) && !/\/help-content(\.min)?\.js:/.test(h));
-    ok('the admin email appears only as the Enquiry link target, never in message text',
+    ok('the admin email appears only as the Help and support link target, never in message text',
       stray.length === 0, stray.join(' | '));
     ok('...and the Help Centre contact link still points at it', hits.some((h) => /help-content\.js:.*mailto:admin@mwakete\.com$/.test(h)), hits.join(' | '));
   }
