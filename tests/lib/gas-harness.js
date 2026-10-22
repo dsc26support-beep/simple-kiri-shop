@@ -101,7 +101,10 @@ function makeBox(tabs, opts) {
       base64Encode: (b) => Buffer.from(b).toString('base64'),
       newBlob: (bytes, type, name) => ({ getBytes: () => Array.from(bytes), getContentType: () => type, getName: () => name }),
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
-      computeDigest: (alg, data) => Array.from(crypto.createHash('sha256').update(typeof data === 'string' ? data : Buffer.from(data)).digest()).map((b) => (b > 127 ? b - 256 : b))
+      computeDigest: (alg, data) => Array.from(crypto.createHash('sha256').update(typeof data === 'string' ? data : Buffer.from(data)).digest()).map((b) => (b > 127 ? b - 256 : b)),
+      // Apps Script's HMAC (signed bytes, like computeDigest). Added for the POS integration hub.
+      MacAlgorithm: { HMAC_SHA_256: 'sha256' },
+      computeHmacSha256Signature: (value, key) => Array.from(crypto.createHmac('sha256', key).update(value).digest()).map((b) => (b > 127 ? b - 256 : b))
     },
     MailApp: { sendEmail: (...a) => mail.push(a) },
     Logger: { log() {} },

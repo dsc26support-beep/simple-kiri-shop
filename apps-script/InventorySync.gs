@@ -112,6 +112,14 @@ var INVENTORY_CONNECTORS = {
     canWrite: true,
     readRows: function () { return { error: 'Excel / OneDrive is not connected to Mwakete yet. Download your sheet as CSV and import that for now.' }; }
   },
+  // Receives signed pushes from a POS (IntegrationHub.gs). Managed on the Integrations page, not the Import & Sync page.
+  pushApi: {
+    label: 'Any POS (signed push)',
+    configured: function () { return typeof posHubEnabled === 'function' && posHubEnabled(); },
+    canWrite: false,
+    event: true,
+    readRows: function () { return { error: 'This connection receives data from your POS. There is nothing to read from here.' }; }
+  },
   customApi: {
     label: 'Other system (API)',
     configured: function () { return false; },
@@ -533,11 +541,11 @@ function planPreviewShape(plan) {
 
 /** Connector list for the Sync page: what exists, what is configured, the seller's saved sources. */
 function actionListInventoryConnections(owner) {
-  var available = Object.keys(INVENTORY_CONNECTORS).map(function (k) {
+  var available = Object.keys(INVENTORY_CONNECTORS).filter(function (k) { return !INVENTORY_CONNECTORS[k].event; }).map(function (k) {
     return { type: k, label: INVENTORY_CONNECTORS[k].label, configured: INVENTORY_CONNECTORS[k].configured(), canWrite: !!INVENTORY_CONNECTORS[k].canWrite };
   });
   var sheet = SpreadsheetApp.getActive().getSheetByName('InventoryConnections');
-  var mine = sheet ? sheetToObjects(sheet).filter(function (c) { return c.OwnerId === owner.OwnerId && c.Status !== 'disconnected'; }) : [];
+  var mine = sheet ? sheetToObjects(sheet).filter(function (c) { return c.OwnerId === owner.OwnerId && c.Status !== 'disconnected' && c.Type !== 'pushApi'; }) : [];
   return ok({ connectors: available, connections: mine.map(publicConnection), shareEmail: mwaketeShareEmail() });
 }
 

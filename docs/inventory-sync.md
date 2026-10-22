@@ -248,3 +248,8 @@ Tabs are created on first use.
 | "Your stock changed since the preview" | An order or edit happened between preview and apply. Preview again. |
 | Automatic sync not running | The hourly `runReminderSweep` trigger is missing, or the source never had its first previewed sync. |
 | Location shows less than expected after a sale | A sale emptied the main location and the shortfall came from another — see the `rebalance` rows in Stock history. |
+
+
+## POS hub (Oct 2026)
+
+The signed-push connector (`pushApi`) and the native POS extend this engine: they use the same ledger and lock but apply sales as *deltas*, not snapshots. See [pos-integration-architecture.md](pos-integration-architecture.md). Import & Sync does not list push connections.

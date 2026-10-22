@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>POS &amp; Integrations — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell owner-integrations-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">POS &amp; Integrations</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="inventory.html">Inventory</a></li>
+          <li><a href="pos.html">Point of Sale</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>POS &amp; Integrations</h1>
+      <p class="helper-text">Connect your till or shop system so a sale in the shop also takes the item off your online store, and online orders reach your till.</p>
+      <p id="hub-status" class="helper-text" role="status"></p>
+
+      <section id="hub-off" class="dash-section hidden" aria-labelledby="hub-off-heading">
+        <h2 id="hub-off-heading">Not switched on yet</h2>
+        <p>This feature is being introduced step by step and is not switched on for your store yet. Nothing here changes your stock until it is. <a href="inventory-sync.html">Import &amp; Sync</a> and <a href="inventory.html">Inventory</a> work as before.</p>
+      </section>
+
+      <div id="hub-main" class="hidden">
+        <section class="dash-section" aria-labelledby="hub-conn-heading">
+          <div class="hub-head">
+            <h2 id="hub-conn-heading">Connected systems</h2>
+            <button type="button" class="btn btn-primary" id="hub-add">Connect a system</button>
+          </div>
+          <div id="hub-attention" class="hub-attention hidden" role="status"></div>
+          <div id="hub-connections"></div>
+          <details class="hub-pending"><summary>Which systems can connect?</summary><div id="hub-connectors"></div></details>
+        </section>
+
+        <section id="hub-wizard" class="dash-section hidden" aria-labelledby="hub-wizard-heading">
+          <h2 id="hub-wizard-heading">Connect a system</h2>
+          <div id="hub-wiz-1">
+            <p class="helper-text">Step 1 of 3. Name it, so you can tell connections apart.</p>
+            <div class="field"><label for="wiz-name">Name</label><input type="text" id="wiz-name" maxlength="80" placeholder="Main shop till"></div>
+            <div class="field"><label for="wiz-provider">Which system is it? <span class="optional">(optional)</span></label><input type="text" id="wiz-provider" maxlength="60" placeholder="Cash register / POS name"></div>
+            <div class="field"><label for="wiz-account">Shop or account name in that system <span class="optional">(optional)</span></label><input type="text" id="wiz-account" maxlength="80"></div>
+            <p id="wiz-error" class="form-error" role="alert"></p>
+            <button type="button" class="btn btn-primary" id="wiz-create">Create connection</button>
+            <button type="button" class="btn" id="wiz-cancel">Cancel</button>
+          </div>
+          <div id="hub-wiz-2" class="hidden">
+            <p class="helper-text">Step 2 of 3. Copy these into your system. <strong>The secret is shown only this once.</strong> Mwakete cannot show it again; you can make a new one later.</p>
+            <dl class="hub-secret">
+              <dt>Connection ID</dt><dd><code id="wiz-id"></code> <button type="button" class="btn btn-small" data-copy="wiz-id">Copy</button></dd>
+              <dt>Secret</dt><dd><code id="wiz-secret"></code> <button type="button" class="btn btn-small" data-copy="wiz-secret">Copy</button></dd>
+              <dt>Send events to</dt><dd><code id="wiz-endpoint"></code> <button type="button" class="btn btn-small" data-copy="wiz-endpoint">Copy</button></dd>
+            </dl>
+            <p class="helper-text">Your system signs each message with the secret. The exact format, with an example, is in the <a href="../docs/pos-integration-setup.md" target="_blank" rel="noopener">setup guide</a>. Never put the secret in a web page or an app that customers can open.</p>
+            <label class="check"><input type="checkbox" id="wiz-saved"> I have copied the secret somewhere safe</label>
+            <button type="button" class="btn btn-primary" id="wiz-next" disabled>Next</button>
+          </div>
+          <div id="hub-wiz-3" class="hidden">
+            <p class="helper-text">Step 3 of 3. Send a test from your system. It shows as <strong>Connected</strong> only after Mwakete receives a correctly signed message.</p>
+            <p id="wiz-wait" class="helper-text" role="status">Waiting for the first message…</p>
+            <button type="button" class="btn" id="wiz-check">Check now</button>
+            <button type="button" class="btn btn-primary" id="wiz-done">Finish</button>
+          </div>
+        </section>
+
+        <section id="hub-detail" class="dash-section hidden" aria-labelledby="hub-detail-heading">
+          <h2 id="hub-detail-heading">Settings</h2>
+          <div id="hub-detail-body"></div>
+        </section>
+
+        <section class="dash-section" aria-labelledby="hub-map-heading">
+          <h2 id="hub-map-heading">Items to match</h2>
+          <p class="helper-text">Items are matched only by an exact ID, SKU or barcode — never by name. Anything unclear waits here, and the sale that needs it is held without changing stock.</p>
+          <div id="hub-mappings"></div>
+        </section>
+
+        <section class="dash-section" aria-labelledby="hub-act-heading">
+          <h2 id="hub-act-heading">Activity &amp; reconciliation</h2>
+          <div class="hub-filters">
+            <label>Show <select id="act-filter"><option value="attention">Needs attention</option><option value="">Everything</option><option value="applied">Applied</option><option value="duplicate">Duplicates</option><option value="rejected">Rejected</option></select></label>
+            <label>Search <input type="search" id="act-q" placeholder="Sale or refund number"></label>
+            <button type="button" class="btn btn-small" id="act-reload">Refresh</button>
+          </div>
+          <div id="hub-events"></div>
+        </section>
+
+        <section class="dash-section" aria-labelledby="hub-out-heading">
+          <h2 id="hub-out-heading">Orders sent to your system</h2>
+          <div id="hub-outbox"></div>
+          <button type="button" class="btn btn-small" id="out-now">Send waiting messages now</button>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/owner-integrations.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>

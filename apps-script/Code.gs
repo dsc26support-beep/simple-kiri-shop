@@ -63,6 +63,8 @@ var PUBLIC_POST_ACTIONS = [
   // through the order room's own checks (runTxWrite).
   'driverApply', 'getDriverHome', 'driverSetAvailable', 'driverAcceptJob', 'driverUpdateJob', 'driverUploadProof', 'driverShareLocation',
   'txRequestDriver', 'txCancelDriverJob', 'txMarkDriverPaid',
+  // The signed push API for POS systems (IntegrationHub.gs). No owner session: it verifies an HMAC signature, a timestamp window and replays itself.
+  'posPush',
   // Job chat and fee agreement (Deliveries.gs, driver wallet phase 2). Off unless the wallet covers the driver.
   'txJobMessage', 'txProposeFee', 'txAgreeFee', 'driverJobMessage', 'driverProposeFee', 'driverAgreeFee',
   // The seller's payment to Mwakete for a wallet job (phase 3). The admin steps are in the admin list below.
@@ -89,6 +91,11 @@ var PROTECTED_POST_ACTIONS = [
   'testSheetConnection', 'syncNow', 'listSyncConflicts', 'resolveSyncConflict',
   'listLocations', 'saveLocation', 'archiveLocation', 'transferStock', 'listSuppliers', 'saveSupplier', 'archiveSupplier', 'inventoryReport',
   'adminInventoryOverview',
+  // POS & Integration Hub (IntegrationHub.gs, IntegrationOutbox.gs, Pos.gs). All need the owner session; off unless POS_HUB = on.
+  'posHubStatus', 'createPosConnection', 'rotatePosSecret', 'updatePosConnection', 'setPosConnectionState', 'testPosWebhook',
+  'listIntegrationMappings', 'saveIntegrationMapping', 'retireIntegrationMapping', 'listIntegrationEvents', 'resolveIntegrationEvent', 'listExternalSales',
+  'listIntegrationOutbox', 'retryIntegrationOutbox', 'sendIntegrationOutboxNow',
+  'posSearch', 'posCheckout', 'posListSales', 'posGetSale', 'posRefundSale', 'posReport', 'posGetSettings', 'posSaveSettings',
   // Marketing engine - every one checks isOwnerAdmin inside (Marketing.gs).
   'getMarketingOverview', 'createMarketingCampaign', 'setMarketingCampaignStatus', 'setMarketingPaused',
   'getInvoiceSettings', 'saveInvoiceSettings', 'previewInvoiceDesign', 'sendInvoice', 'listOrderDocuments', 'getCampaignStudio', 'setStoreBrandColor', 'getStoreLogoData', 'saveCampaignDraft', 'startCampaignPayment', 'submitCampaignPayment', 'campaignAction',
@@ -133,7 +140,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'wallet6-2026-10-22';
+var APP_VERSION = 'pos1-2026-10-22';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -285,6 +292,9 @@ function actionCheckSetup() {
   if (typeof actionGetSellerDashboard !== 'function') missingFiles.push('Dashboards.gs');
   if (typeof actionDriverApply !== 'function') missingFiles.push('Deliveries.gs');
   if (typeof walletBalance !== 'function') missingFiles.push('DriverWallet.gs');
+  if (typeof actionPosPush !== 'function') missingFiles.push('IntegrationHub.gs');
+  if (typeof runPosOutbox !== 'function') missingFiles.push('IntegrationOutbox.gs');
+  if (typeof actionPosCheckout !== 'function') missingFiles.push('Pos.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -536,6 +546,7 @@ function doPost(e) {
         case 'txRequestDriver': return jsonOut(actionTxRequestDriver(body));
         case 'txCancelDriverJob': return jsonOut(actionTxCancelDriverJob(body));
         case 'txMarkDriverPaid': return jsonOut(actionTxMarkDriverPaid(body));
+        case 'posPush': return jsonOut(actionPosPush(body));
         case 'txJobMessage': return jsonOut(actionTxJobMessage(body));
         case 'txProposeFee': return jsonOut(actionTxProposeFee(body));
         case 'txAgreeFee': return jsonOut(actionTxAgreeFee(body));
@@ -624,6 +635,29 @@ function doPost(e) {
         case 'archiveSupplier': return jsonOut(actionArchiveSupplier(owner, body));
         case 'inventoryReport': return jsonOut(actionInventoryReport(owner, body));
         case 'adminInventoryOverview': return jsonOut(actionAdminInventoryOverview(owner));
+        case 'posHubStatus': return jsonOut(actionPosHubStatus(owner));
+        case 'createPosConnection': return jsonOut(actionCreatePosConnection(owner, body));
+        case 'rotatePosSecret': return jsonOut(actionRotatePosSecret(owner, body));
+        case 'updatePosConnection': return jsonOut(actionUpdatePosConnection(owner, body));
+        case 'setPosConnectionState': return jsonOut(actionSetPosConnectionState(owner, body));
+        case 'testPosWebhook': return jsonOut(actionTestPosWebhook(owner, body));
+        case 'listIntegrationMappings': return jsonOut(actionListIntegrationMappings(owner, body));
+        case 'saveIntegrationMapping': return jsonOut(actionSaveIntegrationMapping(owner, body));
+        case 'retireIntegrationMapping': return jsonOut(actionRetireIntegrationMapping(owner, body));
+        case 'listIntegrationEvents': return jsonOut(actionListIntegrationEvents(owner, body));
+        case 'resolveIntegrationEvent': return jsonOut(actionResolveIntegrationEvent(owner, body));
+        case 'listExternalSales': return jsonOut(actionListExternalSales(owner, body));
+        case 'listIntegrationOutbox': return jsonOut(actionListIntegrationOutbox(owner, body));
+        case 'retryIntegrationOutbox': return jsonOut(actionRetryIntegrationOutbox(owner, body));
+        case 'sendIntegrationOutboxNow': return jsonOut(actionSendIntegrationOutboxNow(owner));
+        case 'posSearch': return jsonOut(actionPosSearch(owner, body));
+        case 'posCheckout': return jsonOut(actionPosCheckout(owner, body));
+        case 'posListSales': return jsonOut(actionPosListSales(owner, body));
+        case 'posGetSale': return jsonOut(actionPosGetSale(owner, body));
+        case 'posRefundSale': return jsonOut(actionPosRefundSale(owner, body));
+        case 'posReport': return jsonOut(actionPosReport(owner, body));
+        case 'posGetSettings': return jsonOut(actionPosGetSettings(owner));
+        case 'posSaveSettings': return jsonOut(actionPosSaveSettings(owner, body));
         case 'getMarketingOverview': return jsonOut(actionGetMarketingOverview(owner));
         // Seller Campaign Studio (SellerCampaigns.gs)
         case 'getCampaignStudio': return jsonOut(actionGetCampaignStudio(owner));

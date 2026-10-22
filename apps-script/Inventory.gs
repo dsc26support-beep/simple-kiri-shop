@@ -176,6 +176,13 @@ function planOrderStockChange(fromState, toState, items, variantsById, ctx) {
  * change would oversell.
  */
 function applyOrderStatusStock(owner, order, newStatus) {
+  var result = applyOrderStatusStockCore(owner, order, newStatus);
+  // POS & Integration Hub (IntegrationOutbox.gs): tell sellers who export orders. Guarded, never throws, never changes the result.
+  if (result && result.ok && typeof posOutboxOrderStatus === 'function') posOutboxOrderStatus(order, newStatus);
+  return result;
+}
+
+function applyOrderStatusStockCore(owner, order, newStatus) {
   var toState = ORDER_STOCK_TARGET[newStatus];
   if (!toState) return ok({});
   var items = [];
