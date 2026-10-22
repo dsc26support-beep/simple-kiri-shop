@@ -204,6 +204,7 @@ function actionGetDriverHome(body) {
       }
     }
   });
+  out.wallet = driverWalletView(d);
   out.history.sort(function (a, b) { return String(b.updatedAt).localeCompare(String(a.updatedAt)); });
   out.history = out.history.slice(0, 30);
   return ok(out);
@@ -363,8 +364,10 @@ function actionDriverUpdateJob(body) {
       if (!DELIVERY_FAIL_REASONS[reason]) return fail('Choose what went wrong.');
       if (note.length < 5) return fail('Add a short note about what happened.');
       var hadGoods = j.Status === 'picked_up';
+      var afterPickup = hadGoods ? deliveryFailedAfterPickup(j, reason) : deliveryRefundPatch(j);
       saveJob(j, Object.assign({ Status: 'failed', FailReason: reason + ': ' + note, ClosedAt: nowIso(), Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '' },
-        hadGoods ? {} : deliveryRefundPatch(j)));
+        afterPickup || {}));
+      if (hadGoods && afterPickup === null) deliveryCreditJob(j, 'failed delivery: ' + DELIVERY_FAIL_REASONS[reason]);
       appendTxEvent(ctx.state, { kind: 'fulfilment', actorType: 'driver', actorId: ctx.driver.DriverId,
         body: 'Delivery failed - ' + DELIVERY_FAIL_REASONS[reason] + ': ' + note + (hadGoods ? ' The driver will bring the goods back to the store.' : ' The goods were not collected.') });
       appendAudit({ actorId: ctx.driver.DriverId, actorRole: 'driver', action: 'DELIVERY_FAILED', entityType: 'delivery', entityId: j.JobId, next: reason, reason: note });
@@ -569,7 +572,7 @@ function actionAdminListDeliveries(owner, body) {
     if (want === 'all') return true;
     if (want === 'active') return DELIVERY_JOB_ACTIVE.indexOf(String(j.Status)) !== -1;
     if (want === 'problems') return j.Status === 'failed' || deliveryStuck(j, now);
-    if (want === 'payments') return j.PayStatus === 'submitted' || j.PayStatus === 'refund_due';
+    if (want === 'payments') return j.PayStatus === 'submitted' || j.PayStatus === 'refund_due' || j.PayStatus === 'review';
     return j.Status === want;
   }).sort(function (a, b) { return String(b.UpdatedAt).localeCompare(String(a.UpdatedAt)); }).slice(0, 200);
   var all = deliveryRows('DeliveryJobs');
@@ -584,7 +587,8 @@ function actionAdminListDeliveries(owner, body) {
       driversOnline: drivers.filter(function (d) { return d.Status === 'approved' && d.Available === 'yes'; }).length,
       driversPending: drivers.filter(function (d) { return d.Status === 'pending'; }).length,
       paymentsToCheck: all.filter(function (j) { return j.PayStatus === 'submitted'; }).length,
-      refundsDue: all.filter(function (j) { return j.PayStatus === 'refund_due'; }).length
+      refundsDue: all.filter(function (j) { return j.PayStatus === 'refund_due'; }).length,
+      toDecide: all.filter(function (j) { return j.PayStatus === 'review'; }).length
     },
     bankDetailsSet: !!deliveryBankDetails(),
     jobs: jobs.map(function (j) {
@@ -976,6 +980,273 @@ function actionAdminMarkJobRefunded(owner, body) {
     appendAudit({ actorId: owner.OwnerId, actorRole: 'admin', action: 'DELIVERY_PAYMENT_REFUNDED', entityType: 'delivery', entityId: row.JobId, previous: 'refund_due', next: 'refunded', reason: ref });
     deliveryNotifySeller(row, 'Mwakete refunded your delivery payment', 'Mwakete sent back ' + orderMoney(row.Fee) + ' (bank reference ' + ref + ') because the delivery did not go ahead.');
     return ok({ status: 'refunded' });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
+/* ==================== Crediting, claiming and paying drivers (driver wallet, phase 4) ====================
+ *
+ * WHEN A DRIVER IS CREDITED (only for jobs Mwakete confirmed it was paid for,
+ * PayStatus 'received'):
+ *  - The order COMPLETES (payment verified, buyer confirmed receipt, no open
+ *    problem): the full agreed fee is credited. Hooked from txMaybeComplete,
+ *    which every completion path (buyer, admin, dispute outcome) goes through.
+ *  - The driver reports a FAILED delivery after collecting the goods:
+ *      no_one_home / wrong_address / refused / unreachable -> credited at once
+ *        (the driver made the trip);
+ *      damaged / other -> PayStatus 'review': an admin decides to pay the
+ *        driver or refund the seller.
+ * Every credit sits in the dispute hold (default 48 hours) before it can be
+ * claimed. PayStatus becomes 'credited' so a job is never credited twice (the
+ * ledger also refuses a second credit for the same job).
+ *
+ * The driver saves where to send money (PayoutDetails), claims once their
+ * available balance reaches the minimum, and an admin pays by bank transfer
+ * and records the reference. The admin sees what Mwakete should be holding.
+ */
+
+var DELIVERY_FAIL_PAID = ['no_one_home', 'wrong_address', 'refused', 'unreachable'];
+var DRIVER_PAYOUT_COLUMN = 'PayoutDetails';
+
+DELIVERY_PAY_LABEL.credited = 'Credited to the driver';
+DELIVERY_PAY_LABEL.review = 'An admin must decide who is paid';
+
+function deliveryDriversSheet() {
+  var sheet = driversSheet();
+  ensureColumn(sheet, DRIVER_PAYOUT_COLUMN);
+  return sheet;
+}
+
+/** Credit a job's fee to its driver. job is a DeliveryJobs row (with __row). Returns { ok, entry? } or { ok:false, error }. */
+function deliveryCreditJob(job, why) {
+  if (job.PayStatus === 'credited') return { ok: true, alreadyCredited: true };
+  var res = walletCreditJob(Object.assign({}, job, { Status: 'delivered' }));
+  if (!res.ok) return res;
+  saveJob(job, { PayStatus: 'credited' });
+  deliveryChatPost(job, 'system', '', 'Mwakete credited ' + orderMoney(job.Fee) + ' to the driver' + (why ? ' (' + why + ')' : '') + '. It can be claimed after a short hold.');
+  appendAudit({ actorId: 'system', actorRole: 'system', action: 'DELIVERY_FEE_CREDITED', entityType: 'delivery', entityId: job.JobId, next: String(job.Fee), reason: why || '' });
+  try {
+    var d = deliveryJobDriver(job);
+    if (d && d.Email) sendAppEmail(d.Email, 'You earned ' + orderMoney(job.Fee), 'Mwakete credited ' + orderMoney(job.Fee) + ' to your driver balance. You can claim it after ' +
+      walletHoldHours() + ' hours, once your available balance reaches ' + orderMoney(walletMinPayout()) + '.' + (siteBaseUrl() ? '\n' + siteBaseUrl() + '/driver.html' : ''));
+  } catch (e) { /* best effort */ }
+  return res;
+}
+
+/** Called from txMaybeComplete (under the order's write lock) when an order completes. Never throws. */
+function deliveryOnOrderCompleted(order) {
+  try {
+    var jobs = deliveryJobsFor(order.OrderId).filter(function (j) { return j.PayStatus === 'received' && ['delivered', 'picked_up'].indexOf(String(j.Status)) !== -1; });
+    jobs.forEach(function (j) {
+      var row = findRowById(deliveryJobsSheet(), 'JobId', j.JobId);
+      if (row && deliveryFeeChatOn(row)) deliveryCreditJob(row, 'order completed');
+    });
+  } catch (e) { Logger.log('credit on completion failed: ' + (e && e.message)); }
+}
+
+/** A failed delivery after collecting the goods: pay the driver, or send it to an admin. Returns the extra job fields. */
+function deliveryFailedAfterPickup(job, reason) {
+  if (job.PayStatus !== 'received') return {};
+  if (DELIVERY_FAIL_PAID.indexOf(reason) !== -1) return null; // caller credits after saving the job
+  return { PayStatus: 'review' };
+}
+
+/** What the driver's wallet panel shows, or null when the wallet does not cover them. */
+function driverWalletView(driver) {
+  if (!driver || !walletEnabledForDriver(driver)) return null;
+  var bal = walletBalance(driver.DriverId);
+  var LABEL = { CREDIT: 'Delivery fee', CLAIM: 'Payout requested', PAYOUT_PAID: 'Paid to you', CLAIM_REVERSED: 'Payout returned to balance', ADJUSTMENT: 'Correction' };
+  var rows = walletEntries(driver.DriverId);
+  var paid = {}, reversed = {};
+  rows.forEach(function (e) { if (e.EntryType === 'PAYOUT_PAID') paid[e.RefEntryId] = e.Reference; if (e.EntryType === 'CLAIM_REVERSED') reversed[e.RefEntryId] = true; });
+  var now = Date.now();
+  var entries = rows.filter(function (e) { return e.EntryType !== 'PAYOUT_PAID'; }).slice(-30).reverse().map(function (e) {
+    var at = e.AvailableAt ? Date.parse(e.AvailableAt) : 0;
+    return { id: e.EntryId, type: e.EntryType, label: LABEL[e.EntryType] || e.EntryType, amount: walletMoney(e.Amount), at: e.CreatedAt, note: e.Note || '',
+      status: e.EntryType === 'CLAIM' ? (reversed[e.EntryId] ? 'returned' : paid[e.EntryId] ? 'paid' : 'waiting to be paid') : (e.EntryType === 'CREDIT' && at > now ? 'in hold until ' + e.AvailableAt : ''),
+      reference: e.EntryType === 'CLAIM' ? (paid[e.EntryId] || '') : '' };
+  });
+  return { enabled: true, currency: WALLET_CURRENCY, balance: bal, holdHours: walletHoldHours(), payoutDetails: driver.PayoutDetails || '',
+    canClaim: bal.available >= bal.minPayout && !!driver.PayoutDetails, entries: entries };
+}
+
+/** Driver: where Mwakete should send their money. body.details */
+function actionDriverSetPayoutDetails(body) {
+  var who = resolveDriver(body);
+  if (who.error) return txFail(who.error, { authRequired: who.auth });
+  var d = who.driver;
+  if (!d || d.Status !== 'approved') return fail('Only approved drivers can do this.');
+  if (!walletEnabledForDriver(d)) return fail('Payouts are not switched on for you yet.');
+  var details = txCleanText(body.details, 300);
+  if (details.length < 10) return fail('Enter your bank name, the name on the account and the account number.');
+  var sheet = deliveryDriversSheet();
+  var row = findRowById(sheet, 'DriverId', d.DriverId);
+  updateRowFromObject(sheet, row.__row, { PayoutDetails: details, UpdatedAt: nowIso() });
+  appendAudit({ actorId: d.DriverId, actorRole: 'driver', action: 'DRIVER_PAYOUT_DETAILS_SET', entityType: 'driver', entityId: d.DriverId });
+  return ok({ saved: true });
+}
+
+/** Driver: ask to be paid the whole available balance. body.requestId */
+function actionDriverClaimPayout(body) {
+  var who = resolveDriver(body);
+  if (who.error) return txFail(who.error, { authRequired: who.auth });
+  var d = who.driver;
+  if (!d || d.Status !== 'approved') return fail('Only approved drivers can do this.');
+  if (!walletEnabledForDriver(d)) return fail('Payouts are not switched on for you yet.');
+  if (!cleanRequestId(body.requestId)) return fail('Please try again.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  var res;
+  try {
+    var row = findRowById(deliveryDriversSheet(), 'DriverId', d.DriverId);
+    var details = row && row.PayoutDetails;
+    if (!details) return fail('Add where to send your money first.');
+    res = walletClaim(d.DriverId, body.requestId, undefined, details);
+    if (res.ok && res.entry) appendAudit({ actorId: d.DriverId, actorRole: 'driver', action: 'DRIVER_PAYOUT_CLAIMED', entityType: 'driver', entityId: d.DriverId, next: String(-res.entry.Amount) });
+  } finally {
+    lock.releaseLock();
+  }
+  if (!res.ok) return fail(res.error);
+  if (res.entry) {
+    try {
+      var link = siteBaseUrl() ? '\n\nPay it: ' + siteBaseUrl() + '/owner/admin.html#deliveries' : '';
+      getAdminEmails().forEach(function (to) { try { sendAppEmail(to, 'A driver asked to be paid', d.Name + ' asked for ' + orderMoney(-res.entry.Amount) + '.' + link); } catch (e) { /* best effort */ } });
+    } catch (e) { /* best effort */ }
+  }
+  return ok({ claimed: res.entry ? -res.entry.Amount : 0, repeated: !!res.repeated });
+}
+
+/* ---------- Admin ---------- */
+
+function deliveryAdminOwnDriver(owner, driverId) {
+  var d = deliveryRows('Drivers').filter(function (x) { return x.DriverId === driverId; })[0];
+  return d && normalizeEmail(d.Email) === normalizeEmail(owner.Email) ? 'You cannot handle your own driver payout.' : '';
+}
+
+/** The payout queue and what Mwakete should be holding. */
+function actionAdminListPayouts(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'adminListPayouts');
+  var drivers = {};
+  deliveryRows('Drivers').forEach(function (d) { drivers[d.DriverId] = d; });
+  var all = walletEntries();
+  var paid = {}, reversed = {}, byDriver = {};
+  all.forEach(function (e) {
+    if (e.EntryType === 'PAYOUT_PAID') paid[e.RefEntryId] = e;
+    if (e.EntryType === 'CLAIM_REVERSED') reversed[e.RefEntryId] = true;
+    byDriver[e.DriverId] = true;
+  });
+  var claims = all.filter(function (e) { return e.EntryType === 'CLAIM'; });
+  var open = claims.filter(function (c) { return !paid[c.EntryId] && !reversed[c.EntryId]; }).sort(function (a, b) { return String(a.CreatedAt).localeCompare(String(b.CreatedAt)); });
+  var recent = claims.filter(function (c) { return paid[c.EntryId]; }).sort(function (a, b) { return String(b.CreatedAt).localeCompare(String(a.CreatedAt)); }).slice(0, 20);
+  var view = function (c) {
+    var d = drivers[c.DriverId] || {};
+    var p = paid[c.EntryId];
+    return { claimId: c.EntryId, driverId: c.DriverId, driverName: d.Name || '', driverPhone: d.Phone || '', amount: -walletMoney(c.Amount), details: c.Note || '', at: c.CreatedAt,
+      paidRef: p ? p.Reference : '', paidAt: p ? p.CreatedAt : '' };
+  };
+  var jobs = deliveryRows('DeliveryJobs');
+  var sumFee = function (st) { return walletMoney(jobs.filter(function (j) { return j.PayStatus === st; }).reduce(function (n, j) { return n + deliveryMoney(j.Fee); }, 0)); };
+  var owed = 0, pending = 0, claimedUnpaid = 0, availableAll = 0;
+  var rows = Object.keys(byDriver).map(function (id) {
+    var b = walletBalance(id), d = drivers[id] || {};
+    owed += b.total; pending += b.pending; claimedUnpaid += b.claimed; availableAll += b.available;
+    return { driverId: id, name: d.Name || '', phone: d.Phone || '', total: b.total, available: b.available, pending: b.pending, claimed: b.claimed, paidOut: b.paidOut };
+  }).sort(function (a, b) { return b.available - a.available; });
+  return ok({
+    currency: WALLET_CURRENCY, mode: walletMode(), minPayout: walletMinPayout(), holdHours: walletHoldHours(),
+    claims: open.map(view), recent: recent.map(view), drivers: rows,
+    // What Mwakete should be holding for others: compare this with the bank balance.
+    holding: { heldForOpenJobs: sumFee('received'), awaitingDecision: sumFee('review'), owedToDrivers: walletMoney(owed), claimsToPay: walletMoney(claimedUnpaid), refundsDue: sumFee('refund_due'),
+      total: walletMoney(sumFee('received') + sumFee('review') + owed + claimedUnpaid + sumFee('refund_due')) }
+  });
+}
+
+/** Admin: the bank transfer for a claim was made. body: claimId, bankRef */
+function actionAdminMarkPayoutPaid(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'adminMarkPayoutPaid');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var found = walletFindClaim(String(body.claimId || ''));
+    if (found.error) return fail(found.error);
+    var own = deliveryAdminOwnDriver(owner, found.claim.DriverId);
+    if (own) return fail(own);
+    var res = walletMarkClaimPaid(found.claim.EntryId, body.bankRef, owner.OwnerId);
+    if (!res.ok) return fail(res.error);
+    appendAudit({ actorId: owner.OwnerId, actorRole: 'admin', action: 'DRIVER_PAYOUT_PAID', entityType: 'driver', entityId: found.claim.DriverId, previous: found.claim.EntryId, next: String(-walletMoney(found.claim.Amount)), reason: txCleanText(body.bankRef, 60) });
+    try {
+      var d = deliveryRows('Drivers').filter(function (x) { return x.DriverId === found.claim.DriverId; })[0];
+      if (d && d.Email) sendAppEmail(d.Email, 'Mwakete paid you ' + orderMoney(-walletMoney(found.claim.Amount)), 'Mwakete sent ' + orderMoney(-walletMoney(found.claim.Amount)) + ' to your bank account (reference ' + txCleanText(body.bankRef, 60) + ').');
+    } catch (e) { /* best effort */ }
+    return ok({ paid: true });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Admin: give an unpaid claim back to the driver's balance. body: claimId, reason */
+function actionAdminReversePayout(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'adminReversePayout');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var found = walletFindClaim(String(body.claimId || ''));
+    if (found.error) return fail(found.error);
+    var own = deliveryAdminOwnDriver(owner, found.claim.DriverId);
+    if (own) return fail(own);
+    var res = walletReverseClaim(found.claim.EntryId, body.reason, owner.OwnerId);
+    if (!res.ok) return fail(res.error);
+    appendAudit({ actorId: owner.OwnerId, actorRole: 'admin', action: 'DRIVER_PAYOUT_REVERSED', entityType: 'driver', entityId: found.claim.DriverId, previous: found.claim.EntryId, reason: txCleanText(body.reason, 300) });
+    return ok({ reversed: true });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Admin: a correction to a driver's balance, with a reason. body: driverId, amount (+/-), reason, requestId */
+function actionAdminAdjustDriverWallet(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'adminAdjustDriverWallet');
+  var driverId = String(body.driverId || '');
+  if (!deliveryRows('Drivers').some(function (d) { return d.DriverId === driverId; })) return fail('Driver not found');
+  var own = deliveryAdminOwnDriver(owner, driverId);
+  if (own) return fail(own);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var res = walletAdjust(driverId, body.amount, body.reason, owner.OwnerId, cleanRequestId(body.requestId));
+    if (!res.ok) return fail(res.error);
+    if (res.entry) appendAudit({ actorId: owner.OwnerId, actorRole: 'admin', action: 'DRIVER_WALLET_ADJUSTED', entityType: 'driver', entityId: driverId, next: String(res.entry.Amount), reason: txCleanText(body.reason, 300) });
+    return ok({ adjusted: true, repeated: !!res.repeated });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Admin: decide a failed delivery with damaged goods or another reason. body: jobId, outcome ('pay_driver'|'refund_seller'), note */
+function actionAdminResolveJobPayment(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'adminResolveJobPayment');
+  var outcome = String(body.outcome || '');
+  if (['pay_driver', 'refund_seller'].indexOf(outcome) === -1) return fail('Choose to pay the driver or refund the seller.');
+  var note = txCleanText(body.note, 300);
+  if (note.length < 5) return fail('Give your reason (it is recorded).');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var g = deliveryAdminPaymentJob(owner, body, 'review');
+    if (g.error) return g.error;
+    var row = g.row;
+    if (outcome === 'pay_driver') {
+      var res = deliveryCreditJob(row, 'admin decision');
+      if (!res.ok) return fail(res.error);
+    } else {
+      saveJob(row, { PayStatus: 'refund_due', PayNote: note });
+      deliveryChatPost(row, 'system', '', 'An admin decided the seller is refunded.');
+    }
+    saveJob(row, { PayNote: note, PayCheckedBy: owner.OwnerId, PayCheckedAt: nowIso() });
+    appendAudit({ actorId: owner.OwnerId, actorRole: 'admin', action: 'DELIVERY_PAYMENT_DECIDED', entityType: 'delivery', entityId: row.JobId, previous: 'review', next: outcome, reason: note });
+    return ok({ outcome: outcome });
   } finally {
     lock.releaseLock();
   }

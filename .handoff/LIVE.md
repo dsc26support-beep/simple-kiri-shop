@@ -1,35 +1,33 @@
 # Handoff: Drive with Mwakete driver wallet
 
 ## Goal
-Owner (small startup, Kiribati, AUD) wants drivers paid THROUGH Mwakete: seller+driver chat in Mwakete, agree delivery fee, seller pays Mwakete (bank transfer), driver claims balance at a minimum. Owner approved my small-startup defaults and said "approve", then "continue to phase 2".
+Owner (small startup, Kiribati, AUD) wants drivers paid THROUGH Mwakete: seller+driver chat, agree fee, seller pays Mwakete (bank transfer), driver claims at a minimum. Owner approved my small-startup defaults; has said "continue" for phases 2, 3, 4.
 
 ## Next steps
-1. Phase 3: seller pays Mwakete (reference code per job, proof upload), admin confirms vs REAL bank statement (never screenshot alone), pickup details released only after. Gate behind walletEnabledForDriver.
-2. Phase 4: credit on buyer receipt (walletCreditJob, 48h hold), driver balance page + Claim, admin payout queue + mark paid (Friday batch).
-3. Phase 5: rewrite "Mwakete never holds money" wording (terms.html, order-room.html, customer-dashboard.html, docs, Transactions.gs comments). Owner must get legal advice first.
-4. Phase 6: full-flow tests. Update dashboard artifact if plan changes.
+1. Phase 5: rewrite "Mwakete never holds money" wording ONLY for delivery fees: terms.html, order-room.html, customer-dashboard.html, driver.html apply text, docs/transaction-rooms.md, docs/deliveries.md, Transactions.gs comments. Owner should read wording before merge; legal advice first (not done).
+2. Phase 6: full-flow tests across all phases; update dashboard artifact if plan changes.
+3. Owner: merge PRs in order, deploy manually, set MWAKETE_BANK_DETAILS, pilot only.
 
 ## State
 - Repo dsc26support-beep/simple-kiri-shop (Google Sheet + Apps Script backend, static front end).
-- PR #118 phase 1 (DriverWallet.gs ledger, branch claude/drive-wallet-phase1) draft, base main.
-- PR #122 phase 2 (chat + fee lock, branch claude/drive-wallet-phase2) draft, base = phase1 branch. Merge #118 first.
-- Tests: tests/test-driver-wallet.js 48, tests/test-delivery-chat.js 30; all other tests/test-*.js pass; npm run build:check clean (needs npm install).
-- Dashboard artifact (recommendation): https://claude.ai/artifact/HE4WCdyeuvaDTaqoTNJUb9
+- Stacked draft PRs: #118 ph1 ledger (base main) -> #122 ph2 chat+fee lock -> #123 ph3 seller pays, admin confirms -> #124 ph4 credit/claim/payout. Branches claude/drive-wallet-phase1..4.
+- Tests: test-driver-wallet 48, test-delivery-chat 30, test-delivery-payment 41, test-driver-payouts 44; all tests/test-*.js pass; npm run build:check clean.
+- Dashboard artifact: https://claude.ai/artifact/HE4WCdyeuvaDTaqoTNJUb9 (plan; not updated since phase 1)
+- APP_VERSION wallet4-2026-10-22, sw.js CACHE v171.
 
 ## Decisions (and why)
-- Seller pays fee (matches today; buyer-pays = 2nd manual payment). Min payout $20, Friday batch. Hold 48h. Commission 0% (fields already recorded). Pilot: South Tarawa, max 5 drivers.
-- Failed delivery: before pickup refund seller; after pickup driver paid unless damage (admin decides).
-- Chat is separate DeliveryMessages tab, NOT order-room timeline (buyer can see that; driver has no access).
-- Ledger append-only; balance always summed, never stored.
-- Switch: Script Property DELIVERY_PAYMENTS off|pilot|on + DELIVERY_PAYMENTS_DRIVERS.
+- Seller pays fee; min payout $20; hold 48h; commission 0% (fields recorded); pilot South Tarawa max 5 drivers via DELIVERY_PAYMENTS=pilot + DELIVERY_PAYMENTS_DRIVERS.
+- Credit on ORDER COMPLETE (txMaybeComplete hook), not driver "delivered". Failed after pickup: no_one_home/wrong_address/refused/unreachable pay driver; damaged/other -> admin decides; before pickup refund seller.
+- Chat is separate DeliveryMessages tab (buyer can see order-room timeline).
+- Ledger append-only; balances summed. Admin never handles own store/driver.
 
 ## Gotchas
-- CLAUDE.md: Apps Script deploys manual, can't verify from sandbox; always give deploy steps + ?action=getVersion check. Never push main/merge/deploy without approval.
-- gh GraphQL blocked: create PRs with `gh api repos/.../pulls`.
-- Changed JS/CSS => run node tools/build-assets.js and bump sw.js CACHE; APP_VERSION in Code.gs.
-- test-checksetup keeps its own FILE_PROBES list.
-- Stop hook "unpushed" warnings were a missing local tracking ref; remote was fine (verify with git ls-remote).
+- CLAUDE.md: Apps Script deploys manual/unverifiable; give deploy steps + ?action=getVersion. No merge/deploy/push main without approval.
+- gh GraphQL blocked: create PRs via `gh api repos/.../pulls`.
+- JS/CSS change => node tools/build-assets.js, bump sw.js CACHE, bump APP_VERSION. npm install needed for build.
+- test-checksetup has own FILE_PROBES.
+- Stop hook "unpushed" = missing local tracking ref; verify with git ls-remote.
 
 ## Open questions
 - Legal OK to hold customer money in Kiribati? (owner)
-- Real browser/Sheet testing of phase 2 not done.
+- No real browser / real Sheet testing done for any phase.

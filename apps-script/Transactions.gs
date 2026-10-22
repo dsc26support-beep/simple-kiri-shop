@@ -808,6 +808,8 @@ function txMaybeComplete(ctx, actor) {
   if (!r.ok) return false;
   appendTxEvent(s, { kind: 'status', actorType: 'system', body: 'Order completed: payment confirmed by the seller and receipt confirmed by the buyer.' });
   txAudit(actor, 'TX_ORDER_COMPLETED', ctx.order.OrderId, 'Paid', 'Fulfilled');
+  // Driver wallet: a delivery Mwakete was paid for now pays the driver (Deliveries.gs).
+  if (typeof deliveryOnOrderCompleted === 'function') deliveryOnOrderCompleted(ctx.order);
   return true;
 }
 

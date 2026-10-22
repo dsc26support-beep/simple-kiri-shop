@@ -1,12 +1,12 @@
 # Driver wallet — paying drivers through Mwakete
 
-Owner-approved plan, October 2026. Phases 1 (money ledger), 2 (job chat and fee agreement) and 3 (seller pays Mwakete) are built.
+Owner-approved plan, October 2026. Phases 1 (money ledger), 2 (job chat and fee agreement), 3 (seller pays Mwakete) and 4 (credit, claim, pay out) are built.
 Both stay invisible until `DELIVERY_PAYMENTS` covers a driver.
 
 | | Where |
 |---|---|
 | Backend | `apps-script/DriverWallet.gs` |
-| Tests | `tests/test-driver-wallet.js` (48), `tests/test-delivery-chat.js` (30), `tests/test-delivery-payment.js` (41), all on the real backend sources |
+| Tests | `tests/test-driver-wallet.js` (48), `tests/test-delivery-chat.js` (30), `tests/test-delivery-payment.js` (41), `tests/test-driver-payouts.js` (44), all on the real backend sources |
 | Pages | `driver.html` (`assets/js/driver.js`) and the delivery panel of `order-room.html` (`assets/js/order-room.js`) |
 | Builds on | `apps-script/Deliveries.gs`, `docs/deliveries.md` |
 
@@ -78,6 +78,34 @@ Bank details live in the Script Property `MWAKETE_BANK_DETAILS` (plain text, up 
 
 New columns on `DeliveryJobs`: `PayRef`, `PayStatus`, `PayBankRef`, `PayAmount`, `PayNote`, `PaySubmittedAt`, `PayCheckedBy`, `PayCheckedAt`, `PayRefundRef` (appended automatically to an existing sheet). New actions: `txSubmitJobPayment`, `adminConfirmJobPayment`, `adminRejectJobPayment`, `adminMarkJobRefunded`.
 
+## Phase 4: crediting, claiming and paying drivers
+
+Only for a driver covered by `DELIVERY_PAYMENTS`, and only for a job Mwakete confirmed was paid for (phase 3).
+
+**When the driver is credited the full agreed fee**
+
+| What happened | Result |
+|---|---|
+| The order **completes** (seller confirmed the buyer's payment, buyer confirmed receipt, no open problem) | Credited. This covers every way an order can complete: the buyer, an admin completing it, a problem resolved. |
+| The driver reports **delivered** but the buyer has not confirmed | Nothing yet. The buyer decides. |
+| **Failed after collecting:** nobody home, wrong address, refused, buyer unreachable | Credited at once. The driver made the trip. |
+| **Failed after collecting:** damaged goods, or other | **An admin decides** (*Decide who is paid* in Admin → Deliveries & drivers): pay the driver, or refund the seller. A reason is recorded. |
+| **Failed or cancelled before collecting** | Seller refunded (phase 3). |
+
+A job is credited once (`PayStatus` becomes *credited*). A credit stays in the **dispute hold** (default 48 hours) before it can be claimed. If a problem is raised on the order in that time, an admin can correct the driver's balance (see below).
+
+**The driver (driver page → My Mwakete balance)** sees available / in the hold / waiting to be paid / paid so far, and a history. They save **where to send their money** (bank, name on the account, account number), and tap **Claim** once the available balance reaches the minimum ($20 by default). The claim takes the whole available balance and keeps a copy of the payout details it was made with.
+
+**The admin (Admin → Deliveries & drivers → Driver payouts)**
+- **What Mwakete should be holding**: fees paid by sellers and not yet credited, plus what is owed to drivers, claims waiting to be paid, and refunds due. Compare the total with the bank balance.
+- **Claims** with the driver's details: *I paid it* (enter the bank reference; the driver is emailed) or *Send back* (with a reason, for example wrong account details).
+- **Correct balance** per driver (a plus or minus amount and a reason; sent once even if submitted twice).
+- An admin cannot pay, reverse or correct their own driver account. Every step is in the audit log (`DRIVER_*`, `DELIVERY_*`).
+
+The weekly rhythm is manual: pay the queue once a week (a Friday batch works well). Nothing is automatic.
+
+New: column `PayoutDetails` on `Drivers`; ledger `Note` holds the payout details copy on a claim. New actions: `driverSetPayoutDetails`, `driverClaimPayout`, `adminListPayouts`, `adminMarkPayoutPaid`, `adminReversePayout`, `adminAdjustDriverWallet`, `adminResolveJobPayment`.
+
 ## Script Properties
 
 | Property | Value |
@@ -94,9 +122,9 @@ A bad value falls back to the default.
 ## Switching phase 1 on
 
 1. Add a new file `DriverWallet` and paste `apps-script/DriverWallet.gs` (once, from phase 1).
-2. Update `Deliveries.gs`, `Transactions.gs` and `Code.gs`, then deploy a new version.
-3. `?action=getVersion` should show `wallet3-2026-10-21` (or later) and `checkSetup` should show `missingFiles: []`.
-4. The front end (`driver.min.js`, `order-room.min.js`, `admin-deliveries.min.js`, `styles.min.css`, `owner/admin.html`, `sw.js`) goes live when the branch is merged and GitHub Pages rebuilds.
+2. Update `DriverWallet.gs`, `Deliveries.gs`, `Transactions.gs` and `Code.gs`, then deploy a new version.
+3. `?action=getVersion` should show `wallet4-2026-10-22` (or later) and `checkSetup` should show `missingFiles: []`.
+4. The front end (`driver.html`, `driver.min.js`, `order-room.min.js`, `admin-deliveries.min.js`, `styles.min.css`, `owner/admin.html`, `sw.js`) goes live when the branch is merged and GitHub Pages rebuilds.
 
 To try phase 2 on one driver: set `DELIVERY_PAYMENTS` = `pilot` and `DELIVERY_PAYMENTS_DRIVERS` = that driver's `DriverId` (South Tarawa only). Set `MWAKETE_BANK_DETAILS` first. From phase 3 a real bank transfer is expected on every covered job. Do **not** set `DELIVERY_PAYMENTS` until phase 5 has rewritten the wording below.
 
@@ -112,6 +140,6 @@ Every later phase ships behind `DELIVERY_PAYMENTS`.
 1. **Ledger** (done).
 2. **Chat and fee agreement** (done).
 3. **Seller pays Mwakete** (done): an admin confirms the real bank statement; pickup details are released after.
-4. Credit on buyer receipt, driver balance page and Claim, admin payout queue.
-5. Wording and terms.
+4. **Credit, claim and pay out** (done): credit when the order completes, the failed-delivery rules, driver balance page and Claim, admin payout queue.
+5. Wording and terms. Still to change: `terms.html`, `order-room.html`, `customer-dashboard.html`, the driver apply text in `driver.html` ("Mwakete does not hold or pay money"), `docs/transaction-rooms.md`, `docs/deliveries.md`, and the comments in `Transactions.gs`.
 6. Tests across the whole flow.
