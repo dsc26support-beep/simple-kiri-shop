@@ -11,8 +11,10 @@
  *   - help-search.js searches a normalized list built from this file.
  *
  * WRITING RULES (the Terms of Service is the source of truth):
- *   - Mwakete never takes payment, holds money or issues refunds. A sale is
- *     between the shopper and the seller.
+ *   - Mwakete never takes payment for goods, holds the price of what a shopper
+ *     buys or issues refunds for purchases. A sale is between the shopper and
+ *     the seller. (Only a delivery fee paid through Mwakete for a Mwakete
+ *     driver is held by Mwakete - see the Terms of Service.)
  *   - Delivery, prices, timing and costs are the SELLER's - never promise them.
  *   - Do not describe a feature the site does not have. If unsure, say
  *     "contact the seller" or "contact Mwakete".
@@ -106,7 +108,7 @@ const HELP_FAQS = [
     id: 'general-what', category: 'general',
     title: 'What is Mwakete?',
     subtitle: 'A local marketplace for Kiribati',
-    description: 'Mwakete is an online marketplace where shops, businesses and individuals in Kiribati list products, services and rentals, and shoppers find them and contact them.\n\nMwakete does not sell anything itself and never handles your money. When you buy, the agreement is between you and the seller.',
+    description: 'Mwakete is an online marketplace where shops, businesses and individuals in Kiribati list products, services and rentals, and shoppers find them and contact them.\n\nMwakete does not sell anything itself and never handles the money you pay for what you buy. When you buy, the agreement is between you and the seller.',
     keywords: ['about', 'marketplace', 'kiribati', 'what is', 'mwakete', 'shop online', 'mainkt'],
     related: ['general-who', 'buying-pay']
   },
@@ -197,7 +199,7 @@ const HELP_FAQS = [
     id: 'buying-pay', category: 'buying',
     title: 'How do I pay?',
     subtitle: 'You pay the seller directly',
-    description: 'You pay the seller directly, in whatever way the two of you agree. Mwakete never takes payment and never holds money.\n\nPlacing an order is a request to buy, not a completed sale: the seller contacts you to arrange payment and delivery.',
+    description: 'You pay the seller directly, in whatever way the two of you agree. Mwakete never takes payment for what you buy and never holds that money.\n\nPlacing an order is a request to buy, not a completed sale: the seller contacts you to arrange payment and delivery.',
     keywords: ['pay', 'payment', 'payments', 'money', 'cash', 'bank', 'transfer', 'price', 'cost'],
     related: ['safety-payment-requests', 'buying-problem']
   },

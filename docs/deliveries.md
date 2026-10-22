@@ -14,7 +14,7 @@ Stage 6 of the dashboard modernisation, October 2026. The owner said: "pick what
 |---|---|---|
 | Who drives | Independent drivers on **every island**, delivering **within one island only** (owner decision, Oct 2026) | A driver job exists only when the store and the buyer are on the same island, and only drivers registered on that island see or take it. `DELIVERY_AREAS` can still narrow the islands. |
 | Driver accounts | A normal customer account that **applies** to drive; an admin **approves** them | There is no new login system, and people are vetted. |
-| Who pays the driver | **The seller pays directly,** at the fee the seller offered when booking | Mwakete never holds money, which is already its rule. Checkout prices are unchanged. |
+| Who pays the driver | **Without the driver wallet:** the seller pays directly, at the fee the seller offered when booking. **With it (`DELIVERY_PAYMENTS`):** the seller pays Mwakete, which pays the driver ([driver-wallet.md](driver-wallet.md)) | Mwakete never holds the price of goods. Checkout prices are unchanged. |
 | When the driver sees the buyer | Only after accepting a job: name, phone, village and items | Personal details go only to the person doing the delivery. |
 | What pickup means | The driver's "collected" **is** the order's dispatch record | One record, no double entry. Stock leaves the shelf at that moment. |
 | Proof of delivery | A required photo plus the recipient's name, both stored privately with the order | The same private storage as order-room evidence. |
@@ -70,6 +70,6 @@ Two tabs, `Drivers` and `DeliveryJobs`, are created on first use. Nothing existi
 
 ## Not included, on purpose
 
-- **Driver payouts through Mwakete:** Mwakete doesn't handle money.
+- **Driver payouts through Mwakete:** not part of the first version. Added later behind `DELIVERY_PAYMENTS`; see [driver-wallet.md](driver-wallet.md).
 - **Route optimisation or turn-by-turn navigation:** drivers get a map search link for the village.
 - **Background tracking when the page is closed:** browsers don't allow it without an app, and it would cost battery and data.

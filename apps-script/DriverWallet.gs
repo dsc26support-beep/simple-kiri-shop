@@ -29,9 +29,11 @@
  *  DRIVER_HOLD_HOURS        dispute hold before a credit is available, default 48
  *  DRIVER_COMMISSION_PCT    default 0
  *
- * Mwakete's wording elsewhere (terms, order room) still says it never holds
- * money. That wording MUST be updated before DELIVERY_PAYMENTS is turned on
- * (phase 5), and legal advice taken first.
+ * Wording (phase 5, drafted): terms.html ("Mwakete drivers and delivery fees"),
+ * order-room.html, driver.html, customer-dashboard.html and the help text now
+ * say Mwakete never holds the price of goods but does hold a delivery fee paid
+ * through Mwakete for a driver. The owner must read it, and take legal advice,
+ * BEFORE DELIVERY_PAYMENTS is turned on beyond a pilot.
  *
  * TAB (created on first use, additive):
  *   DriverLedger  EntryId | DriverId | JobId | OrderId | EntryType | Amount | GrossFee
