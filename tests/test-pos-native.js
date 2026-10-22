@@ -108,6 +108,22 @@ ok('formula-looking settings are stored as plain text', (() => { box.actionPosSa
 const off = makeBox({ Owners: [['OwnerId', 'Status'], ['own_a', 'active']] });
 ok('POS refuses everything when the flag is off', !off.actionPosCheckout(A, { clientTxnId: tx(), lines: [{ variantId: 'v1', qty: 1 }], payment: { method: 'cash' } }).ok && !off.actionPosSearch(A, { q: 'x' }).ok);
 
+// --- last unit: two tills, one unit (the harness runs one call at a time, like the real script lock)
+box.actionAdjustStock(A, { variantId: 'v9', reason: 'count', newCount: '1' });
+const t1 = sell(A, [{ variantId: 'v9', qty: 1 }]);
+const t2 = sell(A, [{ variantId: 'v9', qty: 1 }]);
+ok('the last unit sells once; the second till is refused, stock never negative', t1.ok && !t2.ok && stock('v9') === 0, JSON.stringify(t2));
+ok('a connected-POS sale and a native sale share the one stock', (() => {
+  box.actionAdjustStock(A, { variantId: 'v9', reason: 'count', newCount: '1' });
+  const c0 = box.actionCreatePosConnection(A, { name: 'Second till' });
+  const body = JSON.stringify({ type: 'sale', id: 'LAST1', occurredAt: new Date().toISOString(), lines: [{ sku: 'R9', qty: 1, unitPrice: 5 }] });
+  const ts = Date.now();
+  const sig = crypto.createHmac('sha256', c0.secret).update(`${c0.connectionId}.${ts}.${body}`).digest('hex');
+  const p = box.actionPosPush({ connectionId: c0.connectionId, timestamp: ts, payload: body, signature: sig });
+  const mine = sell(A, [{ variantId: 'v9', qty: 1 }]);
+  return p.ok && p.status === 'applied' && !mine.ok && stock('v9') === 0;
+})());
+
 // ================= outbox =================
 const calls = [];
 let reply = () => ({ getResponseCode: () => 200 });

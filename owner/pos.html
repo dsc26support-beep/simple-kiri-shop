@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Point of Sale — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell owner-pos-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Point of Sale</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="inventory.html">Inventory</a></li>
+          <li><a href="integrations.html">POS &amp; Integrations</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Point of Sale</h1>
+      <p id="pos-offline" class="form-error hidden" role="alert">You are offline. Sales need a connection, so they cannot be taken right now. Nothing is saved on this device.</p>
+      <p id="pos-status" class="helper-text" role="status"></p>
+
+      <section id="pos-off" class="dash-section hidden">
+        <h2>Not switched on yet</h2>
+        <p>The Point of Sale is being introduced step by step and is not switched on for your store yet. Your online store and inventory work as before.</p>
+      </section>
+
+      <div id="pos-main" class="hidden">
+        <div class="pos-tabs" role="tablist" aria-label="Point of sale">
+          <button type="button" role="tab" aria-selected="true" data-tab="sell" class="pos-tab is-active">Sell</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="sales" class="pos-tab">Sales</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="report" class="pos-tab">Reports</button>
+          <button type="button" role="tab" aria-selected="false" data-tab="settings" class="pos-tab">Settings</button>
+        </div>
+
+        <section id="tab-sell" class="pos-panel">
+          <div class="pos-grid">
+            <div class="pos-find">
+              <label for="pos-q">Scan a barcode or search</label>
+              <input type="search" id="pos-q" autocomplete="off" inputmode="search" placeholder="Barcode, SKU or name" autofocus>
+              <div id="pos-results" class="pos-results" aria-live="polite"></div>
+            </div>
+            <div class="pos-cart">
+              <h2>Sale</h2>
+              <div id="pos-lines"><p class="helper-text">Nothing added yet.</p></div>
+              <div class="field"><label for="pos-disc">Discount</label>
+                <div class="pos-disc-row"><input type="number" id="pos-disc" min="0" step="0.01" inputmode="decimal" placeholder="0">
+                  <select id="pos-disc-type" aria-label="Discount type"><option value="percent">%</option><option value="amount">Amount</option></select></div>
+                <small id="pos-disc-hint" class="helper-text"></small></div>
+              <dl class="pos-totals"><dt>Total</dt><dd id="pos-total">0.00</dd></dl>
+              <fieldset class="pos-pay"><legend>Paid by</legend>
+                <label class="check"><input type="radio" name="pay" value="cash" checked> Cash</label>
+                <label class="check"><input type="radio" name="pay" value="card"> Card</label>
+                <label class="check"><input type="radio" name="pay" value="mobile"> Mobile money</label>
+                <label class="check"><input type="radio" name="pay" value="other"> Other</label>
+              </fieldset>
+              <div id="pay-cash" class="field"><label for="pos-tender">Cash given</label><input type="number" id="pos-tender" min="0" step="0.01" inputmode="decimal"><small id="pos-change" class="helper-text"></small></div>
+              <div id="pay-digital" class="field hidden"><label for="pos-ref">Reference <span class="optional">(optional)</span></label><input type="text" id="pos-ref" maxlength="40">
+                <small class="helper-text">Mwakete does not take or check this payment. It is recorded as paid by you, not verified.</small></div>
+              <p id="pos-error" class="form-error" role="alert"></p>
+              <button type="button" class="btn btn-primary btn-block" id="pos-charge" disabled>Complete sale</button>
+              <button type="button" class="btn btn-block" id="pos-clear">Clear</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-sales" class="pos-panel hidden">
+          <div class="hub-filters"><label>Receipt <input type="search" id="sales-q" placeholder="R-20261022-0001"></label><button type="button" class="btn btn-small" id="sales-go">Search</button></div>
+          <div id="sales-list"></div>
+          <div id="sale-detail" class="hidden"></div>
+        </section>
+
+        <section id="tab-report" class="pos-panel hidden">
+          <div class="hub-filters"><label>From <input type="date" id="rep-from"></label><label>To <input type="date" id="rep-to"></label><button type="button" class="btn btn-small" id="rep-go">Show</button></div>
+          <div id="rep-body"></div>
+        </section>
+
+        <section id="tab-settings" class="pos-panel hidden">
+          <div class="field"><label for="st-disc">Biggest discount a till may give (%)</label><input type="number" id="st-disc" min="0" max="50" step="1" inputmode="numeric"></div>
+          <div class="field"><label for="st-tax">Tax already included in your prices (%)</label><input type="number" id="st-tax" min="0" max="30" step="0.1" inputmode="decimal"><small class="helper-text">Shown on the receipt only. Your prices do not change.</small></div>
+          <div class="field"><label for="st-policy">Returns policy on the receipt</label><textarea id="st-policy" maxlength="300" rows="2"></textarea></div>
+          <div class="field"><label for="st-footer">Receipt footer</label><input type="text" id="st-footer" maxlength="200" placeholder="Thank you!"></div>
+          <p id="st-error" class="form-error" role="alert"></p>
+          <button type="button" class="btn btn-primary" id="st-save">Save</button>
+          <p class="helper-text">Only the store owner can use the till for now. Staff accounts are not available yet.</p>
+        </section>
+      </div>
+
+      <div id="receipt-modal" class="pos-modal hidden" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+        <div class="pos-modal-box"><div id="receipt-body"></div>
+          <div class="hub-actions"><button type="button" class="btn btn-primary" id="receipt-print">Print</button><button type="button" class="btn" id="receipt-close">New sale</button></div></div>
+      </div>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/owner-pos.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>

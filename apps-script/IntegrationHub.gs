@@ -1107,7 +1107,7 @@ function actionListIntegrationEvents(owner, body) {
 /** body: eventId, action: 'retry' | 'accept_external' | 'keep_mwakete' | 'acknowledge', note? */
 function actionResolveIntegrationEvent(owner, body) {
   if (!posHubEnabled()) return hubOff();
-  var action = String(body.action || '');
+  var action = String(body.resolution || '');
   if (['retry', 'accept_external', 'keep_mwakete', 'acknowledge'].indexOf(action) === -1) return fail('Choose what to do with this item.');
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);

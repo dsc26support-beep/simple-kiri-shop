@@ -99,12 +99,12 @@ ok('one unmapped line holds the WHOLE sale', r.status === 'needs_mapping' && sto
 const ev = events().find((e) => e.ExternalId === 'S4');
 const map = box.actionSaveIntegrationMapping(A, { connectionId: id, externalSku: 'UNKNOWN', variantId: 'v1' });
 ok('seller maps the unknown item', map.ok, JSON.stringify(map));
-r = box.actionResolveIntegrationEvent(A, { eventId: ev.EventId, action: 'retry' });
+r = box.actionResolveIntegrationEvent(A, { eventId: ev.EventId, resolution: 'retry' });
 ok('retry after mapping applies the sale', r.ok && r.status === 'applied' && stock('v3') === s3 - 1 && stock('v1') === s1 - 1, JSON.stringify(r));
 
 // --- other seller's variant cannot be mapped
 ok('cannot map to another seller\'s product', !box.actionSaveIntegrationMapping(A, { connectionId: id, externalVariantId: 'X9', variantId: 'vb' }).ok);
-ok('other seller cannot resolve my event', !box.actionResolveIntegrationEvent(B, { eventId: ev.EventId, action: 'acknowledge' }).ok);
+ok('other seller cannot resolve my event', !box.actionResolveIntegrationEvent(B, { eventId: ev.EventId, resolution: 'acknowledge' }).ok);
 ok('other seller cannot map on my connection', !box.actionSaveIntegrationMapping(B, { connectionId: id, externalVariantId: 'X8', variantId: 'vb' }).ok);
 
 // --- refund with restock
