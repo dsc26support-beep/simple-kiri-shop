@@ -19,7 +19,7 @@
 // PREVIOUS stylesheet and only refreshes it in the background - the change
 // appears one load late, which reads as "my fix didn't ship". Renaming the
 // cache makes activate() drop the old one, so the next load fetches fresh.
-var CACHE = 'mwakete-v187';
+var CACHE = 'mwakete-v188';
 
 // Separate cache for cross-origin product/logo photos. Cache-first is safe here
 // because every uploaded image has a unique URL (Drive file id / Cloudinary
@@ -197,6 +197,11 @@ self.addEventListener('fetch', function (event) {
   // Script backend, other hosts) and POSTs go straight to the network untouched,
   // so backend freshness is never compromised by the cache.
   if (new URL(req.url).origin !== self.location.origin) return;
+
+  // Videos (the sign-in welcome video) go straight to the network: browsers
+  // fetch them in byte ranges, which the cache below would answer with the
+  // whole file and break playback in Safari.
+  if (req.destination === 'video' || req.headers.has('range') || /\.(mp4|webm)$/i.test(new URL(req.url).pathname)) return;
 
   // HTML navigations: stale-while-revalidate, the same strategy the CSS/JS
   // below already use, because these pages are the same kind of thing - a

@@ -156,9 +156,15 @@
       <aside class="auth-split-panel" aria-label="About Mwakete">
         <h2 class="auth-panel-title">Sell to all of Kiribati</h2>
         <p class="auth-panel-text">Open your store for free, list your products and get orders straight to your phone.</p>
-        <div class="auth-panel-shot" aria-hidden="true">
-          <div class="auth-panel-shot-bar"><span></span><span></span><span></span></div>
-          <img src="../assets/img/auth-seller.jpg" alt="" width="1100" height="720" loading="lazy" decoding="async">
+        <!-- Owner's welcome video (Oct 2026). Computers only: auth-panel-video.js
+             adds the sources and poster at 900px+, so phones never download it.
+             Silent, looping, paused for "reduce motion". -->
+        <div class="auth-panel-video" aria-hidden="true">
+          <video muted loop playsinline preload="none" disablepictureinpicture tabindex="-1"
+                 width="1280" height="720"
+                 data-poster="../assets/img/auth-welcome.jpg"
+                 data-webm="../assets/video/auth-welcome.webm"
+                 data-mp4="../assets/video/auth-welcome.mp4"></video>
         </div>
       </aside>
     </div>
@@ -185,6 +191,7 @@
   <script defer src="../assets/js/owner-login.min.js"></script>
   <script defer src="../assets/js/google-signin.min.js"></script>
   <script defer src="../assets/js/fb-help.min.js"></script>
+  <script defer src="../assets/js/auth-panel-video.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>
 </html>
