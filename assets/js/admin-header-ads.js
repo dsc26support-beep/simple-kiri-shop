@@ -12,7 +12,7 @@ const HeaderAdsAdmin = (() => {
   }
 
   async function load() {
-    $('ha-status').textContent = 'Loading…';
+    $('ha-status').innerHTML = loadingMessageHtml();
     const res = await Api.post('adminListHeaderAds', { token: Auth.getToken() });
     if (!res.ok) { $('ha-status').textContent = res.error || 'Could not load the adverts.'; return; }
     ads = res.ads || [];
@@ -56,9 +56,9 @@ const HeaderAdsAdmin = (() => {
       startDate: $('ha-start').value, endDate: $('ha-end').value, status: $('ha-on').checked ? 'active' : 'off' };
     if (!body.text) { $('ha-error').textContent = 'Write the advert text.'; $('ha-text').focus(); return; }
     if (!body.link) { $('ha-error').textContent = 'Add the link it opens (or pick a store).'; $('ha-link').focus(); return; }
-    $('ha-save').disabled = true;
+    const busyDone = setButtonBusy($('ha-save'), 'Saving');
     const res = await Api.post('adminSaveHeaderAd', body);
-    $('ha-save').disabled = false;
+    busyDone();
     if (!res.ok) { $('ha-error').textContent = res.error || 'Could not save.'; return; }
     fillForm(null);
     await load();

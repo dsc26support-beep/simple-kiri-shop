@@ -287,9 +287,7 @@ async function submitPanel() {
   errEl.textContent = '';
   savedEl.classList.add('hidden');
   saving = true;
-  btn.disabled = true;
-  const label = btn.textContent;
-  btn.textContent = 'Saving…';
+  const done = setButtonBusy(btn, 'Saving');
   let res;
   try {
     res = await Api.post(action, Object.assign(base, payload));
@@ -297,8 +295,7 @@ async function submitPanel() {
     res = { ok: false, error: '' };
   }
   saving = false;
-  btn.disabled = false;
-  btn.textContent = label;
+  done();
   if (!res || !res.ok) {
     // Never claim success the server didn't confirm. A dropped connection
     // can't say whether the change landed, so it doesn't pretend either way:
@@ -346,7 +343,7 @@ async function loadHistory(reset, filterLabel) {
   const filterEl = document.getElementById('inv-history-filter');
   if (reset) {
     historyOffset = 0;
-    el.innerHTML = '<p class="helper-text">Loading…</p>';
+    el.innerHTML = `<p class="helper-text" role="status">${loadingMessageHtml()}</p>`;
   }
   if (filterLabel !== undefined || reset) {
     if (historyVariant && filterLabel) {
@@ -509,7 +506,7 @@ async function loadReport() {
   const el = document.getElementById('inv-report');
   const sel = document.getElementById('inv-report-days');
   if (!sel.dataset.bound) { sel.dataset.bound = '1'; sel.addEventListener('change', loadReport); }
-  el.innerHTML = '<p class="helper-text">Loading…</p>';
+  el.innerHTML = `<p class="helper-text" role="status">${loadingMessageHtml()}</p>`;
   const res = await Api.post('inventoryReport', { token: Auth.getToken(), days: sel.value });
   if (!res.ok) { el.innerHTML = '<p class="helper-text">Could not load the report.</p>'; return; }
   const r = res.report;

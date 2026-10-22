@@ -92,11 +92,9 @@ async function loadConversations(opts) {
 
 async function onLoadMoreConversations() {
   const btn = document.getElementById('conversation-list-load-more');
-  btn.disabled = true;
-  btn.textContent = 'Loading…';
+  const done = setButtonBusy(btn, 'Loading');
   await loadConversations({ isPoll: false, limit: ownerConversations.length + CONVERSATION_LIST_PAGE_SIZE });
-  btn.disabled = false;
-  btn.textContent = 'Load More';
+  done();
 }
 
 function onSearchInput(e) {
@@ -367,14 +365,11 @@ async function loadEarlierConversationMessages() {
   if (isLoadingEarlierMessages || !activeHasMoreBefore || !activeOldestMessageId) return;
   isLoadingEarlierMessages = true;
   const btn = document.getElementById('conversation-load-earlier-btn');
-  btn.disabled = true;
-  const originalLabel = btn.textContent;
-  btn.textContent = 'Loading…';
+  const done = setButtonBusy(btn, 'Loading');
 
   const res = await Api.post('getConversation', { token: Auth.getToken(), conversationId: activeConversationId, beforeMessageId: activeOldestMessageId });
 
-  btn.disabled = false;
-  btn.textContent = originalLabel;
+  done();
   isLoadingEarlierMessages = false;
   if (!res.ok) return;
 

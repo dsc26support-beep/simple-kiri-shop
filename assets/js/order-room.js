@@ -153,9 +153,9 @@ const OrderRoom = (function () {
   async function loadOlder() {
     if (!events.length) return;
     const btn = $('tx-older');
-    btn.disabled = true;
+    const busyDone = setButtonBusy(btn, 'Loading');
     const res = await call('getTxRoom', { beforeSeq: events[0].seq, limit: 40 });
-    btn.disabled = false;
+    busyDone();
     if (!res.ok) return;
     events = res.events.concat(events);
     hasMoreBefore = res.hasMoreBefore;
@@ -292,7 +292,7 @@ const OrderRoom = (function () {
     let res;
     if (btn && btn.dataset.jc === 'refresh') { await load(); return; }
     if (btn && btn.dataset.jc === 'agree') {
-      btn.disabled = true;
+      setButtonBusy(btn, 'Saving');   // the panel is redrawn after
       res = await call('txAgreeFee', { fee: btn.dataset.fee, requestId: rid() });
     } else if (form && form.dataset.jcForm === 'propose') {
       res = await call('txProposeFee', { fee: $('jc-fee').value, requestId: rid() });
@@ -440,7 +440,7 @@ const OrderRoom = (function () {
   async function onTimelineClick(e) {
     const open = e.target.closest('[data-open]');
     if (open) {
-      open.disabled = true;
+      open.disabled = true;   // a photo thumbnail: no busy text over the picture
       const res = await call('getTxEvidence', { evidenceId: open.dataset.open, variant: 'full' });
       open.disabled = false;
       if (!res.ok) { alert(res.error || 'This file could not be opened.'); return; }
@@ -533,7 +533,7 @@ const OrderRoom = (function () {
   }
 
   function drawQueue(queue, listEl) {
-    const label = { selected: 'Waiting', preparing: 'Preparing…', uploading: 'Uploading…', saved: 'Saved', failed: 'Not uploaded' };
+    const label = { selected: 'Waiting', preparing: loadingMessageHtml('Preparing'), uploading: loadingMessageHtml('Uploading'), saved: 'Saved', failed: 'Not uploaded' };
     listEl.innerHTML = queue.map((u, i) => `<li class="tx-upload is-${u.state}">
       <span class="tx-upload-name">${esc(u.name)}</span>
       <label class="sr-only" for="${listEl.id}-cat-${i}">What this shows</label>
@@ -847,12 +847,10 @@ const OrderRoom = (function () {
     const question = confirmText(action, payload);
     if (question && !confirm(question)) return;
     const btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Saving…';
+    const done = setButtonBusy(btn, 'Saving');
     // Same requestId on every retry of this form: a dropped answer can never record a step twice.
     const res = await call(ENDPOINT[action], Object.assign({ version: room.version, requestId: form.dataset.requestId }, payload));
-    btn.disabled = false;
-    btn.textContent = action === 'cancel' ? 'Cancel the order' : 'Save';
+    done();
     if (!res.ok) {
       if (res.authRequired) { showSignIn(res.error); return; }
       err.textContent = res.error || 'Not saved - check your connection and try again.';

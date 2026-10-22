@@ -26,6 +26,7 @@ async function init() {
   if (!owner) return;
   $('store-name-label').textContent = shortStoreName(owner.storeName);
   const res = await call('posGetSettings');
+  setStatus('');   // the Loading message from the page's HTML
   if (!res.ok) { show('pos-off', true); if (res.error && !/not switched on/i.test(res.error)) setStatus(res.error); return; }
   settings = res.settings;
   show('pos-main', true);
@@ -124,13 +125,14 @@ function renderCart() {
   $('pos-change').textContent = pay === 'cash' && cart.length ? (tender + 0.005 < t.total ? 'Not enough: ' + money(t.total - tender) + ' short' : 'Change: ' + money(tender - t.total)) : '';
   $('pos-disc-hint').textContent = t.overCap ? `More than the ${settings.maxDiscountPct}% allowed. Change this in Settings.` : (t.whole ? 'A discount cannot be the whole sale.' : '');
   $('pos-charge').disabled = !cart.length || busy || !navigator.onLine || t.overCap || t.whole || (pay === 'cash' && tender + 0.005 < t.total);
-  $('pos-charge').textContent = cart.length ? 'Complete sale — ' + money(t.total) : 'Complete sale';
+  if (!busy) $('pos-charge').textContent = cart.length ? 'Complete sale — ' + money(t.total) : 'Complete sale';   // busy: setButtonBusy's text
 }
 function clearCart() { cart = []; $('pos-disc').value = ''; $('pos-tender').value = ''; $('pos-ref').value = ''; $('pos-error').textContent = ''; txnId = newTxn(); renderCart(); $('pos-q').focus(); }
 
 async function charge() {
   if (busy || !cart.length) return;
   busy = true; renderCart(); $('pos-error').textContent = '';
+  const busyDone = setButtonBusy($('pos-charge'), 'Completing sale');
   const pay = document.querySelector('input[name="pay"]:checked').value;
   const payment = { method: pay };
   if (pay === 'cash' && $('pos-tender').value !== '') payment.amountTendered = Number($('pos-tender').value);
@@ -139,7 +141,7 @@ async function charge() {
   const d = Number($('pos-disc').value) || 0;
   if (d > 0) body.discount = { type: $('pos-disc-type').value, value: d };
   const res = await call('posCheckout', body);
-  busy = false;
+  busy = false; busyDone();
   if (!res.ok) { $('pos-error').textContent = res.error || 'The sale did not go through. Nothing was taken. Check your connection and try again.'; renderCart(); return; }
   // Success: same txnId is only reused on failure, never after a sale.
   showReceipt(res.receipt);
@@ -193,9 +195,9 @@ async function openSale(saleId) {
       const lines = [];
       box.querySelectorAll('.pos-refund-row').forEach((row) => { const q = Number(row.querySelector('input[type=number]').value); if (q > 0) lines.push({ lineId: row.dataset.line, qty: q, restock: row.querySelector('input[type=checkbox]').checked }); });
       if (!lines.length) { $('rf-error').textContent = 'Enter how many to refund.'; return; }
-      go.disabled = true;
+      const busyDone = setButtonBusy(go, 'Saving');
       const r = await call('posRefundSale', { saleId, requestId: reqId, reason: $('rf-reason').value, lines });
-      go.disabled = false;
+      busyDone();
       if (!r.ok) { $('rf-error').textContent = r.error || 'Could not record it.'; return; }
       setStatus(r.note || 'Refund recorded.');
       loadSales(); openSale(saleId);
@@ -225,7 +227,9 @@ function fillSettings() {
 }
 async function saveSettings() {
   $('st-error').textContent = '';
+  const busyDone = setButtonBusy($('st-save'), 'Saving');
   const res = await call('posSaveSettings', { maxDiscountPct: $('st-disc').value, taxPercent: $('st-tax').value, returnPolicy: $('st-policy').value, receiptFooter: $('st-footer').value });
+  busyDone();
   if (!res.ok) { $('st-error').textContent = res.error || 'Could not save.'; return; }
   settings = res.settings; setStatus('Saved.'); renderCart();
 }

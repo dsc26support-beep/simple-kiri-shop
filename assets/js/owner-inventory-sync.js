@@ -182,9 +182,9 @@ async function checkSheet(keepTab) {
   if (!url) { errEl.textContent = 'Paste the link to your Google Sheet first.'; return; }
   const settings = { url, sheetName: keepTab ? document.getElementById('sync-sheet-tab').value : '', headerRow: document.getElementById('sync-header-row').value };
   const btn = document.getElementById('sync-sheet-check');
-  btn.disabled = true; btn.textContent = 'Opening your sheet…';
+  const busyDone = setButtonBusy(btn, 'Opening your sheet');
   const res = await Api.post('testSheetConnection', { token: Auth.getToken(), settings });
-  btn.disabled = false; btn.textContent = 'Check the sheet';
+  busyDone();
   if (!res.ok) { errEl.textContent = res.error || 'Could not check the sheet. Please try again.'; return; }
   if (!res.connected) { errEl.textContent = res.error; return; }
   sheetTitle = res.title;
@@ -328,20 +328,21 @@ async function onPreview() {
     // A linked sheet is saved first (only its address, tab and matching -
     // no passwords), then previewed straight from the sheet.
     if (!sheetSettings) { errEl.textContent = 'Check the sheet first.'; return; }
-    btn.disabled = true; btn.textContent = 'Saving…';
+    const savingDone = setButtonBusy(btn, 'Saving');
     const saved = await Api.post('saveInventoryConnection', { token: Auth.getToken(), connectionId: editingId, type: 'googleSheets',
       name: document.getElementById('sync-save-name').value.trim() || sheetTitle, mapping, mode,
       settings: Object.assign({}, sheetSettings, { autoSync: document.getElementById('sync-auto').checked }) });
-    if (!saved.ok) { btn.disabled = false; btn.textContent = 'Preview changes'; errEl.textContent = saved.error || 'Could not save the link.'; return; }
+    savingDone();
+    if (!saved.ok) { errEl.textContent = saved.error || 'Could not save the link.'; return; }
     editingId = saved.connection.connectionId;
     connections = connections.filter((c) => c.connectionId !== editingId).concat(saved.connection);
     req = { token: Auth.getToken(), connectionId: editingId, createNew, category };
   } else {
     req = { token: Auth.getToken(), type: 'csv', headers: file.headers, rows: file.rows, mapping, createNew, category };
   }
-  btn.disabled = true; btn.textContent = 'Checking…';
+  const checkingDone = setButtonBusy(btn, 'Checking');
   const res = await Api.post('previewInventoryImport', req);
-  btn.disabled = false; btn.textContent = 'Preview changes';
+  checkingDone();
   if (!res.ok) { errEl.textContent = res.error || 'Preview failed. Please try again.'; return; }
   lastRequest = req;
   lastPreview = res.preview;
@@ -491,9 +492,9 @@ async function onExport() {
   const errEl = document.getElementById('sync-export-error');
   errEl.textContent = '';
   const btn = document.getElementById('sync-export-btn');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Preparing');
   const res = await Api.post('exportInventoryRows', { token: Auth.getToken() });
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) { errEl.textContent = res.error || 'Could not prepare the file. Please try again.'; return; }
   const text = '﻿' + [res.headers].concat(res.rows).map((r) => r.map(csvCell).join(',')).join('\r\n');
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
@@ -585,12 +586,10 @@ async function onCenterClick(e) {
     await refreshAll();
     return;
   }
-  btn.disabled = true;
-  btn.textContent = 'Syncing…';
+  const busyDone = setButtonBusy(btn, 'Syncing');
   out.textContent = '';
   const res = await Api.post('syncNow', { token: Auth.getToken(), connectionId: conn.connectionId });
-  btn.disabled = false;
-  btn.textContent = 'Sync now';
+  busyDone();
   if (!res.ok) {
     out.textContent = /^Network error/.test(res.error || '')
       ? 'We couldn\'t reach Mwakete to confirm. Check the history below before syncing again.'
@@ -632,7 +631,7 @@ async function onConflictClick(e) {
   const row = btn.closest('.sync-conflict');
   const out = row.querySelector('.sync-conflict-result');
   row.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-  out.textContent = 'Saving…';
+  out.innerHTML = loadingMessageHtml('Saving');
   const res = await Api.post('resolveSyncConflict', { token: Auth.getToken(), conflictId: row.dataset.id, choice: btn.dataset.choice });
   if (!res.ok) {
     row.querySelectorAll('button').forEach((b) => { b.disabled = false; });

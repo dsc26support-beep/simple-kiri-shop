@@ -153,15 +153,14 @@ function offerLoginForTakenUsername() {
   }, TAKEN_USERNAME_SWITCH_MS);
 }
 
-function setButtonBusy(btn, label, idleLabel) {
-  btn.disabled = true;
-  btn.dataset.idleLabel = idleLabel;
-  btn.innerHTML = `${label}<span class="btn-saving-dots"><span></span><span></span><span></span></span>`;
+// The shared busy button (helpers.js setButtonBusy); done() puts the label back.
+function setLoginButtonBusy(btn, label) {
+  btn.busyDone = setButtonBusy(btn, label);
 }
 
 function setButtonIdle(btn) {
-  btn.disabled = false;
-  btn.textContent = btn.dataset.idleLabel;
+  if (btn.busyDone) btn.busyDone();
+  btn.busyDone = null;
 }
 
 async function onLogin(e) {
@@ -173,7 +172,7 @@ async function onLogin(e) {
   const password = document.getElementById('login-password').value;
 
   const submitBtn = document.getElementById('login-submit-btn');
-  setButtonBusy(submitBtn, 'Logging in', 'Log In');
+  setLoginButtonBusy(submitBtn, 'Logging in');
 
   const res = await Api.post('loginOwner', { username, password });
 
@@ -277,7 +276,7 @@ async function onRegister(e) {
   }
 
   const submitBtn = document.getElementById('register-submit-btn');
-  setButtonBusy(submitBtn, 'Creating', 'Create Store Account');
+  setLoginButtonBusy(submitBtn, 'Creating');
 
   const res = await Api.post('registerOwner', { storeName, username, password, passwordHint, email, phone, messenger, storeType });
 

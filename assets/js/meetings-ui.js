@@ -204,8 +204,7 @@
           return;
         }
         err.classList.add('hidden');
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Sending…';
+        var sendDone = setButtonBusy(submitBtn, 'Sending');
 
         var params = Object.assign({}, ctx.params(), {
           purpose: purpose.value.trim(),
@@ -215,8 +214,7 @@
         });
 
         Api.post('requestMeeting', params).then(function (res) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Send Request';
+          sendDone();
           if (!res.ok) {
             err.textContent = friendlyError(res);
             err.classList.remove('hidden');

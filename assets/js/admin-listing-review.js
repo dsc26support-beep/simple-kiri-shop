@@ -44,7 +44,7 @@ const ListingReviewAdmin = (() => {
 
   async function load() {
     const status = $('lr-list-status');
-    status.textContent = 'Loading…';
+    status.innerHTML = loadingMessageHtml();
     const res = await Api.post('listReviewCases', Object.assign({ token: Auth.getToken(), page: state.page, pageSize: 20 }, filters()));
     if (!res.ok || !res.metrics || !Array.isArray(res.cases)) {
       // Includes an Apps Script deployment older than this page ("Unknown action").
@@ -176,7 +176,7 @@ const ListingReviewAdmin = (() => {
     if (!article) return;
     const detail = article.querySelector('.lr-detail');
     detail.hidden = false;
-    detail.textContent = 'Loading…';
+    detail.innerHTML = loadingMessageHtml();
     article.querySelector('[data-open]').setAttribute('aria-expanded', 'true');
     state.openId = reviewId;
     const res = await Api.post('getReviewCase', { token: Auth.getToken(), reviewId });
@@ -215,9 +215,9 @@ const ListingReviewAdmin = (() => {
     } else if (decision === 'mergeCategory') {
       payload.categoryId = box.querySelector('.lr-merge').value;
     }
-    button.disabled = true;
+    const busyDone = setButtonBusy(button, 'Saving');
     const res = await Api.post('reviewCaseAction', payload);
-    button.disabled = false;
+    busyDone();
     if (!res.ok) {
       if (!/^Network error/.test(res.error || '')) delete button.dataset.requestId;
       msg.textContent = res.error || 'That did not work.';
@@ -236,7 +236,7 @@ const ListingReviewAdmin = (() => {
   /* ---- category register ---- */
   async function loadCategories() {
     const status = $('lr-cats-status');
-    status.textContent = 'Loading…';
+    status.innerHTML = loadingMessageHtml();
     const res = await Api.post('adminListCategories', { token: Auth.getToken() });
     if (!res.ok) {
       status.textContent = res.error || 'Could not load categories.';

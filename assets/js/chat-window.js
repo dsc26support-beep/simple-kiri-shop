@@ -391,14 +391,11 @@ function initChatWindow() {
   async function loadEarlierMessages() {
     if (isLoadingEarlier || !hasMoreBefore || !oldestMessageId) return;
     isLoadingEarlier = true;
-    loadEarlierBtn.disabled = true;
-    const originalLabel = loadEarlierBtn.textContent;
-    loadEarlierBtn.textContent = 'Loading…';
+    const done = setButtonBusy(loadEarlierBtn, 'Loading');
 
     const res = await Api.post('getConversation', { storeSlug, customerToken, beforeMessageId: oldestMessageId });
 
-    loadEarlierBtn.disabled = false;
-    loadEarlierBtn.textContent = originalLabel;
+    done();
     isLoadingEarlier = false;
 
     if (!res.ok) return; // leave the button as-is so the customer can just try again

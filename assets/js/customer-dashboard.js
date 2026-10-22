@@ -115,9 +115,9 @@ async function onSaveProfile(e) {
     return;
   }
   const btn = e.target.querySelector('button[type="submit"]');
-  btn.disabled = true;
+  const busyDone = setButtonBusy(btn, 'Saving');
   const res = await Api.post('updateCustomerProfile', { token: CustomerAuth.getToken(), name, phone });
-  btn.disabled = false;
+  busyDone();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not save your changes.';
     return;
@@ -134,10 +134,7 @@ async function onLogout() {
   // CustomerAuth.logout, a second of silence after a tap reads as a dead
   // button - which is exactly how this was reported.
   const btn = document.getElementById('customer-logout');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = 'Logging out<span class="btn-saving-dots"><span></span><span></span><span></span></span>';
-  }
+  setButtonBusy(btn, 'Logging out');   // the page goes to Home when done
   await CustomerAuth.logout();
   window.location.href = 'index.html';
 }
