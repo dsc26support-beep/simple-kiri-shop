@@ -126,7 +126,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'photos1-2026-10-21';
+var APP_VERSION = 'wallet1-2026-10-21';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -277,6 +277,7 @@ function actionCheckSetup() {
   if (typeof txOnOrderCreated !== 'function') missingFiles.push('Transactions.gs');
   if (typeof actionGetSellerDashboard !== 'function') missingFiles.push('Dashboards.gs');
   if (typeof actionDriverApply !== 'function') missingFiles.push('Deliveries.gs');
+  if (typeof walletBalance !== 'function') missingFiles.push('DriverWallet.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
