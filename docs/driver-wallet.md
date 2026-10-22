@@ -6,7 +6,7 @@ Both stay invisible until `DELIVERY_PAYMENTS` covers a driver.
 | | Where |
 |---|---|
 | Backend | `apps-script/DriverWallet.gs` |
-| Tests | `tests/test-driver-wallet.js` (48), `tests/test-delivery-chat.js` (30), `tests/test-delivery-payment.js` (41), `tests/test-driver-payouts.js` (44), all on the real backend sources; `tests/test-wallet-wording.js` (24) checks the wording |
+| Tests | `tests/test-driver-wallet.js` (48), `tests/test-delivery-chat.js` (30), `tests/test-delivery-payment.js` (41), `tests/test-driver-payouts.js` (44), all on the real backend sources; `tests/test-wallet-wording.js` (24) checks the wording; `tests/test-driver-wallet-flow.js` and `tests/verify-driver-wallet.js` check the whole system |
 | Pages | `driver.html` (`assets/js/driver.js`) and the delivery panel of `order-room.html` (`assets/js/order-room.js`) |
 | Builds on | `apps-script/Deliveries.gs`, `docs/deliveries.md` |
 
@@ -123,7 +123,7 @@ A bad value falls back to the default.
 
 1. Add a new file `DriverWallet` and paste `apps-script/DriverWallet.gs` (once, from phase 1).
 2. Update `DriverWallet.gs`, `Deliveries.gs`, `Transactions.gs` and `Code.gs`, then deploy a new version.
-3. `?action=getVersion` should show `wallet5-2026-10-22` (or later) and `checkSetup` should show `missingFiles: []`.
+3. `?action=getVersion` should show `wallet6-2026-10-22` (or later) and `checkSetup` should show `missingFiles: []`.
 4. The front end (`driver.html`, `driver.min.js`, `order-room.min.js`, `admin-deliveries.min.js`, `styles.min.css`, `owner/admin.html`, `sw.js`) goes live when the branch is merged and GitHub Pages rebuilds.
 
 To try phase 2 on one driver: set `DELIVERY_PAYMENTS` = `pilot` and `DELIVERY_PAYMENTS_DRIVERS` = that driver's `DriverId` (South Tarawa only). Set `MWAKETE_BANK_DETAILS` first. From phase 3 a real bank transfer is expected on every covered job. Do **not** set `DELIVERY_PAYMENTS` until phase 5 has rewritten the wording below.
@@ -146,6 +146,17 @@ Where it changed, and what it now says (everything about *goods* is unchanged: M
 `tests/test-wallet-wording.js` fails if a blanket "never holds money" promise comes back in a user-facing file, or if the Terms section loses its key statements.
 
 **Note:** the Terms did not mention drivers at all before this, even for the first version of the feature, and the Privacy page did not mention driver data. Both are now covered.
+
+## Phase 6: whole-system checks
+
+| Suite | What it proves |
+|---|---|
+| `tests/test-driver-wallet-flow.js` (40) | Money is conserved across every way a delivery can end (money in, less money out, plus corrections, equals what Mwakete should hold). Who may call each new action, through `doPost` like the real site. No bank details, references or payout details reach anyone they should not. Retries are safe. An existing sheet made before the wallet is upgraded in place. Turning `DELIVERY_PAYMENTS` off never skips a payment check or strands a driver's balance. |
+| `tests/verify-driver-wallet.js` (45) | The real pages in a real browser (Chromium) against the real backend code: fee chat and agreement, seller pays, admin confirms, driver collects, buyer confirms, credit and hold, payout details, claim, admin pays. Also no sideways scroll on a phone and no page errors. Run with a static server (`python3 -m http.server 8099`). |
+
+Looking at the screenshots found problems the assertions had missed (a repeated "pay now" box after payment, an old "I paid the driver" button, a chat that opened at its oldest message, a squashed history table); each is fixed and now has a check.
+
+**Turning the switch off.** `DELIVERY_PAYMENTS=off` stops NEW wallet jobs. A job that already has a payment status keeps its payment checks, and a driver who has anything in the ledger can still see and claim it. Do not rely on `off` to hide money that is already held: settle or refund open payments in Admin first.
 
 ## Phases
 

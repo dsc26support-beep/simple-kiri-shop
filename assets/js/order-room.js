@@ -120,7 +120,11 @@ const OrderRoom = (function () {
     $('tx-signin').hidden = true;
     $('tx-body').hidden = false;
     renderAll();
+    scrollChats();
   }
+
+  /** A chat opens at its newest message, not its oldest. */
+  function scrollChats() { document.querySelectorAll('.tx-jc-list').forEach((el) => { el.scrollTop = el.scrollHeight; }); }
 
   async function poll() {
     if (!room) return;
@@ -228,7 +232,7 @@ const OrderRoom = (function () {
     return `<div class="tx-delivery" role="group" aria-label="Mwakete driver">
       <strong>Mwakete driver: ${esc(d.statusLabel)}</strong>
       ${d.driverName ? `<br>${esc(d.driverName)}${d.vehicle ? ' · ' + esc(d.vehicle) : ''}${d.driverPhone ? ` · <a href="tel:${esc(d.driverPhone)}">${esc(d.driverPhone)}</a>` : ''}` : ''}
-      ${d.fee !== undefined ? `<br><span class="helper-text">Fee ${formatMoney(d.fee)}, paid by the seller${d.feePaid ? ' - marked paid' : ''}</span>` : ''}
+      ${d.fee !== undefined ? `<br><span class="helper-text">Fee ${formatMoney(d.fee)}, ${d.paidThroughMwakete ? 'paid through Mwakete' : 'paid by the seller' + (d.feePaid ? ' - marked paid' : '')}</span>` : ''}
       ${d.failReason ? `<br><span class="helper-text">Reason: ${esc(d.failReason)}</span>` : ''}
       ${loc ? '<br>' + loc : ''}
       ${chatHtml(d.chat)}
@@ -267,6 +271,8 @@ const OrderRoom = (function () {
       : p.status === 'submitted' ? `<p class="helper-text">You sent bank reference <strong>${esc(p.bankRef)}</strong>. Mwakete is checking its bank account. The driver can collect once it is confirmed.</p>${bank}`
       : p.status === 'refund_due' ? '<p class="tx-warn">This delivery did not go ahead. Mwakete will send your payment back to you.</p>'
       : p.status === 'refunded' ? '<p class="helper-text">Mwakete sent your payment back.</p>'
+      : p.status === 'credited' ? '<p class="helper-text">Mwakete has credited the driver. There is nothing more for you to do.</p>'
+      : p.status === 'review' ? '<p class="helper-text">The delivery failed. A Mwakete admin is deciding whether the driver is paid or you are refunded.</p>'
       : p.bankMissing ? '<p class="tx-warn">Mwakete’s bank details are not set up yet. Please contact Mwakete.</p>'
       : `${p.note ? `<p class="tx-warn">Mwakete could not match your payment: ${esc(p.note)}</p>` : ''}
         <p class="helper-text">Pay exactly <strong>${formatMoney(p.amount)}</strong> to Mwakete by bank transfer and put <strong>${esc(p.reference)}</strong> as the reference. The driver cannot collect the goods until Mwakete confirms the money arrived.</p>${bank}

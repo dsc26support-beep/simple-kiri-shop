@@ -64,7 +64,10 @@ const DriverPage = (() => {
     $('drv-k-active').textContent = res.mine.length;
     $('drv-k-done').textContent = res.earnings.delivered;
     $('drv-k-fees').textContent = formatMoney(res.earnings.fees);
-    $('drv-k-paid').textContent = formatMoney(res.earnings.feesPaid);
+    // A wallet driver is paid by Mwakete, not "marked paid" by sellers.
+    const paidLabel = $('drv-k-paid').previousElementSibling;
+    if (res.wallet) { paidLabel.textContent = 'Paid out by Mwakete'; $('drv-k-paid').textContent = formatMoney(res.wallet.balance.paidOut); }
+    else { paidLabel.textContent = 'Marked paid by sellers'; $('drv-k-paid').textContent = formatMoney(res.earnings.feesPaid); }
     renderMine(res.mine);
     renderWallet(res.wallet);
     $('drv-open').innerHTML = !d.available ? '<p class="dash-empty">Go online to see available jobs.</p>'
@@ -77,7 +80,7 @@ const DriverPage = (() => {
     $('drv-hist').innerHTML = res.history.length ? `<table class="dash-table"><thead><tr><th scope="col">Store</th><th scope="col">Result</th><th scope="col">Fee</th></tr></thead><tbody>${res.history.map((j) => `<tr>
       <td data-label="Store">${esc(j.storeName)}<span class="dash-table-sub">${esc(new Date(j.updatedAt).toLocaleDateString())}</span></td>
       <td data-label="Result">${esc(j.statusLabel)}${j.failReason ? `<span class="dash-table-sub">${esc(j.failReason)}</span>` : ''}</td>
-      <td data-label="Fee">${formatMoney(j.fee)}${j.status === 'delivered' ? `<span class="dash-table-sub">${j.feePaid ? 'Marked paid' : 'Not marked paid yet'}</span>` : ''}</td></tr>`).join('')}</tbody></table>`
+      <td data-label="Fee">${formatMoney(j.fee)}${j.payLabel ? `<span class="dash-table-sub">${esc(j.payLabel)}</span>` : j.status === 'delivered' ? `<span class="dash-table-sub">${j.feePaid ? 'Marked paid' : 'Not marked paid yet'}</span>` : ''}</td></tr>`).join('')}</tbody></table>`
       : '<p class="dash-empty">No past jobs yet.</p>';
     if (watchId !== null && !res.mine.some((j) => j.jobId === watchJob)) stopSharing(false);
   }
@@ -96,9 +99,9 @@ const DriverPage = (() => {
     if (!w) return;
     const typed = $('drv-payout-input') ? $('drv-payout-input').value : '';
     const b = w.balance;
-    const rows = w.entries.length ? `<table class="dash-table"><thead><tr><th scope="col">What</th><th scope="col">Amount</th></tr></thead><tbody>${w.entries.map((e) => `<tr>
-        <td data-label="What">${esc(e.label)}<span class="dash-table-sub">${esc(new Date(e.at).toLocaleDateString())}${e.status ? ' · ' + esc(e.status) : ''}${e.reference ? ' · ref ' + esc(e.reference) : ''}${e.note && e.type === 'ADJUSTMENT' ? ' · ' + esc(e.note) : ''}</span></td>
-        <td data-label="Amount">${e.amount < 0 ? '−' : '+'}${formatMoney(Math.abs(e.amount))}</td></tr>`).join('')}</tbody></table>` : '<p class="dash-empty">Nothing yet. You are credited when the buyer confirms the delivery.</p>';
+    const rows = w.entries.length ? `<ul class="drv-ledger" aria-label="Balance history">${w.entries.map((e) => `<li>
+        <span><strong>${esc(e.label)}</strong><br><span class="helper-text">${esc(new Date(e.at).toLocaleDateString())}${e.status ? ' · ' + esc(e.status) : ''}${e.reference ? ' · ref ' + esc(e.reference) : ''}${e.note && e.type === 'ADJUSTMENT' ? ' · ' + esc(e.note) : ''}</span></span>
+        <strong class="drv-amt">${e.amount < 0 ? '−' : '+'}${formatMoney(Math.abs(e.amount))}</strong></li>`).join('')}</ul>` : '<p class="dash-empty">Nothing yet. You are credited when the buyer confirms the delivery.</p>';
     $('drv-wallet-body').innerHTML = `
       <div class="kpi-grid" aria-label="Your balance">
         <div class="kpi-card"><span class="kpi-label">Available to claim</span><strong class="kpi-value">${formatMoney(b.available)}</strong></div>
@@ -187,6 +190,7 @@ const DriverPage = (() => {
       </details>
     </article>`).join('') : '<p class="dash-empty">No active jobs.</p>';
     document.querySelectorAll('[data-chat-input]').forEach((el) => { if (typed[el.dataset.chatInput]) el.value = typed[el.dataset.chatInput]; });
+    document.querySelectorAll('.tx-jc-list').forEach((el) => { el.scrollTop = el.scrollHeight; });
   }
 
   async function onChat(btn) {

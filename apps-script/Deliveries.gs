@@ -223,6 +223,7 @@ function driverJobView(j, o, storeName) {
     feePaid: j.FeePaid === 'yes', storeName: storeName, storePhone: seeDetails ? (owner.Phone || '') : '',
     pickup: held ? '' : j.Pickup, dropoff: j.Dropoff, notes: held ? '' : j.Notes, sharing: j.Sharing === 'yes', version: Number(j.Version) || 1,
     detailsLocked: held,
+    payLabel: DRIVER_PAY_LABEL[j.PayStatus] || '',
     buyerName: seeDetails ? o.CustomerName : '', buyerPhone: seeDetails ? o.CustomerPhone : '',
     items: seeDetails ? txOrderItems(o).map(function (l) { return l.qty + ' × ' + l.label; }) : [],
     mapSearch: 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(String(j.Dropoff || '')),
@@ -552,7 +553,9 @@ function deliveryRoomView(order, state, viewer) {
     vehicle: drv ? DRIVER_VEHICLES[drv.Vehicle] || '' : '',
     location: live && j.LastLat !== '' ? { link: deliveryOsmLink(j.LastLat, j.LastLng), at: j.LastLocAt, accuracy: Number(j.LastAccuracy) || 0 } : null,
     canCancel: (viewer === 'seller' && ['open', 'accepted'].indexOf(String(j.Status)) !== -1) || (viewer === 'admin' && DELIVERY_JOB_ACTIVE.indexOf(String(j.Status)) !== -1),
-    canMarkPaid: viewer === 'seller' && j.Status === 'delivered' && j.FeePaid !== 'yes',
+    // A wallet job is paid through Mwakete, so there is no "I paid the driver" step.
+    canMarkPaid: viewer === 'seller' && j.Status === 'delivered' && j.FeePaid !== 'yes' && !j.PayStatus,
+    paidThroughMwakete: !!j.PayStatus,
     failReason: j.Status === 'failed' ? (DELIVERY_FAIL_REASONS[String(j.FailReason).split(':')[0]] || '') : '',
     chat: viewer === 'buyer' ? null : deliveryChatView(j, viewer)
   };
@@ -670,11 +673,23 @@ function deliveryJobDriver(job) {
   return deliveryRows('Drivers').filter(function (d) { return d.DriverId === job.DriverId; })[0] || null;
 }
 
-/** True when this job uses chat and fee agreement: deliveries on, driver covered by the wallet switch. */
+/**
+ * True when this job uses chat, fee agreement and payment through Mwakete:
+ * deliveries on, and either the wallet switch covers the driver OR the job is
+ * already in the wallet flow (it has a PayStatus). Turning DELIVERY_PAYMENTS
+ * off stops NEW wallet jobs but never lets a job that Mwakete holds money for
+ * skip its payment checks, and never strands a driver's earned balance.
+ */
 function deliveryFeeChatOn(job) {
   if (!deliveriesEnabled() || typeof walletEnabledForDriver !== 'function') return false;
   var d = deliveryJobDriver(job);
-  return !!d && walletEnabledForDriver(d);
+  if (!d) return false;
+  return walletEnabledForDriver(d) || !!job.PayStatus;
+}
+
+/** A driver may use the wallet screens while the switch covers them, and always while they have anything in the ledger. */
+function driverWalletOpen(driver) {
+  return !!driver && (walletEnabledForDriver(driver) || walletEntries(driver.DriverId).length > 0);
 }
 
 function deliveryChatMessages(jobId) {
@@ -1007,6 +1022,9 @@ function actionAdminMarkJobRefunded(owner, body) {
  * and records the reference. The admin sees what Mwakete should be holding.
  */
 
+// What a driver is told about a wallet job's money (never the seller's bank references).
+var DRIVER_PAY_LABEL = { awaiting: 'Waiting for the seller to pay Mwakete', submitted: 'Mwakete is checking the seller\'s payment', rejected: 'Waiting for the seller to pay Mwakete',
+  received: 'Payment confirmed', credited: 'Credited to your balance', review: 'An admin is deciding who is paid', refund_due: 'Not paid: the delivery did not go ahead', refunded: 'Not paid: the delivery did not go ahead' };
 var DELIVERY_FAIL_PAID = ['no_one_home', 'wrong_address', 'refused', 'unreachable'];
 var DRIVER_PAYOUT_COLUMN = 'PayoutDetails';
 
@@ -1055,7 +1073,7 @@ function deliveryFailedAfterPickup(job, reason) {
 
 /** What the driver's wallet panel shows, or null when the wallet does not cover them. */
 function driverWalletView(driver) {
-  if (!driver || !walletEnabledForDriver(driver)) return null;
+  if (!driverWalletOpen(driver)) return null;
   var bal = walletBalance(driver.DriverId);
   var LABEL = { CREDIT: 'Delivery fee', CLAIM: 'Payout requested', PAYOUT_PAID: 'Paid to you', CLAIM_REVERSED: 'Payout returned to balance', ADJUSTMENT: 'Correction' };
   var rows = walletEntries(driver.DriverId);
@@ -1078,7 +1096,7 @@ function actionDriverSetPayoutDetails(body) {
   if (who.error) return txFail(who.error, { authRequired: who.auth });
   var d = who.driver;
   if (!d || d.Status !== 'approved') return fail('Only approved drivers can do this.');
-  if (!walletEnabledForDriver(d)) return fail('Payouts are not switched on for you yet.');
+  if (!driverWalletOpen(d)) return fail('Payouts are not switched on for you yet.');
   var details = txCleanText(body.details, 300);
   if (details.length < 10) return fail('Enter your bank name, the name on the account and the account number.');
   var sheet = deliveryDriversSheet();
@@ -1094,7 +1112,7 @@ function actionDriverClaimPayout(body) {
   if (who.error) return txFail(who.error, { authRequired: who.auth });
   var d = who.driver;
   if (!d || d.Status !== 'approved') return fail('Only approved drivers can do this.');
-  if (!walletEnabledForDriver(d)) return fail('Payouts are not switched on for you yet.');
+  if (!driverWalletOpen(d)) return fail('Payouts are not switched on for you yet.');
   if (!cleanRequestId(body.requestId)) return fail('Please try again.');
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
