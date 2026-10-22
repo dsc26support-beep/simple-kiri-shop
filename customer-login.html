@@ -61,125 +61,143 @@
   </header>
 
   <main id="main">
-    <section class="container auth-card-wrap">
-      <div class="auth-card auth-card--customer">
-        <h1 id="auth-title">Sign in to Mwakete</h1>
-        <!-- Why they're here, when chat sent them to request a meeting. Filled
-             synchronously right here, before first paint, so it can't shift
-             the form down after load. textContent only - the store name
-             comes from the URL. -->
-        <p id="auth-reason" class="auth-reason-note" role="status" hidden></p>
-        <script>
-          (function () {
-            try {
-              var q = new URLSearchParams(location.search);
-              var store = (q.get('store') || '').trim().slice(0, 80);
-              var note = document.getElementById('auth-reason');
-              var lines = {
-                meeting: 'Please sign in to request a meeting' + (store ? ' with ' + store : '') +
-                  '. You\u2019ll go straight back to your chat afterwards.',
-                order: 'Please sign in to place your order. Your cart is kept, and you\u2019ll go straight back to checkout.',
-                book: 'Please sign in to send a booking request. You\u2019ll go straight back afterwards.',
-                message: 'Please sign in to message the seller. You\u2019ll go straight back to the chat afterwards.'
-              };
-              if (!lines[q.get('reason')]) return;
-              note.textContent = lines[q.get('reason')];
-              note.hidden = false;
-            } catch (e) { /* no explanation, sign-in still works */ }
-          })();
-        </script>
+    <div class="auth-split">
+      <div class="auth-split-form">
+      <section class="container auth-card-wrap">
+        <div class="auth-card auth-card--customer">
+          <!-- Owner request (Oct 2026): same layout as the seller sign-in - the
+               tabs come first and there is no big heading. The heading stays
+               for screen readers. -->
+          <h1 id="auth-title" class="sr-only">Sign in to Mwakete</h1>
+          <div class="auth-tabs" role="tablist" aria-label="Sign in or create an account">
+            <button type="button" class="auth-tab is-active" id="tab-signin" role="tab" aria-selected="true">Sign In</button>
+            <button type="button" class="auth-tab" id="tab-signup" role="tab" aria-selected="false">Create Account</button>
+          </div>
+          <!-- Why they're here, when chat sent them to request a meeting. Filled
+               synchronously right here, before first paint, so it can't shift
+               the form down after load. textContent only - the store name
+               comes from the URL. -->
+          <p id="auth-reason" class="auth-reason-note" role="status" hidden></p>
+          <script>
+            (function () {
+              try {
+                var q = new URLSearchParams(location.search);
+                var store = (q.get('store') || '').trim().slice(0, 80);
+                var note = document.getElementById('auth-reason');
+                var lines = {
+                  meeting: 'Please sign in to request a meeting' + (store ? ' with ' + store : '') +
+                    '. You\u2019ll go straight back to your chat afterwards.',
+                  order: 'Please sign in to place your order. Your cart is kept, and you\u2019ll go straight back to checkout.',
+                  book: 'Please sign in to send a booking request. You\u2019ll go straight back afterwards.',
+                  message: 'Please sign in to message the seller. You\u2019ll go straight back to the chat afterwards.'
+                };
+                if (!lines[q.get('reason')]) return;
+                note.textContent = lines[q.get('reason')];
+                note.hidden = false;
+              } catch (e) { /* no explanation, sign-in still works */ }
+            })();
+          </script>
 
-        <!-- The two ways in that need no typing, then the divider, then the
-             email form. The Google half is hidden until google-signin.js
-             confirms both a configured client id and that Google's script
-             actually loaded; on a blocked or slow connection it never appears.
-             The guest row and the divider sit OUTSIDE that wrapper on purpose -
-             guest is the fallback for exactly the person who cannot use Google,
-             so it must never disappear along with it. -->
-        <div class="auth-quick">
-          <div id="google-signin-wrap" class="auth-social" hidden>
-            <div id="google-signin-btn" data-full-width></div>
-            <p id="google-signin-error" class="form-error" role="alert"></p>
+          <!-- Under the tabs: the two ways in that need no typing, then the
+               divider, then the email form. The Google half is hidden until google-signin.js
+               confirms both a configured client id and that Google's script
+               actually loaded; on a blocked or slow connection it never appears.
+               The guest row and the divider sit OUTSIDE that wrapper on purpose -
+               guest is the fallback for exactly the person who cannot use Google,
+               so it must never disappear along with it. -->
+          <div class="auth-quick">
+            <div id="google-signin-wrap" class="auth-social" hidden>
+              <div id="google-signin-btn" data-full-width></div>
+              <p id="google-signin-error" class="form-error" role="alert"></p>
+            </div>
+
+            <div class="auth-guest-row">
+              <a class="btn btn-block btn-outline" id="guest-continue" href="index.html">Guest</a>
+            </div>
+
+            <p class="auth-divider"><span>or</span></p>
           </div>
 
-          <div class="auth-guest-row">
-            <a class="btn btn-block btn-outline" id="guest-continue" href="index.html">Guest</a>
+          <!-- Sign in -->
+          <div id="panel-signin" class="auth-panel">
+            <form id="login-form" novalidate>
+              <div class="field">
+                <label for="login-email">Email</label>
+                <input id="login-email" type="email" autocomplete="email" required>
+                <!-- Shown only when this device has signed in before. Rendered
+                     hidden in the markup rather than created by JS so it cannot
+                     push the form down when it appears. -->
+                <p class="helper-text login-remembered" id="login-remembered">
+                  <button type="button" class="linklike" id="login-not-you">Not you?</button>
+                </p>
+              </div>
+              <p id="login-error" class="form-error" role="alert"></p>
+              <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
+            </form>
+
+            <form id="login-code-form" class="hidden" novalidate>
+              <p class="helper-text" id="login-code-hint"></p>
+              <div class="field">
+                <label for="login-code">Enter the 6-digit code</label>
+                <input id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+              </div>
+              <p id="login-code-error" class="form-error" role="alert"></p>
+              <button type="submit" class="btn btn-primary btn-block">Verify &amp; sign in</button>
+              <button type="button" id="login-back" class="btn btn-block">Use a different email</button>
+            </form>
           </div>
 
-          <p class="auth-divider"><span>or</span></p>
+          <!-- Create account -->
+          <div id="panel-signup" class="auth-panel hidden">
+            <form id="signup-form" novalidate>
+              <div class="field">
+                <label for="signup-name">Your Name</label>
+                <input id="signup-name" type="text" autocomplete="name" required>
+              </div>
+              <div class="field">
+                <label for="signup-email">Email</label>
+                <input id="signup-email" type="email" autocomplete="email" required>
+              </div>
+              <div class="field">
+                <label for="signup-phone">Phone Number</label>
+                <input id="signup-phone" type="tel" autocomplete="tel" required>
+                <p class="helper-text">Local numbers start with 730 or 630. Overseas? Include your country code (e.g. +64…).</p>
+              </div>
+              <p id="signup-error" class="form-error" role="alert"></p>
+              <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
+            </form>
+
+            <form id="signup-code-form" class="hidden" novalidate>
+              <p class="helper-text" id="signup-code-hint"></p>
+              <div class="field">
+                <label for="signup-code">Enter the 6-digit code</label>
+                <input id="signup-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+              </div>
+              <p id="signup-code-error" class="form-error" role="alert"></p>
+              <button type="submit" class="btn btn-primary btn-block">Verify &amp; create account</button>
+              <button type="button" id="signup-back" class="btn btn-block">Change my details</button>
+            </form>
+          </div>
+
+          <!-- The footer (and its Terms | Privacy) is hidden on phones and
+               tablets, so the agreement is stated here, where it applies. -->
+          <p class="helper-text auth-terms-note">By continuing you agree to the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
         </div>
-
-        <div class="auth-tabs" role="tablist" aria-label="Sign in or create an account">
-          <button type="button" class="auth-tab is-active" id="tab-signin" role="tab" aria-selected="true">Sign In</button>
-          <button type="button" class="auth-tab" id="tab-signup" role="tab" aria-selected="false">Create Account</button>
-        </div>
-
-        <!-- Sign in -->
-        <div id="panel-signin" class="auth-panel">
-          <form id="login-form" novalidate>
-            <div class="field">
-              <label for="login-email">Email</label>
-              <input id="login-email" type="email" autocomplete="email" required>
-              <!-- Shown only when this device has signed in before. Rendered
-                   hidden in the markup rather than created by JS so it cannot
-                   push the form down when it appears. -->
-              <p class="helper-text login-remembered" id="login-remembered">
-                <button type="button" class="linklike" id="login-not-you">Not you?</button>
-              </p>
-            </div>
-            <p id="login-error" class="form-error" role="alert"></p>
-            <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
-          </form>
-
-          <form id="login-code-form" class="hidden" novalidate>
-            <p class="helper-text" id="login-code-hint"></p>
-            <div class="field">
-              <label for="login-code">Enter the 6-digit code</label>
-              <input id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
-            </div>
-            <p id="login-code-error" class="form-error" role="alert"></p>
-            <button type="submit" class="btn btn-primary btn-block">Verify &amp; sign in</button>
-            <button type="button" id="login-back" class="btn btn-block">Use a different email</button>
-          </form>
-        </div>
-
-        <!-- Create account -->
-        <div id="panel-signup" class="auth-panel hidden">
-          <form id="signup-form" novalidate>
-            <div class="field">
-              <label for="signup-name">Your Name</label>
-              <input id="signup-name" type="text" autocomplete="name" required>
-            </div>
-            <div class="field">
-              <label for="signup-email">Email</label>
-              <input id="signup-email" type="email" autocomplete="email" required>
-            </div>
-            <div class="field">
-              <label for="signup-phone">Phone Number</label>
-              <input id="signup-phone" type="tel" autocomplete="tel" required>
-              <p class="helper-text">Local numbers start with 730 or 630. Overseas? Include your country code (e.g. +64…).</p>
-            </div>
-            <p id="signup-error" class="form-error" role="alert"></p>
-            <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
-          </form>
-
-          <form id="signup-code-form" class="hidden" novalidate>
-            <p class="helper-text" id="signup-code-hint"></p>
-            <div class="field">
-              <label for="signup-code">Enter the 6-digit code</label>
-              <input id="signup-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
-            </div>
-            <p id="signup-code-error" class="form-error" role="alert"></p>
-            <button type="submit" class="btn btn-primary btn-block">Verify &amp; create account</button>
-            <button type="button" id="signup-back" class="btn btn-block">Change my details</button>
-          </form>
-        </div>
-
-        <!-- The footer (and its Terms | Privacy) is hidden on phones and
-             tablets, so the agreement is stated here, where it applies. -->
-        <p class="helper-text auth-terms-note">By continuing you agree to the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
+      </section>
       </div>
-    </section>
+      <!-- Welcome panel (owner request, Oct 2026: two-panel sign-in). On a
+           computer it sits beside the form with a picture of Mwakete; on a
+           phone it is a slim purple band above the form and the picture is
+           not shown (or downloaded - it is lazy and display:none there). -->
+      <aside class="auth-split-panel" aria-label="About Mwakete">
+        <h2 class="auth-panel-title">Shop Kiribati’s stores in one place</h2>
+        <p class="auth-panel-text">Order from local sellers on every island, chat with them, and pay the way you already do.</p>
+        <div class="auth-panel-shot" aria-hidden="true">
+          <div class="auth-panel-shot-bar"><span></span><span></span><span></span></div>
+          <img src="assets/img/auth-shop.jpg" alt="" width="1100" height="720" loading="lazy" decoding="async">
+        </div>
+      </aside>
+    </div>
   </main>
 
   <footer class="site-footer">
