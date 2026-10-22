@@ -4,6 +4,7 @@
 Owner's master prompt: audit, then extend existing inventory sync (no duplicate system) with POS hub (signed push, mappings, outbox), native POS, tests, docs, final report. No deploy/merge/prod changes.
 
 ## Next steps
+0. Owner asked for deploy steps+raw links; gave them (branch raw links, claude/pos-integration; swap to main after merge). Owner has NOT yet confirmed deploy: await getVersion=pos1-2026-10-22 + checkSetup.
 1. Owner: review draft PR #127 (dsc26support-beep/simple-kiri-shop). Merge only with explicit OK.
 2. Owner deploy (manual, DEPLOY.md): backup sheet; paste IntegrationHub/IntegrationOutbox/Pos.gs + changed Code/Auth/Inventory/InventorySync/Orders/Reminders; getVersion must = pos1-2026-10-22; checkSetup clean; set POS_HUB=on; send signed ping.
 3. Pending/not built: named providers (Square, Loyverse, Shopify, Lightspeed, Odoo) + header-signature relay; staff roles; offline checkout.
