@@ -175,7 +175,7 @@ function walletCreditJob(job, nowMs) {
  * The driver asks to be paid their whole available balance. Needs the
  * minimum. requestId makes a double tap the same claim.
  */
-function walletClaim(driverId, requestId, nowMs) {
+function walletClaim(driverId, requestId, nowMs, note) {
   var rid = String(requestId || '').trim();
   if (!rid) return { ok: false, error: 'A request id is needed.' };
   var key = 'claim:' + driverId + ':' + rid;
@@ -186,7 +186,7 @@ function walletClaim(driverId, requestId, nowMs) {
   if (bal.available < bal.minPayout) {
     return { ok: false, error: 'You can claim once you have ' + bal.minPayout + ' available. You have ' + bal.available + '.', balance: bal };
   }
-  var entry = walletAppend({ DriverId: driverId, EntryType: 'CLAIM', Amount: -bal.available, IdempotencyKey: key, By: driverId });
+  var entry = walletAppend({ DriverId: driverId, EntryType: 'CLAIM', Amount: -bal.available, Note: String(note || '').slice(0, 300), IdempotencyKey: key, By: driverId });
   return { ok: true, entry: entry, balance: walletBalance(driverId, nowMs) };
 }
 

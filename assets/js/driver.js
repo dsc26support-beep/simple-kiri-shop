@@ -66,6 +66,7 @@ const DriverPage = (() => {
     $('drv-k-fees').textContent = formatMoney(res.earnings.fees);
     $('drv-k-paid').textContent = formatMoney(res.earnings.feesPaid);
     renderMine(res.mine);
+    renderWallet(res.wallet);
     $('drv-open').innerHTML = !d.available ? '<p class="dash-empty">Go online to see available jobs.</p>'
       : res.open.length ? res.open.map((j) => `<article class="drv-job">
           <strong>${esc(j.storeName)}</strong> → ${esc(j.dropoffArea)}<br>
@@ -86,6 +87,48 @@ const DriverPage = (() => {
     $('drv-online').classList.toggle('is-open', on);
     $('drv-online-label').textContent = on ? 'Online' : 'Offline';
     $('drv-online-hint').textContent = on ? 'You can see and accept new jobs.' : 'Go online to see new jobs on your island.';
+  }
+
+  /** The driver's Mwakete balance, payout details and claim (driver wallet, phase 4). Hidden unless the backend sends it. */
+  function renderWallet(w) {
+    const box = $('drv-wallet');
+    box.hidden = !w;
+    if (!w) return;
+    const typed = $('drv-payout-input') ? $('drv-payout-input').value : '';
+    const b = w.balance;
+    const rows = w.entries.length ? `<table class="dash-table"><thead><tr><th scope="col">What</th><th scope="col">Amount</th></tr></thead><tbody>${w.entries.map((e) => `<tr>
+        <td data-label="What">${esc(e.label)}<span class="dash-table-sub">${esc(new Date(e.at).toLocaleDateString())}${e.status ? ' · ' + esc(e.status) : ''}${e.reference ? ' · ref ' + esc(e.reference) : ''}${e.note && e.type === 'ADJUSTMENT' ? ' · ' + esc(e.note) : ''}</span></td>
+        <td data-label="Amount">${e.amount < 0 ? '−' : '+'}${formatMoney(Math.abs(e.amount))}</td></tr>`).join('')}</tbody></table>` : '<p class="dash-empty">Nothing yet. You are credited when the buyer confirms the delivery.</p>';
+    $('drv-wallet-body').innerHTML = `
+      <div class="kpi-grid" aria-label="Your balance">
+        <div class="kpi-card"><span class="kpi-label">Available to claim</span><strong class="kpi-value">${formatMoney(b.available)}</strong></div>
+        <div class="kpi-card"><span class="kpi-label">In the ${esc(w.holdHours)}-hour hold</span><strong class="kpi-value">${formatMoney(b.pending)}</strong></div>
+        <div class="kpi-card"><span class="kpi-label">Waiting to be paid</span><strong class="kpi-value">${formatMoney(b.claimed)}</strong></div>
+        <div class="kpi-card"><span class="kpi-label">Paid to you so far</span><strong class="kpi-value">${formatMoney(b.paidOut)}</strong></div>
+      </div>
+      <p class="helper-text">Mwakete pays you the fee after the buyer confirms delivery. You can claim once your available balance reaches ${formatMoney(b.minPayout)}. Payouts are made by bank transfer.</p>
+      <div class="field"><label for="drv-payout-input">Where to send your money (bank, name on the account, account number)</label>
+        <textarea id="drv-payout-input" rows="2" maxlength="300">${esc(typed || w.payoutDetails)}</textarea>
+        <button type="button" class="btn btn-small btn-outline" data-wallet="save">Save</button></div>
+      <button type="button" class="btn btn-primary" data-wallet="claim" ${w.canClaim ? '' : 'disabled'}>Claim ${formatMoney(b.available)}</button>
+      <p class="form-error" id="drv-wallet-error" role="alert"></p>
+      ${rows}`;
+  }
+
+  async function onWallet(btn) {
+    const err = $('drv-wallet-error');
+    err.textContent = '';
+    btn.disabled = true;
+    let res;
+    if (btn.dataset.wallet === 'save') {
+      res = await call('driverSetPayoutDetails', { details: $('drv-payout-input').value.trim() });
+    } else {
+      if (!confirm('Ask Mwakete to pay you your available balance by bank transfer?')) { btn.disabled = false; return; }
+      res = await call('driverClaimPayout', { requestId: btn.dataset.rid || (btn.dataset.rid = rid()) });
+    }
+    btn.disabled = false;
+    if (!res.ok) { err.textContent = res.error || 'Not saved - check your connection and try again.'; return; }
+    await load();
   }
 
   /** Chat and fee agreement for one job (driver wallet phase 2); empty when the backend does not send it. */
@@ -189,6 +232,8 @@ const DriverPage = (() => {
       await load();
       return;
     }
+    const wallet = e.target.closest('[data-wallet]');
+    if (wallet) { await onWallet(wallet); return; }
     const chat = e.target.closest('[data-jc]');
     if (chat) { await onChat(chat); return; }
     const btn = e.target.closest('[data-act]');

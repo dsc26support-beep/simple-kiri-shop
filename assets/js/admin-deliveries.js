@@ -14,8 +14,9 @@ const DeliveriesAdmin = (() => {
     const card = (label, v, sub) => `<div class="kpi-card"><span class="kpi-label">${escapeHtml(label)}</span><strong class="kpi-value">${v}</strong>${sub ? `<span class="kpi-sub${/stuck|fail/i.test(sub) && v ? ' is-warning' : ''}">${escapeHtml(sub)}</span>` : ''}</div>`;
     $('dlv-counts').innerHTML = card('Waiting for a driver', c.open, '') + card('On the way', c.active, '') +
       card('Failed / stuck', c.failed + c.stuck, `${c.failed} failed · ${c.stuck} stuck`) + card('Drivers online', c.driversOnline, `${c.driversPending} waiting for approval`) +
-      card('Payments to check', c.paymentsToCheck, `${c.refundsDue} refund${c.refundsDue === 1 ? '' : 's'} due`);
+      card('Payments to check', c.paymentsToCheck, `${c.refundsDue} refund${c.refundsDue === 1 ? '' : 's'} due · ${c.toDecide} to decide`);
     $('dlv-bank').textContent = res.bankDetailsSet ? '' : 'Mwakete’s bank details are not set (Script Property MWAKETE_BANK_DETAILS), so sellers cannot pay for wallet deliveries yet.';
+    loadPayouts();
     $('dlv-drivers').innerHTML = res.drivers.length ? `<table class="dash-table"><thead><tr><th scope="col">Driver</th><th scope="col">Vehicle / area</th><th scope="col">Record</th><th scope="col">Status</th></tr></thead><tbody>${res.drivers.map((d) => `<tr>
       <td data-label="Driver">${escapeHtml(d.name)}<span class="dash-table-sub"><a href="tel:${escapeHtml(d.phone)}">${escapeHtml(d.phone)}</a> · ${escapeHtml(d.email)}</span></td>
       <td data-label="Vehicle / area">${escapeHtml(d.vehicle)}<span class="dash-table-sub">${escapeHtml(d.area)}</span></td>
@@ -34,9 +35,54 @@ const DeliveriesAdmin = (() => {
         ${j.payNote ? `<span class="dash-table-sub">${escapeHtml(j.payNote)}</span>` : ''}
         ${j.payStatus === 'submitted' ? `<span class="dlv-actions"><button type="button" class="btn btn-small" data-pay="confirm" data-job="${escapeHtml(j.jobId)}" data-fee="${escapeHtml(j.fee)}">Confirm received</button>
           <button type="button" class="btn btn-small" data-pay="reject" data-job="${escapeHtml(j.jobId)}">Not received</button></span>` : ''}
+        ${j.payStatus === 'review' ? `<span class="dlv-actions"><button type="button" class="btn btn-small" data-pay="decide" data-job="${escapeHtml(j.jobId)}">Decide who is paid</button></span>` : ''}
         ${j.payStatus === 'refund_due' ? `<span class="dlv-actions"><button type="button" class="btn btn-small" data-pay="refund" data-job="${escapeHtml(j.jobId)}">I sent the refund</button></span>` : ''}</td>
       <td data-label="Status">${escapeHtml(j.statusLabel)}${j.stuck ? ' <span class="status-badge status-problem">Stuck</span>' : ''}${j.failReason ? `<span class="dash-table-sub">${escapeHtml(j.failReason)}</span>` : ''}</td></tr>`).join('')}</tbody></table>`
       : '<p class="dash-empty">No delivery jobs here.</p>';
+  }
+
+  async function loadPayouts() {
+    const res = await Api.post('adminListPayouts', { token: Auth.getToken() });
+    if (!res.ok || !res.holding) { $('dlv-payouts').innerHTML = ''; $('dlv-holding').innerHTML = ''; return; }
+    const h = res.holding, money = (v) => formatMoney(v);
+    const card = (label, v, sub) => `<div class="kpi-card"><span class="kpi-label">${escapeHtml(label)}</span><strong class="kpi-value">${money(v)}</strong>${sub ? `<span class="kpi-sub">${escapeHtml(sub)}</span>` : ''}</div>`;
+    $('dlv-holding').innerHTML = card('Mwakete should hold', h.total, 'in total, for sellers and drivers') + card('Delivery fees in progress', h.heldForOpenJobs + h.awaitingDecision, 'paid by sellers, not yet credited')
+      + card('Owed to drivers', h.owedToDrivers, 'credited, not yet claimed') + card('Claims to pay', h.claimsToPay, 'drivers waiting for a transfer') + card('Refunds due to sellers', h.refundsDue, '');
+    const claims = res.claims.length ? `<table class="dash-table"><thead><tr><th scope="col">Driver</th><th scope="col">Amount</th><th scope="col">Send to</th><th scope="col">Asked</th></tr></thead><tbody>${res.claims.map((c) => `<tr>
+        <td data-label="Driver">${escapeHtml(c.driverName)}<span class="dash-table-sub"><a href="tel:${escapeHtml(c.driverPhone)}">${escapeHtml(c.driverPhone)}</a></span></td>
+        <td data-label="Amount"><strong>${money(c.amount)}</strong></td>
+        <td data-label="Send to">${escapeHtml(c.details)}</td>
+        <td data-label="Asked">${escapeHtml(new Date(c.at).toLocaleDateString())}<span class="dlv-actions"><button type="button" class="btn btn-small" data-payout="paid" data-claim="${escapeHtml(c.claimId)}">I paid it</button>
+          <button type="button" class="btn btn-small" data-payout="reverse" data-claim="${escapeHtml(c.claimId)}">Send back</button></span></td></tr>`).join('')}</tbody></table>`
+      : '<p class="dash-empty">No payout claims waiting.</p>';
+    const bal = res.drivers.length ? `<details><summary>Driver balances (${res.drivers.length})</summary><table class="dash-table"><thead><tr><th scope="col">Driver</th><th scope="col">Available</th><th scope="col">In hold</th><th scope="col">Paid out</th></tr></thead><tbody>${res.drivers.map((d) => `<tr>
+        <td data-label="Driver">${escapeHtml(d.name)}<span class="dlv-actions"><button type="button" class="btn btn-small" data-payout="adjust" data-driver-id="${escapeHtml(d.driverId)}">Correct balance</button></span></td>
+        <td data-label="Available">${money(d.available)}</td><td data-label="In hold">${money(d.pending)}</td><td data-label="Paid out">${money(d.paidOut)}</td></tr>`).join('')}</tbody></table></details>` : '';
+    $('dlv-payouts').innerHTML = claims + bal;
+  }
+
+  async function onPayout(b) {
+    const kind = b.dataset.payout;
+    let action, payload;
+    if (kind === 'paid') {
+      const bankRef = prompt('Bank reference of the transfer you made to the driver:');
+      if (!bankRef) return;
+      action = 'adminMarkPayoutPaid'; payload = { claimId: b.dataset.claim, bankRef };
+    } else if (kind === 'reverse') {
+      const reason = prompt('Why send this claim back to the driver’s balance? (for example, wrong account details)');
+      if (!reason) return;
+      action = 'adminReversePayout'; payload = { claimId: b.dataset.claim, reason };
+    } else {
+      const amount = prompt('Correction in dollars (use a minus sign to take money off, for example -5):');
+      if (amount === null || amount === '') return;
+      const reason = prompt('Why? (recorded with your name)');
+      if (!reason) return;
+      action = 'adminAdjustDriverWallet'; payload = { driverId: b.dataset.driverId, amount, reason, requestId: 'adj' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) };
+    }
+    b.disabled = true;
+    const res = await Api.post(action, Object.assign({ token: Auth.getToken() }, payload));
+    if (!res.ok) { alert(res.error || 'Not saved.'); b.disabled = false; return; }
+    await load();
   }
 
   async function onPay(b) {
@@ -51,6 +97,11 @@ const DeliveriesAdmin = (() => {
       const reason = prompt('What is wrong? (the seller will see it)');
       if (!reason) return;
       action = 'adminRejectJobPayment'; payload = { reason };
+    } else if (kind === 'decide') {
+      const pay = confirm('This delivery failed with damaged goods or another reason.\n\nOK = pay the driver the fee.\nCancel = refund the seller instead.');
+      const note = prompt(pay ? 'Why is the driver paid?' : 'Why is the seller refunded?');
+      if (!note) return;
+      action = 'adminResolveJobPayment'; payload = { outcome: pay ? 'pay_driver' : 'refund_seller', note };
     } else {
       const bankRef = prompt('Bank reference of the refund you sent:');
       if (!bankRef) return;
@@ -65,6 +116,8 @@ const DeliveriesAdmin = (() => {
   async function onClick(e) {
     const pay = e.target.closest('[data-pay]');
     if (pay) { await onPay(pay); return; }
+    const po = e.target.closest('[data-payout]');
+    if (po) { await onPayout(po); return; }
     const b = e.target.closest('[data-driver]');
     if (!b) return;
     const status = b.dataset.set;
@@ -84,6 +137,7 @@ const DeliveriesAdmin = (() => {
     $('dlv-filter').addEventListener('change', load);
     $('dlv-drivers').addEventListener('click', onClick);
     $('dlv-jobs').addEventListener('click', onClick);
+    $('dlv-payouts').addEventListener('click', onClick);
     load();
   }
 

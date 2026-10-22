@@ -146,7 +146,7 @@ seller('actionTxSubmitJobPayment', { orderId: F1.o, bankRef: 'ANZ-5555', amount:
 adminBox('actionAdminConfirmJobPayment', { jobId: F1.id, amountReceived: 3, checkedStatement: true });
 dan('actionDriverUpdateJob', { jobId: F1.id, act: 'picked_up', requestId: rq() });
 dan('actionDriverUpdateJob', { jobId: F1.id, act: 'failed', reason: 'refused', note: 'The buyer refused it', requestId: rq() });
-ok('failure AFTER collecting does not auto-refund (phase 4 decides who is paid)', job(F1.o).Status === 'failed' && job(F1.o).PayStatus === 'received', J(job(F1.o)));
+ok('failure AFTER collecting never auto-refunds the seller (phase 4: the driver is paid for a refused delivery)', job(F1.o).Status === 'failed' && job(F1.o).PayStatus === 'credited', J(job(F1.o)));
 
 /* ---- wallet off: untouched ---- */
 box.__props.DELIVERY_PAYMENTS = 'off';
