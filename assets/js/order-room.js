@@ -246,6 +246,7 @@ const OrderRoom = (function () {
     return `<div class="tx-jobchat" role="group" aria-label="Chat with the driver">
       <p><strong>Delivery fee ${formatMoney(f.amount)}</strong> · <span class="helper-text">${esc(state)}</span></p>
       ${f.canAgree ? `<button type="button" class="btn btn-small btn-primary" data-jc="agree" data-fee="${esc(f.amount)}">Agree to ${formatMoney(f.amount)}</button>` : ''}
+      ${payHtml(c.payment)}
       ${f.canPropose ? `<form class="tx-jc-form" data-jc-form="propose"><label class="helper-text" for="jc-fee">Propose a different fee ($)</label>
         <input id="jc-fee" type="number" min="0.5" max="500" step="0.5" inputmode="decimal" required>
         <button type="submit" class="btn btn-small btn-outline">Propose</button></form>` : ''}
@@ -256,6 +257,23 @@ const OrderRoom = (function () {
       <p class="form-error" id="jc-error" role="alert"></p>
       <button type="button" class="btn btn-small btn-outline" data-jc="refresh">Refresh messages</button>
     </div>`;
+  }
+
+  /** The seller's payment to Mwakete for this delivery (driver wallet, phase 3). */
+  function payHtml(p) {
+    if (!p) return '';
+    const bank = p.bankDetails ? `<pre class="tx-jc-bank">${esc(p.bankDetails)}</pre>` : '';
+    const body = p.status === 'received' ? '<p class="tx-saved">Mwakete confirmed your payment. The driver can collect the goods.</p>'
+      : p.status === 'submitted' ? `<p class="helper-text">You sent bank reference <strong>${esc(p.bankRef)}</strong>. Mwakete is checking its bank account. The driver can collect once it is confirmed.</p>${bank}`
+      : p.status === 'refund_due' ? '<p class="tx-warn">This delivery did not go ahead. Mwakete will send your payment back to you.</p>'
+      : p.status === 'refunded' ? '<p class="helper-text">Mwakete sent your payment back.</p>'
+      : p.bankMissing ? '<p class="tx-warn">Mwakete’s bank details are not set up yet. Please contact Mwakete.</p>'
+      : `${p.note ? `<p class="tx-warn">Mwakete could not match your payment: ${esc(p.note)}</p>` : ''}
+        <p class="helper-text">Pay exactly <strong>${formatMoney(p.amount)}</strong> to Mwakete by bank transfer and put <strong>${esc(p.reference)}</strong> as the reference. The driver cannot collect the goods until Mwakete confirms the money arrived.</p>${bank}
+        ${p.canSubmit ? `<form class="tx-jc-form" data-jc-form="pay"><label class="helper-text" for="jc-bankref">The reference your bank gave the transfer</label>
+          <input id="jc-bankref" maxlength="60" required>
+          <button type="submit" class="btn btn-small btn-primary">I have paid ${formatMoney(p.amount)}</button></form>` : ''}`;
+    return `<div class="tx-jc-pay"><strong>Payment to Mwakete: ${esc(p.label)}</strong>${body}</div>`;
   }
 
   async function onJobChat(e) {
@@ -272,6 +290,10 @@ const OrderRoom = (function () {
       res = await call('txAgreeFee', { fee: btn.dataset.fee, requestId: rid() });
     } else if (form && form.dataset.jcForm === 'propose') {
       res = await call('txProposeFee', { fee: $('jc-fee').value, requestId: rid() });
+    } else if (form && form.dataset.jcForm === 'pay') {
+      const amount = ((room.delivery && room.delivery.chat && room.delivery.chat.payment) || {}).amount;
+      if (!confirm('Confirm you have already sent ' + formatMoney(amount) + ' to Mwakete by bank transfer?')) return;
+      res = await call('txSubmitJobPayment', { bankRef: $('jc-bankref').value.trim(), amount, requestId: rid() });
     } else if (form && form.dataset.jcForm === 'message') {
       res = await call('txJobMessage', { text: $('jc-text').value.trim(), requestId: rid() });
     } else return;

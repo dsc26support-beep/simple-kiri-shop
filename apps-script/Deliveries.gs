@@ -41,11 +41,15 @@ var DRIVER_HEADERS = ['DriverId', 'CustomerId', 'Name', 'Phone', 'Email', 'Vehic
   'ReviewedBy', 'ReviewedAt', 'ReviewNote', 'CreatedAt', 'UpdatedAt'];
 var DELIVERY_JOB_HEADERS = ['JobId', 'OrderId', 'OwnerId', 'StoreSlug', 'Status', 'DriverId', 'Fee', 'Pickup', 'Dropoff', 'Notes',
   'FeePaid', 'FailReason', 'Sharing', 'LastLat', 'LastLng', 'LastAccuracy', 'LastLocAt', 'Version', 'CreatedAt', 'AcceptedAt',
-  'PickedUpAt', 'DeliveredAt', 'ClosedAt', 'UpdatedAt'];
-// Fee agreement (driver wallet phase 2, docs/driver-wallet.md). Added to live
-// sheets with ensureColumn; nothing reads them unless the driver is covered by
-// DELIVERY_PAYMENTS (DriverWallet.gs).
-var DELIVERY_JOB_FEE_COLUMNS = ['FeeProposedBy', 'FeeSellerOk', 'FeeDriverOk', 'FeeLocked'];
+  'PickedUpAt', 'DeliveredAt', 'ClosedAt', 'UpdatedAt',
+  'FeeProposedBy', 'FeeSellerOk', 'FeeDriverOk', 'FeeLocked',
+  'PayRef', 'PayStatus', 'PayBankRef', 'PayAmount', 'PayNote', 'PaySubmittedAt', 'PayCheckedBy', 'PayCheckedAt', 'PayRefundRef'];
+// Fee agreement (driver wallet phase 2) and the seller's payment to Mwakete
+// (phase 3), docs/driver-wallet.md. A sheet made before they existed gets them
+// appended with ensureColumn; nothing reads them unless the driver is covered
+// by DELIVERY_PAYMENTS (DriverWallet.gs).
+var DELIVERY_JOB_FEE_COLUMNS = ['FeeProposedBy', 'FeeSellerOk', 'FeeDriverOk', 'FeeLocked',
+  'PayRef', 'PayStatus', 'PayBankRef', 'PayAmount', 'PayNote', 'PaySubmittedAt', 'PayCheckedBy', 'PayCheckedAt', 'PayRefundRef'];
 var DELIVERY_MESSAGE_HEADERS = ['MessageId', 'JobId', 'SenderType', 'SenderId', 'Body', 'RequestId', 'CreatedAt'];
 var DRIVER_VEHICLES = { motorbike: 'Motorbike', car: 'Car', truck: 'Truck / van', bicycle: 'Bicycle', other: 'Other' };
 var DELIVERY_JOB_ACTIVE = ['open', 'accepted', 'picked_up'];
@@ -209,12 +213,17 @@ function actionGetDriverHome(body) {
 function driverJobView(j, o, storeName) {
   var active = DELIVERY_JOB_ACTIVE.indexOf(String(j.Status)) !== -1;
   var owner = getOwnerBySlug(j.StoreSlug) || {};
+  // Wallet jobs: the pickup place and the buyer's details are released only once
+  // Mwakete has confirmed the seller's payment (driver wallet, phase 3).
+  var held = active && deliveryFeeChatOn(j) && j.PayStatus !== 'received';
+  var seeDetails = active && !held;
   return {
     jobId: j.JobId, orderId: j.OrderId, status: j.Status, statusLabel: DELIVERY_JOB_LABEL[j.Status] || j.Status, fee: deliveryMoney(j.Fee),
-    feePaid: j.FeePaid === 'yes', storeName: storeName, storePhone: active ? (owner.Phone || '') : '',
-    pickup: j.Pickup, dropoff: j.Dropoff, notes: j.Notes, sharing: j.Sharing === 'yes', version: Number(j.Version) || 1,
-    buyerName: active ? o.CustomerName : '', buyerPhone: active ? o.CustomerPhone : '',
-    items: active ? txOrderItems(o).map(function (l) { return l.qty + ' × ' + l.label; }) : [],
+    feePaid: j.FeePaid === 'yes', storeName: storeName, storePhone: seeDetails ? (owner.Phone || '') : '',
+    pickup: held ? '' : j.Pickup, dropoff: j.Dropoff, notes: held ? '' : j.Notes, sharing: j.Sharing === 'yes', version: Number(j.Version) || 1,
+    detailsLocked: held,
+    buyerName: seeDetails ? o.CustomerName : '', buyerPhone: seeDetails ? o.CustomerPhone : '',
+    items: seeDetails ? txOrderItems(o).map(function (l) { return l.qty + ' × ' + l.label; }) : [],
     mapSearch: 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(String(j.Dropoff || '')),
     failReason: j.FailReason ? (DELIVERY_FAIL_REASONS[j.FailReason.split(':')[0]] || j.FailReason) : '', updatedAt: j.UpdatedAt,
     chat: deliveryChatView(j, 'driver')
@@ -311,6 +320,7 @@ function actionDriverUpdateJob(body) {
       if (j.Status !== 'accepted') return fail('This job is not waiting for pickup.');
       if (txIsFinal(ctx.order)) return fail('This order was cancelled. Please do not collect it.');
       if (deliveryFeeChatOn(j) && j.FeeLocked !== 'yes') return fail('Agree the delivery fee with the seller first (open the job chat).');
+      if (deliveryFeeChatOn(j) && j.PayStatus !== 'received') return fail('Mwakete has not confirmed the seller\'s payment yet, so the goods cannot be collected.');
       var f = String(ctx.state.FulfilmentState || '');
       if (['preparing', 'ready_dispatch'].indexOf(f) === -1) return fail('The seller has not got this order ready yet.');
       var stock = txMarkStockSold(ctx);
@@ -353,7 +363,8 @@ function actionDriverUpdateJob(body) {
       if (!DELIVERY_FAIL_REASONS[reason]) return fail('Choose what went wrong.');
       if (note.length < 5) return fail('Add a short note about what happened.');
       var hadGoods = j.Status === 'picked_up';
-      saveJob(j, { Status: 'failed', FailReason: reason + ': ' + note, ClosedAt: nowIso(), Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '' });
+      saveJob(j, Object.assign({ Status: 'failed', FailReason: reason + ': ' + note, ClosedAt: nowIso(), Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '' },
+        hadGoods ? {} : deliveryRefundPatch(j)));
       appendTxEvent(ctx.state, { kind: 'fulfilment', actorType: 'driver', actorId: ctx.driver.DriverId,
         body: 'Delivery failed - ' + DELIVERY_FAIL_REASONS[reason] + ': ' + note + (hadGoods ? ' The driver will bring the goods back to the store.' : ' The goods were not collected.') });
       appendAudit({ actorId: ctx.driver.DriverId, actorRole: 'driver', action: 'DELIVERY_FAILED', entityType: 'delivery', entityId: j.JobId, next: reason, reason: note });
@@ -492,7 +503,8 @@ function actionTxCancelDriverJob(body) {
     var reason = txCleanText(body.reason, 300);
     if (reason.length < 5) return txFail('Say why the driver job is cancelled.');
     var row = findRowById(deliveryJobsSheet(), 'JobId', j.JobId);
-    saveJob(row, { Status: 'cancelled', ClosedAt: nowIso(), FailReason: 'cancelled: ' + reason, Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '' });
+    saveJob(row, Object.assign({ Status: 'cancelled', ClosedAt: nowIso(), FailReason: 'cancelled: ' + reason, Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '' },
+      deliveryRefundPatch(row)));
     appendTxEvent(ctx.state, { kind: 'fulfilment', actorType: ctx.actor.type, actorId: ctx.actor.id, body: 'Driver job cancelled: ' + reason });
     txAudit(ctx.actor, 'DELIVERY_CANCELLED', ctx.order.OrderId, j.Status, 'cancelled', reason, ctx.requestId);
     return ok({ status: 'cancelled' });
@@ -557,6 +569,7 @@ function actionAdminListDeliveries(owner, body) {
     if (want === 'all') return true;
     if (want === 'active') return DELIVERY_JOB_ACTIVE.indexOf(String(j.Status)) !== -1;
     if (want === 'problems') return j.Status === 'failed' || deliveryStuck(j, now);
+    if (want === 'payments') return j.PayStatus === 'submitted' || j.PayStatus === 'refund_due';
     return j.Status === want;
   }).sort(function (a, b) { return String(b.UpdatedAt).localeCompare(String(a.UpdatedAt)); }).slice(0, 200);
   var all = deliveryRows('DeliveryJobs');
@@ -569,13 +582,18 @@ function actionAdminListDeliveries(owner, body) {
       failed: all.filter(function (j) { return j.Status === 'failed'; }).length,
       stuck: all.filter(function (j) { return deliveryStuck(j, now); }).length,
       driversOnline: drivers.filter(function (d) { return d.Status === 'approved' && d.Available === 'yes'; }).length,
-      driversPending: drivers.filter(function (d) { return d.Status === 'pending'; }).length
+      driversPending: drivers.filter(function (d) { return d.Status === 'pending'; }).length,
+      paymentsToCheck: all.filter(function (j) { return j.PayStatus === 'submitted'; }).length,
+      refundsDue: all.filter(function (j) { return j.PayStatus === 'refund_due'; }).length
     },
+    bankDetailsSet: !!deliveryBankDetails(),
     jobs: jobs.map(function (j) {
       var d = byId[j.DriverId] || null;
       return { jobId: j.JobId, orderId: j.OrderId, storeName: storeName(j.StoreSlug), status: j.Status, statusLabel: DELIVERY_JOB_LABEL[j.Status] || j.Status,
         driverName: d ? d.Name : '', driverPhone: d ? d.Phone : '', fee: deliveryMoney(j.Fee), feePaid: j.FeePaid === 'yes', dropoff: j.Dropoff,
-        stuck: deliveryStuck(j, now), failReason: j.FailReason, createdAt: j.CreatedAt, updatedAt: j.UpdatedAt,
+        stuck: deliveryStuck(j, now), failReason: j.FailReason,
+        payStatus: j.PayStatus || '', payLabel: DELIVERY_PAY_LABEL[j.PayStatus] || '', payRef: j.PayRef || '', payBankRef: j.PayBankRef || '',
+        payAmount: j.PayAmount === '' || j.PayAmount == null ? null : deliveryMoney(j.PayAmount), payNote: j.PayNote || '', createdAt: j.CreatedAt, updatedAt: j.UpdatedAt,
         location: j.Sharing === 'yes' && j.LastLat !== '' ? { link: deliveryOsmLink(j.LastLat, j.LastLng), at: j.LastLocAt } : null };
     }),
     drivers: drivers.sort(function (a, b) { return (a.Status === 'pending' ? 0 : 1) - (b.Status === 'pending' ? 0 : 1) || String(b.CreatedAt).localeCompare(String(a.CreatedAt)); })
@@ -679,6 +697,7 @@ function deliveryChatView(job, viewer) {
     return { id: m.MessageId, by: m.SenderType, mine: m.SenderType === me, body: m.Body, at: m.CreatedAt };
   });
   return {
+    payment: deliveryPaymentView(job, viewer),
     messages: msgs,
     canWrite: viewer !== 'admin' && (status === 'accepted' || status === 'picked_up'),
     fee: { amount: deliveryMoney(job.Fee), locked: locked, proposedBy: job.FeeProposedBy || '', agreedByMe: meOk,
@@ -750,9 +769,10 @@ function deliveryAgreeFee(job, side, senderId, body) {
   if (deliveryMoney(body && body.fee) !== deliveryMoney(job.Fee)) return txFail('The fee changed. Please check the new amount.', { stale: true });
   var patch = side === 'driver' ? { FeeDriverOk: 'yes' } : { FeeSellerOk: 'yes' };
   var both = (side === 'driver' ? job.FeeSellerOk : job.FeeDriverOk) === 'yes';
-  if (both) patch.FeeLocked = 'yes';
+  if (both) { patch.FeeLocked = 'yes'; patch.PayStatus = 'awaiting'; patch.PayRef = deliveryPayRef(job); }
   saveJob(job, patch);
-  deliveryChatPost(job, 'system', '', (side === 'driver' ? 'The driver' : 'The seller') + ' agreed to ' + orderMoney(job.Fee) + '.' + (both ? ' The fee is agreed and locked.' : ''));
+  deliveryChatPost(job, 'system', '', (side === 'driver' ? 'The driver' : 'The seller') + ' agreed to ' + orderMoney(job.Fee) + '.' +
+    (both ? ' The fee is agreed and locked. The seller now pays ' + orderMoney(job.Fee) + ' to Mwakete. The driver collects once Mwakete confirms it.' : ''));
   deliveryChatNotify(job, side === 'driver' ? 'seller' : 'driver', both ? 'The delivery fee is agreed' : 'A delivery fee was agreed',
     (side === 'driver' ? 'The driver' : 'The seller') + ' agreed to ' + orderMoney(job.Fee) + '.' + (both ? ' The fee is locked.' : ''));
   appendAudit({ actorId: senderId, actorRole: side, action: both ? 'DELIVERY_FEE_LOCKED' : 'DELIVERY_FEE_AGREED', entityType: 'delivery', entityId: job.JobId, next: String(job.Fee) });
@@ -786,4 +806,177 @@ function actionDriverProposeFee(body) {
 }
 function actionDriverAgreeFee(body) {
   return runDriverWrite(body, 'agreeFee', function (ctx) { return deliveryAgreeFee(ctx.job, 'driver', ctx.driver.DriverId, body); });
+}
+
+
+/* ==================== Seller pays Mwakete (driver wallet, phase 3) ====================
+ *
+ * Once the fee is locked the SELLER pays it to Mwakete by bank transfer using
+ * a reference code, then tells us the bank reference. An ADMIN checks the REAL
+ * bank statement (never a screenshot) and confirms the amount arrived. Only
+ * then does the driver see the pickup place and the buyer's details and may
+ * collect. Mwakete's bank details are the Script Property MWAKETE_BANK_DETAILS
+ * (never in front-end code); they are shown only to the seller of a job whose
+ * fee is locked.
+ *
+ * PayStatus: ''           not a wallet job
+ *            awaiting     fee locked, seller to pay
+ *            submitted    seller says they paid; an admin must check
+ *            rejected     admin could not match it; seller can send it again
+ *            received     admin confirmed the money arrived (Mwakete holds it)
+ *            refund_due   job ended before the goods were collected; Mwakete owes the seller
+ *            refunded     admin returned it and recorded the bank reference
+ *
+ * Crediting the driver and paying them out is phase 4.
+ */
+
+var DELIVERY_PAY_LABEL = {
+  awaiting: 'Waiting for the seller to pay Mwakete', submitted: 'Payment sent - Mwakete is checking it', rejected: 'Mwakete could not match the payment',
+  received: 'Payment confirmed', refund_due: 'Refund due to the seller', refunded: 'Refunded to the seller'
+};
+
+function deliveryPayRef(job) { return 'MWK-' + String(job.JobId).slice(-8).toUpperCase(); }
+
+function deliveryBankDetails() {
+  var v = PropertiesService.getScriptProperties().getProperty('MWAKETE_BANK_DETAILS');
+  return v ? String(v).trim().slice(0, 500) : '';
+}
+
+/** What to change when a job ends before the goods were collected and Mwakete holds the seller's money. */
+function deliveryRefundPatch(job) {
+  return job && job.PayStatus === 'received' ? { PayStatus: 'refund_due' } : {};
+}
+
+/** The payment panel for one viewer. The driver never sees bank details or the seller's references. */
+function deliveryPaymentView(job, viewer) {
+  var st = String(job.PayStatus || '');
+  if (!st) return null;
+  var out = { status: st, label: DELIVERY_PAY_LABEL[st] || st, reference: viewer === 'driver' ? '' : job.PayRef, amount: deliveryMoney(job.Fee) };
+  if (viewer === 'driver') return out;
+  var bank = deliveryBankDetails();
+  out.canSubmit = viewer === 'seller' && (st === 'awaiting' || st === 'rejected') && job.Status === 'accepted' && !!bank;
+  out.bankDetails = viewer === 'seller' && (st === 'awaiting' || st === 'rejected' || st === 'submitted') ? bank : '';
+  out.bankMissing = viewer === 'seller' && (st === 'awaiting' || st === 'rejected') && !bank;
+  out.note = st === 'rejected' ? job.PayNote : '';
+  out.bankRef = job.PayBankRef || '';
+  return out;
+}
+
+function deliveryNotifyAdmins(subject, text) {
+  try {
+    var link = siteBaseUrl() ? '\n\nCheck it: ' + siteBaseUrl() + '/owner/admin.html#deliveries' : '';
+    getAdminEmails().forEach(function (to) { try { sendAppEmail(to, subject, text + link); } catch (e) { /* best effort */ } });
+  } catch (e) { /* best effort */ }
+}
+
+function deliveryNotifySeller(job, subject, text) {
+  try {
+    var o = findRowById(getSheet('Owners'), 'OwnerId', job.OwnerId);
+    if (o && o.Email) sendAppEmail(o.Email, subject, text + (siteBaseUrl() ? '\n\nOpen it: ' + siteBaseUrl() + '/order-room.html?order=' + encodeURIComponent(job.OrderId) + '&as=seller' : ''));
+  } catch (e) { /* best effort */ }
+}
+
+/** Seller: body.bankRef, body.amount (must be exactly the agreed fee). */
+function actionTxSubmitJobPayment(body) {
+  return runTxWrite(body, 'jobPayment', function (ctx) {
+    var r = deliverySellerJob(ctx);
+    if (r.error) return r.error;
+    var job = r.job;
+    if (!deliveryFeeChatOn(job)) return fail('Job payments are not switched on for this delivery.');
+    if (job.Status !== 'accepted') return fail('The payment can only be sent before the driver collects the goods.');
+    if (job.FeeLocked !== 'yes') return fail('Agree the delivery fee with the driver first.');
+    if (['awaiting', 'rejected'].indexOf(String(job.PayStatus)) === -1) return fail(job.PayStatus === 'received' ? 'Mwakete has already confirmed this payment.' : 'This payment has already been sent.');
+    if (!deliveryBankDetails()) return fail('Mwakete\'s bank details are not set up yet. Please contact Mwakete.');
+    var bankRef = txCleanText(body.bankRef, 60);
+    if (bankRef.length < 3) return fail('Enter the reference your bank gave the transfer.');
+    if (deliveryMoney(body.amount) !== deliveryMoney(job.Fee)) return fail('Send exactly the agreed fee of ' + orderMoney(job.Fee) + '.');
+    var row = findRowById(deliveryJobsSheet(), 'JobId', job.JobId);
+    saveJob(row, { PayStatus: 'submitted', PayBankRef: bankRef, PayAmount: deliveryMoney(body.amount), PayNote: '', PaySubmittedAt: nowIso() });
+    deliveryChatPost(row, 'system', '', 'The seller says ' + orderMoney(row.Fee) + ' was sent to Mwakete. Mwakete is checking its bank account.');
+    txAudit(ctx.actor, 'DELIVERY_PAYMENT_SUBMITTED', ctx.order.OrderId, job.PayStatus, 'submitted', bankRef, ctx.requestId);
+    deliveryNotifyAdmins('A driver delivery payment needs checking', 'Seller ' + job.StoreSlug + ' says ' + orderMoney(row.Fee) + ' was sent with reference ' + row.PayRef + ' (bank reference ' + bankRef + ').');
+    return ok({ status: 'submitted' });
+  });
+}
+
+/** Common admin checks. Returns { row } or { error }. */
+function deliveryAdminPaymentJob(owner, body, expected) {
+  var row = findRowById(deliveryJobsSheet(), 'JobId', String(body.jobId || ''));
+  if (!row) return { error: fail('Job not found') };
+  if (row.PayStatus !== expected) return { error: fail('This payment is not waiting for that step (it is: ' + (DELIVERY_PAY_LABEL[row.PayStatus] || 'not a wallet payment') + ').') };
+  var store = findRowById(getSheet('Owners'), 'OwnerId', row.OwnerId);
+  var drv = deliveryJobDriver(row);
+  var me = normalizeEmail(owner.Email);
+  if ((store && normalizeEmail(store.Email) === me) || (drv && normalizeEmail(drv.Email) === me)) {
+    return { error: fail('You cannot handle a payment for your own store or your own driver job.') };
+  }
+  return { row: row };
+}
+
+/** Admin: the money really is in Mwakete's bank account. body: jobId, amountReceived, checkedStatement (true). */
+function actionAdminConfirmJobPayment(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'adminConfirmJobPayment');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var g = deliveryAdminPaymentJob(owner, body, 'submitted');
+    if (g.error) return g.error;
+    var row = g.row;
+    if (body.checkedStatement !== true) return fail('Only confirm after you have checked the real bank statement. A screenshot is not enough.');
+    var got = deliveryMoney(body.amountReceived);
+    if (got < deliveryMoney(row.Fee)) return fail('The amount received (' + orderMoney(got) + ') is less than the agreed fee (' + orderMoney(row.Fee) + '). Reject it instead.');
+    var extra = got > deliveryMoney(row.Fee) ? 'Received ' + orderMoney(got) + ', ' + orderMoney(got - deliveryMoney(row.Fee)) + ' more than the fee; the extra must be returned by hand.' : '';
+    saveJob(row, { PayStatus: 'received', PayNote: extra, PayCheckedBy: owner.OwnerId, PayCheckedAt: nowIso() });
+    deliveryChatPost(row, 'system', '', 'Mwakete confirmed the payment of ' + orderMoney(row.Fee) + '. The driver can now see the pickup details and collect the goods.');
+    appendAudit({ actorId: owner.OwnerId, actorRole: 'admin', action: 'DELIVERY_PAYMENT_CONFIRMED', entityType: 'delivery', entityId: row.JobId, previous: 'submitted', next: 'received', reason: extra });
+    deliveryNotifySeller(row, 'Mwakete confirmed your delivery payment', 'Mwakete received ' + orderMoney(row.Fee) + ' for the driver. The driver can now collect your goods.');
+    try {
+      var d = deliveryJobDriver(row);
+      if (d && d.Email) sendAppEmail(d.Email, 'You can collect the goods', 'Mwakete confirmed the seller\'s payment. The pickup details are now on your driver page.' + (siteBaseUrl() ? '\n' + siteBaseUrl() + '/driver.html' : ''));
+    } catch (e) { /* best effort */ }
+    return ok({ status: 'received' });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Admin: the payment did not arrive or does not match. body: jobId, reason. The seller can send it again. */
+function actionAdminRejectJobPayment(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'adminRejectJobPayment');
+  var reason = txCleanText(body.reason, 300);
+  if (reason.length < 5) return fail('Say what is wrong (the seller sees it).');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var g = deliveryAdminPaymentJob(owner, body, 'submitted');
+    if (g.error) return g.error;
+    var row = g.row;
+    saveJob(row, { PayStatus: 'rejected', PayNote: reason, PayCheckedBy: owner.OwnerId, PayCheckedAt: nowIso() });
+    deliveryChatPost(row, 'system', '', 'Mwakete could not match the payment: ' + reason + ' The seller can send the details again.');
+    appendAudit({ actorId: owner.OwnerId, actorRole: 'admin', action: 'DELIVERY_PAYMENT_REJECTED', entityType: 'delivery', entityId: row.JobId, previous: 'submitted', next: 'rejected', reason: reason });
+    deliveryNotifySeller(row, 'Mwakete could not match your delivery payment', reason);
+    return ok({ status: 'rejected' });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Admin: the held money was sent back to the seller. body: jobId, bankRef. */
+function actionAdminMarkJobRefunded(owner, body) {
+  if (!isOwnerAdmin(owner)) return denyAdmin(owner, 'adminMarkJobRefunded');
+  var ref = txCleanText(body.bankRef, 60);
+  if (ref.length < 3) return fail('Enter the bank reference of the refund.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var g = deliveryAdminPaymentJob(owner, body, 'refund_due');
+    if (g.error) return g.error;
+    var row = g.row;
+    saveJob(row, { PayStatus: 'refunded', PayRefundRef: ref, PayCheckedBy: owner.OwnerId, PayCheckedAt: nowIso() });
+    appendAudit({ actorId: owner.OwnerId, actorRole: 'admin', action: 'DELIVERY_PAYMENT_REFUNDED', entityType: 'delivery', entityId: row.JobId, previous: 'refund_due', next: 'refunded', reason: ref });
+    deliveryNotifySeller(row, 'Mwakete refunded your delivery payment', 'Mwakete sent back ' + orderMoney(row.Fee) + ' (bank reference ' + ref + ') because the delivery did not go ahead.');
+    return ok({ status: 'refunded' });
+  } finally {
+    lock.releaseLock();
+  }
 }

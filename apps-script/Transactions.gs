@@ -1754,7 +1754,8 @@ function txCancelInternal(ctx, reason) {
     var dj = activeDeliveryJob(ctx.order.OrderId);
     if (dj && dj.Status !== 'picked_up') {
       var djRow = findRowById(deliveryJobsSheet(), 'JobId', dj.JobId);
-      saveJob(djRow, { Status: 'cancelled', ClosedAt: nowIso(), FailReason: 'cancelled: order cancelled', Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '' });
+      saveJob(djRow, Object.assign({ Status: 'cancelled', ClosedAt: nowIso(), FailReason: 'cancelled: order cancelled', Sharing: '', LastLat: '', LastLng: '', LastAccuracy: '', LastLocAt: '' },
+        deliveryRefundPatch(djRow)));
     }
   }
   var st = txSetOrderStatus(ctx, 'Cancelled');

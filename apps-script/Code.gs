@@ -64,7 +64,9 @@ var PUBLIC_POST_ACTIONS = [
   'driverApply', 'getDriverHome', 'driverSetAvailable', 'driverAcceptJob', 'driverUpdateJob', 'driverUploadProof', 'driverShareLocation',
   'txRequestDriver', 'txCancelDriverJob', 'txMarkDriverPaid',
   // Job chat and fee agreement (Deliveries.gs, driver wallet phase 2). Off unless the wallet covers the driver.
-  'txJobMessage', 'txProposeFee', 'txAgreeFee', 'driverJobMessage', 'driverProposeFee', 'driverAgreeFee'
+  'txJobMessage', 'txProposeFee', 'txAgreeFee', 'driverJobMessage', 'driverProposeFee', 'driverAgreeFee',
+  // The seller's payment to Mwakete for a wallet job (phase 3). The admin steps are in the admin list below.
+  'txSubmitJobPayment'
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
@@ -108,7 +110,7 @@ var PROTECTED_POST_ACTIONS = [
   // Dashboard summaries (Dashboards.gs) - read-only, the session's own rows.
   'getSellerDashboard', 'getAdminOverview',
   // Deliveries admin (Deliveries.gs) - isOwnerAdmin inside.
-  'adminListDeliveries', 'adminSetDriverStatus'
+  'adminListDeliveries', 'adminSetDriverStatus', 'adminConfirmJobPayment', 'adminRejectJobPayment', 'adminMarkJobRefunded'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -128,7 +130,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'wallet2-2026-10-21';
+var APP_VERSION = 'wallet3-2026-10-21';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -534,6 +536,7 @@ function doPost(e) {
         case 'txJobMessage': return jsonOut(actionTxJobMessage(body));
         case 'txProposeFee': return jsonOut(actionTxProposeFee(body));
         case 'txAgreeFee': return jsonOut(actionTxAgreeFee(body));
+        case 'txSubmitJobPayment': return jsonOut(actionTxSubmitJobPayment(body));
         case 'driverJobMessage': return jsonOut(actionDriverJobMessage(body));
         case 'driverProposeFee': return jsonOut(actionDriverProposeFee(body));
         case 'driverAgreeFee': return jsonOut(actionDriverAgreeFee(body));
@@ -672,6 +675,9 @@ function doPost(e) {
         case 'getAdminOverview': return jsonOut(actionGetAdminOverview(owner, body));
         case 'adminListDeliveries': return jsonOut(actionAdminListDeliveries(owner, body));
         case 'adminSetDriverStatus': return jsonOut(actionAdminSetDriverStatus(owner, body));
+        case 'adminConfirmJobPayment': return jsonOut(actionAdminConfirmJobPayment(owner, body));
+        case 'adminRejectJobPayment': return jsonOut(actionAdminRejectJobPayment(owner, body));
+        case 'adminMarkJobRefunded': return jsonOut(actionAdminMarkJobRefunded(owner, body));
       }
     }
 

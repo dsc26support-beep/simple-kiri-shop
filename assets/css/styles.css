@@ -8274,6 +8274,8 @@ html.auth-signup .auth-divider {
 .tx-jc-theirs { margin-right: 15%; }
 .tx-jc-system { font-size: .9em; text-align: center; background: transparent; color: var(--color-text-muted, #555); }
 .tx-jc-form { display: grid; gap: var(--space-1); margin: var(--space-2) 0; }
+.tx-jc-pay { margin: var(--space-2) 0; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); }
+.tx-jc-bank { white-space: pre-wrap; margin: var(--space-1) 0; padding: var(--space-2); background: var(--color-surface-alt, #f4f4f4); border-radius: var(--radius); font: inherit; }
 /* Category details on product cards and the product page (helpers.js productDetailsHtml). */
 .product-details { display: grid; gap: 2px; margin: var(--space-1) 0 var(--space-2); font-size: 0.85rem; }
 .product-details div { display: flex; gap: var(--space-2); }
