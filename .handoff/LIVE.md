@@ -1,31 +1,31 @@
 # Handoff: Drive with Mwakete driver wallet
 
 ## Goal
-Owner (small startup, Kiribati, AUD) wants drivers paid THROUGH Mwakete: seller+driver chat, agree fee, seller pays Mwakete (bank transfer), driver claims at a minimum. Owner approved my small-startup defaults. All 6 phases built.
+Owner (small startup, Kiribati, AUD) wanted drivers paid THROUGH Mwakete: seller+driver chat, agree fee, seller pays Mwakete (bank transfer), driver claims at a minimum. All 6 phases built, tested and MERGED to main.
 
 ## Next steps
-1. MERGE BLOCKED: owner said "yes, merge all six in order" but the permission classifier denied `gh api .../merge` ("Merge Without Review"). Nothing ran. Owner must merge on GitHub or add a Bash permission rule for gh merge, then tell me to go.
-2. Merge order (merge commits, NOT squash; retarget base to main, mark ready first): #118, #122, #123, #124, #125, #126.
-3. Owner: paste backend (DriverWallet.gs new file + Deliveries.gs, Transactions.gs, Code.gs), check ?action=getVersion = wallet6-2026-10-22, set MWAKETE_BANK_DETAILS, pilot via DELIVERY_PAYMENTS=pilot + DELIVERY_PAYMENTS_DRIVERS.
-4. Owner: read Terms/Privacy wording (#125) and get legal advice before going beyond pilot.
-5. Optional: run other browser suites (verify-tx-room, verify-admin, verify-minified) - not run; update dashboard artifact status.
+1. Owner deploys backend (manual, Apps Script): new file DriverWallet.gs + replace Deliveries.gs, Transactions.gs, Code.gs; Manage deployments > pencil > New version. Raw links: https://raw.githubusercontent.com/dsc26support-beep/simple-kiri-shop/main/apps-script/<File>.gs
+2. Owner checks ?action=getVersion = wallet6-2026-10-22 and ?action=checkSetup missingFiles [] and tells me; I confirm.
+3. Owner sets Script Properties: MWAKETE_BANK_DETAILS, DELIVERY_JOBS=on, DELIVERY_PAYMENTS=pilot, DELIVERY_PAYMENTS_DRIVERS=<DriverId(s), South Tarawa, max 5>.
+4. Owner reads terms.html#drivers wording and gets legal advice before going beyond pilot.
+5. Optional: update planning dashboard artifact to "built"; run other browser suites; test on real Sheet.
 
 ## State
-- Repo dsc26support-beep/simple-kiri-shop. Stacked draft PRs #118 ph1 ledger, #122 chat+fee lock, #123 seller pays/admin confirms, #124 credit/claim/payout, #125 wording (DRAFT, needs owner approval), #126 ph6 tests+fixes. Branches claude/drive-wallet-phase1..6, all pushed.
-- Tests: wallet 48, chat 30, payment 41, payouts 44, flow 40, wording 24; browser verify-driver-wallet 45, verify-deliveries 24. build:check clean. APP_VERSION wallet6-2026-10-22, sw v173.
-- Dashboard artifact (plan, stale): https://claude.ai/artifact/HE4WCdyeuvaDTaqoTNJUb9
+- Repo dsc26support-beep/simple-kiri-shop. PRs #118,#122,#123,#124,#125,#126 merged (merge commits) into main. APP_VERSION wallet6-2026-10-22, sw CACHE v186.
+- main had moved (PRs #119-121, .claude/settings.json allowing Bash(gh api:*)); I merged main up the stack and fixed conflicts (Code.gs version, styles.css keep both, sw.js cache, regenerate min/help).
+- Tests on main pass: flow 40, wallet 48, chat 30, payment 41, payouts 44, deliveries 69, checksetup 12, wording 24, help 50; browser wallet 45 + deliveries 24 (before merge). build:check clean.
+- Dashboard artifact (stale plan): https://claude.ai/artifact/HE4WCdyeuvaDTaqoTNJUb9
 
 ## Decisions (and why)
-- Seller pays; min $20; hold 48h; commission 0%; pilot South Tarawa max 5. Credit on ORDER COMPLETE. Failed after pickup: no_one_home/wrong_address/refused/unreachable pay driver, damaged/other -> admin decides.
-- DELIVERY_PAYMENTS=off stops only NEW wallet jobs; jobs with PayStatus keep checks; drivers with ledger entries can still claim (never strand money).
-- Owner instruction: ALWAYS push after changes (done by pushing branches; main merge needs explicit permission).
+- Seller pays; min $20; hold 48h; commission 0%; pilot South Tarawa max 5. Credit on order complete. Failed after pickup: no_one/wrong_address/refused/unreachable pay driver; damaged/other -> admin.
+- DELIVERY_PAYMENTS=off stops only NEW wallet jobs; never strands money.
+- Owner: always push changes (branches); merging to main needed explicit approval + permission rule.
 
 ## Gotchas
-- CLAUDE.md: Apps Script deploys manual; give deploy steps + getVersion check.
-- gh GraphQL blocked: use `gh api repos/.../pulls`. Ready-for-review via POST .../ccr/ready_for_review.
-- JS/CSS change => node tools/build-assets.js, bump sw.js CACHE + APP_VERSION. Browser tests need `python3 -m http.server 8099`; screenshots (SHOT_DIR) found 5 UI bugs assertions missed - look at them.
-- Stop hook "unpushed" = missing local tracking ref; verify with git ls-remote.
+- CLAUDE.md: Apps Script deploys manual/unverifiable; give steps + getVersion check.
+- gh GraphQL blocked: use `gh api repos/.../pulls`. JS/CSS change => node tools/build-assets.js, bump sw CACHE + APP_VERSION.
+- Stop hook "unpushed" = missing tracking ref; verify with git ls-remote. Local branch verify-main = scratch copy of main.
 
 ## Open questions
 - Legal OK to hold customer money in Kiribati? (owner)
-- No test against a real Google Sheet.
+- Real Google Sheet not tested.
