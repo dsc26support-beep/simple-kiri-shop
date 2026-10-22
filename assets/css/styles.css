@@ -410,6 +410,28 @@ header.site-header .container.store-branding {
   min-height: 68px;
 }
 
+/* Owner request (Oct 2026): the store logo sits top-left in the first header
+   row, level with Home and the menu; the name, phone and icons sit under it. */
+header.site-header .container.header-top-row:has(.store-logo) {
+  align-items: center;
+  /* Room for the logo from first paint: it arrives with the store ~900ms
+     later, and growing then would push the page down (see .store-branding-info). */
+  box-sizing: border-box;
+  min-height: calc(64px + var(--space-3) + var(--space-1));
+}
+
+/* ...and everything on the right - Home, Tips, My Account, the cart and the
+   menu - in one row level with the logo's middle, not pinned to the top of
+   the taller row (owner request, Oct 2026: on a computer Tips, My Account and
+   the cart sat along the top while Home sat lower). */
+header.site-header .container.header-top-row:has(.store-logo) .header-menu,
+header.site-header .container.header-top-row:has(.store-logo) .header-cart,
+header.site-header .container.header-top-row:has(.store-logo) .header-bar-links {
+  /* The row's top padding plus half the 64px logo: the logo's middle. */
+  top: calc(var(--space-3) + 32px);
+  transform: translateY(-50%);
+}
+
 .store-logo {
   width: 64px;
   height: 64px;
@@ -4352,6 +4374,14 @@ body.has-header-menu header.site-header > .container:first-of-type {
   }
 }
 
+/* Store header with its logo: Home sits the same distance from Tips as Tips
+   from My Account, so the five read as one evenly spaced row. */
+@media (min-width: 701px) {
+  body.has-header-menu header.site-header > .container.header-top-row:has(.store-logo) {
+    padding-right: 260px;
+  }
+}
+
 .bottom-nav { display: none; }
 
 .bottom-nav-item {
@@ -7999,54 +8029,9 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 .cart-line-bulk { flex-basis: 100%; margin: 0; }
 .cart-line-bulk:empty { display: none; }
 
-/* ===== "Help?" popup under the Messenger box (fb-help.js) ===== */
-.fbh-back {
-  position: fixed;
-  inset: 0;
-  z-index: 1005;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3);
-  background: rgba(26, 26, 26, 0.55);
-}
-.fbh-box {
-  position: relative;
-  width: 100%;
-  max-width: 340px;
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  border-radius: var(--radius);
-  background: var(--color-bg);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-.fbh-title { margin: 0 0 var(--space-1); font-size: 1.2rem; color: var(--color-ink); }
-.fbh-note { margin: 0 0 var(--space-3); color: var(--color-muted); font-size: 0.9rem; }
-.fbh-options { display: grid; gap: var(--space-2); }
-.fbh-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 48px;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius);
-  background: var(--color-purple);
-  color: #fff;
-  font-weight: 600;
-  text-decoration: none;
-}
-.fbh-option:hover, .fbh-option:focus-visible { background: var(--color-purple-light); }
-.fbh-close {
-  position: absolute;
-  top: var(--space-1);
-  right: var(--space-1);
-  width: 44px;
-  height: 44px;
-  border: 0;
-  background: none;
-  color: var(--color-muted);
-  font-size: 1.5rem;
-  cursor: pointer;
-}
+/* ===== "Help?" under the Messenger box (fb-help.js): one line of steps ===== */
+.fbh-steps { display: block; margin-top: var(--space-1); color: var(--color-ink); font-weight: 600; }
+.fbh-steps[hidden] { display: none; }
 
 /* Customer sign-in (owner request, Oct 2026): Google, "Continue as guest" and
    "Send me a code" are all the same size. Google draws its own button at a
@@ -8096,7 +8081,7 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 }
 
 .auth-card--customer #google-signin-btn[data-full-width] > * {
-  margin: -2px;
+  margin: -2px 0;
 }
 
 /* Admin: Store checks (admin.js storeTrustRowHtml). */
@@ -8122,9 +8107,38 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 }
 
 .trust-row {
-  padding: var(--space-2) 0;
+  padding: 0;
   border-bottom: 1px solid var(--color-border);
 }
+
+/* Store checks: one line per store (name + status), tap to open (owner
+   request, Oct 2026). Full-width row, 44px tap target, chevron on the right. */
+.trust-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) 28px var(--space-2) 0;
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+}
+.trust-summary::-webkit-details-marker { display: none; }
+.trust-summary::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--color-muted);
+  border-bottom: 2px solid var(--color-muted);
+  transform: translateY(-70%) rotate(45deg);
+}
+.trust-row[open] > .trust-summary::after { transform: translateY(-30%) rotate(-135deg); }
+.trust-summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.trust-body { border-bottom: 0; padding-top: 0; }
 
 .trust-checks,
 .trust-actions {
@@ -8140,8 +8154,9 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   color: #fff;
 }
 
-/* Seller login/register: "You are signed in as a shopper (email)",
-   highlighted and centred (owner request, Oct 2026). */
+/* Seller login/register: "You are signed in (email)", highlighted and
+   centred, with a Google button under it to switch account (owner request,
+   Oct 2026). */
 #shopper-note {
   margin: var(--space-3) 0;
   padding: var(--space-2) var(--space-3);
@@ -8153,6 +8168,9 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   text-align: center;
   overflow-wrap: anywhere;
 }
+
+.shopper-switch { margin-top: calc(-1 * var(--space-1)); }
+.shopper-switch-label { margin: 0; }
 
 /* Seller login: the seller's own password hint, after a wrong password. */
 .login-hint {
@@ -8188,6 +8206,44 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   font-size: 14px;
   font-weight: 600;
 }
+/* Every Google button: one purple pill, 240x40, like the other sign-in
+   buttons (owner request, Oct 2026) - customer sign-in, checkout and the
+   seller page's "Use a different account". Google draws its own grey pill a
+   few pixels inside the size it is given, which left a white gap inside the
+   purple. google-signin.js asks for a button 16px wider than this box; it is
+   centred and the box clips it, so Google's grey edge sits under the purple
+   line on phone, tablet and PC alike (the box is 240px on all of them). */
+#google-signin-btn {
+  box-sizing: border-box;
+  width: 240px;
+  max-width: 100%;
+  height: 40px;
+  min-height: 40px;
+  margin-left: auto;
+  margin-right: auto;
+  align-self: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid var(--color-purple);
+  border-radius: 999px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+/* Wider than the box on purpose: centred, overflowing evenly both sides. */
+#google-signin-btn > * {
+  flex: 0 0 auto;
+  margin: -2px 0;
+}
+
+/* Create Account: no Guest, no "or" line - just Google, then the form
+   (owner request, Oct 2026). Sign In shows both again. */
+html.auth-signup .auth-guest-row,
+html.auth-signup .auth-divider {
+  display: none;
+}
+
 .auth-card--customer .auth-guest-row { justify-content: center; }
 .auth-card--customer .auth-guest-row #guest-continue { flex: 0 0 auto; margin: 0 auto; }
 
@@ -8220,3 +8276,9 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 .tx-jc-form { display: grid; gap: var(--space-1); margin: var(--space-2) 0; }
 .tx-jc-pay { margin: var(--space-2) 0; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); }
 .tx-jc-bank { white-space: pre-wrap; margin: var(--space-1) 0; padding: var(--space-2); background: var(--color-surface-alt, #f4f4f4); border-radius: var(--radius); font: inherit; }
+/* Category details on product cards and the product page (helpers.js productDetailsHtml). */
+.product-details { display: grid; gap: 2px; margin: var(--space-1) 0 var(--space-2); font-size: 0.85rem; }
+.product-details div { display: flex; gap: var(--space-2); }
+.product-details dt { color: var(--color-muted); min-width: 0; }
+.product-details dt::after { content: ':'; }
+.product-details dd { margin: 0; overflow-wrap: anywhere; }
