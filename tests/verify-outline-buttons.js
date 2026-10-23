@@ -114,8 +114,9 @@ const look = (page, sel) => page.$eval(sel, (b) => {
     const c3 = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const p3 = await c3.newPage();
     await p3.goto(BASE + '/owner/login.html', { waitUntil: 'load' });
-    const phone = await p3.$eval('#login-submit-btn', (b) => getComputedStyle(b).borderTopColor);
-    ok('store login (phone): keeps its outline', phone === PURPLE, phone);
+    const phone = await p3.$eval('#login-submit-btn', (b) => ({ border: getComputedStyle(b).borderTopColor, bg: getComputedStyle(b).backgroundColor }));
+    // On a phone the page is all purple (Oct 2026), so the outline is white there.
+    ok('store login (phone): keeps its outline (white, on the purple page)', phone.border === 'rgb(255, 255, 255)' && phone.bg === 'rgba(0, 0, 0, 0)', JSON.stringify(phone));
     await c3.close();
   }
 

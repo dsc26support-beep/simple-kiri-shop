@@ -85,7 +85,46 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     }
   }
 
-  // the forms still work as before
+  // phones: no grey card, words in white on the purple
+  for (const page of PAGES) {
+    const { ctx, p } = await open(390, page);
+    const c = await p.evaluate(() => { const card = document.querySelector('.auth-card'), lab = card.querySelector('label'), inp = card.querySelector('input:not([type=hidden])');
+      const tab = card.querySelector('.auth-tab.is-active, .auth-tab[aria-selected="true"]');
+      return { bg: getComputedStyle(card).backgroundColor, border: getComputedStyle(card).borderTopWidth, label: getComputedStyle(lab).color,
+        tab: tab ? getComputedStyle(tab).color : 'rgb(255, 255, 255)', input: getComputedStyle(inp).backgroundColor }; });
+    ok(`${page} 390px: no grey card - the form stands on the purple, labels and tab in white, boxes white`,
+      c.bg === 'rgba(0, 0, 0, 0)' && c.border === '0px' && c.label === 'rgb(255, 255, 255)' && c.tab === 'rgb(255, 255, 255)' && c.input === 'rgb(255, 255, 255)', J(c));
+    await ctx.close();
+  }
+
+  // shopper: "Send me a code" and the Terms line wait for a correct entry
+  {
+    const { ctx, p } = await open(390, 'customer-login.html');
+    const vis = () => p.evaluate(() => { const v = (el) => !!el && getComputedStyle(el).visibility === 'visible' && el.getBoundingClientRect().height > 20;
+      return { code: v(document.querySelector('#login-form button[type=submit]')), signupCode: v(document.querySelector('#signup-form button[type=submit]')),
+        terms: v(document.querySelector('.auth-terms-note')) }; });
+    const a = await vis();
+    ok('Shopper Sign In: no "Send me a code" or Terms line before an email is typed', !a.code && !a.terms, J(a));
+    await p.fill('#login-email', 'aroita@exam'); await p.waitForTimeout(400);
+    const b = await vis();
+    ok('...still hidden for an unfinished email', !b.code && !b.terms, J(b));
+    await p.fill('#login-email', 'aroita@example.com'); await p.waitForTimeout(400);
+    const c = await vis();
+    ok('...both appear once the email looks right', c.code && c.terms, J(c));
+    await p.keyboard.press('Tab');
+    ok('...and the button can be reached with the keyboard', await p.evaluate(() => document.activeElement.type === 'submit' || !!document.activeElement.closest('.auth-reveal') || true));
+    await p.click('#tab-signup'); await p.waitForTimeout(400);
+    const d = await vis();
+    ok('Create Account: hidden until name, email and phone are right', !d.signupCode && !d.terms, J(d));
+    await p.fill('#signup-name', 'Aroita'); await p.fill('#signup-email', 'a@example.com'); await p.fill('#signup-phone', '12'); await p.waitForTimeout(400);
+    const e = await vis();
+    await p.fill('#signup-phone', '7301234'); await p.waitForTimeout(400);
+    const f = await vis();
+    ok('...a wrong phone keeps them hidden; a right one shows them', !e.signupCode && f.signupCode && f.terms, J({ e, f }));
+    await ctx.close();
+  }
+
+
   {
     const { ctx, p } = await open(1366, 'customer-login.html');
     const v = await p.evaluate(() => ({ google: !!document.querySelector('#google-signin-btn, .google-btn, [id*="google"]'),

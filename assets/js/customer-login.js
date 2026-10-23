@@ -25,6 +25,62 @@ function init() {
 
   prefillRememberedEmail();
   prefillSignupEmail();
+
+  // "Send me a code" and the Terms line wait until what is typed looks right.
+  const card = document.querySelector('.auth-card--customer');
+  card.addEventListener('input', refreshReady);
+  card.addEventListener('change', refreshReady);
+  card.addEventListener('focusout', explainProblem);
+  // Tabs and the code step switch by class; follow them.
+  new MutationObserver(refreshReady).observe(card, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  refreshReady();
+  // A browser may fill a saved email in after load without an input event.
+  setTimeout(refreshReady, 700);
+}
+
+function emailLooksValid(value) {
+  const v = String(value || '').trim();
+  return v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+// With the button hidden until the form is right, a shopper who leaves a
+// field filled in wrongly is told why straight away (the same wording the
+// submit checks use).
+const PHONE_PROBLEM = 'Local phone numbers must start with 730 or 630. For an overseas number, include your country code (e.g. +64…).';
+const EMAIL_PROBLEM = 'Please check your email - it should look like name@example.com.';
+function explainProblem(e) {
+  const el = e.target;
+  const value = (el.value || '').trim();
+  if (!value) return;
+  const errorId = el.closest('#login-form') ? 'login-error' : el.closest('#signup-form') ? 'signup-error' : '';
+  if (!errorId) return;
+  let problem = '';
+  if ((el.id === 'login-email' || el.id === 'signup-email') && !emailLooksValid(value)) problem = EMAIL_PROBLEM;
+  if (el.id === 'signup-phone' && !isCustomerPhoneValid(value)) problem = PHONE_PROBLEM;
+  if (problem) document.getElementById(errorId).textContent = problem;
+}
+
+/**
+ * Owner request (Oct 2026): "Send me a code" and the Terms line appear only
+ * once the form is filled in correctly - the email on Sign In; name, email and
+ * phone on Create Account. Once a code has been sent, the Terms line stays.
+ * The submit handlers still check everything themselves.
+ */
+function refreshReady() {
+  const $ = (id) => document.getElementById(id);
+  const loginReady = emailLooksValid($('login-email').value);
+  const signupReady = !!$('signup-name').value.trim() && emailLooksValid($('signup-email').value)
+    && isCustomerPhoneValid($('signup-phone').value.trim());
+  $('login-form').classList.toggle('is-ready', loginReady);
+  $('signup-form').classList.toggle('is-ready', signupReady);
+  // Fixed now: take back the "please check" message.
+  [['login-error', loginReady], ['signup-error', signupReady]].forEach(([id, ready]) => {
+    const err = $(id);
+    if (ready && (err.textContent === EMAIL_PROBLEM || err.textContent === PHONE_PROBLEM)) err.textContent = '';
+  });
+  const onSignup = !$('panel-signup').classList.contains('hidden');
+  const codeStep = !$('login-code-form').classList.contains('hidden') || !$('signup-code-form').classList.contains('hidden');
+  document.querySelector('.auth-terms-reveal').classList.toggle('is-ready', codeStep || (onSignup ? signupReady : loginReady));
 }
 
 /**
