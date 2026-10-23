@@ -120,8 +120,11 @@
               <input id="customer-name" name="customerName" type="text" autocomplete="name" required>
             </div>
             <div class="field">
-              <label for="customer-phone">Phone Number</label>
-              <input id="customer-phone" name="customerPhone" type="tel" autocomplete="tel" required>
+              <label for="customer-phone">Phone Number <span id="phone-optional" class="helper-text" hidden>(optional)</span></label>
+              <input id="customer-phone" name="customerPhone" type="tel" autocomplete="tel" required aria-describedby="phone-why">
+              <!-- Owner decision, Oct 2026: needed only when something is
+                   delivered (checkout.js updatePhoneRequirement). -->
+              <p class="helper-text" id="phone-why">Needed for delivery, so the seller or driver can reach you.</p>
             </div>
             <div class="field">
               <label for="customer-email">Email</label>

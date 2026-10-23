@@ -106,11 +106,12 @@ async function onSaveProfile(e) {
   errorEl.textContent = '';
   const name = document.getElementById('profile-name-input').value.trim();
   const phone = document.getElementById('profile-phone-input').value.trim();
-  if (!name || !phone) {
-    errorEl.textContent = 'Please enter your name and phone number.';
+  if (!name) {
+    errorEl.textContent = 'Please enter your name.';
     return;
   }
-  if (!isCustomerPhoneValid(phone)) {
+  // Optional since Oct 2026 - asked at checkout when something is delivered.
+  if (phone && !isCustomerPhoneValid(phone)) {
     errorEl.textContent = 'Local phone numbers must start with 730 or 630. For an overseas number, include your country code (e.g. +64…).';
     return;
   }

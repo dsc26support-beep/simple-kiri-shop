@@ -211,7 +211,8 @@ const tabState = (page) => page.evaluate(() => ({
 
   // ---------- the failed log-in hint: a way out, and no more ---------------
   {
-    const { ctx, page } = await open(browser, '/owner/login.html');
+    // Signed in as a shopper: since Oct 2026 the Register form is shown only then.
+    const { ctx, page } = await open(browser, '/owner/login.html', { shopper: true });
     ok('the hint is not there before anything is tried',
       await page.evaluate(() => document.getElementById('login-register-hint').hidden === true));
 
@@ -249,12 +250,12 @@ const tabState = (page) => page.evaluate(() => ({
 
   // ---------- 3. registering a username that already exists ----------------
   {
-    const { ctx, page } = await open(browser, '/owner/login.html?tab=register');
+    const { ctx, page } = await open(browser, '/owner/login.html?tab=register', { shopper: true });
     await page.fill('#register-store-name', 'Bong Store');
     await page.fill('#register-username', 'teretia');
     await page.fill('#register-password', 'longenough1');
     await page.fill('#register-password-hint', 'my usual one');
-    await page.fill('#register-email', 'bong@example.com');
+    await page.fill('#register-about', 'Rice and flour');
     await page.fill('#register-phone', '73012345');
     await page.fill('#register-messenger', 'bong.store');
     await page.click('#register-submit-btn');
@@ -289,19 +290,19 @@ const tabState = (page) => page.evaluate(() => ({
       password: document.getElementById('register-password').value
     }));
     ok('and nothing they typed into Register was lost',
-      kept.storeName === 'Bong Store' && kept.email === 'bong@example.com'
+      kept.storeName === 'Bong Store' && kept.email === CUSTOMER.email
       && kept.phone === '73012345' && kept.password === 'longenough1', JSON.stringify(kept));
     await ctx.close();
   }
 
   // Someone picking a DIFFERENT name instead must not be dragged away.
   {
-    const { ctx, page } = await open(browser, '/owner/login.html?tab=register');
+    const { ctx, page } = await open(browser, '/owner/login.html?tab=register', { shopper: true });
     await page.fill('#register-store-name', 'Bong Store');
     await page.fill('#register-username', 'teretia');
     await page.fill('#register-password', 'longenough1');
     await page.fill('#register-password-hint', 'my usual one');
-    await page.fill('#register-email', 'bong@example.com');
+    await page.fill('#register-about', 'Rice and flour');
     await page.fill('#register-phone', '73012345');
     await page.fill('#register-messenger', 'bong.store');
     await page.click('#register-submit-btn');
@@ -319,12 +320,12 @@ const tabState = (page) => page.evaluate(() => ({
   // Any OTHER registration failure must not send them to Log In.
   {
     const { ctx, page } = await open(browser, '/owner/login.html?tab=register',
-      { registerReply: { ok: false, error: 'Could not reach the store server' } });
+      { shopper: true, registerReply: { ok: false, error: 'Could not reach the store server' } });
     await page.fill('#register-store-name', 'Bong Store');
     await page.fill('#register-username', 'brandnew');
     await page.fill('#register-password', 'longenough1');
     await page.fill('#register-password-hint', 'my usual one');
-    await page.fill('#register-email', 'bong@example.com');
+    await page.fill('#register-about', 'Rice and flour');
     await page.fill('#register-phone', '73012345');
     await page.fill('#register-messenger', 'bong.store');
     await page.click('#register-submit-btn');

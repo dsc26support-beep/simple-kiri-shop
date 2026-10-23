@@ -91,11 +91,12 @@ const J = (x) => JSON.stringify(x).slice(0, 300);
     await ctx.close();
   }
 
-  // ---- a converted button, end to end: shopper "Send me a code" ----
+  // ---- a converted button, end to end: shopper "Sign in" (password, Oct 2026) ----
   {
     const { ctx, page, release } = await stalled();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.fill('#login-email', 'a@example.com');
+    await page.fill('#login-password', 'secret123');
     const btn = '#login-form button[type="submit"]';
     await page.click(btn); await page.waitForTimeout(300);
     const busy = await page.$eval(btn, (b) => ({ t: b.textContent.trim(), d: b.disabled, dots: b.querySelectorAll('.btn-saving-dots span').length }));
@@ -103,8 +104,8 @@ const J = (x) => JSON.stringify(x).slice(0, 300);
     const later = await page.$eval(btn, (b) => b.textContent.trim());
     release(); await page.waitForTimeout(300);
     const after = await page.$eval(btn, (b) => ({ t: b.textContent.trim(), d: b.disabled }));
-    ok('Shopper "Send me a code": "Sending" + dots, disabled', busy.t === 'Sending' && busy.d && busy.dots === 3, J(busy));
-    ok('..."Please wait" after 3 seconds, then back to "Send me a code"', later === 'Please wait' && after.t === 'Send me a code' && !after.d, J({ later, after }));
+    ok('Shopper "Sign in": "Signing in" + dots, disabled', busy.t === 'Signing in' && busy.d && busy.dots === 3, J(busy));
+    ok('..."Please wait" after 3 seconds, then back to "Sign in"', later === 'Please wait' && after.t === 'Sign in' && !after.d, J({ later, after }));
     await ctx.close();
   }
   // ---- seller Log In (its own helper now uses the shared one) ----

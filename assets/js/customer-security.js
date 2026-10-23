@@ -1,0 +1,225 @@
+/**
+ * My Account: confirm-email box, Sign-in & security, and Sell on Mwakete.
+ * Loaded after customer-dashboard.js, which signs the page in
+ * (CustomerAuth.guardCustomerAuth) - this file waits for that, then reads
+ * the account's sign-in methods from the same answer.
+ */
+document.addEventListener('DOMContentLoaded', initSecurity);
+
+let securityPendingToken = null;
+const SECURITY_LABELS = { password: 'Password', emailCode: 'Email codes', google: 'Google', facebook: 'Facebook' };
+
+async function initSecurity() {
+  const customer = await waitForSignedIn();
+  if (!customer) return;
+  wireSecurity();
+  renderVerifyEmail(customer);
+  renderSignInMethods(CustomerAuth.getSignInMethods() || {});
+  whenIdle(loadSellerApplication);
+}
+
+// customer-dashboard.js owns the sign-in check; wait for its answer.
+function waitForSignedIn() {
+  return new Promise((resolve) => {
+    let tries = 0;
+    const check = () => {
+      if (CustomerAuth.getSignInMethods()) return resolve(CustomerAuth.getCustomer());
+      if (++tries > 100 || !CustomerAuth.isLoggedIn()) return resolve(null);
+      setTimeout(check, 100);
+    };
+    check();
+  });
+}
+
+function wireSecurity() {
+  document.getElementById('verify-email-form').addEventListener('submit', onVerifyEmailRequest);
+  document.getElementById('verify-code-form').addEventListener('submit', onVerifyEmailCode);
+  document.getElementById('signin-methods').addEventListener('click', onMethodAction);
+  document.getElementById('set-password-form').addEventListener('submit', onSetPassword);
+  document.getElementById('set-password-cancel').addEventListener('click', () => document.getElementById('set-password-form').classList.add('hidden'));
+  document.getElementById('logout-all').addEventListener('click', onLogoutAll);
+  document.querySelectorAll('#security .password-toggle').forEach((b) => b.addEventListener('click', (e) => {
+    const input = document.getElementById(e.currentTarget.dataset.for);
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    e.currentTarget.textContent = show ? 'Hide' : 'Show';
+    e.currentTarget.setAttribute('aria-pressed', String(show));
+  }));
+  // google-signin.js / facebook-signin.js call these after linking.
+  window.onProviderLinked = (res) => {
+    document.getElementById('google-signin-wrap').hidden = true;
+    document.getElementById('facebook-signin-wrap').hidden = true;
+    renderSignInMethods(res.signInMethods || {});
+    setSecurityStatus((res.linked === 'facebook' ? 'Facebook' : 'Google') + ' is linked. You can use it to sign in next time.');
+  };
+}
+
+function setSecurityStatus(text) {
+  document.getElementById('security-status').textContent = text;
+}
+
+/* ---------- Confirm email ---------- */
+
+function renderVerifyEmail(customer) {
+  const box = document.getElementById('verify-email-box');
+  if (customer.emailVerified) { box.hidden = true; return; }
+  box.hidden = false;
+  document.getElementById('verify-email-input').value = customer.pendingEmail || customer.email || '';
+}
+
+async function onVerifyEmailRequest(e) {
+  e.preventDefault();
+  const errorEl = document.getElementById('verify-email-error');
+  errorEl.textContent = '';
+  const email = document.getElementById('verify-email-input').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errorEl.textContent = 'Please enter a valid email.'; return; }
+  const busyDone = setButtonBusy(e.target.querySelector('button[type="submit"]'), 'Sending');
+  const res = await Api.post('requestCustomerEmailVerification', { token: CustomerAuth.getToken(), email });
+  busyDone();
+  if (!res.ok) { errorEl.textContent = res.error || 'Could not send a code.'; return; }
+  securityPendingToken = res.pendingToken;
+  document.getElementById('verify-code-hint').textContent = 'We emailed a 6-digit code to ' + res.sentTo +
+    '. Not there after a minute? Check your spam or junk folder.';
+  document.getElementById('verify-email-form').classList.add('hidden');
+  document.getElementById('verify-code-form').classList.remove('hidden');
+  document.getElementById('verify-code-input').focus();
+}
+
+async function onVerifyEmailCode(e) {
+  e.preventDefault();
+  const errorEl = document.getElementById('verify-email-error');
+  errorEl.textContent = '';
+  const busyDone = setButtonBusy(e.target.querySelector('button[type="submit"]'), 'Checking');
+  const res = await Api.post('verifyCustomerEmail', { token: securityPendingToken, code: document.getElementById('verify-code-input').value.trim() });
+  busyDone();
+  if (!res.ok) { errorEl.textContent = res.error || 'Could not confirm the code.'; return; }
+  // The confirmation signs this device in afresh; keep the new session.
+  CustomerAuth.saveSession(res.token, res.customer);
+  window.location.reload();
+}
+
+/* ---------- Sign-in methods ---------- */
+
+function renderSignInMethods(methods) {
+  const list = document.getElementById('signin-methods');
+  const googleReady = typeof APP_CONFIG !== 'undefined' && !!APP_CONFIG.GOOGLE_CLIENT_ID;
+  const facebookReady = typeof APP_CONFIG !== 'undefined' && !!APP_CONFIG.FACEBOOK_APP_ID;
+  const row = (key, on, action) => {
+    const li = document.createElement('li');
+    li.className = 'signin-method';
+    const label = document.createElement('span');
+    label.textContent = SECURITY_LABELS[key] + ': ' + (on ? 'On' : 'Off');
+    li.appendChild(label);
+    if (action) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-small btn-outline';
+      b.dataset.action = action[0];
+      b.textContent = action[1];
+      li.appendChild(b);
+    }
+    return li;
+  };
+  list.textContent = '';
+  list.appendChild(row('password', methods.password, ['password', methods.password ? 'Change' : 'Set a password']));
+  list.appendChild(row('emailCode', methods.emailCode, null));
+  if (methods.google || googleReady) list.appendChild(row('google', methods.google, methods.google ? ['unlink-google', 'Unlink'] : ['link-google', 'Link']));
+  if (methods.facebook || facebookReady) list.appendChild(row('facebook', methods.facebook, methods.facebook ? ['unlink-facebook', 'Unlink'] : ['link-facebook', 'Link']));
+}
+
+async function onMethodAction(e) {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  setSecurityStatus('');
+  const action = btn.dataset.action;
+  if (action === 'password') return startSetPassword(btn);
+  if (action === 'link-google') {
+    if (typeof initGoogleSignIn === 'function') initGoogleSignIn();
+    setSecurityStatus('Choose your Google account below to link it.');
+    return;
+  }
+  if (action === 'link-facebook') {
+    if (typeof initFacebookSignIn === 'function') initFacebookSignIn();
+    setSecurityStatus('Tap "Link Facebook" below.');
+    return;
+  }
+  const provider = action === 'unlink-google' ? 'google' : 'facebook';
+  if (!window.confirm('Stop signing in with ' + SECURITY_LABELS[provider] + '?')) return;
+  const busyDone = setButtonBusy(btn, 'Unlinking');
+  const res = await Api.post('unlinkProvider', { token: CustomerAuth.getToken(), provider });
+  busyDone();
+  if (!res.ok) { setSecurityStatus(res.error || 'Could not unlink.'); return; }
+  renderSignInMethods(res.signInMethods || {});
+  setSecurityStatus(SECURITY_LABELS[provider] + ' is unlinked.');
+}
+
+async function startSetPassword(btn) {
+  const customer = CustomerAuth.getCustomer() || {};
+  if (!customer.emailVerified || !customer.email) {
+    setSecurityStatus('Confirm your email first (above) - the code to set a password goes there.');
+    return;
+  }
+  const busyDone = setButtonBusy(btn, 'Sending');
+  const res = await Api.post('requestCustomerPasswordReset', { email: customer.email });
+  busyDone();
+  if (!res.ok) { setSecurityStatus(res.error || 'Could not send a code.'); return; }
+  securityPendingToken = res.pendingToken;
+  document.getElementById('set-password-hint').textContent = 'We emailed a 6-digit code to ' + res.sentTo + '.';
+  document.getElementById('set-password-form').classList.remove('hidden');
+  document.getElementById('set-password-code').focus();
+}
+
+async function onSetPassword(e) {
+  e.preventDefault();
+  const newPassword = document.getElementById('set-password-new').value;
+  if (newPassword.length < 8) { setSecurityStatus('Your password needs at least 8 characters.'); return; }
+  const busyDone = setButtonBusy(e.target.querySelector('button[type="submit"]'), 'Saving');
+  const res = await Api.post('resetCustomerPassword', { token: securityPendingToken, code: document.getElementById('set-password-code').value.trim(), newPassword });
+  busyDone();
+  if (!res.ok) { setSecurityStatus(res.error || 'Could not save your password.'); return; }
+  // Every older session was signed out - this device gets the new one.
+  CustomerAuth.saveSession(res.token, res.customer);
+  document.getElementById('set-password-form').classList.add('hidden');
+  const methods = Object.assign({}, CustomerAuth.getSignInMethods() || {}, { password: true });
+  renderSignInMethods(methods);
+  setSecurityStatus('Password saved. Your other devices have been signed out.');
+}
+
+async function onLogoutAll(e) {
+  if (!window.confirm('Sign out on every phone and computer, including this one?')) return;
+  const busyDone = setButtonBusy(e.currentTarget, 'Signing out');
+  await Api.post('logoutAllCustomerSessions', { token: CustomerAuth.getToken() }).catch(() => {});
+  busyDone();
+  CustomerAuth.clearSession();
+  window.location.href = 'customer-login.html';
+}
+
+/* ---------- Sell on Mwakete ---------- */
+
+const SELLER_APP_TEXT = {
+  pending: (a) => 'Your application for "' + a.storeName + '" is being reviewed. We will email you when it is decided.',
+  approved: (a) => '"' + a.storeName + '" is open. Log in to the seller portal with its username and password.',
+  rejected: (a) => 'Your application for "' + a.storeName + '" was not approved' + (a.reviewNote ? ': ' + a.reviewNote : '.') + ' You can fix it and apply again.',
+  suspended: (a) => '"' + a.storeName + '" is suspended' + (a.reviewNote ? ': ' + a.reviewNote : '.') + ' Contact Mwakete via Help & support.'
+};
+
+async function loadSellerApplication() {
+  const status = document.getElementById('seller-app-status');
+  const action = document.getElementById('seller-app-action');
+  status.innerHTML = loadingMessageHtml('Checking');
+  let res;
+  try { res = await Api.post('getSellerApplication', { token: CustomerAuth.getToken() }); } catch (e) { res = null; }
+  if (!res || !res.ok) { status.textContent = 'Have something to sell? Open a store on Mwakete.'; action.hidden = false; return; }
+  const a = res.application;
+  if (!a) {
+    status.textContent = res.emailVerified
+      ? 'Have something to sell? Apply to open a store - we review every new store before it goes live.'
+      : 'Confirm your email above, then you can apply to open a store.';
+    action.hidden = !res.emailVerified;
+    return;
+  }
+  status.textContent = (SELLER_APP_TEXT[a.status] || SELLER_APP_TEXT.pending)(a);
+  if (a.status === 'approved') { action.textContent = 'Go to the seller portal'; action.href = 'owner/login.html'; action.hidden = false; }
+  else if (a.status === 'rejected') { action.textContent = 'Apply again'; action.hidden = false; }
+  else action.hidden = true;
+}

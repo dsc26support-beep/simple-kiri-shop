@@ -1262,9 +1262,9 @@ function actionUpdateOwnerProfile(owner, body) {
     if (body.passwordHint === undefined && owner.PasswordHint && passwordHintError(owner.PasswordHint, body.newPassword)) {
       return fail('Your current password hint gives this password away - change the hint too.');
     }
-    var salt = Utilities.getUuid();
-    update.PasswordSalt = salt;
-    update.PasswordHash = hashPassword(body.newPassword, salt);
+    // PBKDF2 (Passwords.gs); PasswordSalt is kept only for the old hash shape.
+    update.PasswordSalt = '';
+    update.PasswordHash = hashPasswordV2(String(body.newPassword));
   }
 
   // Password hint (Oct 2026). Checked against the password it hints at: the
@@ -1274,7 +1274,7 @@ function actionUpdateOwnerProfile(owner, body) {
     var hintFor = body.newPassword ? String(body.newPassword) : String(body.currentPassword || '');
     if (!body.newPassword) {
       if (!hintFor) return fail('Enter your current password to change the hint.');
-      if (!constantTimeEquals(hashPassword(hintFor, owner.PasswordSalt), owner.PasswordHash)) return fail('That current password is not right.');
+      if (!verifyPassword(hintFor, owner.PasswordHash, owner.PasswordSalt)) return fail('That current password is not right.');
     }
     var hintErr = passwordHintError(body.passwordHint, hintFor);
     if (hintErr) return fail(hintErr);

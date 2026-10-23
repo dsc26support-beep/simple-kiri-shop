@@ -83,6 +83,9 @@ function makeSandbox(opts) {
     // Deterministic stand-in with the same shape: salt-dependent, so a hash
     // made with one salt never matches another.
     hashPassword: (password, salt) => salt + '::' + password,
+    // The real check (Passwords.gs verifyPassword) reads both hash shapes; this
+    // stand-in mirrors the legacy one above.
+    verifyPassword: (password, stored, salt) => stored === salt + '::' + password,
     checkAndRecordLoginAttempt: (username, succeeded) => {
       attempts.push({ username, succeeded });
       return opts.locked ? { locked: true, retryAfterMinutes: 7 } : { locked: false };

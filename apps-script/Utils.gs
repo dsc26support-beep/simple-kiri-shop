@@ -67,8 +67,11 @@ function generateToken() {
   return Utilities.getUuid() + Utilities.getUuid();
 }
 
+// From Utilities.getUuid (a cryptographically secure source), not
+// Math.random, whose output can be predicted from earlier values.
 function generate6DigitCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  var n = parseInt(Utilities.getUuid().replace(/-/g, '').slice(0, 12), 16);
+  return String(100000 + (n % 900000));
 }
 
 // Word-level fuzzy matching (mirrors assets/js/helpers.js's client-side

@@ -83,15 +83,37 @@
           <p class="helper-text" id="profile-phone"></p>
           <button type="button" id="profile-edit-btn" class="btn btn-small">Edit</button>
         </div>
+        <!-- An account whose email is not confirmed yet (a Facebook sign-up)
+             can browse but not order: it confirms the address here
+             (customer-security.js). -->
+        <div id="verify-email-box" class="verify-email-box" hidden>
+          <p><strong>Confirm your email to order, book and message sellers.</strong></p>
+          <form id="verify-email-form" novalidate>
+            <div class="field">
+              <label for="verify-email-input">Email</label>
+              <input id="verify-email-input" type="email" autocomplete="email">
+            </div>
+            <button type="submit" class="btn btn-primary">Email me a code</button>
+          </form>
+          <form id="verify-code-form" class="hidden" novalidate>
+            <p class="helper-text" id="verify-code-hint"></p>
+            <div class="field">
+              <label for="verify-code-input">Enter the 6-digit code</label>
+              <input id="verify-code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary">Confirm email</button>
+          </form>
+          <p id="verify-email-error" class="form-error" role="alert"></p>
+        </div>
         <form id="profile-form" class="hidden" novalidate>
           <div class="field">
             <label for="profile-name-input">Name</label>
             <input id="profile-name-input" type="text" autocomplete="name">
           </div>
           <div class="field">
-            <label for="profile-phone-input">Phone Number</label>
+            <label for="profile-phone-input">Phone Number <span class="helper-text">(optional)</span></label>
             <input id="profile-phone-input" type="tel" autocomplete="tel">
-            <p class="helper-text">Local numbers start with 730 or 630. Overseas? Include your country code (e.g. +64…).</p>
+            <p class="helper-text">Filled in for you at checkout - sellers and drivers need it for delivery. Local numbers start with 730 or 630. Overseas? Include your country code (e.g. +64…).</p>
           </div>
           <p id="profile-error" class="form-error" role="alert"></p>
           <button type="submit" class="btn btn-primary btn-save">Save</button>
@@ -115,6 +137,49 @@
         <div class="dash-filters" id="bookings-filters" role="group" aria-label="Filter bookings"></div>
         <p id="bookings-status" class="helper-text" aria-live="polite"></p>
         <div id="bookings-list"></div>
+      </section>
+
+      <!-- Become a Seller (SellerApplications.gs): the status of this
+           account's application, if any. At the END with the other settings so
+           nothing above the orders moves when it loads. -->
+      <section class="dash-section" id="seller-app" aria-labelledby="seller-app-h">
+        <h2 id="seller-app-h">Sell on Mwakete</h2>
+        <p id="seller-app-status" class="helper-text" aria-live="polite"></p>
+        <a id="seller-app-action" class="btn btn-outline" href="owner/login.html?tab=register" hidden>Apply to open a store</a>
+      </section>
+
+      <!-- Sign-in & security (customer-security.js). -->
+      <section class="dash-section" id="security" aria-labelledby="security-h">
+        <h2 id="security-h">Sign-in &amp; security</h2>
+        <ul class="signin-methods" id="signin-methods"></ul>
+        <form id="set-password-form" class="hidden" novalidate>
+          <p class="helper-text" id="set-password-hint"></p>
+          <div class="field">
+            <label for="set-password-code">Enter the 6-digit code</label>
+            <input id="set-password-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+          </div>
+          <div class="field">
+            <label for="set-password-new">New password</label>
+            <div class="password-field">
+              <input id="set-password-new" type="password" autocomplete="new-password" minlength="8" maxlength="200">
+              <button type="button" class="linklike password-toggle" data-for="set-password-new" aria-pressed="false">Show</button>
+            </div>
+            <p class="helper-text">At least 8 characters. Your other devices will be signed out.</p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-save">Save password</button>
+          <button type="button" class="btn" id="set-password-cancel">Cancel</button>
+        </form>
+        <!-- Shown only while linking: Google draws its own button here. -->
+        <div id="google-signin-wrap" class="auth-social" hidden>
+          <div id="google-signin-btn" data-full-width></div>
+          <p id="google-signin-error" class="form-error" role="alert"></p>
+        </div>
+        <div id="facebook-signin-wrap" class="auth-social" hidden>
+          <button type="button" id="facebook-signin-btn" class="btn btn-outline">Link Facebook</button>
+          <p id="facebook-signin-error" class="form-error" role="alert"></p>
+        </div>
+        <p id="security-status" class="helper-text" role="status" aria-live="polite"></p>
+        <button type="button" class="btn btn-outline" id="logout-all">Sign out of all devices</button>
       </section>
 
       <!-- Promotional email consent (Marketing.gs). Its own section at the
@@ -144,6 +209,10 @@
   <script defer src="assets/js/unsaved-guard.min.js"></script>
   <script defer src="assets/js/cart.min.js"></script>
   <script defer src="assets/js/customer-dashboard.min.js"></script>
+  <script>window.GOOGLE_SIGNIN_DEFER = true; window.FACEBOOK_SIGNIN_DEFER = true; window.PROVIDER_LINK_MODE = true;</script>
+  <script defer src="assets/js/google-signin.min.js"></script>
+  <script defer src="assets/js/facebook-signin.min.js"></script>
+  <script defer src="assets/js/customer-security.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>
   <script defer src="assets/js/bottom-nav.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>

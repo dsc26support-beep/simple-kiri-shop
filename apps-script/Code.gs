@@ -32,6 +32,12 @@ var PUBLIC_POST_ACTIONS = [
   // validates the Google ID token itself (CustomerOAuth.gs) before issuing a
   // session, and refuses everything when GOOGLE_CLIENT_ID is unset.
   'googleSignIn',
+  // Passwords, links and Facebook (owner decisions, Oct 2026). Each checks its
+  // own code / link / token / session inside (Customers.gs, FacebookAuth.gs,
+  // CustomerIdentities.gs); the replies never say whether an address has an account.
+  'customerPasswordLogin', 'resendCustomerCode', 'requestCustomerPasswordReset', 'resetCustomerPassword',
+  'checkCustomerLink', 'requestCustomerEmailVerification', 'logoutAllCustomerSessions',
+  'facebookSignIn', 'unlinkProvider', 'getSellerApplication',
   'listCustomerOrders', 'listCustomerBookings', 'updateCustomerProfile',
   'getCustomerInbox',
   // The signed-in customer's own chats, for a phone opened from a reply
@@ -120,7 +126,9 @@ var PROTECTED_POST_ACTIONS = [
   'getSellerDashboard', 'getAdminOverview',
   // Deliveries admin (Deliveries.gs) - isOwnerAdmin inside.
   'adminListDeliveries', 'adminSetDriverStatus', 'adminConfirmJobPayment', 'adminRejectJobPayment', 'adminMarkJobRefunded',
-  'adminListPayouts', 'adminMarkPayoutPaid', 'adminReversePayout', 'adminAdjustDriverWallet', 'adminResolveJobPayment'
+  'adminListPayouts', 'adminMarkPayoutPaid', 'adminReversePayout', 'adminAdjustDriverWallet', 'adminResolveJobPayment',
+  // Seller applications (SellerApplications.gs) - isOwnerAdmin inside.
+  'adminListSellerApplications', 'adminReviewSellerApplication'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -140,7 +148,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'pos1-2026-10-22';
+var APP_VERSION = 'auth1-2026-10-23';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -494,6 +502,16 @@ function doPost(e) {
         case 'verifyCustomerEmail': return jsonOut(actionVerifyCustomerEmail(body));
         case 'loginCustomer': return jsonOut(actionLoginCustomer(body));
         case 'googleSignIn': return jsonOut(actionGoogleSignIn(body));
+        case 'customerPasswordLogin': return jsonOut(actionCustomerPasswordLogin(body));
+        case 'resendCustomerCode': return jsonOut(actionResendCustomerCode(body));
+        case 'requestCustomerPasswordReset': return jsonOut(actionRequestCustomerPasswordReset(body));
+        case 'resetCustomerPassword': return jsonOut(actionResetCustomerPassword(body));
+        case 'checkCustomerLink': return jsonOut(actionCheckCustomerLink(body));
+        case 'requestCustomerEmailVerification': return jsonOut(actionRequestCustomerEmailVerification(body));
+        case 'logoutAllCustomerSessions': return jsonOut(actionLogoutAllCustomerSessions(body));
+        case 'facebookSignIn': return jsonOut(actionFacebookSignIn(body));
+        case 'unlinkProvider': return jsonOut(actionUnlinkProvider(body));
+        case 'getSellerApplication': return jsonOut(actionGetSellerApplication(body));
         case 'verifyCustomerLogin': return jsonOut(actionVerifyCustomerLogin(body));
         case 'getCustomerProfile': return jsonOut(actionGetCustomerProfile(body));
         case 'getCustomerStore': return jsonOut(actionGetCustomerStore(body));
@@ -722,6 +740,8 @@ function doPost(e) {
         case 'adminReversePayout': return jsonOut(actionAdminReversePayout(owner, body));
         case 'adminAdjustDriverWallet': return jsonOut(actionAdminAdjustDriverWallet(owner, body));
         case 'adminResolveJobPayment': return jsonOut(actionAdminResolveJobPayment(owner, body));
+        case 'adminListSellerApplications': return jsonOut(actionAdminListSellerApplications(owner, body));
+        case 'adminReviewSellerApplication': return jsonOut(actionAdminReviewSellerApplication(owner, body));
       }
     }
 

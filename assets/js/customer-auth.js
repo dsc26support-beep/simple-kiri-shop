@@ -108,8 +108,14 @@ const CustomerAuth = (function () {
       return null;
     }
     saveSession(token, res.customer);
+    signInMethods = res.signInMethods || null;
     return res.customer;
   }
+
+  // The ways this account can sign in (password, email codes, Google,
+  // Facebook), as the last guardCustomerAuth heard them. Account page only.
+  let signInMethods = null;
+  function getSignInMethods() { return signInMethods; }
 
   // Guests are viewers (owner decision, Oct 2026): placing an order, booking
   // and messaging a seller send them to sign in first, then straight back.
@@ -121,5 +127,5 @@ const CustomerAuth = (function () {
   }
 
   return { saveSession, getToken, getCustomer, isLoggedIn, clearSession, logout, guardCustomerAuth,
-           getRememberedEmail, forgetEmail, signInUrl };
+           getRememberedEmail, forgetEmail, signInUrl, getSignInMethods };
 })();

@@ -20,8 +20,8 @@ const FUT = new Date(Date.now() + 9e8).toISOString();
 const box = makeBox({
   Owners: [['OwnerId', 'StoreName', 'StoreSlug', 'Username', 'PasswordHash', 'PasswordSalt', 'Email', 'Phone', 'Messenger', 'Status', 'CreatedAt', 'StoreType', 'Island', 'Village', 'DeliveryPickPay', 'LogoUrl']],
   Sessions: [['Token', 'OwnerId', 'CreatedAt', 'ExpiresAt']],
-  Customers: [['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt'], ['cus_t', 'Tia', 'tia@x.test', '73000001', 'yes', '', '']],
-  CustomerSessions: [['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'], ['c-tia', 'cus_t', '', FUT]],
+  Customers: [['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt'], ['cus_t', 'Tia', 'tia@x.test', '73000001', 'yes', '', ''], ['cus_b', 'Bong', 'bong@x.test', '73001234', 'true', '', '']],
+  CustomerSessions: [['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'], ['c-tia', 'cus_t', '', FUT], ['c-bong', 'cus_b', '', FUT]],
   Conversations: [['ConversationId', 'OwnerId', 'StoreSlug', 'CustomerToken', 'CustomerName', 'Status', 'CreatedAt', 'UpdatedAt', 'LastMessageAt', 'LastMessagePreview', 'LastSenderType', 'UnreadByVendor', 'UnreadByCustomer', 'CustomerId']],
   Messages: [['MessageId', 'ConversationId', 'OwnerId', 'StoreSlug', 'SenderType', 'Body', 'CreatedAt', 'ImageUrl', 'ImageFileId']],
   // So the seller dashboard summary loads (its attention list carries the reminder).
@@ -54,13 +54,14 @@ const call = (b) => { try { return box.doPost({ postData: { contents: b } }).s; 
   };
 
   /* ---------- Register Store: hint required ---------- */
-  let { ctx, p } = await ctxFor();
+  // A store is an application from a signed-in shopper account (Oct 2026).
+  let { ctx, p } = await ctxFor({ skiri_customer_token: 'c-bong', skiri_customer_profile: JSON.stringify({ customerId: 'cus_b', name: 'Bong', email: 'bong@x.test', emailVerified: true }) });
   await p.goto(BASE + '/owner/login.html?tab=register', { waitUntil: 'load' });
   await p.click('#tab-register');
   ok('Register Store has a required "Password hint" field', await p.evaluate(() => { const i = document.getElementById('register-password-hint'); return !!i && i.required && /Password hint/.test(document.querySelector('label[for="register-password-hint"]').textContent); }));
   const fill = async (hint) => {
     await p.fill('#register-store-name', 'Bong Store'); await p.fill('#register-username', 'bong'); await p.fill('#register-password', 'coconut99');
-    await p.fill('#register-password-hint', hint); await p.fill('#register-email', 'bong@x.test'); await p.fill('#register-phone', '73001234');
+    await p.fill('#register-password-hint', hint); await p.fill('#register-about', 'Rice and flour'); await p.fill('#register-phone', '73001234');
     await p.fill('#register-messenger', 'bong.store');
     await p.evaluate(() => { const f = document.getElementById('register-form'); f.noValidate = true; });
     await p.click('#register-submit-btn');
@@ -69,8 +70,10 @@ const call = (b) => { try { return box.doPost({ postData: { contents: b } }).s; 
   await fill('my coconut99');
   ok('a hint that contains the password is stopped before sending', /must not contain the password/.test(await p.textContent('#register-error')), await p.textContent('#register-error'));
   await fill('favourite fruit');
-  await p.waitForURL(/settings\.html/, { timeout: 8000 }).catch(() => {});
+  await p.waitForSelector('#register-sent:not([hidden])', { timeout: 8000 }).catch(() => {});
   ok('a good hint registers the store', box.__sheets.Owners.objects()[0] && box.__sheets.Owners.objects()[0].PasswordHint === 'favourite fruit', p.url());
+  // An admin approves it (SellerApplications.gs) before the seller can log in.
+  { const g = box.__sheets.Owners.grid; g[1][g[0].indexOf('ApprovalStatus')] = 'approved'; }
   await ctx.close();
 
   /* ---------- Login: hint after a wrong password ---------- */

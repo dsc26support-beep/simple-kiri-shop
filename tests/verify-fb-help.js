@@ -18,6 +18,8 @@ const SHOT = process.env.SHOT_DIR || '';
     await ctx.addInitScript((o) => {
       localStorage.setItem('skiri_cookie_consent', 'true');
       if (o) { localStorage.setItem('skiri_owner_token', 't'); localStorage.setItem('skiri_owner_profile', '{"storeName":"S","storeSlug":"s","status":"active"}'); }
+      // Register Store is an application from a signed-in shopper (Oct 2026).
+      else { localStorage.setItem('skiri_customer_token', 'c'); localStorage.setItem('skiri_customer_profile', '{"customerId":"c1","name":"T","email":"t@x.com","emailVerified":true}'); }
     }, !!owner);
     await ctx.route('**/macros/s/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, owner: { storeName: 'S', storeSlug: 's', status: 'active' }, products: [], stores: [] }) }));
     await ctx.route('https://www.facebook.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>FB help</title>' }));

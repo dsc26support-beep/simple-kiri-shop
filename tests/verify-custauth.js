@@ -8,10 +8,17 @@ function mockAuth(ctx, posted) {
     try { if (!action) action = new URL(route.request().url()).searchParams.get('action') || ''; } catch (e) {}
     if (action) posted.push({ action, body });
     let out = { ok: true };
-    if (action === 'registerCustomer') out = { ok: true, pendingToken: 'ptok-signup' };
+    if (action === 'registerCustomer') out = { ok: true, pendingToken: 'ptok-signup', sentTo: 'd•••@x.com', resendAfterSeconds: 60 };
     else if (action === 'verifyCustomerEmail') out = { ok: true, token: 'sess-1', customer: { customerId: 'c1', name: body.__n || 'Debby', email: 'd@x.com', phone: '7301234', emailVerified: true } };
-    else if (action === 'loginCustomer') out = { ok: true, pendingToken: 'ptok-login' };
+    else if (action === 'loginCustomer') out = { ok: true, pendingToken: 'ptok-login', sentTo: 'd•••@x.com', resendAfterSeconds: 60 };
     else if (action === 'verifyCustomerLogin') out = { ok: true, token: 'sess-2', customer: { customerId: 'c1', name: 'Debby', email: 'd@x.com', phone: '7301234', emailVerified: true } };
+    else if (action === 'customerPasswordLogin') out = body.password === 'right-pass1'
+      ? { ok: true, token: 'sess-3', customer: { customerId: 'c1', name: 'Debby', email: 'd@x.com', emailVerified: true } }
+      : { ok: false, error: 'Email or password is incorrect' };
+    else if (action === 'requestCustomerPasswordReset') out = { ok: true, pendingToken: 'ptok-reset', sentTo: 'd•••@x.com', resendAfterSeconds: 60 };
+    else if (action === 'resetCustomerPassword') out = { ok: true, token: 'sess-4', customer: { customerId: 'c1', name: 'Debby', email: 'd@x.com', emailVerified: true } };
+    else if (action === 'checkCustomerLink') out = { ok: true, purpose: 'reset', sentTo: 'd•••@x.com' };
+    else if (action === 'resendCustomerCode') out = { ok: true, resendAfterSeconds: 60 };
     else if (action === 'listProducts' || action === 'getHomePageData' || action === 'listTopProducts' || action === 'listTopStores') out = { ok: true, products: [], stores: [] };
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(out) });
   });
@@ -31,21 +38,22 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html?tab=signup', { waitUntil: 'load' });
     await page.waitForFunction(() => typeof CustomerAuth !== 'undefined');
-    // bad local phone blocks
+    // Name, email, password (Oct 2026: no phone at sign-up - it is asked at checkout for delivery).
+    ok('sign-up asks for no phone', !(await page.$('#signup-phone')));
     await page.fill('#signup-name', 'Debby');
     await page.fill('#signup-email', 'd@x.com');
-    await page.fill('#signup-phone', '7201234');
-    // Send me a code waits for a right phone (Oct 2026); leaving the field explains why.
+    await page.fill('#signup-password', 'short');
     await page.keyboard.press('Tab');
     await page.waitForTimeout(100);
-    ok('signup bad phone: Send me a code stays hidden', await page.$eval('#signup-form button[type="submit"]', (b) => getComputedStyle(b).visibility === 'hidden'));
-    ok('signup bad phone blocked (no registerCustomer)', !posted.some(p => p.action === 'registerCustomer'));
-    ok('signup bad phone shows 730/630 error', /730 or 630/.test(await page.textContent('#signup-error')));
-    // good phone -> code step
-    await page.fill('#signup-phone', '7301234');
+    ok('short password: Create account stays hidden', await page.$eval('#signup-form button[type="submit"]', (b) => getComputedStyle(b).visibility === 'hidden'));
+    ok('short password: explained on leaving the box', /at least 8/.test(await page.textContent('#signup-error')));
+    await page.fill('#signup-password', 'good-pass1');
+    ok('Show reveals the password', await (async () => { await page.click('.password-toggle[data-for="signup-password"]'); return (await page.getAttribute('#signup-password', 'type')) === 'text'; })());
     await page.click('#signup-form button[type="submit"]');
     await page.waitForSelector('#signup-code-form:not(.hidden)');
-    ok('signup registerCustomer called w/ name+email+phone', posted.some(p => p.action === 'registerCustomer' && p.body.name === 'Debby' && p.body.phone === '7301234'));
+    ok('registerCustomer sent name, email and password', posted.some(p => p.action === 'registerCustomer' && p.body.name === 'Debby' && p.body.password === 'good-pass1' && !('phone' in p.body)));
+    ok('code step names the masked address and the spam folder', /d•••@x\.com/.test(await page.textContent('#signup-code-hint')) && /spam/i.test(await page.textContent('#signup-code-hint')));
+    ok('resend waits out its cooldown', await page.$eval('.resend-btn[data-for="signup"]', (b) => b.disabled && /\d+s/.test(b.textContent)));
     // enter code -> verify -> session saved + redirect to the customer's account
     // (customer-login.js nextDest: My Account by default, ?next= when given)
     await page.fill('#signup-code', '123456');
@@ -66,14 +74,73 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForFunction(() => typeof CustomerAuth !== 'undefined');
     await page.fill('#login-email', 'd@x.com');
+    ok('Sign in waits for a password', await page.$eval('#login-form button[type="submit"]', (b) => getComputedStyle(b).visibility === 'hidden'));
+    await page.fill('#login-password', 'wrong-pass');
     await page.click('#login-form button[type="submit"]');
+    await page.waitForFunction(() => /incorrect/.test(document.getElementById('login-error').textContent));
+    ok('wrong password: one plain message', (await page.textContent('#login-error')) === 'Email or password is incorrect');
+    await page.fill('#login-password', 'right-pass1');
+    await page.click('#login-form button[type="submit"]');
+    await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
+    ok('password sign-in saved the session', (await page.evaluate(() => localStorage.getItem('skiri_customer_token'))) === 'sess-3');
+    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.fill('#login-email', 'd@x.com');
+    await page.click('#login-use-code');
     await page.waitForSelector('#login-code-form:not(.hidden)');
-    ok('login loginCustomer called', posted.some(p => p.action === 'loginCustomer' && p.body.email === 'd@x.com'));
+    ok('"Email me a code instead" calls loginCustomer', posted.some(p => p.action === 'loginCustomer' && p.body.email === 'd@x.com'));
     await page.fill('#login-code', '654321');
     await page.click('#login-code-form button[type="submit"]');
-    await page.waitForURL('**/index.html', { timeout: 4000 }).catch(() => {});
+    await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
     const tok = await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } });
     ok('login verify saved customer session', tok === 'sess-2', String(tok));
+    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+
+    // Forgot password by code.
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.fill('#login-email', 'd@x.com');
+    await page.click('#login-forgot');
+    ok('Forgot password opens the reset step with the email filled in', await page.isVisible('#reset-request-form') && (await page.inputValue('#reset-email')) === 'd@x.com');
+    await page.click('#reset-request-form button[type="submit"]');
+    await page.waitForSelector('#reset-form:not(.hidden)');
+    await page.fill('#reset-code', '111222');
+    await page.fill('#reset-password', 'new-pass12');
+    await page.click('#reset-form button[type="submit"]');
+    await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
+    ok('reset by code sends code + new password', posted.some(p => p.action === 'resetCustomerPassword' && p.body.token === 'ptok-reset' && p.body.code === '111222' && p.body.newPassword === 'new-pass12'));
+    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+
+    // Reset by the emailed link: the token leaves the address bar at once.
+    await page.goto(BASE + '/customer-login.html?reset=LINKTOKEN123', { waitUntil: 'load' });
+    ok('the link token is taken out of the address bar', !page.url().includes('LINKTOKEN123'), page.url());
+    ok('the page sends no Referer', (await page.getAttribute('meta[name="referrer"]', 'content')) === 'no-referrer');
+    await page.waitForSelector('#reset-form:not(.hidden)');
+    ok('by link: no code box', !(await page.isVisible('#reset-code')));
+    await page.fill('#reset-password', 'new-pass34');
+    await page.click('#reset-form button[type="submit"]');
+    await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
+    ok('reset by link sends the link token', posted.some(p => p.action === 'resetCustomerPassword' && p.body.linkToken === 'LINKTOKEN123' && p.body.newPassword === 'new-pass34'));
+    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+
+    // Confirm-email link.
+    await page.goto(BASE + '/customer-login.html?verify=VERIFYTOK9', { waitUntil: 'load' });
+    await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
+    ok('the confirm link signs in', posted.some(p => p.action === 'verifyCustomerEmail' && p.body.linkToken === 'VERIFYTOK9'));
+    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+
+    // Google/Facebook found an existing account: prove it, then it links.
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await page.evaluate(() => window.onProviderLinkRequired({ provider: 'google', providerLinkToken: 'PLT', sentTo: 'd•••@x.com', email: 'd@x.com', hasPassword: true }));
+    ok('link-required explains what to do', /already have a Mwakete account/.test(await page.textContent('#provider-link-note')));
+    await page.fill('#login-password', 'right-pass1');
+    await page.click('#login-form button[type="submit"]');
+    await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
+    ok('...and the password sign-in carries the link token', posted.some(p => p.action === 'customerPasswordLogin' && p.body.providerLinkToken === 'PLT'));
+    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    ok('no Facebook button while FACEBOOK_APP_ID is empty', await page.$eval('#facebook-signin-wrap', (w) => w.hidden));
     await ctx.close();
   }
 

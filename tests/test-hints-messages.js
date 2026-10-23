@@ -17,8 +17,8 @@ const FUT = new Date(Date.now() + 9e8).toISOString();
 const box = makeBox({
   Owners: [['OwnerId', 'StoreName', 'StoreSlug', 'Username', 'PasswordHash', 'PasswordSalt', 'Email', 'Phone', 'Messenger', 'Status', 'CreatedAt', 'StoreType']],
   Sessions: [['Token', 'OwnerId', 'CreatedAt', 'ExpiresAt']],
-  Customers: [['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt'], ['cus_t', 'Tia', 'tia@x.test', '73000001', 'yes', '', ''], ['cus_o', 'Other', 'o@x.test', '73000002', 'yes', '', '']],
-  CustomerSessions: [['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'], ['c-tia', 'cus_t', '', FUT], ['c-other', 'cus_o', '', FUT]],
+  Customers: [['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt'], ['cus_t', 'Tia', 'tia@x.test', '73000001', 'yes', '', ''], ['cus_o', 'Other', 'o@x.test', '73000002', 'yes', '', ''], ['cus_b', 'Bong', 'bong@x.test', '73001234', 'true', '', '']],
+  CustomerSessions: [['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt'], ['c-tia', 'cus_t', '', FUT], ['c-other', 'cus_o', '', FUT], ['c-bong', 'cus_b', '', FUT]],
   Conversations: [['ConversationId', 'OwnerId', 'StoreSlug', 'CustomerToken', 'CustomerName', 'Status', 'CreatedAt', 'UpdatedAt', 'LastMessageAt', 'LastMessagePreview', 'LastSenderType', 'UnreadByVendor', 'UnreadByCustomer']],
   Messages: [['MessageId', 'ConversationId', 'OwnerId', 'StoreSlug', 'SenderType', 'Body', 'CreatedAt', 'ImageUrl', 'ImageFileId']]
 });
@@ -26,7 +26,7 @@ box.__props.SITE_BASE_URL = 'https://mwakete.com';
 box.__props.PEPPER = 'test-pepper';
 const owners = () => box.__sheets.Owners.objects();
 const reg = (o) => box.actionRegisterOwner(Object.assign({ storeName: 'Bong Store', username: 'bong', password: 'coconut99', email: 'bong@x.test', phone: '73001234',
-  messenger: 'bong.store', storeType: 'retailer' }, o));
+  messenger: 'bong.store', storeType: 'retailer', customerToken: 'c-bong', about: 'Rice and flour' }, o));
 
 /* ---------- registration needs a hint ---------- */
 let res = reg({ passwordHint: '' });
@@ -39,6 +39,10 @@ res = reg({ passwordHint: 'x'.repeat(101) });
 ok('a hint over 100 characters is refused', !res.ok && /100 characters/.test(res.error), J(res));
 res = reg({ passwordHint: 'favourite fruit + 99' });
 ok('register with a good hint works', res.ok && owners()[0].PasswordHint === 'favourite fruit + 99', J(res));
+// Since Oct 2026 a new store waits for an admin (SellerApplications.gs); approve it here.
+ok('...as an application waiting for review', res.application && res.application.status === 'pending' && !res.token, J(res));
+box.__sheets.Owners.grid[1][box.__sheets.Owners.grid[0].indexOf('ApprovalStatus')] = 'approved';
+res = box.actionLoginOwner({ username: 'bong', password: 'coconut99' });
 ok('the session profile says a hint is set, without the hint text', res.owner.hasPasswordHint === true && !('passwordHint' in res.owner), J(res.owner));
 const ownerToken = res.token;
 

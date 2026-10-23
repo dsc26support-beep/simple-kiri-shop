@@ -170,7 +170,8 @@ async function makeContext(browser, opts) {
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(600);
     await page.fill('#login-email', 'a@example.com');
-    await page.click('#login-form button[type="submit"]');
+    // Password first since Oct 2026; the code is "Email me a code instead".
+    await page.click('#login-use-code');
     await page.waitForTimeout(700);
     await page.fill('#login-code', '123456');
     await page.click('#login-code-form button[type="submit"]');
@@ -191,7 +192,7 @@ async function makeContext(browser, opts) {
     // The purple box around Google's button is what shows, so that is measured.
     const g = await page.evaluate(() => ['#google-signin-btn', '#guest-continue', '#login-form button[type="submit"]'].map((sel) => {
       const r = document.querySelector(sel).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
-    ok(`${w}px: Google, guest and "Send me a code" are the same width`, Math.abs(g[0][0] - g[1][0]) <= 1 && Math.abs(g[1][0] - g[2][0]) <= 1, JSON.stringify(g));
+    ok(`${w}px: Google, guest and "Sign in" are the same width`, Math.abs(g[0][0] - g[1][0]) <= 1 && Math.abs(g[1][0] - g[2][0]) <= 1, JSON.stringify(g));
     ok(`${w}px: ...and the same height (40px)`, g.every((x) => x[1] === 40), JSON.stringify(g));
     // 16px wider than the purple box (GSI_TUCK), so Google's own grey edge
     // is tucked under the purple line (owner request, Oct 2026).
@@ -293,9 +294,10 @@ async function makeContext(browser, opts) {
 
     const order = await page.$$eval('.auth-quick > *, .auth-tabs',
       (els) => els.map((e) => e.id || e.className.split(' ')[0]));
-    ok(label + ': the tabs, then Google, then guest, then the divider',
+    // Facebook's slot sits after Google's (hidden until FACEBOOK_APP_ID is set).
+    ok(label + ': the tabs, then Google, then Facebook, then guest, then the divider',
       JSON.stringify(order) === JSON.stringify(
-        ['auth-tabs', 'google-signin-wrap', 'auth-guest-row', 'auth-divider']), JSON.stringify(order));
+        ['auth-tabs', 'google-signin-wrap', 'facebook-signin-wrap', 'auth-guest-row', 'auth-divider']), JSON.stringify(order));
 
     // The one that matters. The guest button is the fallback for exactly the
     // person who cannot use Google, so it must never be hidden along with it.
@@ -352,7 +354,7 @@ async function makeContext(browser, opts) {
       !/We'll email you a 6-digit code/i.test(await page.textContent('#login-form') || ''));
 
     await page.fill('#login-email', 'aroita@example.com');
-    await page.click('#login-form button[type="submit"]');
+    await page.click('#login-use-code');
     await page.waitForTimeout(300);
     ok('it reappears as a confirmation on the code step instead',
       /we emailed a 6-digit code to aroita@example\.com/i.test(await page.textContent('#login-code-hint') || ''),

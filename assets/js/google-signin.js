@@ -106,11 +106,49 @@ async function onGoogleCredential(response) {
   }
 
   if (wrap) wrap.classList.add('is-busy');
-  var res = await Api.post('googleSignIn', { credential: response.credential });
+  var res = await Api.post('googleSignIn', providerSignInBody({ credential: response.credential }));
   if (wrap) wrap.classList.remove('is-busy');
+  handleProviderResult(res, errorEl, 'Google');
+}
 
+/**
+ * The request body for a Google / Facebook sign-in. On the account page
+ * (window.PROVIDER_LINK_MODE) it carries the shopper's session, so the server
+ * links the identity to that account instead of signing in.
+ */
+function providerSignInBody(body) {
+  if (window.PROVIDER_LINK_MODE && typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken()) {
+    body.customerToken = CustomerAuth.getToken();
+  }
+  return body;
+}
+
+/**
+ * What the server decided after checking a Google or Facebook sign-in
+ * (CustomerIdentities.gs). Shared by facebook-signin.js.
+ *   linkRequired - the email belongs to an existing account: the shopper
+ *                  signs in to it once and the identity is linked then.
+ *   linked       - account page: linked to the signed-in account.
+ *   verifyPendingToken / needsEmail - a new account whose email Mwakete
+ *                  still has to confirm (Facebook).
+ */
+function handleProviderResult(res, errorEl, label) {
   if (!res.ok) {
-    if (errorEl) errorEl.textContent = res.error || 'Could not sign you in with Google.';
+    if (errorEl) errorEl.textContent = res.error || 'Could not sign you in with ' + label + '.';
+    return;
+  }
+  if (res.linkRequired) {
+    if (typeof window.onProviderLinkRequired === 'function') { window.onProviderLinkRequired(res); return; }
+    if (errorEl) errorEl.textContent = 'You already have a Mwakete account with ' + res.sentTo +
+      '. Sign in to it with your email first, then link ' + label + ' from My Account.';
+    return;
+  }
+  if (res.linked && !res.token) {
+    if (typeof window.onProviderLinked === 'function') window.onProviderLinked(res);
+    return;
+  }
+  if ((res.verifyPendingToken || res.needsEmail) && typeof window.onProviderNeedsEmail === 'function') {
+    window.onProviderNeedsEmail(res);
     return;
   }
   CustomerAuth.saveSession(res.token, res.customer);

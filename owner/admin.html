@@ -40,6 +40,7 @@
           <ul>
             <li><a href="#ov-heading">Overview</a></li>
             <li><a href="#admin-search-heading">Search</a></li>
+            <li><a href="#sa-heading">Seller applications</a></li>
             <li><a href="#lr-heading">Listing review</a></li>
             <li><a href="#txa-heading">Order problems</a></li>
             <li><a href="#dlv-heading">Deliveries &amp; drivers</a></li>
@@ -110,6 +111,21 @@
           <p id="admin-search-status" class="helper-text" aria-live="polite"></p>
           <div id="admin-search-results" class="admin-search-results"></div>
           <div id="admin-analytics" class="admin-analytics hidden" aria-live="polite"></div>
+        </section>
+
+        <!-- Become a Seller applications (admin-seller-apps.js, backend
+             SellerApplications.gs). Every decision is checked again on the
+             server (admin email) and written to AuthEvents. -->
+        <section class="dash-section" aria-labelledby="sa-heading" id="seller-applications">
+          <h2 id="sa-heading">Seller applications</h2>
+          <div class="dash-filters" id="sa-filters" role="group" aria-label="Show applications">
+            <button type="button" class="btn btn-small is-active" data-status="pending" aria-pressed="true">Waiting</button>
+            <button type="button" class="btn btn-small" data-status="approved" aria-pressed="false">Approved</button>
+            <button type="button" class="btn btn-small" data-status="rejected" aria-pressed="false">Not approved</button>
+            <button type="button" class="btn btn-small" data-status="suspended" aria-pressed="false">Suspended</button>
+          </div>
+          <p id="sa-status" class="helper-text" role="status" aria-live="polite"></p>
+          <div id="sa-list" class="sa-list"></div>
         </section>
 
         <!-- Listing checks review queue + category register (admin-listing-review.js,
@@ -420,6 +436,7 @@
   <script defer src="../assets/js/listing-rules.min.js"></script>
   <script defer src="../assets/js/admin-listing-review.min.js"></script>
   <script defer src="../assets/js/admin-header-ads.min.js"></script>
+  <script defer src="../assets/js/admin-seller-apps.min.js"></script>
   <script defer src="../assets/js/admin-tx.min.js"></script>
   <script defer src="../assets/js/dash-ui.min.js"></script>
   <script defer src="../assets/js/admin-overview.min.js"></script>

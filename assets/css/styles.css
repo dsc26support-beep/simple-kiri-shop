@@ -8338,6 +8338,39 @@ html.auth-signup .auth-divider {
 
 .auth-panel-video { display: none; }
 
+/* Password box with a Show / Hide button inside its right edge. */
+.password-field {
+  position: relative;
+}
+.password-field input {
+  width: 100%;
+  padding-right: 4.25rem;
+}
+.password-field .password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  color: var(--color-purple);
+}
+/* "Forgot password?" and "Email me a code instead" under the password. */
+.auth-alt-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  margin: calc(-1 * var(--space-1)) 0 var(--space-2);
+  font-size: 0.92rem;
+}
+.auth-step-title {
+  font-size: 1.1rem;
+  margin: 0 0 var(--space-2);
+}
+.btn-facebook {
+  margin-top: var(--space-2);
+}
+
 /* Shopper sign-in: "Send me a code" and the Terms line slide in once what is
    typed looks right (customer-login.js refreshReady). Hidden ones take no
    space and can't be tabbed to. */
@@ -8400,6 +8433,10 @@ html.auth-signup .auth-divider {
   .auth-page .auth-card a:not(.btn),
   .auth-page .auth-card .linklike {
     color: #fff;
+  }
+  /* Show / Hide sits inside the white password box, so it stays purple. */
+  .auth-page .auth-card .password-field .password-toggle {
+    color: var(--color-purple);
   }
   .auth-page .auth-tab {
     color: rgba(255, 255, 255, 0.72);
@@ -8511,4 +8548,49 @@ html.auth-signup .auth-divider {
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
+}
+
+/* My Account: confirm-email box and Sign-in & security (customer-security.js). */
+.verify-email-box {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-purple);
+  border-radius: var(--radius);
+}
+.signin-methods {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+}
+.signin-method {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border, #e5e5e5);
+}
+#security .auth-social {
+  margin-bottom: var(--space-3);
+}
+
+/* Admin: seller applications (admin-seller-apps.js). */
+.sa-item {
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.sa-item h3 {
+  margin: 0 0 var(--space-1);
+  font-size: 1.05rem;
+}
+.sa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.register-gate .btn,
+.register-sent .btn {
+  margin-top: var(--space-2);
 }

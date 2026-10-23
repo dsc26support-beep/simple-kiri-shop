@@ -57,6 +57,16 @@ r = order('c-tia');
 ok('a signed-in customer can order', r.ok && !!r.orderId, J(r));
 ok('...under their account email (so it is in My Account)', (box.__sheets.Orders.objects()[0] || {}).CustomerEmail === 'tia@x.test');
 
+// Phone: needed for delivery only (owner decision, Oct 2026).
+clear();
+r = box.actionCreateOrder({ storeSlug: 'bong', items: [{ variantId: 'v1', qty: 1 }], customerName: 'Tia', customerPhone: '', island: 'South Tarawa', village: 'Betio',
+  deliveryMethod: 'truck', paymentMethod: 'cash', customerSession: 'c-tia' });
+ok('a delivery order without a phone is refused, with the reason', !r.ok && /needed for delivery/.test(r.error), J(r));
+clear();
+r = box.actionCreateOrder({ storeSlug: 'bong', items: [{ variantId: 'v1', qty: 1 }], customerName: 'Tia', customerPhone: '', island: 'South Tarawa', village: 'Betio',
+  deliveryMethod: 'pickPay', paymentMethod: 'cash', customerSession: 'c-tia' });
+ok('a Pick up & pay order needs no phone', r.ok && !!r.orderId, J(r));
+
 /* ---------- booking ---------- */
 ok('a guest cannot send a booking request', refused(book('')));
 r = book('c-tia');

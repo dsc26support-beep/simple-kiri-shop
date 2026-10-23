@@ -97,30 +97,31 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     await ctx.close();
   }
 
-  // shopper: "Send me a code" and the Terms line wait for a correct entry
+  // shopper: "Sign in" / "Create account" and the Terms line wait for a correct entry
   {
     const { ctx, p } = await open(390, 'customer-login.html');
     const vis = () => p.evaluate(() => { const v = (el) => !!el && getComputedStyle(el).visibility === 'visible' && el.getBoundingClientRect().height > 20;
       return { code: v(document.querySelector('#login-form button[type=submit]')), signupCode: v(document.querySelector('#signup-form button[type=submit]')),
         terms: v(document.querySelector('.auth-terms-note')) }; });
     const a = await vis();
-    ok('Shopper Sign In: no "Send me a code" or Terms line before an email is typed', !a.code && !a.terms, J(a));
+    ok('Shopper Sign In: no "Sign in" or Terms line before an email is typed', !a.code && !a.terms, J(a));
     await p.fill('#login-email', 'aroita@exam'); await p.waitForTimeout(400);
     const b = await vis();
     ok('...still hidden for an unfinished email', !b.code && !b.terms, J(b));
     await p.fill('#login-email', 'aroita@example.com'); await p.waitForTimeout(400);
     const c = await vis();
-    ok('...both appear once the email looks right', c.code && c.terms, J(c));
-    await p.keyboard.press('Tab');
-    ok('...and the button can be reached with the keyboard', await p.evaluate(() => document.activeElement.type === 'submit' || !!document.activeElement.closest('.auth-reveal') || true));
+    ok('...the Terms line appears once the email looks right', !c.code && c.terms, J(c));
+    await p.fill('#login-password', 'secret123'); await p.waitForTimeout(400);
+    const c2 = await vis();
+    ok('...and "Sign in" once a password is typed', c2.code && c2.terms, J(c2));
     await p.click('#tab-signup'); await p.waitForTimeout(400);
     const d = await vis();
-    ok('Create Account: hidden until name, email and phone are right', !d.signupCode && !d.terms, J(d));
-    await p.fill('#signup-name', 'Aroita'); await p.fill('#signup-email', 'a@example.com'); await p.fill('#signup-phone', '12'); await p.waitForTimeout(400);
+    ok('Create Account: hidden until name, email and password are right', !d.signupCode && !d.terms, J(d));
+    await p.fill('#signup-name', 'Aroita'); await p.fill('#signup-email', 'a@example.com'); await p.fill('#signup-password', 'short'); await p.waitForTimeout(400);
     const e = await vis();
-    await p.fill('#signup-phone', '7301234'); await p.waitForTimeout(400);
+    await p.fill('#signup-password', 'long-enough'); await p.waitForTimeout(400);
     const f = await vis();
-    ok('...a wrong phone keeps them hidden; a right one shows them', !e.signupCode && f.signupCode && f.terms, J({ e, f }));
+    ok('...a short password keeps them hidden; a good one shows them', !e.signupCode && f.signupCode && f.terms, J({ e, f }));
     await ctx.close();
   }
 

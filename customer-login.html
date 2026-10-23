@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The confirm / reset links carry a one-time token in the address: never
+       send it on to another site as a Referer. -->
+  <meta name="referrer" content="no-referrer">
   <title>Sign In — Mwakete</title>
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
   <link rel="stylesheet" href="assets/css/styles.min.css">
@@ -24,6 +27,17 @@
        measured 0.0124 CLS at 390px - the un-hide WAS the jump. Kept to a class
        toggle; everything else stays in customer-login.js. -->
   <script>
+    // The emailed confirm / reset link: take its one-time token out of the
+    // address bar (and so out of history, bookmarks and screenshots) before
+    // anything else runs. customer-login.js uses it from window.__authLink.
+    try {
+      var lq = new URLSearchParams(location.search);
+      window.__authLink = { verify: lq.get('verify') || '', reset: lq.get('reset') || '' };
+      if (window.__authLink.verify || window.__authLink.reset) {
+        lq.delete('verify'); lq.delete('reset');
+        history.replaceState(null, '', location.pathname + (lq.toString() ? '?' + lq.toString() : ''));
+      }
+    } catch (e) { window.__authLink = { verify: '', reset: '' }; }
     try {
       if (localStorage.getItem('skiri_last_email')) {
         document.documentElement.classList.add('has-remembered-email');
@@ -110,6 +124,12 @@
               <div id="google-signin-btn" data-full-width></div>
               <p id="google-signin-error" class="form-error" role="alert"></p>
             </div>
+            <!-- Facebook: hidden unless FACEBOOK_APP_ID is set in config.js
+                 (facebook-signin.js); Meta's script loads only on a tap. -->
+            <div id="facebook-signin-wrap" class="auth-social" hidden>
+              <button type="button" id="facebook-signin-btn" class="btn btn-block btn-outline btn-facebook">Continue with Facebook</button>
+              <p id="facebook-signin-error" class="form-error" role="alert"></p>
+            </div>
 
             <div class="auth-guest-row">
               <a class="btn btn-block btn-outline" id="guest-continue" href="index.html">Guest</a>
@@ -117,6 +137,12 @@
 
             <p class="auth-divider"><span>or</span></p>
           </div>
+
+          <!-- After Google or Facebook found an existing account with the same
+               email (CustomerIdentities.gs rule 2): the shopper proves that
+               account first, then the two are linked. Filled by
+               customer-login.js; textContent only. -->
+          <p id="provider-link-note" class="auth-reason-note" role="status" hidden></p>
 
           <!-- Sign in -->
           <div id="panel-signin" class="auth-panel">
@@ -131,9 +157,20 @@
                   <button type="button" class="linklike" id="login-not-you">Not you?</button>
                 </p>
               </div>
+              <div class="field">
+                <label for="login-password">Password</label>
+                <div class="password-field">
+                  <input id="login-password" type="password" autocomplete="current-password" maxlength="200">
+                  <button type="button" class="linklike password-toggle" data-for="login-password" aria-pressed="false">Show</button>
+                </div>
+              </div>
+              <p class="auth-alt-links">
+                <button type="button" class="linklike" id="login-forgot">Forgot password?</button>
+                <button type="button" class="linklike" id="login-use-code">Email me a code instead</button>
+              </p>
               <p id="login-error" class="form-error" role="alert"></p>
-              <!-- Shown once the email looks right (owner request, Oct 2026). -->
-              <div class="auth-reveal"><div><button type="submit" class="btn btn-primary btn-block">Send me a code</button></div></div>
+              <!-- Shown once the email and a password are typed (owner request, Oct 2026). -->
+              <div class="auth-reveal"><div><button type="submit" class="btn btn-primary btn-block">Sign in</button></div></div>
             </form>
 
             <form id="login-code-form" class="hidden" novalidate>
@@ -144,6 +181,7 @@
               </div>
               <p id="login-code-error" class="form-error" role="alert"></p>
               <button type="submit" class="btn btn-primary btn-block">Verify &amp; sign in</button>
+              <button type="button" class="btn btn-block resend-btn" data-for="login" disabled>Send the code again</button>
               <button type="button" id="login-back" class="btn btn-block">Use a different email</button>
             </form>
           </div>
@@ -153,20 +191,23 @@
             <form id="signup-form" novalidate>
               <div class="field">
                 <label for="signup-name">Your Name</label>
-                <input id="signup-name" type="text" autocomplete="name" required>
+                <input id="signup-name" type="text" autocomplete="name" maxlength="100" required>
               </div>
               <div class="field">
                 <label for="signup-email">Email</label>
                 <input id="signup-email" type="email" autocomplete="email" required>
               </div>
               <div class="field">
-                <label for="signup-phone">Phone Number</label>
-                <input id="signup-phone" type="tel" autocomplete="tel" required>
-                <p class="helper-text">Local numbers start with 730 or 630. Overseas? Include your country code (e.g. +64…).</p>
+                <label for="signup-password">Password</label>
+                <div class="password-field">
+                  <input id="signup-password" type="password" autocomplete="new-password" minlength="8" maxlength="200" aria-describedby="signup-password-help" required>
+                  <button type="button" class="linklike password-toggle" data-for="signup-password" aria-pressed="false">Show</button>
+                </div>
+                <p class="helper-text" id="signup-password-help">At least 8 characters. A short sentence is easy to remember and hard to guess.</p>
               </div>
               <p id="signup-error" class="form-error" role="alert"></p>
-              <!-- Shown once name, email and phone look right. -->
-              <div class="auth-reveal"><div><button type="submit" class="btn btn-primary btn-block">Send me a code</button></div></div>
+              <!-- Shown once name, email and password look right. -->
+              <div class="auth-reveal"><div><button type="submit" class="btn btn-primary btn-block">Create account</button></div></div>
             </form>
 
             <form id="signup-code-form" class="hidden" novalidate>
@@ -176,8 +217,44 @@
                 <input id="signup-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
               </div>
               <p id="signup-code-error" class="form-error" role="alert"></p>
-              <button type="submit" class="btn btn-primary btn-block">Verify &amp; create account</button>
+              <button type="submit" class="btn btn-primary btn-block">Confirm &amp; create account</button>
+              <button type="button" class="btn btn-block resend-btn" data-for="signup" disabled>Send the code again</button>
               <button type="button" id="signup-back" class="btn btn-block">Change my details</button>
+            </form>
+          </div>
+
+          <!-- Forgot password / set a password (no tab: reached from Sign In,
+               or from the link in the reset email). -->
+          <div id="panel-reset" class="auth-panel hidden">
+            <h2 class="auth-step-title">Set a new password</h2>
+            <form id="reset-request-form" novalidate>
+              <div class="field">
+                <label for="reset-email">Email</label>
+                <input id="reset-email" type="email" autocomplete="email" required>
+              </div>
+              <p id="reset-request-error" class="form-error" role="alert"></p>
+              <button type="submit" class="btn btn-primary btn-block">Email me a reset code</button>
+              <button type="button" class="btn btn-block reset-cancel">Back to sign in</button>
+            </form>
+
+            <form id="reset-form" class="hidden" novalidate>
+              <p class="helper-text" id="reset-hint"></p>
+              <div class="field" id="reset-code-field">
+                <label for="reset-code">Enter the 6-digit code</label>
+                <input id="reset-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+              </div>
+              <div class="field">
+                <label for="reset-password">New password</label>
+                <div class="password-field">
+                  <input id="reset-password" type="password" autocomplete="new-password" minlength="8" maxlength="200" required>
+                  <button type="button" class="linklike password-toggle" data-for="reset-password" aria-pressed="false">Show</button>
+                </div>
+                <p class="helper-text">At least 8 characters. You will be signed out on your other devices.</p>
+              </div>
+              <p id="reset-error" class="form-error" role="alert"></p>
+              <button type="submit" class="btn btn-primary btn-block">Save password &amp; sign in</button>
+              <button type="button" class="btn btn-block resend-btn" data-for="reset" disabled>Send the code again</button>
+              <button type="button" class="btn btn-block reset-cancel">Back to sign in</button>
             </form>
           </div>
 
@@ -221,6 +298,7 @@
   <script defer src="assets/js/customer-auth.min.js"></script>
   <script defer src="assets/js/customer-login.min.js"></script>
   <script defer src="assets/js/google-signin.min.js"></script>
+  <script defer src="assets/js/facebook-signin.min.js"></script>
   <script defer src="assets/js/auth-panel-video.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>
 </body>

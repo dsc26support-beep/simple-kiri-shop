@@ -84,6 +84,7 @@ function makeContext() {
   vm.createContext(box);
   vm.runInContext([
     grab(authSrc, 'isStoreBrowsable'),
+    grab(authSrc, 'ownerApprovalStatus'),
     grab(adminSrc, 'getAdminEmails'),
     grab(adminSrc, 'isOwnerAdmin'),
     grab(authSrc, 'isAdminNamedStore'),

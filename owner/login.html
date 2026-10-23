@@ -91,6 +91,18 @@
           </form>
 
           <form id="register-form" class="hidden" role="tabpanel">
+            <!-- Become a Seller (owner decision, Oct 2026): a new store is an
+                 APPLICATION from a Mwakete shopper account with a confirmed
+                 email; an admin approves it before it opens. Shown instead of
+                 the fields to anyone not signed in as a shopper on this device
+                 (owner-login.js). The server checks this itself. -->
+            <div id="register-account-gate" class="auth-note register-gate" hidden>
+              <p><strong>First, your Mwakete account.</strong> To open a store, sign in to your shopper account (or create one - it takes a minute) and confirm your email. Then come back here to apply.</p>
+              <a class="btn btn-primary btn-block" id="register-gate-signin" href="../customer-login.html?next=owner%2Flogin.html%3Ftab%3Dregister">Sign in or create an account</a>
+            </div>
+            <div id="register-sent" class="auth-note register-sent" role="status" hidden></div>
+            <div id="register-fields">
+            <p class="helper-text register-intro">Apply to open a store. We check every new store before it goes live - usually within 2 working days - and email you the answer.</p>
             <div class="field">
               <label for="register-store-name">Store Name</label>
               <input id="register-store-name" name="storeName" type="text" required>
@@ -128,9 +140,9 @@
               <p class="helper-text" id="register-password-hint-help">Shown if you get your password wrong. Never the password itself.</p>
             </div>
             <div class="field">
-              <label for="register-email">Contact Email</label>
-              <input id="register-email" name="email" type="email" autocomplete="email" required>
-              <p class="helper-text">Orders are emailed here.</p>
+              <label for="register-email">Store Email</label>
+              <input id="register-email" name="email" type="email" readonly aria-describedby="register-email-help">
+              <p class="helper-text" id="register-email-help">Your Mwakete account email - orders are emailed here. You can change it in Settings once the store is open.</p>
             </div>
             <div class="field">
               <label for="register-phone">Contact Phone</label>
@@ -142,9 +154,15 @@
               <input id="register-messenger" name="messenger" type="text" placeholder="e.g. https://m.me/username" aria-describedby="register-messenger-help" required>
               <p class="helper-text" id="register-messenger-help"><button type="button" class="link-button" data-fb-help aria-expanded="false" aria-label="Help finding your Facebook username">Help?</button></p>
             </div>
+            <div class="field">
+              <label for="register-about">What will you sell?</label>
+              <textarea id="register-about" name="about" rows="3" maxlength="500" required aria-describedby="register-about-help"></textarea>
+              <p class="helper-text" id="register-about-help">A sentence or two for the Mwakete team, e.g. "Fresh fish and frozen chicken in Betio."</p>
+            </div>
             <p id="register-error" class="form-error" role="alert"></p>
-            <p class="helper-text auth-terms-note">By creating a store you agree to the <a href="../terms.html">Terms of Service</a> and the <a href="../privacy.html">Privacy Policy</a>.</p>
-            <button type="submit" id="register-submit-btn" class="btn btn-primary btn-block">Create Store Account</button>
+            <p class="helper-text auth-terms-note">By applying you agree to the <a href="../terms.html">Terms of Service</a> and the <a href="../privacy.html">Privacy Policy</a>.</p>
+            <button type="submit" id="register-submit-btn" class="btn btn-primary btn-block">Apply to open a store</button>
+            </div>
           </form>
         </div>
       </div>
