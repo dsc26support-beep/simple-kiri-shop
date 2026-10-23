@@ -40,7 +40,7 @@
           <ul>
             <li><a href="#ov-heading">Overview</a></li>
             <li><a href="#admin-search-heading">Search</a></li>
-            <li><a href="#sa-heading">Seller applications</a></li>
+            <li><a href="#sa-heading">New stores</a></li>
             <li><a href="#lr-heading">Listing review</a></li>
             <li><a href="#txa-heading">Order problems</a></li>
             <li><a href="#dlv-heading">Deliveries &amp; drivers</a></li>
@@ -117,12 +117,12 @@
              SellerApplications.gs). Every decision is checked again on the
              server (admin email) and written to AuthEvents. -->
         <section class="dash-section" aria-labelledby="sa-heading" id="seller-applications">
-          <h2 id="sa-heading">Seller applications</h2>
-          <div class="dash-filters" id="sa-filters" role="group" aria-label="Show applications">
-            <button type="button" class="btn btn-small is-active" data-status="pending" aria-pressed="true">Waiting</button>
-            <button type="button" class="btn btn-small" data-status="approved" aria-pressed="false">Approved</button>
-            <button type="button" class="btn btn-small" data-status="rejected" aria-pressed="false">Not approved</button>
+          <h2 id="sa-heading">New stores</h2>
+          <p class="helper-text">New stores open straight away (pre-approved). Check them here, and suspend any that should not be selling.</p>
+          <div class="dash-filters" id="sa-filters" role="group" aria-label="Show stores">
+            <button type="button" class="btn btn-small is-active" data-status="approved" aria-pressed="true">New stores</button>
             <button type="button" class="btn btn-small" data-status="suspended" aria-pressed="false">Suspended</button>
+            <button type="button" class="btn btn-small" data-status="rejected" aria-pressed="false">Closed by admin</button>
           </div>
           <p id="sa-status" class="helper-text" role="status" aria-live="polite"></p>
           <div id="sa-list" class="sa-list"></div>

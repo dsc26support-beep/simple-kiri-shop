@@ -174,54 +174,55 @@ ok('Facebook with an existing account email asks to link instead of merging', r.
 r = box.actionUnlinkProvider({ token: fbToken, provider: 'facebook' });
 ok('unlinking the only way in is refused... unless email codes still work', r.ok, J(r));
 
-/* ---------- seller applications ---------- */
+/* ---------- Become a Seller: pre-approved (owner decision, 23 Oct 2026) ---------- */
 clearCache();
 const tia4 = box.actionCustomerPasswordLogin({ email: 'tia@x.test', password: 'breadfruit42' }).token;
 const apply = (o) => box.actionRegisterOwner(Object.assign({ storeName: 'Tia Store', username: 'tiastore', password: 'storepass1', phone: '73005555',
   messenger: 'tia.store', passwordHint: 'the usual', about: 'Fish', customerToken: tia4 }, o));
 r = apply({ customerToken: '' });
 ok('opening a store needs a signed-in shopper account', !r.ok && r.customerAccountRequired === true, J(r));
+mail.length = 0;
 r = apply({ email: 'boss@x.test' });
-ok('an application is created pending - no session', r.ok && !r.token && r.application.status === 'pending', J(r));
+ok('a new store opens at once and the seller is signed in', r.ok && !!r.token && r.application.status === 'approved', J(r));
+const sellerSession = r.token;
 ok('...the store email is the shopper account email, never a typed one', box.__sheets.Owners.objects()[0].Email === 'tia@x.test');
-ok('...the applicant and the admins are emailed', !!lastMailTo('tia@x.test') && /received your application/.test(lastMailTo('tia@x.test')[1]) && !!lastMailTo('boss@x.test'));
-ok('...a second application is refused', /already being reviewed/.test(apply({}).error || ''));
+ok('...so an ADMIN_EMAILS address cannot be claimed by typing it', !box.isOwnerAdmin(box.__sheets.Owners.objects()[0]));
+ok('...the seller gets "your store is open" and the admins "new store opened"',
+  /store is open/.test((lastMailTo('tia@x.test') || [])[1]) && /New store opened/.test((lastMailTo('boss@x.test') || [])[1]));
+ok('...a second store for the same account is refused', /already have a store/.test(apply({}).error || ''));
+ok('...it is visible to shoppers', box.isStoreBrowsable(box.__sheets.Owners.objects()[0]));
+ok('the shopper sees their store on My Account', box.actionGetSellerApplication({ token: tia4 }).application.status === 'approved');
 clearCache();
-r = box.actionLoginOwner({ username: 'tiastore', password: 'storepass1' });
-ok('a pending store cannot log in, and is told why', !r.ok && /review/i.test(r.error), J(r));
-ok('a pending store is hidden from shoppers', !box.isStoreBrowsable(box.__sheets.Owners.objects()[0]));
-ok('the shopper sees the application status', box.actionGetSellerApplication({ token: tia4 }).application.status === 'pending');
+ok('the seller logs in with the store password', box.actionLoginOwner({ username: 'tiastore', password: 'storepass1' }).ok);
+ok('a store that applied while approval was needed ("pending") now counts as open', box.ownerApprovalStatus({ ApprovalStatus: 'pending' }) === 'approved');
 
 const tiaOwner = Object.assign({}, box.__sheets.Owners.objects()[0], { __row: 2 });
-r = box.actionAdminReviewSellerApplication(tiaOwner, { ownerId: tiaOwner.OwnerId, decision: 'approve' });
-ok('a non-admin cannot approve (even their own)', !r.ok && /Not authorized/.test(r.error), J(r));
+r = box.actionAdminReviewSellerApplication(tiaOwner, { ownerId: tiaOwner.OwnerId, decision: 'suspend', note: 'x' });
+ok('a non-admin cannot suspend', !r.ok && /Not authorized/.test(r.error), J(r));
 
-// The admin's own store: a shopper account with an ADMIN_EMAILS address, auto-approved.
 const bossReg = box.actionRegisterCustomer({ name: 'Boss', email: 'boss@x.test', password: 'bosspass1' });
 const bossTok = box.actionVerifyCustomerEmail({ token: bossReg.pendingToken, code: codeIn(lastMailTo('boss@x.test')) }).token;
 r = box.actionRegisterOwner({ storeName: 'Admin', username: 'boss', password: 'bosspass1', phone: '73009999', messenger: 'boss', passwordHint: 'boss hint', about: '', customerToken: bossTok });
-ok('the first admin is approved at once (no one to approve them)', r.ok && !!r.token && r.application.status === 'approved', J(r));
+ok('the admin opens their store the same way', r.ok && !!r.token, J(r));
 const admin = Object.assign({}, box.__sheets.Owners.objects()[1], { __row: 3 });
 r = box.actionAdminListSellerApplications(admin, {});
-ok('admin lists pending applications (no password fields)', r.ok && r.applications.length === 1 && !JSON.stringify(r).includes('PasswordHash') && !JSON.stringify(r).includes('pbkdf2'), J(r));
-r = box.actionAdminReviewSellerApplication(admin, { ownerId: tiaOwner.OwnerId, decision: 'reject' });
-ok('reject needs a reason', !r.ok && /reason/.test(r.error));
-r = box.actionAdminReviewSellerApplication(admin, { ownerId: tiaOwner.OwnerId, decision: 'approve' });
-ok('admin approves', r.ok && r.application.status === 'approved', J(r));
-clearCache();
-r = box.actionLoginOwner({ username: 'tiastore', password: 'storepass1' });
-ok('...the approved seller logs in with their store password', r.ok && !!r.token, J(r));
-const sellerSession = r.token;
+ok('admin lists new stores (no password fields)', r.ok && r.applications.length === 2 && !JSON.stringify(r).includes('PasswordHash') && !JSON.stringify(r).includes('pbkdf2'), J(r));
+r = box.actionAdminReviewSellerApplication(admin, { ownerId: tiaOwner.OwnerId, decision: 'suspend' });
+ok('suspending needs a reason', !r.ok && /reason/.test(r.error));
 r = box.actionAdminReviewSellerApplication(admin, { ownerId: tiaOwner.OwnerId, decision: 'suspend', note: 'Reports of fake goods' });
 ok('admin suspends with a reason; the seller is emailed it', r.ok && /fake goods/.test(lastMailTo('tia@x.test')[2]), J(r));
 ok('...the seller is signed out at once', (() => { try { box.requireAuth(sellerSession); return false; } catch (e) { return true; } })());
+ok('...and the store is hidden', !box.isStoreBrowsable(box.__sheets.Owners.objects()[0]));
+clearCache();
+r = box.actionLoginOwner({ username: 'tiastore', password: 'storepass1' });
+ok('...and cannot log in, told why', !r.ok && /suspended/.test(r.error), J(r));
 r = box.actionAdminReviewSellerApplication(admin, { ownerId: admin.OwnerId, decision: 'suspend', note: 'oops' });
 ok('an admin store can never be suspended here', !r.ok, J(r));
 r = box.actionAdminReviewSellerApplication(admin, { ownerId: tiaOwner.OwnerId, decision: 'reinstate' });
 ok('admin reinstates', r.ok && r.application.status === 'approved', J(r));
 ok('every decision is in AuthEvents, with no secrets', (() => {
   const ev = box.__sheets.AuthEvents.objects();
-  return ['seller-applied', 'seller-approved', 'seller-suspended', 'seller-reinstated'].every((e) => ev.some((x) => x.Event === e)) &&
+  return ['seller-opened', 'seller-suspended', 'seller-reinstated'].every((e) => ev.some((x) => x.Event === e)) &&
     !JSON.stringify(ev).match(/breadfruit|coconut|storepass|pbkdf2|h1:/);
 })());
 

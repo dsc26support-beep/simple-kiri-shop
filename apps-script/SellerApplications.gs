@@ -2,10 +2,11 @@
  * "Become a Seller" applications (owner decision, Oct 2026).
  *
  * An application IS the store row in Owners, with ApprovalStatus:
- *   pending   - applied (actionRegisterOwner, Auth.gs); cannot log in or sell,
- *               hidden from shoppers
- *   approved  - a normal store (blank also reads as approved: every store
- *               from before applications existed - ownerApprovalStatus)
+ *   approved  - a normal store. New stores are PRE-APPROVED (owner decision,
+ *               23 Oct 2026): actionRegisterOwner opens them at once and the
+ *               admins are emailed. Blank (stores from before applications)
+ *               and 'pending' (applied while approval was needed) also read as
+ *               approved - ownerApprovalStatus
  *   rejected  - not approved; the applicant may apply again (same row)
  *   suspended - an approved store an admin has stopped; locked out and hidden
  * Owners.CustomerId links the store to the shopper account that applied.
@@ -46,17 +47,18 @@ function sellerApplicationAdminView(owner) {
 }
 
 /**
- * Best-effort emails about an application. kind: received | approved |
- * rejected | suspended | reinstated. A failed send never undoes the decision.
+ * Best-effort emails about a store. kind: opened | approved | rejected |
+ * suspended | reinstated. A failed send never undoes the decision.
  */
 function notifySellerApplication(owner, kind) {
   var base = siteBaseUrl();
   var portal = base ? base + '/owner/login.html' : '';
   var note = owner.ReviewNote ? '\n\nNote from Mwakete: ' + owner.ReviewNote : '';
   var lines = {
-    received: ['We received your application to sell on Mwakete',
-      'Thank you for applying to open "' + owner.StoreName + '" on Mwakete.\n\n' +
-      'We will review it and email you when it is decided. Your store is not visible to shoppers until it is approved.'],
+    opened: ['Your Mwakete store is open',
+      'Welcome to Mwakete - "' + owner.StoreName + '" is open.\n\n' +
+      'Add your products and delivery options, and shoppers can find you straight away. ' +
+      'Log in with the store username and password you chose' + (portal ? ': ' + portal : '.')],
     approved: ['Your Mwakete store is approved',
       'Good news - "' + owner.StoreName + '" is approved.\n\n' +
       'Log in with the store username and password you chose' + (portal ? ': ' + portal : '.') + note],
@@ -72,14 +74,14 @@ function notifySellerApplication(owner, kind) {
   if (!lines || !owner.Email) return;
   try { sendAppEmail(owner.Email, lines[0], lines[1]); } catch (e) { Logger.log('seller application email failed'); }
 
-  if (kind !== 'received') return;
+  if (kind !== 'opened') return;
   var adminUrl = base ? base + '/owner/admin.html#seller-applications' : '';
   getAdminEmails().forEach(function (to) {
     try {
-      sendAppEmail(to, 'New seller application - ' + owner.StoreName,
+      sendAppEmail(to, 'New store opened - ' + owner.StoreName,
         'Store: ' + owner.StoreName + '\nType: ' + storeTypeOf(owner) + '\nEmail: ' + owner.Email +
         '\nPhone: ' + owner.Phone + '\n\nWhat they will sell:\n' + (owner.ApplicationNote || '(not given)') +
-        (adminUrl ? '\n\nReview it: ' + adminUrl : ''));
+        (adminUrl ? '\n\nIt is live now. To suspend it: ' + adminUrl : ''));
     } catch (e) { Logger.log('seller application admin notify failed'); }
   });
 }
@@ -97,10 +99,10 @@ function actionGetSellerApplication(body) {
   return ok({ application: owner ? sellerApplicationView(owner) : null, emailVerified: customerEmailVerified(customer) });
 }
 
-/** Admin: applications by status (default pending). body: { status } */
+/** Admin: stores that came through Become a Seller, by status (default approved). body: { status } */
 function actionAdminListSellerApplications(owner, body) {
   if (!isOwnerAdmin(owner)) return fail('Not authorized');
-  var want = String((body && body.status) || 'pending');
+  var want = String((body && body.status) || 'approved');
   var rows = sheetToObjects(getSheet('Owners')).filter(function (o) {
     if (want === 'all') return !!o.AppliedAt || ownerApprovalStatus(o) !== 'approved';
     return ownerApprovalStatus(o) === want && (want !== 'approved' || !!o.AppliedAt);
@@ -110,8 +112,8 @@ function actionAdminListSellerApplications(owner, body) {
 }
 
 var SELLER_DECISIONS = {
-  approve:   { from: ['pending', 'rejected'], to: 'approved', mail: 'approved', event: 'seller-approved' },
-  reject:    { from: ['pending'], to: 'rejected', mail: 'rejected', event: 'seller-rejected' },
+  approve:   { from: ['rejected'], to: 'approved', mail: 'approved', event: 'seller-approved' },
+  reject:    { from: ['approved'], to: 'rejected', mail: 'rejected', event: 'seller-rejected' },
   suspend:   { from: ['approved'], to: 'suspended', mail: 'suspended', event: 'seller-suspended' },
   reinstate: { from: ['suspended'], to: 'approved', mail: 'reinstated', event: 'seller-reinstated' }
 };

@@ -45,7 +45,7 @@ function mock(ctx, calls, over) {
     ok('sign-in methods listed', methods.some((t) => /Password: Off/.test(t)) && methods.some((t) => /Google: On/.test(t)), methods.join(' | '));
     ok('confirmed account: no confirm-email box', await page.$eval('#verify-email-box', (b) => b.hidden));
     await page.waitForFunction(() => { const t = document.getElementById('seller-app-status').textContent; return t && !/Checking/.test(t); });
-    ok('rejected application shows the reason and Apply again', /Add a phone we can reach/.test(await page.textContent('#seller-app-status')) && /Apply again/.test(await page.textContent('#seller-app-action')));
+    ok('a store closed by Mwakete shows the reason and Open it again', /Add a phone we can reach/.test(await page.textContent('#seller-app-status')) && /Open it again/.test(await page.textContent('#seller-app-action')));
     await page.click('#signin-methods button[data-action="unlink-google"]');
     await page.waitForFunction(() => /unlinked/.test(document.getElementById('security-status').textContent));
     ok('unlink Google calls the server and updates the list', calls.some((c) => c.action === 'unlinkProvider' && c.provider === 'google' && c.token === 'sess'));
@@ -91,7 +91,7 @@ function mock(ctx, calls, over) {
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const calls = [];
-    await mock(ctx, calls, { registerOwner: { ok: true, application: { storeName: 'Tia Fish', status: 'pending' } } });
+    await mock(ctx, calls, { registerOwner: { ok: true, token: 'own-tok', owner: { ownerId: 'o1', storeName: 'Tia Fish', storeSlug: 'tia-fish' }, application: { storeName: 'Tia Fish', status: 'approved' } } });
     let page = await ctx.newPage();
     await page.goto(BASE + '/owner/login.html?tab=register', { waitUntil: 'load' });
     await page.waitForTimeout(300);
@@ -114,11 +114,11 @@ function mock(ctx, calls, over) {
     ok('"What will you sell?" is required', !calls.some((c) => c.action === 'registerOwner'));
     await page.fill('#register-about', 'Fresh fish in Betio');
     await page.click('#register-submit-btn');
-    await page.waitForSelector('#register-sent:not([hidden])');
+    await page.waitForURL('**/owner/settings.html', { timeout: 6000 }).catch(() => {});
     const sent = calls.find((c) => c.action === 'registerOwner') || {};
     ok('the application carries the shopper session and no typed email', sent.customerToken === 'sess' && !('email' in sent) && sent.about === 'Fresh fish in Betio', JSON.stringify(sent));
-    ok('"Application sent" and no seller session', /Application sent/.test(await page.textContent('#register-sent')) &&
-      !(await page.evaluate(() => localStorage.getItem('skiri_owner_token'))));
+    ok('pre-approved: the store opens and the seller goes on to Settings, signed in', /settings\.html/.test(page.url()) &&
+      (await page.evaluate(() => localStorage.getItem('skiri_owner_token'))) === 'own-tok', page.url());
     await ctx.close();
   }
 
@@ -128,20 +128,23 @@ function mock(ctx, calls, over) {
     const calls = [];
     await mock(ctx, calls, {
       getOwnerProfile: { ok: true, owner: { ownerId: 'admin', storeName: 'Admin', storeSlug: 'adm', isAdmin: true } },
-      adminListSellerApplications: (b) => ({ ok: true, applications: b.status === 'pending'
-        ? [{ ownerId: 'o9', storeName: 'Tia <b>Fish</b>', storeType: 'retailer', status: 'pending', appliedAt: '2026-10-23T00:00:00Z', email: 'tia@x.com', phone: '73001234', messenger: 'https://m.me/tia.fish', about: 'Fish' }] : [] }),
-      adminReviewSellerApplication: (b) => ({ ok: true, application: { storeName: 'Tia Fish', status: b.decision === 'approve' ? 'approved' : 'rejected' } })
+      adminListSellerApplications: (b) => ({ ok: true, applications: b.status === 'approved'
+        ? [{ ownerId: 'o9', storeName: 'Tia <b>Fish</b>', storeType: 'retailer', status: 'approved', appliedAt: '2026-10-23T00:00:00Z', email: 'tia@x.com', phone: '73001234', messenger: 'https://m.me/tia.fish', about: 'Fish' }] : [] }),
+      adminReviewSellerApplication: (b) => ({ ok: true, application: { storeName: 'Tia Fish', status: 'suspended' } })
     });
     const page = await ctx.newPage();
+    page.on('dialog', (d) => d.accept());
     await page.addInitScript(() => { try { localStorage.setItem('skiri_owner_token', 'tok'); } catch (e) {} });
     await page.goto(BASE + '/owner/admin.html', { waitUntil: 'load' });
     await page.waitForSelector('#sa-list .sa-item');
-    ok('pending application listed, store name escaped', (await page.textContent('#sa-list h3')).includes('Tia <b>Fish</b>'));
-    await page.click('#sa-list button[data-decision="reject"]');
-    ok('reject without a reason is stopped in the page', /reason/.test(await page.textContent('#sa-list .form-error')) && !calls.some((c) => c.action === 'adminReviewSellerApplication'));
-    await page.click('#sa-list button[data-decision="approve"]');
-    await page.waitForFunction(() => /approved/.test(document.getElementById('sa-status').textContent));
-    ok('approve sends the decision with the admin token', calls.some((c) => c.action === 'adminReviewSellerApplication' && c.decision === 'approve' && c.ownerId === 'o9' && c.token === 'tok'));
+    ok('new stores listed (already open), store name escaped', (await page.textContent('#sa-list h3')).includes('Tia <b>Fish</b>'));
+    ok('...no Approve button - they are pre-approved', !(await page.$('#sa-list button[data-decision="approve"]')));
+    await page.click('#sa-list button[data-decision="suspend"]');
+    ok('suspend without a reason is stopped in the page', /reason/.test(await page.textContent('#sa-list .form-error')) && !calls.some((c) => c.action === 'adminReviewSellerApplication'));
+    await page.fill('#sa-list .sa-note', 'Fake goods');
+    await page.click('#sa-list button[data-decision="suspend"]');
+    await page.waitForFunction(() => /suspended/.test(document.getElementById('sa-status').textContent));
+    ok('suspend sends the decision and reason with the admin token', calls.some((c) => c.action === 'adminReviewSellerApplication' && c.decision === 'suspend' && c.note === 'Fake goods' && c.ownerId === 'o9' && c.token === 'tok'));
     ok('the section is in the admin menu', !!(await page.$('.admin-jump a[href="#sa-heading"]')));
     await ctx.close();
   }

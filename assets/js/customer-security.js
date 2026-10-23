@@ -197,9 +197,8 @@ async function onLogoutAll(e) {
 /* ---------- Sell on Mwakete ---------- */
 
 const SELLER_APP_TEXT = {
-  pending: (a) => 'Your application for "' + a.storeName + '" is being reviewed. We will email you when it is decided.',
   approved: (a) => '"' + a.storeName + '" is open. Log in to the seller portal with its username and password.',
-  rejected: (a) => 'Your application for "' + a.storeName + '" was not approved' + (a.reviewNote ? ': ' + a.reviewNote : '.') + ' You can fix it and apply again.',
+  rejected: (a) => '"' + a.storeName + '" was closed by Mwakete' + (a.reviewNote ? ': ' + a.reviewNote : '.') + ' You can fix it and open it again.',
   suspended: (a) => '"' + a.storeName + '" is suspended' + (a.reviewNote ? ': ' + a.reviewNote : '.') + ' Contact Mwakete via Help & support.'
 };
 
@@ -213,13 +212,13 @@ async function loadSellerApplication() {
   const a = res.application;
   if (!a) {
     status.textContent = res.emailVerified
-      ? 'Have something to sell? Apply to open a store - we review every new store before it goes live.'
-      : 'Confirm your email above, then you can apply to open a store.';
+      ? 'Have something to sell? Open a store on Mwakete - it goes live straight away.'
+      : 'Confirm your email above, then you can open a store.';
     action.hidden = !res.emailVerified;
     return;
   }
-  status.textContent = (SELLER_APP_TEXT[a.status] || SELLER_APP_TEXT.pending)(a);
+  status.textContent = (SELLER_APP_TEXT[a.status] || SELLER_APP_TEXT.approved)(a);
   if (a.status === 'approved') { action.textContent = 'Go to the seller portal'; action.href = 'owner/login.html'; action.hidden = false; }
-  else if (a.status === 'rejected') { action.textContent = 'Apply again'; action.hidden = false; }
+  else if (a.status === 'rejected') { action.textContent = 'Open it again'; action.hidden = false; }
   else action.hidden = true;
 }

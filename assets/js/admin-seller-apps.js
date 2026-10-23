@@ -1,13 +1,14 @@
-// Admin: Become a Seller applications (backend SellerApplications.gs).
-// Approve / not approve / suspend / reinstate - each checked again on the
+// Admin: stores opened through Become a Seller (backend SellerApplications.gs).
+// Suspend / reinstate / reopen - each checked again on the
 // server (admin email) and logged there. Nothing here is trusted by it.
 const SellerAppsAdmin = (() => {
   const $ = (id) => document.getElementById(id);
-  let status = 'pending';
+  let status = 'approved';
   let apps = [];
+  // New stores are pre-approved (owner decision, 23 Oct 2026): the admin
+  // checks them afterwards and can suspend one.
   const ACTIONS = {
-    pending: [['approve', 'Approve'], ['reject', 'Not approve']],
-    rejected: [['approve', 'Approve after all']],
+    rejected: [['approve', 'Reopen']],
     approved: [['suspend', 'Suspend']],
     suspended: [['reinstate', 'Reinstate']]
   };
