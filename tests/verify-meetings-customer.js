@@ -15,6 +15,8 @@
  * point of "Video Call" as Mwakete's own term for it.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// The email form waits behind "Continue with email" (Oct 2026).
+const openEmail = async (pg) => { if (await pg.isVisible('#email-continue').catch(() => false)) await pg.click('#email-continue'); };
 const BASE = 'http://127.0.0.1:8099';
 let pass = 0, fail = 0;
 const ok = (name, cond, detail) => {
@@ -161,6 +163,7 @@ async function openChat(browser, opts) {
     await page.waitForSelector('#meeting-panel-host .meeting-request-trigger');
     await page.click('#meeting-panel-host .meeting-request-trigger');
     await page.waitForURL(/customer-login\.html/);
+    await openEmail(page);
     await page.fill('#login-email', 'a@example.com');
     // Password first since Oct 2026; the code is "Email me a code instead".
     await page.click('#login-use-code');

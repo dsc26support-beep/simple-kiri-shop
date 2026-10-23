@@ -6,6 +6,8 @@
  * they were. Also POS and Integrations, which used to start blank.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// The email form waits behind "Continue with email" (Oct 2026).
+const openEmail = async (pg) => { if (await pg.isVisible('#email-continue').catch(() => false)) await pg.click('#email-continue'); };
 const fs = require('fs');
 const path = require('path');
 const BASE = process.env.AUDIT_BASE || 'http://127.0.0.1:8099';
@@ -95,6 +97,7 @@ const J = (x) => JSON.stringify(x).slice(0, 300);
   {
     const { ctx, page, release } = await stalled();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await openEmail(page);
     await page.fill('#login-email', 'a@example.com');
     await page.fill('#login-password', 'secret123');
     const btn = '#login-form button[type="submit"]';

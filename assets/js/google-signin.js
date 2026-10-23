@@ -65,6 +65,18 @@ function initGoogleSignIn() {
       // ask for GSI_TUCK more than the box: the box centres and clips it, and
       // Google's edge lands under the purple line. Google accepts 200-400px.
       var outer = host.offsetWidth || 240;
+      // Customer sign-in (owner request, Oct 2026): Google's button is drawn
+      // invisibly over our own "Continue with Google", stretched to cover it,
+      // so every button in the stack looks the same and the tap is Google's.
+      if (host.hasAttribute('data-overlay')) {
+        google.accounts.id.renderButton(host, {
+          theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular',
+          width: Math.max(200, Math.min(400, outer))
+        });
+        fitGoogleOverlay(host);
+        window.addEventListener('resize', function () { fitGoogleOverlay(host); });
+        return;
+      }
       google.accounts.id.renderButton(host, {
         theme: 'outline',
         size: 'large',
@@ -76,6 +88,20 @@ function initGoogleSignIn() {
     } catch (e) {
       wrap.hidden = true;   // a half-rendered Google button is worse than none
     }
+  });
+}
+
+// Scales Google's (invisible) button to cover the whole of ours, so a tap
+// anywhere on "Continue with Google" lands on Google's own button.
+function fitGoogleOverlay(host) {
+  requestAnimationFrame(function () {
+    var inner = host.firstElementChild;
+    if (!inner) return;
+    inner.style.transform = 'none';
+    var w = inner.offsetWidth || 1;
+    var h = inner.offsetHeight || 1;
+    inner.style.transformOrigin = 'center center';
+    inner.style.transform = 'scale(' + Math.max(1, host.offsetWidth / w) + ',' + Math.max(1, host.offsetHeight / h) + ')';
   });
 }
 

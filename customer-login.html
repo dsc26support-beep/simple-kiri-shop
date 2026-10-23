@@ -34,6 +34,7 @@
       var lq = new URLSearchParams(location.search);
       window.__authLink = { verify: lq.get('verify') || '', reset: lq.get('reset') || '' };
       if (window.__authLink.verify || window.__authLink.reset) {
+        document.documentElement.classList.add('email-open');
         lq.delete('verify'); lq.delete('reset');
         history.replaceState(null, '', location.pathname + (lq.toString() ? '?' + lq.toString() : ''));
       }
@@ -41,6 +42,9 @@
     try {
       if (localStorage.getItem('skiri_last_email')) {
         document.documentElement.classList.add('has-remembered-email');
+        // Signed in by email on this device before: open the email form
+        // straight away (it is otherwise behind "Continue with email").
+        document.documentElement.classList.add('email-open');
       }
     } catch (e) { /* private mode - the line just does not show */ }
     // Sent here from chat's "Request Meeting" while signed out (see
@@ -112,30 +116,33 @@
             })();
           </script>
 
-          <!-- Under the tabs: the two ways in that need no typing, then the
-               divider, then the email form. The Google half is hidden until google-signin.js
-               confirms both a configured client id and that Google's script
-               actually loaded; on a blocked or slow connection it never appears.
-               The guest row and the divider sit OUTSIDE that wrapper on purpose -
-               guest is the fallback for exactly the person who cannot use Google,
-               so it must never disappear along with it. -->
+          <!-- Owner request (Oct 2026), like Buzzy: one stack of matching
+               buttons - Google, Facebook, Guest - then "or", then "Continue
+               with email", which opens the email form. Each is hidden when it
+               can't be used: Google until google-signin.js has its script and
+               client id, Facebook until FACEBOOK_APP_ID is set. Guest sits
+               OUTSIDE those wrappers on purpose - it is the way in for exactly
+               the person who cannot use them.
+               Google's button is Google's own, drawn invisibly over ours
+               (#google-signin-btn[data-overlay]), so the tap is still Google's
+               sign-in; ours is only the look. -->
           <div class="auth-quick">
-            <div id="google-signin-wrap" class="auth-social" hidden>
-              <div id="google-signin-btn" data-full-width></div>
+            <div id="google-signin-wrap" class="auth-social auth-provider" hidden>
+              <span class="auth-provider-btn" aria-hidden="true"><svg class="apb-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Continue with Google</span></span>
+              <div id="google-signin-btn" data-overlay></div>
               <p id="google-signin-error" class="form-error" role="alert"></p>
             </div>
-            <!-- Facebook: hidden unless FACEBOOK_APP_ID is set in config.js
-                 (facebook-signin.js); Meta's script loads only on a tap. -->
-            <div id="facebook-signin-wrap" class="auth-social" hidden>
-              <button type="button" id="facebook-signin-btn" class="btn btn-block btn-outline btn-facebook">Continue with Facebook</button>
+            <div id="facebook-signin-wrap" class="auth-social auth-provider" hidden>
+              <button type="button" id="facebook-signin-btn" class="auth-provider-btn"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M15.12 15.47l.53-3.47h-3.33V9.75c0-.95.47-1.88 1.95-1.88h1.51V4.92s-1.37-.23-2.68-.23c-2.74 0-4.53 1.66-4.53 4.66V12H5.52v3.47h3.05V24a12.1 12.1 0 0 0 3.75 0v-8.53h2.8z"/></svg><span>Continue with Facebook</span></button>
               <p id="facebook-signin-error" class="form-error" role="alert"></p>
             </div>
 
             <div class="auth-guest-row">
-              <a class="btn btn-block btn-outline" id="guest-continue" href="index.html">Guest</a>
+              <a class="auth-provider-btn" id="guest-continue" href="index.html"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Continue as guest</span></a>
             </div>
 
             <p class="auth-divider"><span>or</span></p>
+            <button type="button" id="email-continue" class="auth-provider-btn"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Continue with email</span></button>
           </div>
 
           <!-- After Google or Facebook found an existing account with the same

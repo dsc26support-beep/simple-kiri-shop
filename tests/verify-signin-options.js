@@ -14,6 +14,8 @@
  * cannot reach accounts.google.com.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// The email form waits behind "Continue with email" (Oct 2026).
+const openEmail = async (pg) => { if (await pg.isVisible('#email-continue').catch(() => false)) await pg.click('#email-continue'); };
 const BASE = process.env.AUDIT_BASE || 'http://127.0.0.1:8099';
 let pass = 0, fail = 0;
 const ok = (name, cond, detail) => {
@@ -108,10 +110,11 @@ async function makeContext(browser, opts) {
     // job - separating the guest route from the email form - and belongs here.
     ok('the "or" divider stays, because guest is above it',
       await page.locator('.auth-divider').isVisible());
-    ok('and it sits between guest and the email form', await page.evaluate(() => {
+    ok('and it sits between guest and "Continue with email"', await page.evaluate(() => {
       const y = (sel) => document.querySelector(sel).getBoundingClientRect().top;
-      return y('#guest-continue') < y('.auth-divider') && y('.auth-divider') < y('#login-form');
+      return y('#guest-continue') < y('.auth-divider') && y('.auth-divider') < y('#email-continue');
     }));
+    await page.click('#email-continue');
     ok('the email form still works', await page.locator('#login-form').isVisible());
     ok('and the guest route is still offered', await page.locator('#guest-continue').isVisible());
     await ctx.close();
@@ -126,6 +129,7 @@ async function makeContext(browser, opts) {
     ok('a blocked Google script was at least attempted', gsiHits.length === 1);
     ok('but the block stays hidden rather than half-rendered',
       await page.locator('#google-signin-wrap').isHidden());
+    await page.click('#email-continue');
     ok('and the email form is untouched', await page.locator('#login-form').isVisible());
     await ctx.close();
   }
@@ -169,6 +173,7 @@ async function makeContext(browser, opts) {
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(600);
+    await openEmail(page);
     await page.fill('#login-email', 'a@example.com');
     // Password first since Oct 2026; the code is "Email me a code instead".
     await page.click('#login-use-code');
@@ -182,32 +187,32 @@ async function makeContext(browser, opts) {
     await ctx.close();
   }
 
-  // ---- all three ways in are the same size (owner request, Oct 2026) ----
+  // ---- one stack of matching buttons, Buzzy style (owner request, Oct 2026) ----
   for (const w of [320, 390, 1280]) {
     const { ctx } = await makeContext(browser, { clientId: 'test-client' });
     const page = await ctx.newPage();
     await page.setViewportSize({ width: w, height: 844 });
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForSelector('#fake-google-btn', { timeout: 5000 });
-    // The purple box around Google's button is what shows, so that is measured.
-    const g = await page.evaluate(() => ['#google-signin-btn', '#guest-continue', '#login-form button[type="submit"]'].map((sel) => {
-      const r = document.querySelector(sel).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
-    ok(`${w}px: Google, guest and "Sign in" are the same width`, Math.abs(g[0][0] - g[1][0]) <= 1 && Math.abs(g[1][0] - g[2][0]) <= 1, JSON.stringify(g));
-    ok(`${w}px: ...and the same height (40px)`, g.every((x) => x[1] === 40), JSON.stringify(g));
-    // 16px wider than the purple box (GSI_TUCK), so Google's own grey edge
-    // is tucked under the purple line (owner request, Oct 2026).
-    ok(`${w}px: Google was asked for that width plus 16px (within its 200-400px limits)`, await page.evaluate(() => window.__gsiButton.width) === Math.max(200, Math.min(400, g[1][0] + 16)));
-    const tuck = await page.evaluate(() => {
-      const box = document.getElementById('google-signin-btn').getBoundingClientRect();
+    const sel = ['#google-signin-wrap .auth-provider-btn', '#guest-continue', '#email-continue'];
+    const g = await page.evaluate((sel) => sel.map((q) => { const r = document.querySelector(q).getBoundingClientRect();
+      return [Math.round(r.width), Math.round(r.height), Math.round(r.top)]; }), sel);
+    ok(`${w}px: Google, guest and "Continue with email" are the same size (48px tall)`,
+      g.every((x) => x[0] === g[0][0] && x[1] === 48), JSON.stringify(g));
+    ok(`${w}px: ...in that order, top to bottom`, g[0][2] < g[1][2] && g[1][2] < g[2][2], JSON.stringify(g));
+    ok(`${w}px: each reads "Continue with/as ..." with an icon on the left`, await page.evaluate((sel) => sel.every((q) => {
+      const b = document.querySelector(q); const i = b.querySelector('.apb-icon');
+      return /^Continue (with|as) /.test(b.textContent.trim()) && i && i.getBoundingClientRect().left - b.getBoundingClientRect().left < 30;
+    }), sel));
+    const cover = await page.evaluate(() => {
+      const ours = document.querySelector('#google-signin-wrap .auth-provider-btn').getBoundingClientRect();
+      const host = document.getElementById('google-signin-btn').getBoundingClientRect();
       const btn = document.getElementById('fake-google-btn').getBoundingClientRect();
-      const cs = getComputedStyle(document.getElementById('google-signin-btn'));
-      return { l: btn.left - box.left, r: box.right - btn.right, border: cs.borderTopColor, radius: cs.borderTopLeftRadius, clip: cs.overflow };
+      return { host: [host.left - ours.left, host.right - ours.right, host.height - ours.height],
+        btn: [btn.left - ours.left, ours.right - btn.right, btn.top - ours.top, ours.bottom - btn.bottom],
+        opacity: getComputedStyle(document.getElementById('google-signin-btn')).opacity };
     });
-    ok(`${w}px: Google's button overhangs both sides evenly, under the purple line`, tuck.l < -1 && Math.abs(tuck.l - tuck.r) <= 1 && tuck.clip === 'hidden', JSON.stringify(tuck));
-    ok(`${w}px: Google's box has the same purple outline`, await page.evaluate(() => {
-      const cs = getComputedStyle(document.getElementById('google-signin-btn'));
-      return cs.borderTopColor === 'rgb(51, 45, 99)' && cs.borderTopWidth === '2px';
-    }));
+    ok(`${w}px: Google's own button covers ours completely, invisibly`, cover.btn.every((d) => d <= 1) && Number(cover.opacity) < 0.05, JSON.stringify(cover));
     ok(`${w}px: no sideways scroll`, await page.evaluate(() => document.documentElement.scrollWidth - innerWidth <= 1));
     await ctx.close();
   }
@@ -226,7 +231,7 @@ async function makeContext(browser, opts) {
     const token = await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } });
     ok('a guest holds no session token', !token, String(token));
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    ok('the guest button just says Guest', (await page.textContent('#guest-continue')).trim() === 'Guest');
+    ok('the guest button says "Continue as guest"', (await page.textContent('#guest-continue')).trim() === 'Continue as guest');
     ok('...with no extra note under it', (await page.$('.auth-guest-note')) === null);
     ok('every button on the card is an outline (purple, or white on the purple phone page) on a see-through fill', await page.evaluate(() =>
       [...document.querySelectorAll('.auth-card--customer .btn')].every((b) => {
@@ -295,9 +300,9 @@ async function makeContext(browser, opts) {
     const order = await page.$$eval('.auth-quick > *, .auth-tabs',
       (els) => els.map((e) => e.id || e.className.split(' ')[0]));
     // Facebook's slot sits after Google's (hidden until FACEBOOK_APP_ID is set).
-    ok(label + ': the tabs, then Google, then Facebook, then guest, then the divider',
+    ok(label + ': the tabs, then Google, Facebook, guest, the divider, then "Continue with email"',
       JSON.stringify(order) === JSON.stringify(
-        ['auth-tabs', 'google-signin-wrap', 'facebook-signin-wrap', 'auth-guest-row', 'auth-divider']), JSON.stringify(order));
+        ['auth-tabs', 'google-signin-wrap', 'facebook-signin-wrap', 'auth-guest-row', 'auth-divider', 'email-continue']), JSON.stringify(order));
 
     // The one that matters. The guest button is the fallback for exactly the
     // person who cannot use Google, so it must never be hidden along with it.
@@ -353,6 +358,7 @@ async function makeContext(browser, opts) {
     ok('the always-visible helper line is gone from the email step',
       !/We'll email you a 6-digit code/i.test(await page.textContent('#login-form') || ''));
 
+    await openEmail(page);
     await page.fill('#login-email', 'aroita@example.com');
     await page.click('#login-use-code');
     await page.waitForTimeout(300);
