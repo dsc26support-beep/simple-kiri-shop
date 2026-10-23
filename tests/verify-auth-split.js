@@ -69,6 +69,11 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
       const g = await geo(p);
       ok(`${page} 390px: purple band with the headline above the form, no video`, g.ab <= g.ft + 1 && g.box === 'none' && !g.hasVideo && g.titleShown && g.ah < 220, J(g));
       ok(`${page} 390px: the video and its poster are not downloaded`, imgs.length === 0, J(imgs));
+      const ph = await p.evaluate(() => { const m = document.querySelector('main.auth-page'), a = document.querySelector('.auth-split-panel'), t = a.querySelector('.auth-panel-title');
+        return { mainBg: m ? getComputedStyle(m).backgroundImage : '', mainH: m ? m.getBoundingClientRect().height : 0, panelBg: getComputedStyle(a).backgroundImage,
+          title: t.textContent, size: parseFloat(getComputedStyle(t).fontSize), extra: !!a.querySelector('.auth-panel-text') }; });
+      ok(`${page} 390px: the whole page behind the card is purple, no separate band`, /gradient/.test(ph.mainBg) && ph.mainH >= 844 && ph.panelBg === 'none', J(ph));
+      ok(`${page} 390px: one short headline, 1.5 times smaller, no second line`, ph.title.length <= 24 && Math.abs(ph.size - 18.4 / 1.5) < 0.6 && !ph.extra, J(ph));
       ok(`${page} 390px: no sideways scroll; no page errors`, !g.over && errors.length === 0, errors.join('; '));
       await ctx.close();
     }
