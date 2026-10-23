@@ -145,7 +145,7 @@ function buildSellerOrderEmail(owner, orderId, name, phone, email, island, villa
     'Order Ref: ' + orderId + '\n' +
     'Store: ' + owner.StoreName + '\n\n' +
     'Customer: ' + name + '\n' +
-    'Phone: ' + phone + '\n' +
+    'Phone: ' + (phone || '(not given - Pick up & pay)') + '\n' +
     (email ? 'Email: ' + email + '\n' : '') +
     'Deliver to: ' + village + ', ' + island + '\n' +
     'Delivery Method: ' + methodLabel + ' (' + deliveryText + ')\n\n' +
@@ -199,8 +199,14 @@ function actionCreateOrder(body) {
   var village = String(body.village || '').trim();
   var deliveryMethod = String(body.deliveryMethod || '').trim();
   var paymentMethod = body.paymentMethod || '';
-  if (!customerName || !customerPhone) return fail('Name and phone number are required');
-  if (!isCustomerPhoneValid(customerPhone)) return fail('Local phone numbers must start with 730 or 630. For an overseas number, include your country code.');
+  // The phone is needed only when something has to be delivered to the buyer
+  // (owner decision, Oct 2026): the seller or driver must be able to reach
+  // them. Pick up & pay is collected in person, so it is optional there.
+  if (!customerName) return fail('Please enter your name');
+  if (!customerPhone && deliveryMethod !== 'pickPay') {
+    return fail('A phone number is needed for delivery, so the seller or driver can reach you');
+  }
+  if (customerPhone && !isCustomerPhoneValid(customerPhone)) return fail('Local phone numbers must start with 730 or 630. For an overseas number, include your country code.');
   if (!island || !village) return fail('Island and village are required');
   var nameErr = capLength(customerName, 100, 'Name');
   if (nameErr) return nameErr;

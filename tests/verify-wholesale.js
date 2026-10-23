@@ -32,7 +32,10 @@ async function page(browser, path, opts) {
     return J({ ok: true, stores: [], featured: [], sellers: [], config: {} });
   });
   const pg = await ctx.newPage();
-  await pg.addInitScript((tok) => { localStorage.setItem('skiri_cookie_consent', 'true'); if (tok) { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'tok'); } }, opts.signedIn !== false);
+  await pg.addInitScript((tok) => { localStorage.setItem('skiri_cookie_consent', 'true');
+    // Register Store is an application from a signed-in shopper (Oct 2026).
+    if (!tok) { localStorage.setItem('skiri_customer_token', 'c'); localStorage.setItem('skiri_customer_profile', '{"customerId":"c1","name":"B","email":"b@example.com","emailVerified":true}'); }
+    if (tok) { localStorage.setItem('mwk_pform_mode', 'page'); localStorage.setItem('skiri_owner_token', 'tok'); } }, opts.signedIn !== false);
   await pg.goto(BASE + path, { waitUntil: 'load' });
   await pg.waitForTimeout(700);
   return { ctx, pg, posted };
@@ -61,7 +64,7 @@ const backToList = async (pg) => { if (await pg.locator('#cancel-product-btn').i
     await pg.fill('#register-username', 'bulkfoods');
     await pg.fill('#register-password', 'longpassword1');
     await pg.fill('#register-password-hint', 'my usual one');
-    await pg.fill('#register-email', 'b@example.com');
+    await pg.fill('#register-about', 'Rice in bulk');
     await pg.fill('#register-phone', '73012345');
     await pg.fill('#register-messenger', 'bulk.foods');
     await pg.click('#register-submit-btn');

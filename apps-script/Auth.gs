@@ -194,7 +194,17 @@ function issueSession(ownerId) {
 // or 'closed' (owner deleted it from Settings - hidden from customers *and*
 // the owner is locked out; a soft delete, so the row itself is never erased).
 function ownerCanLogIn(owner) {
-  return !!owner && (owner.Status === 'active' || owner.Status === 'standby');
+  return !!owner && (owner.Status === 'active' || owner.Status === 'standby') && ownerApprovalStatus(owner) === 'approved';
+}
+
+/**
+ * Seller application state (SellerApplications.gs): 'pending' | 'approved' |
+ * 'rejected' | 'suspended'. Blank - every store from before applications
+ * existed - is 'approved', so nothing that already works changes.
+ */
+function ownerApprovalStatus(owner) {
+  var st = String((owner && owner.ApprovalStatus) || '').trim().toLowerCase();
+  return st === 'pending' || st === 'rejected' || st === 'suspended' ? st : 'approved';
 }
 
 /**
@@ -222,6 +232,7 @@ function ownerCanLogIn(owner) {
  */
 function isStoreBrowsable(owner) {
   return !!owner && (owner.Status === 'active' || owner.Status === 'standby') &&
+    ownerApprovalStatus(owner) === 'approved' &&
     !isOwnerAdmin(owner) && !isAdminNamedStore(owner);
 }
 
@@ -277,21 +288,44 @@ function validateOwnerEmail(email, excludeOwnerId, ownersList) {
   return null;
 }
 
+/**
+ * "Become a Seller" (owner decision, Oct 2026). A seller first has a Mwakete
+ * shopper account with a confirmed email; this is their application. It
+ * creates the store row with ApprovalStatus 'pending' - no session, no
+ * selling - until an admin approves it (SellerApplications.gs). The store's
+ * contact email is the shopper account's confirmed email, never a typed one,
+ * which also means nobody can claim an ADMIN_EMAILS address by registering it.
+ * The seller still gets their own store username + password (and optional
+ * 2FA) for the seller portal, exactly as before.
+ *
+ * A rejected applicant may apply again: the same row is updated and goes back
+ * to 'pending'. Stores from before this change have no ApprovalStatus and
+ * count as approved (ownerApprovalStatus).
+ */
 function actionRegisterOwner(body) {
+  var customer = null;
+  try { customer = requireCustomerAuth(body.customerToken); } catch (e) { customer = null; }
+  if (!customer || !customerEmailVerified(customer)) {
+    return Object.assign(fail('To open a store, first sign in to your Mwakete account (or create one) and confirm your email. Then apply here.'),
+      { customerAccountRequired: true });
+  }
+
   var storeName = String(body.storeName || '').trim();
   var username = String(body.username || '').trim().toLowerCase();
   var password = String(body.password || '');
-  var email = String(body.email || '').trim();
+  var email = normalizeEmail(customer.Email);
   var phone = String(body.phone || '').trim();
   var messenger = String(body.messenger || '').trim();
+  var about = String(body.about || '').trim();
   // Anything but an explicit 'wholesaler' or 'distributor' is a retailer - the
   // default, and what every store that registered before this choice existed is.
   var storeType = storeTypeOf({ StoreType: body.storeType });
 
-  if (!storeName || !username || !password || !email || !phone) {
-    return fail('Store name, username, password, contact email and contact phone are required');
+  if (!storeName || !username || !password || !phone) {
+    return fail('Store name, username, password and contact phone are required');
   }
-  if (password.length < 8) return fail('Password must be at least 8 characters');
+  var pwErr = passwordPolicyError(password);
+  if (pwErr) return fail(pwErr);
   var passwordHint = String(body.passwordHint || '').trim();
   var hintErr = passwordHintError(passwordHint, password);
   if (hintErr) return fail(hintErr);
@@ -302,6 +336,8 @@ function actionRegisterOwner(body) {
   if (phoneErr) return phoneErr;
   var messengerErr = capLength(messenger, 200, 'Facebook Messenger');
   if (messengerErr) return messengerErr;
+  var aboutErr = capLength(about, 500, 'What you will sell');
+  if (aboutErr) return aboutErr;
   // Required at registration, and normalized to one stored shape. Enforced HERE
   // rather than trusting the form's `required`, which anything that can POST
   // ignores. Existing stores are untouched by this - a settings edit still
@@ -314,66 +350,94 @@ function actionRegisterOwner(body) {
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
+  var owner, previous, autoApproved;
   try {
     var ownersSheet = getSheet('Owners');
+    // Additive only: one header cell past the end if missing (see ensureColumn).
+    ['StoreType', 'WholesaleVerified', 'PasswordHint', 'ApprovalStatus', 'CustomerId', 'AppliedAt',
+      'ReviewedAt', 'ReviewedBy', 'ReviewNote', 'ApplicationNote'].forEach(function (c) { ensureColumn(ownersSheet, c); });
     var owners = sheetToObjects(ownersSheet);
 
-    var usernameTaken = owners.some(function (o) { return String(o.Username).toLowerCase() === username; });
+    // One application per shopper account.
+    previous = owners.filter(function (o) { return String(o.CustomerId || '') === String(customer.CustomerId); })[0] || null;
+    if (previous) {
+      var st = ownerApprovalStatus(previous);
+      if (st === 'pending') return fail('Your seller application is already being reviewed. We will email you when it is decided.');
+      if (st === 'suspended') return fail('Your store is suspended. Contact Mwakete via Help and support.');
+      if (st === 'approved' && previous.Status !== 'closed') return fail('You already have a store. Log in to it from the seller portal.');
+    }
+    var exceptId = previous ? previous.OwnerId : null;
+
+    var usernameTaken = owners.some(function (o) { return o.OwnerId !== exceptId && String(o.Username).toLowerCase() === username; });
     if (usernameTaken) return fail('That username is already taken');
 
-    var emailErr = validateOwnerEmail(email, null, owners);
+    var emailErr = validateOwnerEmail(email, exceptId, owners);
     if (emailErr) return emailErr;
 
     var phoneDigits = phone.replace(/[^0-9]/g, '');
-    var phoneTaken = owners.some(function (o) { return String(o.Phone).replace(/[^0-9]/g, '') === phoneDigits; });
+    var phoneTaken = owners.some(function (o) { return o.OwnerId !== exceptId && String(o.Phone).replace(/[^0-9]/g, '') === phoneDigits; });
     if (phoneTaken) return fail('That phone number is already registered to a store');
 
-    var slugBase = slugify(storeName);
-    var slug = slugBase;
-    var suffix = 1;
-    while (owners.some(function (o) { return o.StoreSlug === slug; })) {
-      suffix++;
-      slug = slugBase + '-' + suffix;
-    }
-
-    var salt = Utilities.getUuid();
-    var ownerId = newId('own');
-    // Additive only: one header cell past the end if missing (see ensureColumn).
-    ensureColumn(ownersSheet, 'StoreType');
-    ensureColumn(ownersSheet, 'WholesaleVerified');
-    ensureColumn(ownersSheet, 'PasswordHint');
-
-    appendRowFromObject(ownersSheet, {
-      OwnerId: ownerId,
+    // The first admin has nobody to approve them: an applicant whose
+    // CONFIRMED email is in ADMIN_EMAILS is approved at once.
+    autoApproved = getAdminEmails().indexOf(email) !== -1;
+    var fields = {
       StoreName: storeName,
-      StoreSlug: slug,
       Username: username,
-      PasswordHash: hashPassword(password, salt),
-      PasswordSalt: salt,
+      PasswordHash: hashPasswordV2(password),
+      PasswordSalt: '',
       Email: email,
       Phone: phone,
       Messenger: messengerLink,
-      ANZ_AccountName: '',
-      ANZ_AccountNumber: '',
-      ANZ_Branch: '',
-      Teremo_Name: '',
-      Teremo_Number: '',
-      PaymentNotes: '',
-      Status: 'active',
-      CreatedAt: nowIso(),
       StoreType: storeType,
-      WholesaleVerified: '',
-      PasswordHint: passwordHint
-    });
+      PasswordHint: passwordHint,
+      ApprovalStatus: autoApproved ? 'approved' : 'pending',
+      CustomerId: customer.CustomerId,
+      AppliedAt: nowIso(),
+      ApplicationNote: about,
+      ReviewNote: ''
+    };
 
-    var token = issueSession(ownerId);
-    var owner = findRowById(ownersSheet, 'OwnerId', ownerId);
+    if (previous) {
+      updateRowFromObject(ownersSheet, previous.__row, Object.assign(fields, { Status: 'active' }));
+      owner = findRowById(ownersSheet, 'OwnerId', previous.OwnerId);
+    } else {
+      var slugBase = slugify(storeName);
+      var slug = slugBase;
+      var suffix = 1;
+      while (owners.some(function (o) { return o.StoreSlug === slug; })) {
+        suffix++;
+        slug = slugBase + '-' + suffix;
+      }
+      var ownerId = newId('own');
+      appendRowFromObject(ownersSheet, Object.assign({
+        OwnerId: ownerId,
+        StoreSlug: slug,
+        ANZ_AccountName: '',
+        ANZ_AccountNumber: '',
+        ANZ_Branch: '',
+        Teremo_Name: '',
+        Teremo_Number: '',
+        PaymentNotes: '',
+        Status: 'active',
+        CreatedAt: nowIso(),
+        WholesaleVerified: ''
+      }, fields));
+      owner = findRowById(ownersSheet, 'OwnerId', ownerId);
+    }
   } finally {
     lock.releaseLock();
   }
+  logAuthEvent(autoApproved ? 'seller-approved' : 'seller-applied', owner.OwnerId, 'customer ' + customer.CustomerId + (autoApproved ? ' (admin email)' : ''));
+
   // Outside the lock - an email send is slow and must never hold it.
+  if (autoApproved) {
+    var token = issueSession(owner.OwnerId);
+    return ok({ token: token, owner: publicOwnerFields(owner), application: sellerApplicationView(owner) });
+  }
+  notifySellerApplication(owner, 'received');
   if (storeType !== 'retailer') notifyAdminsOfWholesaler(owner);
-  return ok({ token: token, owner: publicOwnerFields(owner) });
+  return ok({ application: sellerApplicationView(owner) });
 }
 
 function actionLoginOwner(body) {
@@ -385,11 +449,12 @@ function actionLoginOwner(body) {
     return constantTimeEquals(String(o.Username).toLowerCase(), username);
   })[0];
 
-  // Compare against a dummy hash even on a missing user so response timing
-  // doesn't reveal whether the username exists.
-  var salt = owner ? owner.PasswordSalt : 'no-such-user-salt';
-  var candidateHash = hashPassword(password, salt);
-  var loginSucceeded = ownerCanLogIn(owner) && constantTimeEquals(candidateHash, owner.PasswordHash);
+  // Do the same work even on a missing user (a dummy hash, burnPasswordCheck)
+  // so response timing doesn't reveal whether the username exists. verifyPassword reads both the PBKDF2
+  // hashes (Passwords.gs) and the original single SHA-256 ones.
+  if (password.length > PASSWORD_MAX_LENGTH) return fail('Invalid username or password');
+  var passwordOk = owner ? verifyPassword(password, owner.PasswordHash, owner.PasswordSalt) : burnPasswordCheck(password);
+  var loginSucceeded = ownerCanLogIn(owner) && passwordOk;
 
   // Runs AFTER the (constant-cost) hash comparison above and BEFORE
   // branching on its result, so a locked-out username's response isn't
@@ -404,11 +469,25 @@ function actionLoginOwner(body) {
 
   if (!loginSucceeded) {
     if (owner && owner.Status === 'closed') return fail('This store has been deleted. Contact now via the Help and support link below if this is a mistake.');
+    // The right password for a store that is not approved: say why (the
+    // person has proven the password, so this reveals nothing new).
+    if (owner && passwordOk) {
+      var approval = ownerApprovalStatus(owner);
+      if (approval === 'pending') return fail('Your seller application is still being reviewed. We will email you when it is decided.');
+      if (approval === 'rejected') return fail('Your seller application was not approved. You can see why, and apply again, from your Mwakete account page.');
+      if (approval === 'suspended') return fail('This store is suspended. Contact Mwakete via the Help and support link below.');
+    }
     // The seller's own hint, after a wrong password for a real store (owner
     // decision, Oct 2026). It does tell the person typing that this username
     // exists; the attempt lockout above still limits guessing.
     var hint = owner && ownerCanLogIn(owner) ? String(owner.PasswordHint || '').trim() : '';
     return hint ? Object.assign(fail('Invalid username or password'), { passwordHint: hint }) : fail('Invalid username or password');
+  }
+
+  // Upgrade an old single-SHA-256 hash (or a PBKDF2 one with fewer rounds
+  // than now configured) while the password is in hand. Best effort.
+  if (passwordNeedsRehash(owner.PasswordHash)) {
+    try { updateRowFromObject(getSheet('Owners'), owner.__row, { PasswordHash: hashPasswordV2(password), PasswordSalt: '' }); } catch (e) { /* next time */ }
   }
 
   if (String(owner.TwoFAEnabled) === 'true') {
@@ -619,10 +698,9 @@ function actionResetPasswordWithCode(body) {
     var owner = findRowById(ownersSheet, 'OwnerId', result.ownerId);
     if (!owner) return fail('Account not found');
 
-    var salt = Utilities.getUuid();
     updateRowFromObject(ownersSheet, owner.__row, {
-      PasswordSalt: salt,
-      PasswordHash: hashPassword(newPassword, salt)
+      PasswordSalt: '',                        // PBKDF2 carries its own salt (Passwords.gs)
+      PasswordHash: hashPasswordV2(newPassword)
     });
 
     // Force re-login everywhere, in case the reset was triggered by a compromised password.
@@ -671,8 +749,7 @@ function actionRequestEmailChange(owner, body) {
   // Same check and the same lockout as the login form. An attacker holding a
   // session would otherwise have an unlimited, unthrottled password oracle
   // here, which is precisely what the login form refuses to be.
-  var candidateHash = hashPassword(password, owner.PasswordSalt);
-  var passwordOk = constantTimeEquals(candidateHash, owner.PasswordHash);
+  var passwordOk = verifyPassword(password, owner.PasswordHash, owner.PasswordSalt);
   var lockout = checkAndRecordLoginAttempt(String(owner.Username).toLowerCase(), passwordOk);
   if (lockout.locked) {
     return fail('Too many incorrect passwords. Please try again in ' + lockout.retryAfterMinutes + ' minute(s).');

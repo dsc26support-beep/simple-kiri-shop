@@ -144,7 +144,9 @@ ok('messengerUrl still normalizes a legacy bare handle on read',
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e)));
-  await page.addInitScript(() => localStorage.setItem('skiri_cookie_consent', 'true'));
+  await page.addInitScript(() => { localStorage.setItem('skiri_cookie_consent', 'true');
+    // Register Store is an application from a signed-in shopper (Oct 2026).
+    localStorage.setItem('skiri_customer_token', 'c'); localStorage.setItem('skiri_customer_profile', '{"customerId":"c1","name":"T","email":"a@b.com","emailVerified":true}'); });
   await page.goto(BASE + '/owner/login.html?tab=register', { waitUntil: 'load' });
   await page.waitForTimeout(400);
 
@@ -153,7 +155,7 @@ ok('messengerUrl still normalizes a legacy bare handle on read',
     await page.fill('#register-username', 'bong');
     await page.fill('#register-password', 'longenoughpw');
     await page.fill('#register-password-hint', 'my usual one');
-    await page.fill('#register-email', 'a@b.com');
+    await page.fill('#register-about', 'Rice and flour');
     await page.fill('#register-phone', '73007552');
     await page.fill('#register-messenger', messenger);
   };

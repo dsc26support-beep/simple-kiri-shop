@@ -99,12 +99,17 @@ function makeBox(tabs, opts) {
       sleep() {},
       base64Decode: (s) => Array.from(Buffer.from(s, 'base64')),
       base64Encode: (b) => Buffer.from(b).toString('base64'),
-      newBlob: (bytes, type, name) => ({ getBytes: () => Array.from(bytes), getContentType: () => type, getName: () => name }),
+      // A string becomes its UTF-8 bytes (signed), like Apps Script.
+      newBlob: (bytes, type, name) => ({ getBytes: () => (typeof bytes === 'string' ? Array.from(Buffer.from(bytes, 'utf8')).map((b) => (b > 127 ? b - 256 : b)) : Array.from(bytes)), getContentType: () => type, getName: () => name }),
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (alg, data) => Array.from(crypto.createHash('sha256').update(typeof data === 'string' ? data : Buffer.from(data)).digest()).map((b) => (b > 127 ? b - 256 : b)),
       // Apps Script's HMAC (signed bytes, like computeDigest). Added for the POS integration hub.
       MacAlgorithm: { HMAC_SHA_256: 'sha256' },
-      computeHmacSha256Signature: (value, key) => Array.from(crypto.createHmac('sha256', key).update(value).digest()).map((b) => (b > 127 ? b - 256 : b))
+      // Takes strings or Apps Script (signed) byte arrays, like the real one (Passwords.gs PBKDF2).
+      computeHmacSha256Signature: (value, key) => {
+        const buf = (x) => (Array.isArray(x) ? Buffer.from(x.map((b) => b & 255)) : x);
+        return Array.from(crypto.createHmac('sha256', buf(key)).update(buf(value)).digest()).map((b) => (b > 127 ? b - 256 : b));
+      }
     },
     MailApp: { sendEmail: (...a) => mail.push(a) },
     Logger: { log() {} },

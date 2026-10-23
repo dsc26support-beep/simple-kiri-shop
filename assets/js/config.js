@@ -11,5 +11,11 @@ const APP_CONFIG = {
   // Properties, because that is what the server checks the token's `aud`
   // against. Leave this empty and the Google button simply does not appear;
   // email codes and guest checkout are unaffected. See README.
-  GOOGLE_CLIENT_ID: '777287788123-6e77qgq38m2bu46pmtril0687qiccit1.apps.googleusercontent.com'
+  GOOGLE_CLIENT_ID: '777287788123-6e77qgq38m2bu46pmtril0687qiccit1.apps.googleusercontent.com',
+
+  // Facebook Login (customers only). The App ID is PUBLIC, like the Google
+  // client id - never put the App SECRET here; that lives only in Apps Script
+  // Script Properties (FACEBOOK_APP_SECRET). Empty = no Facebook button.
+  // See docs/auth-meta-setup.md.
+  FACEBOOK_APP_ID: ''
 };

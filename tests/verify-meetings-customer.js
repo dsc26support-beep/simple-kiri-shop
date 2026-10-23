@@ -162,7 +162,8 @@ async function openChat(browser, opts) {
     await page.click('#meeting-panel-host .meeting-request-trigger');
     await page.waitForURL(/customer-login\.html/);
     await page.fill('#login-email', 'a@example.com');
-    await page.click('#login-form button[type="submit"]');
+    // Password first since Oct 2026; the code is "Email me a code instead".
+    await page.click('#login-use-code');
     await page.fill('#login-code', '123456');
     await page.click('#login-code-form button[type="submit"]');
     await page.waitForURL(/store\.html/);

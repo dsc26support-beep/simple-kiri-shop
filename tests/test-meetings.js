@@ -150,6 +150,12 @@ function makeContext() {
     grab(productsSrc, 'getOwnerBySlug'),
     grab(authSrc, 'requireAuth'),
     grab(customersSrc, 'requireCustomerAuth'),
+    // requireCustomerAuth's helpers (sessions are looked up raw, then hashed;
+    // suspended and unconfirmed accounts are refused - Oct 2026).
+    grab(customersSrc, 'findCustomerSessionRow'),
+    grab(customersSrc, 'customerIsSuspended'),
+    grab(customersSrc, 'customerMayTransact'),
+    grabAllVars(customersSrc, ['LAST_CUSTOMER_AUTH_REFUSAL', 'VERIFY_EMAIL_FIRST']),
     grab(customersSrc, 'signedInCustomer'),
     grab(customersSrc, 'signInRequiredFail'),
     grab(chatSrc, 'findConversation'),

@@ -32,11 +32,9 @@
  * The client id lives in Script Properties as GOOGLE_CLIENT_ID. If it is not
  * set, this endpoint refuses every request - it fails CLOSED, never open.
  *
- * REQUIRES two additional columns on the Customers sheet. Both are optional at
- * read time, so an un-migrated sheet keeps working and email sign-in is
- * unaffected:
- *   AuthProvider   'email' | 'google'  - how the account was last verified
- *   GoogleSub      Google's stable user id, for the account-linking note below
+ * Links are stored in the ProviderIdentities sheet (CustomerIdentities.gs).
+ * Customers.GoogleSub, written by the first version of this file, is still
+ * read as an existing link and moved across on first use.
  */
 
 // Sign-in attempts allowed per address per window (anti brute-force on a
@@ -87,21 +85,23 @@ function verifyGoogleIdToken(idToken) {
     return fail('That Google account has no verified email address, so it cannot be used to sign in here.');
   }
   if (!claims.email) return fail('That Google account did not share an email address');
+  // `sub` is the stable Google id that a link is keyed on (never the email).
+  if (!claims.sub) return fail('Google sign-in failed - please try again');
 
   return { ok: true, claims: claims };
 }
 
 /**
- * Sign in (or sign up) a customer with a Google ID token.
+ * Sign in (or sign up, or link from the account page) with a Google ID token.
  *
- * body: { credential, sharedDevice }
+ * body: { credential, customerToken? }
  *
- * ACCOUNT LINKING. If a Customers row already exists for the verified address,
- * this signs into it rather than creating a duplicate - so someone who signed
- * up with an email code and later taps "Continue with Google" keeps their order
- * history. That is safe only because email_verified was checked above: Google
- * has proven the person controls that mailbox, which is the same thing the
- * email-code flow proves.
+ * After the token is verified, the account rules live in
+ * CustomerIdentities.gs (resolveProviderSignIn): an identity seen before signs
+ * in to its own account; a new one whose email matches an existing account is
+ * NOT merged automatically - the shopper proves that account first and the
+ * link is made then. Accounts that used Google before this change carry their
+ * Google id in Customers.GoogleSub and keep signing straight in.
  */
 function actionGoogleSignIn(body) {
   body = body || {};
@@ -115,66 +115,12 @@ function actionGoogleSignIn(body) {
     return fail('Too many sign-in attempts. Please wait a few minutes and try again.');
   }
 
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    var customer = findCustomerByEmail(email);
-    if (!customer) {
-      var sheet = getSheet('Customers');
-      var customerId = 'cust_' + Utilities.getUuid();
-      var row = {
-        CustomerId: customerId,
-        Name: String(claims.name || '').trim() || email.split('@')[0],
-        Email: email,
-        Phone: '',
-        EmailVerified: 'true',
-        CreatedAt: nowIso(),
-        UpdatedAt: nowIso()
-      };
-      // ensureColumn adds a header if it is missing and does nothing if it is
-      // not. It appends a column and moves no existing one, so the cells
-      // beneath it are empty by construction - the "not set" state every
-      // reader already treats as the default. Purely additive, per the
-      // never-drop-a-column rule.
-      ensureColumn(sheet, 'AuthProvider');
-      ensureColumn(sheet, 'GoogleSub');
-      row.AuthProvider = 'google';
-      row.GoogleSub = String(claims.sub || '');
-      appendRowFromObject(sheet, row);
-      customer = findRowById(sheet, 'CustomerId', customerId);
-    } else {
-      markCustomerGoogleLinked(customer, claims);
-    }
-  } finally {
-    lock.releaseLock();
-  }
-
-  if (!customer) return fail('Could not create your account. Please try again.');
-
-  var token = issueCustomerSession(customer.CustomerId, { sharedDevice: body.sharedDevice === true });
-  return ok({ token: token, customer: publicCustomerFields(customer) });
-}
-
-/**
- * Records that this account has now been verified through Google. Best-effort:
- * a write failure must never block a sign-in that has already been proven
- * valid, so this swallows its own errors rather than failing the request.
- */
-function markCustomerGoogleLinked(customer, claims) {
-  try {
-    var sheet = getSheet('Customers');
-    ensureColumn(sheet, 'AuthProvider');
-    ensureColumn(sheet, 'GoogleSub');
-    var patch = {
-      UpdatedAt: nowIso(),
-      AuthProvider: 'google',
-      GoogleSub: String(claims.sub || '')
-    };
-    // Google proved control of the mailbox, which is the same thing the email
-    // code proves - so an account that was never confirmed becomes confirmed.
-    if (String(customer.EmailVerified) !== 'true') patch.EmailVerified = 'true';
-    updateRowFromObject(sheet, customer.__row, patch);
-  } catch (e) {
-    // Non-fatal by design - see the doc comment.
-  }
+  return resolveProviderSignIn({
+    provider: 'google',
+    providerUserId: String(claims.sub),
+    email: email,
+    // verifyGoogleIdToken has already refused any token whose email_verified is not true.
+    emailVerified: true,
+    name: String(claims.name || '')
+  }, body);
 }

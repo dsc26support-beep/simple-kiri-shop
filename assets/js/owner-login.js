@@ -48,6 +48,40 @@ function init() {
   }
 
   showShopperNote();
+  prepareRegisterForm();
+}
+
+/**
+ * Become a Seller: the Register tab is an application from the shopper
+ * account signed in on this device. Without one, the fields are replaced by a
+ * way to sign in first; the store email is that account's email. The server
+ * enforces both (Auth.gs actionRegisterOwner) - this only saves a wasted form.
+ */
+function prepareRegisterForm() {
+  const customer = typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken() ? CustomerAuth.getCustomer() : null;
+  const signedIn = !!(customer && customer.email);
+  document.getElementById('register-account-gate').hidden = signedIn;
+  document.getElementById('register-fields').hidden = !signedIn;
+  if (signedIn) document.getElementById('register-email').value = customer.email;
+}
+
+function showApplicationSent(application) {
+  const box = document.getElementById('register-sent');
+  box.textContent = '';
+  const p1 = document.createElement('p');
+  const strong = document.createElement('strong');
+  strong.textContent = 'Application sent.';
+  p1.appendChild(strong);
+  p1.appendChild(document.createTextNode(' Thank you - we will review "' + application.storeName +
+    '" and email you the answer. You can check its status any time on My Account.'));
+  const link = document.createElement('a');
+  link.className = 'btn btn-outline btn-block';
+  link.href = '../customer-dashboard.html#seller-app';
+  link.textContent = 'Go to My Account';
+  box.appendChild(p1);
+  box.appendChild(link);
+  box.hidden = false;
+  document.getElementById('register-fields').hidden = true;
 }
 
 function switchTab(which) {
@@ -80,7 +114,7 @@ function showShopperNote() {
   // the wrong account can switch. Only for a signed-in shopper - everybody
   // else gets no Google script at all. Stays on this page afterwards: the
   // register form may already be half filled in.
-  window.onCustomerSignedIn = setShopperNote;
+  window.onCustomerSignedIn = (c) => { setShopperNote(c); prepareRegisterForm(); };
   if (typeof initGoogleSignIn === 'function') initGoogleSignIn();
 }
 
@@ -230,8 +264,8 @@ async function onRegister(e) {
   const username = document.getElementById('register-username').value.trim();
   const password = document.getElementById('register-password').value;
   const passwordHint = document.getElementById('register-password-hint').value.trim();
-  const email = document.getElementById('register-email').value.trim();
   const phone = document.getElementById('register-phone').value.trim();
+  const about = document.getElementById('register-about').value.trim();
   const storeTypeEl = document.querySelector('input[name="storeType"]:checked');
   const storeType = storeTypeEl ? storeTypeEl.value : 'retailer';
   const messengerEl = document.getElementById('register-messenger');
@@ -255,10 +289,6 @@ async function onRegister(e) {
     document.getElementById('register-password-hint').focus();
     return;
   }
-  if (!email) {
-    errorEl.textContent = 'Contact email is required — that\'s where customer orders will be sent.';
-    return;
-  }
   if (!phone) {
     errorEl.textContent = 'Contact phone is required — it\'s shown to customers as a backup way to reach you.';
     return;
@@ -278,15 +308,33 @@ async function onRegister(e) {
   const submitBtn = document.getElementById('register-submit-btn');
   setLoginButtonBusy(submitBtn, 'Creating');
 
-  const res = await Api.post('registerOwner', { storeName, username, password, passwordHint, email, phone, messenger, storeType });
+  if (!about) {
+    errorEl.textContent = 'Tell us in a sentence what you will sell.';
+    document.getElementById('register-about').focus();
+    return;
+  }
+
+  const res = await Api.post('registerOwner', { storeName, username, password, passwordHint, phone, messenger, storeType, about,
+    customerToken: typeof CustomerAuth !== 'undefined' ? CustomerAuth.getToken() : '' });
 
   if (!res.ok) {
     setButtonIdle(submitBtn);
-    errorEl.textContent = res.error || 'Could not create your store account.';
+    errorEl.textContent = res.error || 'Could not send your application.';
+    if (res.customerAccountRequired) {
+      document.getElementById('register-account-gate').hidden = false;
+      document.getElementById('register-fields').hidden = true;
+    }
     if (TAKEN_USERNAME_RE.test(res.error || '')) offerLoginForTakenUsername();
     return;
   }
 
+  setButtonIdle(submitBtn);
+  // Every new store waits for an admin. Only the first admin (ADMIN_EMAILS)
+  // is approved at once and gets a session.
+  if (!res.token) {
+    showApplicationSent(res.application || { storeName });
+    return;
+  }
   Auth.saveSession(res.token, res.owner);
   // Straight to Settings, not the dashboard - a fresh account has no logo,
   // delivery methods, or location set yet, and settings.html's own

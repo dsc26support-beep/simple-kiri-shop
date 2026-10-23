@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deleting your data — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.min.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
+  <!-- The page's own content is static, but the site-wide bottom nav asks the
+       backend for the unread-messages count whenever the shopper has ever
+       chatted with a store - so these are warmed like everywhere else. /exec
+       answers with a 302 to script.googleusercontent.com, hence both origins. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+</head>
+<body class="has-bottom-nav">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-top-row">
+      <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
+        <img src="assets/img/favicon.svg" alt="" class="header-logo-mark"><span class="header-wordmark" aria-hidden="true">wakete</span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="stores.html">Browse Stores</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="page-legal">
+    <div class="container">
+      <!-- DRAFT (Oct 2026) - owner to review before it is given to Meta as the
+           app's "User data deletion" instructions URL (docs/auth-meta-setup.md). -->
+      <h1>Deleting your data</h1>
+      <p>You can ask Mwakete to delete your account and the information we hold
+      about you at any time. This page is also our data deletion instructions for
+      people who signed in with Facebook or Google.</p>
+
+      <h2>1. Ask us to delete your account</h2>
+      <p>Email <a href="mailto:admin@mwakete.com?subject=Delete%20my%20Mwakete%20account">admin@mwakete.com</a>
+      from the email address on your Mwakete account, with the subject
+      <strong>Delete my Mwakete account</strong>. If you signed in with Facebook
+      and never gave us an email, say so and include the name on your Mwakete
+      account - we will ask you to confirm it is you before deleting anything.</p>
+      <p>We will delete your account, your saved sign-in methods (password,
+      Google and Facebook links) and your profile within 30 days, and email you
+      when it is done.</p>
+      <p>Some order records may be kept where a seller still needs them for a
+      purchase that already happened. They are kept only for that purpose.</p>
+
+      <h2>2. Remove Mwakete from Facebook (if you used it)</h2>
+      <ol>
+        <li>On Facebook, open <strong>Settings &amp; privacy</strong> &rarr; <strong>Settings</strong>.</li>
+        <li>Open <strong>Apps and websites</strong> (under "Your activity" or "Permissions").</li>
+        <li>Find <strong>Mwakete</strong> and choose <strong>Remove</strong>.</li>
+      </ol>
+      <p>This stops Facebook sharing anything more with us. It does not by itself
+      delete what Mwakete already holds - for that, use step 1.</p>
+
+      <h2>3. Remove Mwakete from Google (if you used it)</h2>
+      <p>Open <a href="https://myaccount.google.com/connections" rel="noopener noreferrer">your Google Account's third-party connections</a>,
+      choose Mwakete and remove its access. Then use step 1.</p>
+
+      <p class="helper-text"><a href="privacy.html">&larr; Privacy Policy</a> · <a href="index.html">Home</a></p>
+    </div>
+  </main>
+
+  <script defer src="assets/js/config.min.js"></script>
+  <script defer src="assets/js/api.min.js"></script>
+  <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/cookie-consent.min.js"></script>
+  <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/header-cart.min.js"></script>
+  <script defer src="assets/js/bottom-nav.min.js"></script>
+  <script defer src="assets/js/register-sw.min.js"></script>
+</body>
+</html>

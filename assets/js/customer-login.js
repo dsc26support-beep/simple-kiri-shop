@@ -1,11 +1,21 @@
 document.addEventListener('DOMContentLoaded', init);
 
-let signupPendingToken = null;
-let loginPendingToken = null;
+// The browser's handles on codes the server has emailed (never the code itself).
+const pending = { login: null, signup: null, reset: null };
+// What the login code form is doing: 'login' (Email me a code) or 'verify'
+// (confirming the email a Facebook sign-up came with).
+let loginCodeMode = 'login';
+// Reset by the emailed link rather than a typed code.
+let resetLinkToken = '';
+// Google / Facebook found an existing account with this email: the next
+// password or code sign-in also links it (CustomerIdentities.gs rule 2).
+let providerLinkToken = '';
 
 function init() {
-  // Already signed in? Skip straight to where they were headed.
-  if (CustomerAuth.isLoggedIn()) {
+  const link = window.__authLink || {};
+  // Already signed in? Skip straight to where they were headed - unless they
+  // came from an emailed link, which still has to be used.
+  if (CustomerAuth.isLoggedIn() && !link.verify && !link.reset) {
     window.location.href = nextDest();
     return;
   }
@@ -13,7 +23,9 @@ function init() {
   document.getElementById('tab-signin').addEventListener('click', () => showTab('signin'));
   document.getElementById('tab-signup').addEventListener('click', () => showTab('signup'));
 
-  document.getElementById('login-form').addEventListener('submit', onLoginRequest);
+  document.getElementById('login-form').addEventListener('submit', onPasswordLogin);
+  document.getElementById('login-use-code').addEventListener('click', onLoginRequest);
+  document.getElementById('login-forgot').addEventListener('click', () => showReset(document.getElementById('login-email').value.trim()));
   document.getElementById('login-code-form').addEventListener('submit', onLoginVerify);
   document.getElementById('login-back').addEventListener('click', resetLogin);
 
@@ -21,12 +33,19 @@ function init() {
   document.getElementById('signup-code-form').addEventListener('submit', onSignupVerify);
   document.getElementById('signup-back').addEventListener('click', resetSignup);
 
+  document.getElementById('reset-request-form').addEventListener('submit', onResetRequest);
+  document.getElementById('reset-form').addEventListener('submit', onResetSubmit);
+  document.querySelectorAll('.reset-cancel').forEach((b) => b.addEventListener('click', () => showTab('signin')));
+
+  document.querySelectorAll('.password-toggle').forEach((b) => b.addEventListener('click', togglePassword));
+  document.querySelectorAll('.resend-btn').forEach((b) => b.addEventListener('click', onResend));
+
   if (getQueryParam('tab') === 'signup') showTab('signup');
 
   prefillRememberedEmail();
   prefillSignupEmail();
 
-  // "Send me a code" and the Terms line wait until what is typed looks right.
+  // The main button and the Terms line wait until what is typed looks right.
   const card = document.querySelector('.auth-card--customer');
   card.addEventListener('input', refreshReady);
   card.addEventListener('change', refreshReady);
@@ -36,6 +55,9 @@ function init() {
   refreshReady();
   // A browser may fill a saved email in after load without an input event.
   setTimeout(refreshReady, 700);
+
+  if (link.verify) useVerifyLink(link.verify);
+  else if (link.reset) useResetLink(link.reset);
 }
 
 function emailLooksValid(value) {
@@ -43,11 +65,12 @@ function emailLooksValid(value) {
   return v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
+const PASSWORD_MIN = 8;
 // With the button hidden until the form is right, a shopper who leaves a
 // field filled in wrongly is told why straight away (the same wording the
 // submit checks use).
-const PHONE_PROBLEM = 'Local phone numbers must start with 730 or 630. For an overseas number, include your country code (e.g. +64…).';
 const EMAIL_PROBLEM = 'Please check your email - it should look like name@example.com.';
+const PASSWORD_PROBLEM = 'Your password needs at least 8 characters.';
 function explainProblem(e) {
   const el = e.target;
   const value = (el.value || '').trim();
@@ -56,31 +79,43 @@ function explainProblem(e) {
   if (!errorId) return;
   let problem = '';
   if ((el.id === 'login-email' || el.id === 'signup-email') && !emailLooksValid(value)) problem = EMAIL_PROBLEM;
-  if (el.id === 'signup-phone' && !isCustomerPhoneValid(value)) problem = PHONE_PROBLEM;
+  if (el.id === 'signup-password' && el.value.length < PASSWORD_MIN) problem = PASSWORD_PROBLEM;
   if (problem) document.getElementById(errorId).textContent = problem;
 }
 
 /**
- * Owner request (Oct 2026): "Send me a code" and the Terms line appear only
- * once the form is filled in correctly - the email on Sign In; name, email and
- * phone on Create Account. Once a code has been sent, the Terms line stays.
- * The submit handlers still check everything themselves.
+ * Owner request (Oct 2026): the main button and the Terms line appear only
+ * once the form is filled in correctly - email and password on Sign In; name,
+ * email and password on Create Account. Once a code has been sent, the Terms
+ * line stays. The submit handlers still check everything themselves.
  */
 function refreshReady() {
   const $ = (id) => document.getElementById(id);
-  const loginReady = emailLooksValid($('login-email').value);
+  const loginReady = emailLooksValid($('login-email').value) && !!$('login-password').value;
   const signupReady = !!$('signup-name').value.trim() && emailLooksValid($('signup-email').value)
-    && isCustomerPhoneValid($('signup-phone').value.trim());
+    && $('signup-password').value.length >= PASSWORD_MIN;
   $('login-form').classList.toggle('is-ready', loginReady);
   $('signup-form').classList.toggle('is-ready', signupReady);
   // Fixed now: take back the "please check" message.
-  [['login-error', loginReady], ['signup-error', signupReady]].forEach(([id, ready]) => {
+  [['login-error', emailLooksValid($('login-email').value)], ['signup-error', signupReady]].forEach(([id, ready]) => {
     const err = $(id);
-    if (ready && (err.textContent === EMAIL_PROBLEM || err.textContent === PHONE_PROBLEM)) err.textContent = '';
+    if (ready && (err.textContent === EMAIL_PROBLEM || err.textContent === PASSWORD_PROBLEM)) err.textContent = '';
   });
   const onSignup = !$('panel-signup').classList.contains('hidden');
+  const onReset = !$('panel-reset').classList.contains('hidden');
   const codeStep = !$('login-code-form').classList.contains('hidden') || !$('signup-code-form').classList.contains('hidden');
-  document.querySelector('.auth-terms-reveal').classList.toggle('is-ready', codeStep || (onSignup ? signupReady : loginReady));
+  document.querySelector('.auth-terms-reveal').classList.toggle('is-ready',
+    codeStep || onReset || (onSignup ? signupReady : emailLooksValid($('login-email').value)));
+}
+
+function togglePassword(e) {
+  const btn = e.currentTarget;
+  const input = document.getElementById(btn.dataset.for);
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'Hide' : 'Show';
+  btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
 }
 
 /**
@@ -106,8 +141,8 @@ function prefillSignupEmail() {
  * it again on a phone keyboard, which is the whole point; showing it with a way
  * out matters because these phones get shared.
  *
- * An email address alone signs nobody in - the six-digit code still has to
- * reach that mailbox - so remembering it is a convenience, not a credential.
+ * An email address alone signs nobody in - the password or the six-digit code
+ * still has to match - so remembering it is a convenience, not a credential.
  */
 function prefillRememberedEmail() {
   const email = CustomerAuth.getRememberedEmail && CustomerAuth.getRememberedEmail();
@@ -119,8 +154,6 @@ function prefillRememberedEmail() {
 
   // Visibility of "Not you?" was already decided before first paint by the
   // inline script in the head (see customer-login.html), so nothing moves.
-  // The address is filled into the box only - not repeated under it (owner
-  // request, Oct 2026).
   input.value = email;
 
   document.getElementById('login-not-you').addEventListener('click', () => {
@@ -150,24 +183,93 @@ function showTab(which) {
   document.getElementById('tab-signup').setAttribute('aria-selected', !signin ? 'true' : 'false');
   document.getElementById('panel-signin').classList.toggle('hidden', !signin);
   document.getElementById('panel-signup').classList.toggle('hidden', signin);
+  document.getElementById('panel-reset').classList.add('hidden');
   document.getElementById('auth-title').textContent = signin ? 'Sign in to Mwakete' : 'Create your Mwakete account';
   // Owner request (Oct 2026): Create Account is for making an account, so the
   // Guest button and the "or" line go; Sign In brings them back.
   document.documentElement.classList.toggle('auth-signup', !signin);
 }
 
+function signedIn(res) {
+  CustomerAuth.saveSession(res.token, res.customer);
+  window.location.href = nextDest();
+}
+
+/* ---------- "Send the code again" ---------- */
+
+const resendTimers = {};
+function startResendCooldown(which, seconds) {
+  const btn = document.querySelector('.resend-btn[data-for="' + which + '"]');
+  if (!btn) return;
+  clearInterval(resendTimers[which]);
+  let left = Math.max(1, Number(seconds) || 60);
+  const tick = () => {
+    if (left <= 0) {
+      clearInterval(resendTimers[which]);
+      btn.disabled = false;
+      btn.textContent = 'Send the code again';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Send again in ' + left + 's';
+    left--;
+  };
+  tick();
+  resendTimers[which] = setInterval(tick, 1000);
+}
+
+async function onResend(e) {
+  const btn = e.currentTarget;
+  const which = btn.dataset.for;
+  const errorEl = document.getElementById(which === 'login' ? 'login-code-error' : which === 'signup' ? 'signup-code-error' : 'reset-error');
+  errorEl.textContent = '';
+  if (!pending[which]) return;
+  const busyDone = setButtonBusy(btn, 'Sending');
+  const res = await Api.post('resendCustomerCode', { pendingToken: pending[which] });
+  busyDone();
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not send the code again. Please try again.';
+    return;
+  }
+  startResendCooldown(which, res.resendAfterSeconds);
+}
+
+function codeSentText(sentTo, doing) {
+  return 'We emailed a 6-digit code to ' + sentTo + '. Enter it below to ' + doing +
+    '. Not there after a minute? Check your spam or junk folder.';
+}
+
 /* ---------- Sign in ---------- */
 
-async function onLoginRequest(e) {
+async function onPasswordLogin(e) {
   e.preventDefault();
   const errorEl = document.getElementById('login-error');
   errorEl.textContent = '';
   const email = document.getElementById('login-email').value.trim();
-  if (!email) {
-    errorEl.textContent = 'Please enter your email.';
+  const password = document.getElementById('login-password').value;
+  if (!emailLooksValid(email)) { errorEl.textContent = EMAIL_PROBLEM; return; }
+  if (!password) { errorEl.textContent = 'Enter your password - or use "Email me a code instead".'; return; }
+  const btn = e.target.querySelector('button[type="submit"]');
+  const busyDone = setButtonBusy(btn, 'Signing in');
+  const res = await Api.post('customerPasswordLogin', { email, password, providerLinkToken: providerLinkToken || undefined });
+  busyDone();
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not sign you in. Please try again.';
     return;
   }
-  const btn = e.target.querySelector('button[type="submit"]');
+  signedIn(res);
+}
+
+async function onLoginRequest() {
+  const errorEl = document.getElementById('login-error');
+  errorEl.textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  if (!emailLooksValid(email)) {
+    errorEl.textContent = 'Type your email first, then tap "Email me a code instead".';
+    document.getElementById('login-email').focus();
+    return;
+  }
+  const btn = document.getElementById('login-use-code');
   const busyDone = setButtonBusy(btn, 'Sending');
   const res = await Api.post('loginCustomer', { email });
   busyDone();
@@ -175,10 +277,17 @@ async function onLoginRequest(e) {
     errorEl.textContent = res.error || 'Could not send a code. Please try again.';
     return;
   }
-  loginPendingToken = res.pendingToken;
-  document.getElementById('login-code-hint').textContent = `We emailed a 6-digit code to ${email}. Enter it below.`;
+  showLoginCode('login', res.pendingToken, res.sentTo || email, 'sign in', res.resendAfterSeconds);
+}
+
+function showLoginCode(mode, pendingToken, sentTo, doing, resendAfter) {
+  loginCodeMode = mode;
+  pending.login = pendingToken;
+  document.getElementById('login-code-hint').textContent = codeSentText(sentTo, doing);
+  document.querySelector('#login-code-form button[type="submit"]').textContent = mode === 'verify' ? 'Confirm email' : 'Verify & sign in';
   document.getElementById('login-form').classList.add('hidden');
   document.getElementById('login-code-form').classList.remove('hidden');
+  startResendCooldown('login', resendAfter);
   document.getElementById('login-code').focus();
 }
 
@@ -189,19 +298,19 @@ async function onLoginVerify(e) {
   const code = document.getElementById('login-code').value.trim();
   const btn = e.target.querySelector('button[type="submit"]');
   const busyDone = setButtonBusy(btn, 'Checking');
-  const res = await Api.post('verifyCustomerLogin',
-    { token: loginPendingToken, code });
+  const res = await Api.post(loginCodeMode === 'verify' ? 'verifyCustomerEmail' : 'verifyCustomerLogin',
+    { token: pending.login, code, providerLinkToken: providerLinkToken || undefined });
   busyDone();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not verify the code.';
     return;
   }
-  CustomerAuth.saveSession(res.token, res.customer);
-  window.location.href = nextDest();
+  signedIn(res);
 }
 
 function resetLogin() {
-  loginPendingToken = null;
+  pending.login = null;
+  loginCodeMode = 'login';
   document.getElementById('login-code-form').classList.add('hidden');
   document.getElementById('login-form').classList.remove('hidden');
   document.getElementById('login-code').value = '';
@@ -216,27 +325,27 @@ async function onSignupRequest(e) {
   errorEl.textContent = '';
   const name = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('signup-email').value.trim();
-  const phone = document.getElementById('signup-phone').value.trim();
-  if (!name || !email || !phone) {
-    errorEl.textContent = 'Please fill in your name, email, and phone number.';
+  const password = document.getElementById('signup-password').value;
+  if (!name || !email || !password) {
+    errorEl.textContent = 'Please fill in your name, email and a password.';
     return;
   }
-  if (!isCustomerPhoneValid(phone)) {
-    errorEl.textContent = 'Local phone numbers must start with 730 or 630. For an overseas number, include your country code (e.g. +64…).';
-    return;
-  }
+  if (!emailLooksValid(email)) { errorEl.textContent = EMAIL_PROBLEM; return; }
+  if (password.length < PASSWORD_MIN) { errorEl.textContent = PASSWORD_PROBLEM; return; }
   const btn = e.target.querySelector('button[type="submit"]');
   const busyDone = setButtonBusy(btn, 'Sending');
-  const res = await Api.post('registerCustomer', { name, email, phone });
+  const res = await Api.post('registerCustomer', { name, email, password });
   busyDone();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not send a code. Please try again.';
     return;
   }
-  signupPendingToken = res.pendingToken;
-  document.getElementById('signup-code-hint').textContent = `We emailed a 6-digit code to ${email}. Enter it below to finish.`;
+  pending.signup = res.pendingToken;
+  document.getElementById('signup-code-hint').textContent = codeSentText(res.sentTo || email, 'finish') +
+    ' You can also tap the link in that email.';
   document.getElementById('signup-form').classList.add('hidden');
   document.getElementById('signup-code-form').classList.remove('hidden');
+  startResendCooldown('signup', res.resendAfterSeconds);
   document.getElementById('signup-code').focus();
 }
 
@@ -247,21 +356,142 @@ async function onSignupVerify(e) {
   const code = document.getElementById('signup-code').value.trim();
   const btn = e.target.querySelector('button[type="submit"]');
   const busyDone = setButtonBusy(btn, 'Checking');
-  const res = await Api.post('verifyCustomerEmail',
-    { token: signupPendingToken, code });
+  const res = await Api.post('verifyCustomerEmail', { token: pending.signup, code });
   busyDone();
   if (!res.ok) {
     errorEl.textContent = res.error || 'Could not verify the code.';
     return;
   }
-  CustomerAuth.saveSession(res.token, res.customer);
-  window.location.href = nextDest();
+  signedIn(res);
 }
 
 function resetSignup() {
-  signupPendingToken = null;
+  pending.signup = null;
   document.getElementById('signup-code-form').classList.add('hidden');
   document.getElementById('signup-form').classList.remove('hidden');
   document.getElementById('signup-code').value = '';
   document.getElementById('signup-code-error').textContent = '';
 }
+
+/* ---------- Forgot password ---------- */
+
+function showReset(email) {
+  document.getElementById('panel-signin').classList.add('hidden');
+  document.getElementById('panel-signup').classList.add('hidden');
+  document.getElementById('panel-reset').classList.remove('hidden');
+  document.getElementById('reset-request-form').classList.remove('hidden');
+  document.getElementById('reset-form').classList.add('hidden');
+  document.getElementById('auth-title').textContent = 'Set a new password';
+  if (email && emailLooksValid(email)) document.getElementById('reset-email').value = email;
+  document.getElementById('reset-email').focus();
+}
+
+async function onResetRequest(e) {
+  e.preventDefault();
+  const errorEl = document.getElementById('reset-request-error');
+  errorEl.textContent = '';
+  const email = document.getElementById('reset-email').value.trim();
+  if (!emailLooksValid(email)) { errorEl.textContent = EMAIL_PROBLEM; return; }
+  const btn = e.target.querySelector('button[type="submit"]');
+  const busyDone = setButtonBusy(btn, 'Sending');
+  const res = await Api.post('requestCustomerPasswordReset', { email });
+  busyDone();
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not send a code. Please try again.';
+    return;
+  }
+  pending.reset = res.pendingToken;
+  resetLinkToken = '';
+  document.getElementById('reset-hint').textContent = codeSentText(res.sentTo || email, 'set your new password') +
+    ' If there is no Mwakete account for this email, we told that address instead.';
+  document.getElementById('reset-code-field').hidden = false;
+  document.getElementById('reset-request-form').classList.add('hidden');
+  document.getElementById('reset-form').classList.remove('hidden');
+  startResendCooldown('reset', res.resendAfterSeconds);
+  document.getElementById('reset-code').focus();
+}
+
+async function onResetSubmit(e) {
+  e.preventDefault();
+  const errorEl = document.getElementById('reset-error');
+  errorEl.textContent = '';
+  const newPassword = document.getElementById('reset-password').value;
+  const code = document.getElementById('reset-code').value.trim();
+  if (newPassword.length < PASSWORD_MIN) { errorEl.textContent = PASSWORD_PROBLEM; return; }
+  if (!resetLinkToken && !code) { errorEl.textContent = 'Enter the 6-digit code we emailed you.'; return; }
+  const btn = e.target.querySelector('button[type="submit"]');
+  const busyDone = setButtonBusy(btn, 'Saving');
+  const res = await Api.post('resetCustomerPassword', resetLinkToken
+    ? { linkToken: resetLinkToken, newPassword }
+    : { token: pending.reset, code, newPassword });
+  busyDone();
+  if (!res.ok) {
+    errorEl.textContent = res.error || 'Could not save your password. Please try again.';
+    return;
+  }
+  signedIn(res);
+}
+
+/* ---------- The links in our emails ---------- */
+
+async function useVerifyLink(linkToken) {
+  showTab('signin');
+  const note = document.getElementById('provider-link-note');
+  note.textContent = 'Confirming your email…';
+  note.hidden = false;
+  const res = await Api.post('verifyCustomerEmail', { linkToken });
+  if (res.ok) {
+    note.textContent = 'Email confirmed. Signing you in…';
+    signedIn(res);
+    return;
+  }
+  note.hidden = true;
+  document.getElementById('login-error').textContent = res.error || 'That link did not work. Sign in, or create your account again.';
+}
+
+async function useResetLink(linkToken) {
+  showReset('');
+  const res = await Api.post('checkCustomerLink', { linkToken });
+  if (!res.ok || res.purpose !== 'reset') {
+    document.getElementById('reset-request-error').textContent =
+      (res && res.error) || 'That link is invalid or has expired. Request a new one below.';
+    return;
+  }
+  resetLinkToken = linkToken;
+  document.getElementById('reset-hint').textContent = 'Choose a new password for ' + res.sentTo + '.';
+  document.getElementById('reset-code-field').hidden = true;
+  document.querySelector('.resend-btn[data-for="reset"]').hidden = true;
+  document.getElementById('reset-request-form').classList.add('hidden');
+  document.getElementById('reset-form').classList.remove('hidden');
+  document.getElementById('reset-password').focus();
+}
+
+/* ---------- After Google / Facebook (google-signin.js, facebook-signin.js) ---------- */
+
+/** The provider's email matches an account here: prove it, then it links. */
+window.onProviderLinkRequired = function (res) {
+  const label = res.provider === 'facebook' ? 'Facebook' : 'Google';
+  providerLinkToken = res.providerLinkToken || '';
+  resetLogin();
+  showTab('signin');
+  const note = document.getElementById('provider-link-note');
+  note.textContent = 'You already have a Mwakete account with ' + res.sentTo + '. ' +
+    (res.hasPassword ? 'Sign in with its password' : 'Tap "Email me a code instead"') +
+    ' once, and we will link ' + label + ' to it so it works next time.';
+  note.hidden = false;
+  if (res.email) document.getElementById('login-email').value = res.email;
+  refreshReady();
+  document.getElementById(res.hasPassword ? 'login-password' : 'login-use-code').focus();
+};
+
+/** A new Facebook account: signed in, but its email still needs confirming. */
+window.onProviderNeedsEmail = function (res) {
+  CustomerAuth.saveSession(res.token, res.customer);
+  if (!res.verifyPendingToken) {
+    // Facebook shared no email: the account page asks for one.
+    window.location.href = 'customer-dashboard.html';
+    return;
+  }
+  showTab('signin');
+  showLoginCode('verify', res.verifyPendingToken, res.sentTo, 'confirm your email', 60);
+};

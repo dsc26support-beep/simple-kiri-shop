@@ -426,7 +426,27 @@ function renderDeliveryMethodOptions(eligible) {
   updateReviewTotal();
 }
 
+// The phone is needed only when something is delivered (owner decision, Oct
+// 2026): Pick up & pay is collected in person, so there it is optional. The
+// server applies the same rule (Orders.gs).
+function phoneRequiredFor(method) {
+  return method !== 'pickPay';
+}
+
+function updatePhoneRequirement() {
+  const selected = document.querySelector('input[name="deliveryMethod"]:checked');
+  const required = phoneRequiredFor(selected ? selected.value : '');
+  const input = document.getElementById('customer-phone');
+  if (!input) return;
+  input.required = required;
+  document.getElementById('phone-optional').hidden = required;
+  document.getElementById('phone-why').textContent = required
+    ? 'Needed for delivery, so the seller or driver can reach you.'
+    : 'Optional for Pick up & pay - you collect it in person. Add it if the seller may need to call you.';
+}
+
 function updateReviewTotal() {
+  updatePhoneRequirement();
   const subtotal = Cart.getTotal(currentSlug);
   const selected = document.querySelector('input[name="deliveryMethod"]:checked');
   const cost = selected && storeInfo ? deliveryCostOf(selected.value) : null;
@@ -507,11 +527,16 @@ async function onSubmit(e) {
   const village = getCustomerVillage();
   const deliveryMethodInput = document.querySelector('input[name="deliveryMethod"]:checked');
 
-  if (!customerName || !customerPhone) {
-    errorEl.textContent = 'Please enter your name and phone number.';
+  if (!customerName) {
+    errorEl.textContent = 'Please enter your name.';
     return;
   }
-  if (!isCustomerPhoneValid(customerPhone)) {
+  if (!customerPhone && phoneRequiredFor(deliveryMethodInput ? deliveryMethodInput.value : '')) {
+    errorEl.textContent = 'Please enter your phone number - it is needed for delivery, so the seller or driver can reach you.';
+    document.getElementById('customer-phone').focus();
+    return;
+  }
+  if (customerPhone && !isCustomerPhoneValid(customerPhone)) {
     errorEl.textContent = 'Local phone numbers must start with 730 or 630. For an overseas number, include your country code (e.g. +64…).';
     return;
   }
@@ -618,7 +643,7 @@ function buildSummaryText(orderRef, payload, cart, total, deliveryCost) {
 ${orderRef ? 'Order Ref: ' + orderRef : '(order not yet confirmed with the store server — please send this message directly)'}
 
 Customer: ${payload.customerName}
-Phone: ${payload.customerPhone}
+Phone: ${payload.customerPhone || '(not given - Pick up & pay)'}
 ${payload.deliveryAddress ? 'Address: ' + payload.deliveryAddress + '\n' : ''}${deliveryLabel ? 'Delivery Method: ' + deliveryLabel + '\n' : ''}${payload.notes ? 'Notes: ' + payload.notes + '\n' : ''}
 Items:
 ${lines}
