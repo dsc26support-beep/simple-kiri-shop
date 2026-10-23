@@ -1,4 +1,6 @@
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// The email form waits behind "Continue with email" (Oct 2026).
+const openEmail = async (pg) => { if (await pg.isVisible('#email-continue').catch(() => false)) await pg.click('#email-continue'); };
 const BASE = 'http://127.0.0.1:8099';
 
 function mockAuth(ctx, posted) {
@@ -73,6 +75,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForFunction(() => typeof CustomerAuth !== 'undefined');
+    await openEmail(page);
     await page.fill('#login-email', 'd@x.com');
     ok('Sign in waits for a password', await page.$eval('#login-form button[type="submit"]', (b) => getComputedStyle(b).visibility === 'hidden'));
     await page.fill('#login-password', 'wrong-pass');
@@ -86,6 +89,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
 
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await openEmail(page);
     await page.fill('#login-email', 'd@x.com');
     await page.click('#login-use-code');
     await page.waitForSelector('#login-code-form:not(.hidden)');
@@ -99,6 +103,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
     // Forgot password by code.
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
+    await openEmail(page);
     await page.fill('#login-email', 'd@x.com');
     await page.click('#login-forgot');
     ok('Forgot password opens the reset step with the email filled in', await page.isVisible('#reset-request-form') && (await page.inputValue('#reset-email')) === 'd@x.com');

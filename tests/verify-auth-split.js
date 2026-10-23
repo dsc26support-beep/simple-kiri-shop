@@ -7,6 +7,8 @@
  * seller password reset; what each form does is unchanged.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// The email form waits behind "Continue with email" (Oct 2026).
+const openEmail = async (pg) => { if (await pg.isVisible('#email-continue').catch(() => false)) await pg.click('#email-continue'); };
 const BASE = process.env.AUDIT_BASE || 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
 const J = (x) => JSON.stringify(x);
@@ -105,9 +107,11 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
         terms: v(document.querySelector('.auth-terms-note')) }; });
     const a = await vis();
     ok('Shopper Sign In: no "Sign in" or Terms line before an email is typed', !a.code && !a.terms, J(a));
+    await openEmail(p);
     await p.fill('#login-email', 'aroita@exam'); await p.waitForTimeout(400);
     const b = await vis();
     ok('...still hidden for an unfinished email', !b.code && !b.terms, J(b));
+    await openEmail(p);
     await p.fill('#login-email', 'aroita@example.com'); await p.waitForTimeout(400);
     const c = await vis();
     ok('...the Terms line appears once the email looks right', !c.code && c.terms, J(c));

@@ -23,6 +23,10 @@ function init() {
   document.getElementById('tab-signin').addEventListener('click', () => showTab('signin'));
   document.getElementById('tab-signup').addEventListener('click', () => showTab('signup'));
 
+  document.getElementById('email-continue').addEventListener('click', () => {
+    openEmailForm();
+    document.getElementById('login-email').focus();
+  });
   document.getElementById('login-form').addEventListener('submit', onPasswordLogin);
   document.getElementById('login-use-code').addEventListener('click', onLoginRequest);
   document.getElementById('login-forgot').addEventListener('click', () => showReset(document.getElementById('login-email').value.trim()));
@@ -173,6 +177,16 @@ function nextDest() {
     return next;
   }
   return 'customer-dashboard.html';
+}
+
+/**
+ * The email form waits behind "Continue with email" (owner request, Oct
+ * 2026). Opened by that button, and by anything that needs the form: a
+ * remembered email (set before first paint, in the head), an emailed link,
+ * or Google/Facebook asking to sign in to an existing account first.
+ */
+function openEmailForm() {
+  document.documentElement.classList.add('email-open');
 }
 
 function showTab(which) {
@@ -376,6 +390,7 @@ function resetSignup() {
 /* ---------- Forgot password ---------- */
 
 function showReset(email) {
+  openEmailForm();
   document.getElementById('panel-signin').classList.add('hidden');
   document.getElementById('panel-signup').classList.add('hidden');
   document.getElementById('panel-reset').classList.remove('hidden');
@@ -436,6 +451,7 @@ async function onResetSubmit(e) {
 
 async function useVerifyLink(linkToken) {
   showTab('signin');
+  openEmailForm();
   const note = document.getElementById('provider-link-note');
   note.textContent = 'Confirming your email…';
   note.hidden = false;
@@ -474,6 +490,7 @@ window.onProviderLinkRequired = function (res) {
   providerLinkToken = res.providerLinkToken || '';
   resetLogin();
   showTab('signin');
+  openEmailForm();
   const note = document.getElementById('provider-link-note');
   note.textContent = 'You already have a Mwakete account with ' + res.sentTo + '. ' +
     (res.hasPassword ? 'Sign in with its password' : 'Tap "Email me a code instead"') +
@@ -493,5 +510,6 @@ window.onProviderNeedsEmail = function (res) {
     return;
   }
   showTab('signin');
+  openEmailForm();
   showLoginCode('verify', res.verifyPendingToken, res.sentTo, 'confirm your email', 60);
 };

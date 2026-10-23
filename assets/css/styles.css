@@ -8594,3 +8594,92 @@ html.auth-signup .auth-divider {
 .register-sent .btn {
   margin-top: var(--space-2);
 }
+
+
+/* ---- Customer sign-in buttons, Buzzy style (owner request, Oct 2026) ----
+   One stack of matching full-width buttons - Google, Facebook, Guest, then
+   "or", then "Continue with email" - icon on the left, words centred, in
+   Mwakete purple (white outline on the purple page on phones). Overrides the
+   240px pills above for these buttons only. */
+.auth-card--customer .auth-provider {
+  position: relative;
+  display: block;
+  margin: 0 0 var(--space-2);
+}
+.auth-card--customer .auth-provider[hidden] { display: none; }
+.auth-card--customer .auth-provider-btn {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 48px;
+  margin: 0;
+  border: 2px solid var(--color-purple);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-purple);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.auth-card--customer .auth-provider-btn:hover,
+.auth-card--customer .auth-provider-btn:focus-visible,
+.auth-card--customer .auth-provider:focus-within .auth-provider-btn {
+  background: var(--color-purple-soft, rgba(51, 45, 99, 0.08));
+}
+.auth-card--customer .apb-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+}
+/* Google's own button, invisible, stretched over ours (google-signin.js). */
+.auth-card--customer #google-signin-btn[data-overlay] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 48px;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 12px;
+  opacity: 0.01;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-card--customer .auth-guest-row { display: block; margin: 0 0 var(--space-2); }
+.auth-card--customer .auth-guest-row #guest-continue { width: 100%; margin: 0; }
+.auth-card--customer .auth-quick .auth-divider { margin: var(--space-1) 0 var(--space-2); }
+.auth-card--customer .auth-quick { margin-bottom: var(--space-3); }
+
+/* The email form waits behind "Continue with email" (customer-login.js). */
+html:not(.email-open) .auth-card--customer #login-form { display: none; }
+html.email-open #email-continue,
+html.auth-signup #email-continue { display: none; }
+
+@media (max-width: 899px) {
+  .auth-page .auth-card .auth-provider-btn {
+    border-color: #fff;
+    color: #fff;
+  }
+  .auth-page .auth-card .auth-provider-btn:hover,
+  .auth-page .auth-card .auth-provider-btn:focus-visible,
+  .auth-page .auth-card .auth-provider:focus-within .auth-provider-btn {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+.auth-card--customer #guest-continue.auth-provider-btn {
+  height: auto;
+  min-height: 48px;
+  padding: 0 48px;
+}
