@@ -8335,14 +8335,34 @@ html.auth-signup .auth-divider {
   margin: 0 0 var(--space-1);
 }
 
-.auth-panel-text {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  opacity: 0.92;
-}
 
 .auth-panel-video { display: none; }
+
+/* Phones and tablets (owner request, Oct 2026): the purple covers the whole
+   page behind the sign-in card, with a short headline above it - no
+   separate purple band. */
+@media (max-width: 899px) {
+  .auth-page {
+    background: linear-gradient(160deg, var(--color-purple) 0%, var(--color-purple-light) 100%);
+    min-height: 100svh;
+  }
+  .auth-page .auth-split {
+    padding-bottom: var(--space-5);
+  }
+  .auth-page .auth-split-panel {
+    background: none;
+    border-radius: 0;
+    padding: var(--space-1) 0 var(--space-3);
+  }
+  .auth-page .auth-card {
+    margin-top: 0;
+  }
+  .auth-page .auth-panel-title {
+    font-size: 0.77rem;   /* 1.5 times smaller than the band's 1.15rem */
+    letter-spacing: 0.02em;
+    margin: 0;
+  }
+}
 
 @media (min-width: 900px) {
   .auth-split {
@@ -8388,10 +8408,6 @@ html.auth-signup .auth-divider {
     margin-bottom: var(--space-2);
   }
 
-  .auth-panel-text {
-    font-size: 1rem;
-    max-width: 40ch;
-  }
 
   /* The video fills the whole panel. 3:2 keeps "mwakete.com" in the middle
      of the 16:9 video inside the crop. */
@@ -8409,8 +8425,7 @@ html.auth-signup .auth-divider {
     object-position: center;
   }
 
-  .auth-split-panel.has-video .auth-panel-title,
-  .auth-split-panel.has-video .auth-panel-text {
+  .auth-split-panel.has-video .auth-panel-title {
     position: absolute;
     width: 1px;
     height: 1px;
