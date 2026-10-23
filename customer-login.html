@@ -132,7 +132,8 @@
                 </p>
               </div>
               <p id="login-error" class="form-error" role="alert"></p>
-              <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
+              <!-- Shown once the email looks right (owner request, Oct 2026). -->
+              <div class="auth-reveal"><div><button type="submit" class="btn btn-primary btn-block">Send me a code</button></div></div>
             </form>
 
             <form id="login-code-form" class="hidden" novalidate>
@@ -164,7 +165,8 @@
                 <p class="helper-text">Local numbers start with 730 or 630. Overseas? Include your country code (e.g. +64…).</p>
               </div>
               <p id="signup-error" class="form-error" role="alert"></p>
-              <button type="submit" class="btn btn-primary btn-block">Send me a code</button>
+              <!-- Shown once name, email and phone look right. -->
+              <div class="auth-reveal"><div><button type="submit" class="btn btn-primary btn-block">Send me a code</button></div></div>
             </form>
 
             <form id="signup-code-form" class="hidden" novalidate>
@@ -181,7 +183,7 @@
 
           <!-- The footer (and its Terms | Privacy) is hidden on phones and
                tablets, so the agreement is stated here, where it applies. -->
-          <p class="helper-text auth-terms-note">By continuing you agree to the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
+          <div class="auth-reveal auth-terms-reveal"><div><p class="helper-text auth-terms-note">By continuing you agree to the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p></div></div>
         </div>
       </section>
       </div>

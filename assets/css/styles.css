@@ -8338,6 +8338,33 @@ html.auth-signup .auth-divider {
 
 .auth-panel-video { display: none; }
 
+/* Shopper sign-in: "Send me a code" and the Terms line slide in once what is
+   typed looks right (customer-login.js refreshReady). Hidden ones take no
+   space and can't be tabbed to. */
+.auth-reveal {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s;
+}
+/* The space stays reserved while hidden, so nothing on the page moves when
+   they appear (and a remembered email doesn't shift the layout). */
+.is-ready > .auth-reveal,
+.auth-reveal.is-ready {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-reveal,
+  .is-ready > .auth-reveal,
+  .auth-reveal.is-ready {
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Phones and tablets (owner request, Oct 2026): the purple covers the whole
    page behind the sign-in card, with a short headline above it - no
    separate purple band. */
@@ -8354,8 +8381,59 @@ html.auth-signup .auth-divider {
     border-radius: 0;
     padding: var(--space-1) 0 var(--space-3);
   }
+  /* No grey card (owner request, Oct 2026): the form stands on the purple,
+     its words in white; boxes and buttons stay white so they read clearly. */
   .auth-page .auth-card {
     margin-top: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    color: #fff;
+  }
+  .auth-page .auth-card :is(label, legend, h1, h2, h3, p, li, .helper-text, .form-required-note) {
+    color: #fff;
+  }
+  .auth-page .auth-card .helper-text {
+    opacity: 0.88;
+  }
+  .auth-page .auth-card a:not(.btn),
+  .auth-page .auth-card .linklike {
+    color: #fff;
+  }
+  .auth-page .auth-tab {
+    color: rgba(255, 255, 255, 0.72);
+    border-bottom-color: rgba(255, 255, 255, 0.35);
+  }
+  .auth-page .auth-tab.is-active,
+  .auth-page .auth-tab[aria-selected="true"] {
+    color: #fff;
+    border-bottom-color: #fff;
+  }
+  .auth-page .auth-divider {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  .auth-page .auth-divider::before,
+  .auth-page .auth-divider::after {
+    background: rgba(255, 255, 255, 0.35);
+  }
+  .auth-page .auth-card .form-error {
+    color: #ffd7d7;
+    font-weight: 600;
+  }
+  .auth-page .auth-card .form-success {
+    color: #c9f5d3;
+  }
+  /* Outlined like every button on the site - in white, so it shows on the
+     purple. */
+  .auth-page .auth-card .btn:not(.btn-save) {
+    background: transparent;
+    border-color: #fff;
+    color: #fff;
+  }
+  .auth-page .auth-card .btn:not(.btn-save):hover,
+  .auth-page .auth-card .btn:not(.btn-save):focus-visible {
+    background: rgba(255, 255, 255, 0.14);
   }
   .auth-page .auth-panel-title {
     font-size: 0.77rem;   /* 1.5 times smaller than the band's 1.15rem */

@@ -35,8 +35,10 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.fill('#signup-name', 'Debby');
     await page.fill('#signup-email', 'd@x.com');
     await page.fill('#signup-phone', '7201234');
-    await page.click('#signup-form button[type="submit"]');
+    // Send me a code waits for a right phone (Oct 2026); leaving the field explains why.
+    await page.keyboard.press('Tab');
     await page.waitForTimeout(100);
+    ok('signup bad phone: Send me a code stays hidden', await page.$eval('#signup-form button[type="submit"]', (b) => getComputedStyle(b).visibility === 'hidden'));
     ok('signup bad phone blocked (no registerCustomer)', !posted.some(p => p.action === 'registerCustomer'));
     ok('signup bad phone shows 730/630 error', /730 or 630/.test(await page.textContent('#signup-error')));
     // good phone -> code step

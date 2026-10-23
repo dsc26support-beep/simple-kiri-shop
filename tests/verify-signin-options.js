@@ -227,10 +227,11 @@ async function makeContext(browser, opts) {
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     ok('the guest button just says Guest', (await page.textContent('#guest-continue')).trim() === 'Guest');
     ok('...with no extra note under it', (await page.$('.auth-guest-note')) === null);
-    ok('every button on the card is a purple outline on a see-through fill', await page.evaluate(() =>
+    ok('every button on the card is an outline (purple, or white on the purple phone page) on a see-through fill', await page.evaluate(() =>
       [...document.querySelectorAll('.auth-card--customer .btn')].every((b) => {
         const cs = getComputedStyle(b);
-        return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.borderTopColor === 'rgb(51, 45, 99)' && cs.borderTopWidth === '2px';
+        // Purple outline - white on the all-purple phone page (Oct 2026).
+        return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && ['rgb(51, 45, 99)', 'rgb(255, 255, 255)'].includes(cs.borderTopColor) && cs.borderTopWidth === '2px';
       })));
     // Sent here from checkout: guests can't order, so there is no guest route.
     await page.goto(BASE + '/customer-login.html?next=checkout.html&reason=order', { waitUntil: 'load' });
