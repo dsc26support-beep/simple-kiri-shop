@@ -8710,3 +8710,13 @@ html.auth-signup #email-continue { display: none; }
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   }
 }
+
+/* My Account on phones (owner request, Oct 2026): "My Messages" goes - the
+   bottom bar already has Messages. Tablets and computers have no bottom bar,
+   so they keep it. With it gone, a shopper with no store has nothing in the
+   row, so the row closes up; a seller's "My Store" stays, same size, on the
+   left. */
+@media (max-width: 700px) {
+  .dash-messages-link { display: none; }
+  .dash-links:not(:has(.dash-store-link.is-visible)) { display: none; }
+}
