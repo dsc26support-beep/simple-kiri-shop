@@ -8718,5 +8718,8 @@ html.auth-signup #email-continue { display: none; }
    left. */
 @media (max-width: 700px) {
   .dash-messages-link { display: none; }
+  /* Same for the "Browse stores" and "My carts" shortcuts: the header has
+     Browse Stores and the bottom bar has Cart (my-carts.html). */
+  .cust-quick .cust-quick-dup { display: none; }
   .dash-links:not(:has(.dash-store-link.is-visible)) { display: none; }
 }
