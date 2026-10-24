@@ -29,9 +29,10 @@ ok('an admin account is never shown to customers', !isStoreBrowsable({ Status: '
 ok('a store named ADMIN is hidden whatever its email', !isStoreBrowsable({ Status: 'active', StoreName: ' ADMIN ', StoreSlug: 'x', Email: 'other@gmail.com' }));
 ok('so is the admin slug, or admin-2', !isStoreBrowsable({ Status: 'active', StoreName: 'X', StoreSlug: 'admin' }) && !isStoreBrowsable({ Status: 'active', StoreName: 'X', StoreSlug: 'admin-2' }));
 ok('a store merely containing admin is still shown', isStoreBrowsable({ Status: 'active', StoreName: 'Admin Supplies', StoreSlug: 'admin-supplies' }));
-for (const st of ['pending', 'rejected', 'suspended']) {
+for (const st of ['rejected', 'suspended']) {
   ok(`a ${st} seller application is hidden from shoppers`, !isStoreBrowsable({ Status: 'active', StoreName: 'X', StoreSlug: 'x', ApprovalStatus: st }));
 }
+ok('a store that applied while approval was needed ("pending") is shown - pre-approved since 23 Oct 2026', isStoreBrowsable({ Status: 'active', StoreName: 'X', StoreSlug: 'x', ApprovalStatus: 'pending' }));
 ok('an approved store (or one from before applications) is shown', isStoreBrowsable({ Status: 'active', StoreName: 'X', StoreSlug: 'x', ApprovalStatus: 'approved' }) && isStoreBrowsable({ Status: 'active', StoreName: 'X', StoreSlug: 'x', ApprovalStatus: '' }));
 ok('a normal store with an email is still shown', isStoreBrowsable({ Status: 'active', Email: 'shop@x.com' }));
 ok('unknown status is neither', !isStoreBrowsable({ Status: 'wat' }) && !isStoreOpenForBusiness({ Status: 'wat' }));

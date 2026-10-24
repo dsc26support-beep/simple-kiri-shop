@@ -198,13 +198,14 @@ function ownerCanLogIn(owner) {
 }
 
 /**
- * Seller application state (SellerApplications.gs): 'pending' | 'approved' |
- * 'rejected' | 'suspended'. Blank - every store from before applications
- * existed - is 'approved', so nothing that already works changes.
+ * Seller application state (SellerApplications.gs): 'approved' | 'rejected' |
+ * 'suspended'. Blank - every store from before applications existed - is
+ * 'approved'. So is 'pending': stores are pre-approved since 23 Oct 2026, and
+ * the few that applied while approval was needed open without waiting.
  */
 function ownerApprovalStatus(owner) {
   var st = String((owner && owner.ApprovalStatus) || '').trim().toLowerCase();
-  return st === 'pending' || st === 'rejected' || st === 'suspended' ? st : 'approved';
+  return st === 'rejected' || st === 'suspended' ? st : 'approved';
 }
 
 /**
@@ -290,16 +291,17 @@ function validateOwnerEmail(email, excludeOwnerId, ownersList) {
 
 /**
  * "Become a Seller" (owner decision, Oct 2026). A seller first has a Mwakete
- * shopper account with a confirmed email; this is their application. It
- * creates the store row with ApprovalStatus 'pending' - no session, no
- * selling - until an admin approves it (SellerApplications.gs). The store's
+ * shopper account with a confirmed email. New stores are PRE-APPROVED (owner
+ * decision, 23 Oct 2026): the store opens at once and the seller is signed in;
+ * admins are emailed about every new store and can suspend one from
+ * owner/admin.html (SellerApplications.gs). The store's
  * contact email is the shopper account's confirmed email, never a typed one,
  * which also means nobody can claim an ADMIN_EMAILS address by registering it.
  * The seller still gets their own store username + password (and optional
  * 2FA) for the seller portal, exactly as before.
  *
- * A rejected applicant may apply again: the same row is updated and goes back
- * to 'pending'. Stores from before this change have no ApprovalStatus and
+ * A store an admin rejected or closed may apply again: the same row is reused.
+ * Stores from before this change have no ApprovalStatus and
  * count as approved (ownerApprovalStatus).
  */
 function actionRegisterOwner(body) {
@@ -350,7 +352,7 @@ function actionRegisterOwner(body) {
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
-  var owner, previous, autoApproved;
+  var owner, previous;
   try {
     var ownersSheet = getSheet('Owners');
     // Additive only: one header cell past the end if missing (see ensureColumn).
@@ -362,7 +364,6 @@ function actionRegisterOwner(body) {
     previous = owners.filter(function (o) { return String(o.CustomerId || '') === String(customer.CustomerId); })[0] || null;
     if (previous) {
       var st = ownerApprovalStatus(previous);
-      if (st === 'pending') return fail('Your seller application is already being reviewed. We will email you when it is decided.');
       if (st === 'suspended') return fail('Your store is suspended. Contact Mwakete via Help and support.');
       if (st === 'approved' && previous.Status !== 'closed') return fail('You already have a store. Log in to it from the seller portal.');
     }
@@ -378,9 +379,8 @@ function actionRegisterOwner(body) {
     var phoneTaken = owners.some(function (o) { return o.OwnerId !== exceptId && String(o.Phone).replace(/[^0-9]/g, '') === phoneDigits; });
     if (phoneTaken) return fail('That phone number is already registered to a store');
 
-    // The first admin has nobody to approve them: an applicant whose
-    // CONFIRMED email is in ADMIN_EMAILS is approved at once.
-    autoApproved = getAdminEmails().indexOf(email) !== -1;
+    // Pre-approved (owner decision, 23 Oct 2026). Only a SUSPENDED store is
+    // refused above; a rejected one may come back.
     var fields = {
       StoreName: storeName,
       Username: username,
@@ -391,7 +391,7 @@ function actionRegisterOwner(body) {
       Messenger: messengerLink,
       StoreType: storeType,
       PasswordHint: passwordHint,
-      ApprovalStatus: autoApproved ? 'approved' : 'pending',
+      ApprovalStatus: 'approved',
       CustomerId: customer.CustomerId,
       AppliedAt: nowIso(),
       ApplicationNote: about,
@@ -428,16 +428,13 @@ function actionRegisterOwner(body) {
   } finally {
     lock.releaseLock();
   }
-  logAuthEvent(autoApproved ? 'seller-approved' : 'seller-applied', owner.OwnerId, 'customer ' + customer.CustomerId + (autoApproved ? ' (admin email)' : ''));
+  logAuthEvent('seller-opened', owner.OwnerId, 'customer ' + customer.CustomerId);
 
+  var token = issueSession(owner.OwnerId);
   // Outside the lock - an email send is slow and must never hold it.
-  if (autoApproved) {
-    var token = issueSession(owner.OwnerId);
-    return ok({ token: token, owner: publicOwnerFields(owner), application: sellerApplicationView(owner) });
-  }
-  notifySellerApplication(owner, 'received');
+  notifySellerApplication(owner, 'opened');
   if (storeType !== 'retailer') notifyAdminsOfWholesaler(owner);
-  return ok({ application: sellerApplicationView(owner) });
+  return ok({ token: token, owner: publicOwnerFields(owner), application: sellerApplicationView(owner) });
 }
 
 function actionLoginOwner(body) {
@@ -473,7 +470,6 @@ function actionLoginOwner(body) {
     // person has proven the password, so this reveals nothing new).
     if (owner && passwordOk) {
       var approval = ownerApprovalStatus(owner);
-      if (approval === 'pending') return fail('Your seller application is still being reviewed. We will email you when it is decided.');
       if (approval === 'rejected') return fail('Your seller application was not approved. You can see why, and apply again, from your Mwakete account page.');
       if (approval === 'suspended') return fail('This store is suspended. Contact Mwakete via the Help and support link below.');
     }

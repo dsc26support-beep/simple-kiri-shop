@@ -39,9 +39,8 @@ res = reg({ passwordHint: 'x'.repeat(101) });
 ok('a hint over 100 characters is refused', !res.ok && /100 characters/.test(res.error), J(res));
 res = reg({ passwordHint: 'favourite fruit + 99' });
 ok('register with a good hint works', res.ok && owners()[0].PasswordHint === 'favourite fruit + 99', J(res));
-// Since Oct 2026 a new store waits for an admin (SellerApplications.gs); approve it here.
-ok('...as an application waiting for review', res.application && res.application.status === 'pending' && !res.token, J(res));
-box.__sheets.Owners.grid[1][box.__sheets.Owners.grid[0].indexOf('ApprovalStatus')] = 'approved';
+// New stores are pre-approved (owner decision, 23 Oct 2026): open at once.
+ok('...and the store opens straight away', res.application && res.application.status === 'approved' && !!res.token, J(res));
 res = box.actionLoginOwner({ username: 'bong', password: 'coconut99' });
 ok('the session profile says a hint is set, without the hint text', res.owner.hasPasswordHint === true && !('passwordHint' in res.owner), J(res.owner));
 const ownerToken = res.token;

@@ -1,5 +1,11 @@
 # Mwakete authentication, shopper accounts and seller onboarding (Oct 2026)
 
+> **Update, 23 Oct 2026 (owner decision): new stores are pre-approved.** A new
+> store opens as soon as its owner submits the form (`auth2-2026-10-23`), and
+> 'pending' rows from before count as approved. The admin section is now
+> "New stores" (suspend / reinstate / reopen). Where this document still
+> describes waiting for approval, read it as superseded.
+
 This document covers the 14 deliverables of the authentication master prompt. Facebook and Google
 setup steps are in [auth-meta-setup.md](auth-meta-setup.md).
 
@@ -8,7 +14,7 @@ The owner made four decisions, and this work follows them:
 | Question | Decision |
 |---|---|
 | Passwords | **Password first, code as backup.** New accounts set a password. "Email me a code instead" stays, both as a fallback and as the forgot-password route. Existing shoppers keep using codes until they set a password. |
-| Sellers | **New sellers apply; existing sellers keep their login.** The path is: shopper account → apply to open a store → an admin approves → the store opens. Existing stores and their usernames and passwords are unchanged. |
+| Sellers | **New sellers apply; existing sellers keep their login.** The path is: shopper account → open a store. **Since 23 Oct 2026 new stores are pre-approved:** the store opens at once, the admins are emailed, and an admin can suspend it from owner/admin.html → New stores. Existing stores and their usernames and passwords are unchanged. |
 | Facebook | **Built, but off until set up.** The button is hidden and the server refuses Facebook until the App ID and secret exist. |
 | Buyer phone | **Delivery only.** Required for truck, ship and air cargo. Optional for Pick up & pay. |
 
@@ -81,7 +87,7 @@ owner/admin.html + admin-seller-apps.js  -->  SellerApplications.gs  admin-only 
 | `apps-script/Products.gs` | Seller password change uses PBKDF2. |
 | `apps-script/Orders.gs` | Phone is optional only for `pickPay`. |
 | `apps-script/Utils.gs` | 6-digit codes come from a secure source. |
-| `apps-script/Code.gs` | New actions routed; `APP_VERSION = 'auth1-2026-10-23'`. |
+| `apps-script/Code.gs` | New actions routed; `APP_VERSION = 'auth2-2026-10-23'`. |
 
 **Frontend**
 
@@ -292,7 +298,7 @@ Claude cannot deploy Apps Script from its sandbox. These steps are manual.
    the same `/exec` URL.
 4. Check the deployment by opening
    `https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getVersion`.
-   It must answer `"version":"auth1-2026-10-23"`.
+   It must answer `"version":"auth2-2026-10-23"`.
 5. Merge the frontend PR. GitHub Pages publishes it. Phones pick it up through
    the service worker (`mwakete-v193`).
 6. Smoke test as in section 13. A new store must be approved from
@@ -419,7 +425,7 @@ stop being used.
 
 ## 13. Acceptance checklist
 
-- [ ] `?action=getVersion` → `auth1-2026-10-23`
+- [ ] `?action=getVersion` → `auth2-2026-10-23`
 - [ ] New shopper: Create Account with a password → code email arrives (code
       and link) → confirmed → My Account
 - [ ] Same email again on Create Account → the same "check your email" screen;
