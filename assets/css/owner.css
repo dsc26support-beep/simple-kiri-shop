@@ -6,11 +6,17 @@
   min-height: 100vh;
 }
 
+/* Stays at the top while the page scrolls under it, on phones and computers
+   (owner request, Oct 2026). Below the store menu drawer and its scrim
+   (1004-1005). owner-nav.js publishes its height as --owner-topbar-h so the
+   other sticky bits (admin menu, previews) sit below it. */
 .owner-topbar {
   background: var(--color-purple);
   color: #fff;
   padding: var(--space-2) 0;
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .owner-topbar .container {
@@ -1796,7 +1802,7 @@ label.is-required::after {
 /* ---------- Admin: section menu, wider search (admin.js) ---------- */
 .admin-jump {
   position: sticky;
-  top: 0;
+  top: var(--owner-topbar-h, 0px);
   z-index: 5;
   margin: 0 calc(-1 * var(--space-3)) var(--space-3);
   padding: var(--space-1) var(--space-3);
@@ -1830,7 +1836,7 @@ label.is-required::after {
 .admin-jump a[aria-current="true"] { background: var(--color-purple); border-color: var(--color-purple); color: #fff; }
 .admin-jump a:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 /* Headings land below the sticky menu, not under it. */
-#admin-tools h2[id] { scroll-margin-top: 70px; }
+#admin-tools h2[id] { scroll-margin-top: calc(70px + var(--owner-topbar-h, 0px)); }
 .admin-record { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.3em var(--space-2); margin: var(--space-2) 0; }
 .admin-record dt { color: var(--color-muted); font-size: 0.85rem; }
 .admin-record dd { margin: 0; overflow-wrap: anywhere; }
@@ -1999,7 +2005,7 @@ body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 
 .cs-step h2:focus { outline: none; }
 .cs-step-nav { display: flex; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
 .cs-step-nav .btn-primary { margin-left: auto; }
-.cs-summary { position: sticky; top: var(--space-3); padding: var(--space-3); background: var(--color-bg); border: 1px solid var(--color-purple-pale); border-radius: 16px; box-shadow: 0 6px 18px rgba(51,45,99,0.08); }
+.cs-summary { position: sticky; top: calc(var(--owner-topbar-h, 0px) + var(--space-3)); padding: var(--space-3); background: var(--color-bg); border: 1px solid var(--color-purple-pale); border-radius: 16px; box-shadow: 0 6px 18px rgba(51,45,99,0.08); }
 .cs-summary h2 { margin: 0 0 var(--space-2); font-size: 1rem; }
 .cs-description { line-height: 1.55; }
 .cs-summary-facts, .cs-review, .cs-pay-facts { display: grid; gap: var(--space-2); margin: 0; }
@@ -2191,7 +2197,7 @@ body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 
 .iv-colour { display: flex; flex-direction: column; gap: 4px; }
 .iv-colour input[type="color"] { width: 64px; height: 44px; padding: 2px; border: 1px solid var(--color-border); border-radius: 10px; background: #fff; }
 .iv-colours .helper-text { flex-basis: 100%; margin: 0; }
-.iv-preview { position: sticky; top: var(--space-3); }
+.iv-preview { position: sticky; top: calc(var(--owner-topbar-h, 0px) + var(--space-3)); }
 .iv-preview-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .iv-preview-head h2 { margin: 0; font-size: 1.1rem; }
 .iv-tabs { display: flex; gap: 6px; }
