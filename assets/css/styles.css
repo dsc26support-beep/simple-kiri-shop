@@ -618,8 +618,8 @@ section {
 }
 
 /* While typing (owner request, Oct 2026): instead of the thick blue focus
-   ring, a thin red -> purple -> yellow gradient outline - the header, brand
-   and ticker colours. Drawn as a 2px border (a gradient can't be an outline):
+   ring, a thin red -> yellow -> purple gradient outline, left to right - the
+   header, ticker and brand colours. Drawn as a 2px border (a gradient can't be an outline):
    the padding gives back the extra 1px so the box and its text don't move. */
 .search-box input:focus,
 .search-box input:focus-visible {
@@ -628,7 +628,7 @@ section {
   padding: calc(0.6em - 1px) calc(0.7em - 1px);
   background:
     linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(90deg, var(--color-red), var(--color-purple), var(--color-gold)) border-box;
+    linear-gradient(90deg, var(--color-red), var(--color-gold), var(--color-purple)) border-box;
 }
 .search-box--voice input:focus,
 .search-box--voice input:focus-visible {

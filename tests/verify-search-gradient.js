@@ -1,6 +1,6 @@
 /**
- * Search boxes (owner request, Oct 2026): while typing, a thin red -> purple
- * -> yellow gradient outline replaces the thick blue focus ring. At rest the
+ * Search boxes (owner request, Oct 2026): while typing, a thin red -> yellow
+ * -> purple gradient outline replaces the thick blue focus ring. At rest the
  * thin purple line stays. The box must not change size when focused.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
@@ -25,8 +25,8 @@ const look = (page) => page.$eval('form.search-box input', (e) => {
     await page.focus('form.search-box input');
     const b = await look(page);
     ok(`${pg}: typing - no thick blue ring, a 2px border`, b.outline === 'none' && b.border === '2px', JSON.stringify(b));
-    ok(`${pg}: ...drawn as a red -> purple -> yellow gradient`,
-      /linear-gradient\(90deg, rgb\(206, 17, 38\), rgb\(51, 45, 99\), rgb\(252, 209, 22\)\)/.test(b.bg), b.bg);
+    ok(`${pg}: ...drawn as a red -> yellow -> purple gradient, left to right`,
+      /linear-gradient\(90deg, rgb\(206, 17, 38\), rgb\(252, 209, 22\), rgb\(51, 45, 99\)\)/.test(b.bg), b.bg);
     ok(`${pg}: ...and the box and its text do not move`, a.w === b.w && a.h === b.h && Math.abs(a.textLeft - b.textLeft) < 0.5, JSON.stringify({ a, b }));
   }
   await browser.close();

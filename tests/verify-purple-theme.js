@@ -144,7 +144,7 @@ const contrast = (a, b) => {
   }
 
   // ---------- focus is still blue, and still tells you it is focus ---------
-  // (Search boxes use a red-purple-yellow gradient instead - owner request,
+  // (Search boxes use a red-yellow-purple gradient instead - owner request,
   // Oct 2026, verify-search-gradient.js - so this uses an ordinary field.)
   {
     // A fresh context: signed out, so the sign-in page doesn't redirect.
