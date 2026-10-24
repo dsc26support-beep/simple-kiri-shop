@@ -71,6 +71,10 @@ const seen = (page) => page.evaluate(() => {
   ok('...no "or" line, no create link, no sign-in form', !s.divider && !s.createLine && !s.loginForm, JSON.stringify(s));
   ok('...Google still there, above the form', s.google && s.googleAboveForm, JSON.stringify(s));
   ok('...title "Create your Mwakete account"', s.title === 'Create your Mwakete account', s.title);
+  ok('...a short note says new accounts get news emails', await page.evaluate(() => {
+    const n = document.querySelector('#panel-signup .auth-news-note');
+    return !!n && n.getBoundingClientRect().height > 0 && n.textContent.trim() === 'You\u2019ll get news emails from Mwakete.';
+  }));
   ok('...the name box has focus', await page.evaluate(() => document.activeElement && document.activeElement.id === 'signup-name'));
 
   await page.click('#show-signin');

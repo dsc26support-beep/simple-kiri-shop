@@ -17,7 +17,8 @@ const box = makeBox({
   Customers: [['CustomerId', 'Name', 'Email', 'Phone', 'EmailVerified', 'CreatedAt', 'UpdatedAt', 'GoogleSub'],
     ['cus_legacy', 'Old Google', 'old@x.test', '', 'true', '', '', '123456789012345678901']],
   CustomerSessions: [['Token', 'CustomerId', 'CreatedAt', 'ExpiresAt']],
-  CustomerCodes: [['Token', 'Email', 'Code', 'Purpose', 'Name', 'Phone', 'CreatedAt', 'ExpiresAt', 'Attempts']]
+  CustomerCodes: [['Token', 'Email', 'Code', 'Purpose', 'Name', 'Phone', 'CreatedAt', 'ExpiresAt', 'Attempts']],
+  MarketingPreferences: [['CustomerId', 'Email', 'PromotionalEmailOptIn', 'FrequencyLimit', 'LastPromotionalEmailAt', 'UpdatedAt', 'OptInAt', 'UnsubscribeToken']]
 }, { guest: true });
 box.__props.PEPPER = 'test-pepper';
 box.__props.SITE_BASE_URL = 'https://mwakete.com';
@@ -225,6 +226,18 @@ ok('every decision is in AuthEvents, with no secrets', (() => {
   return ['seller-opened', 'seller-suspended', 'seller-reinstated'].every((e) => ev.some((x) => x.Event === e)) &&
     !JSON.stringify(ev).match(/breadfruit|coconut|storepass|pbkdf2|h1:/);
 })());
+
+/* ---------- "Emails from Mwakete" starts on for new accounts (owner request, Oct 2026) ---------- */
+const optedIn = (id) => box.isOptedIn(box.findMarketingPreference(id));
+ok('a new email sign-up starts with Emails from Mwakete on', optedIn(cust('tia@x.test').CustomerId));
+ok('...so does a new Google account', optedIn(cust('newg@x.test').CustomerId));
+ok('...and a new Facebook account', optedIn(cust('fb@x.test').CustomerId));
+ok('an account from before keeps what it had (no row = off)', !optedIn('cus_legacy') && !box.findMarketingPreference('cus_legacy'));
+box.setMarketingOptIn(cust('tia@x.test'), false);
+box.optInNewCustomer(cust('tia@x.test'));
+ok('turning it off sticks - the default never switches it back on', !optedIn(cust('tia@x.test').CustomerId));
+ok('each new account got its own unsubscribe link token', ['tia@x.test', 'newg@x.test', 'fb@x.test'].every((e) =>
+  !!box.findMarketingPreference(cust(e).CustomerId).UnsubscribeToken));
 
 R.forEach((x) => console.log(x[0], x[1], String(x[2]).slice(0, 300).replace(/\n/g, ' ')));
 const failed = R.filter((x) => x[0] === 'FAIL').length;

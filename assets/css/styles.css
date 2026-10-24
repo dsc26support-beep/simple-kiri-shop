@@ -8680,6 +8680,7 @@ html.auth-signup #email-continue,
 html.auth-signup #auth-create-line { display: none; }
 /* "New to Mwakete? Create an account" / "Already have an account? Sign in". */
 .auth-card--customer .auth-switch { margin: var(--space-2) 0 0; text-align: center; font-size: 0.95rem; }
+.auth-card--customer .auth-news-note { margin: var(--space-2) 0 0; text-align: center; }
 html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(-1 * var(--space-1)); }
 
 @media (max-width: 899px) {
