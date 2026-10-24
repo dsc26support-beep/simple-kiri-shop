@@ -35,7 +35,9 @@ const PURPLE = 'rgb(51, 45, 99)'; // --color-purple #332d63
 /** opts: { delayMs, sellerToken, width } */
 async function openDash(browser, storeReply, opts) {
   opts = opts || {};
-  const ctx = await browser.newContext({ viewport: { width: opts.width || 390, height: 844 } });
+  // 820px (a tablet) by default: since Oct 2026 phones hide My Messages - the
+  // bottom bar has it - so the side-by-side checks are made where both show.
+  const ctx = await browser.newContext({ viewport: { width: opts.width || 820, height: 844 } });
   const seen = [];
   await ctx.route('**/script.google.com/**', async (r) => {
     let body = {}; try { body = r.request().postDataJSON() || {}; } catch (e) {}
@@ -276,15 +278,22 @@ const linkInfo = (page) => page.evaluate(() => {
     await ctx.close();
   }
 
-  // ---------- the reserved slot must not wrap on the narrowest phone -------
+  // ---------- phones: no My Messages (the bottom bar has it) ---------------
   {
-    const { ctx, page } = await openDash(browser, { ok: true, hasStore: false }, { width: 320 });
-    const rows = await page.evaluate(() => {
-      const kids = [...document.querySelector('.dash-links').children];
-      return new Set(kids.map((k) => Math.round(k.getBoundingClientRect().y))).size;
-    });
-    ok('at 320px both buttons still sit on one row, so the empty slot adds no band',
-      rows === 1, rows + ' row(s)');
+    const { ctx, page } = await openDash(browser, { ok: true, hasStore: false }, { width: 390 });
+    const r = await page.evaluate(() => ({ msgs: getComputedStyle(document.querySelector('.dash-messages-link')).display,
+      row: getComputedStyle(document.querySelector('.dash-links')).display,
+      nav: !!document.querySelector('.bottom-nav a[href*="customer-messages"]') }));
+    ok('phone: My Messages is gone, Messages is in the bottom bar', r.msgs === 'none' && r.nav, JSON.stringify(r));
+    ok('phone with no store: the empty row closes up', r.row === 'none', JSON.stringify(r));
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await openDash(browser, { ok: true, hasStore: true, storeSlug: 'b', storeName: 'B' }, { width: 390 });
+    await page.waitForFunction(() => document.getElementById('store-link').classList.contains('is-visible'));
+    const r = await page.evaluate(() => { const l = document.getElementById('store-link').getBoundingClientRect();
+      const row = document.querySelector('.dash-links').getBoundingClientRect(); return { left: Math.round(l.left - row.left), w: Math.round(l.width), rowW: Math.round(row.width) }; });
+    ok('phone with a store: My Store shows on its own, same size, on the left', r.left === 0 && r.w < r.rowW / 2 + 40, JSON.stringify(r));
     await ctx.close();
   }
 

@@ -5,7 +5,7 @@
  * buyer confirms -> completed), failure, cancel, fee paid, live location
  * rules, and who may see or do what.
  */
-const { makeBox } = require('./lib/gas-harness.js');
+const { makeBox, driverDocs } = require('./lib/gas-harness.js');
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
 const J = (x) => JSON.stringify(x).slice(0, 400);
 const FUT = new Date(Date.now() + 9e8).toISOString();
@@ -48,22 +48,22 @@ const stateOf = (id) => box.__sheets.TxState.objects().find((s) => s.OrderId ===
 const status = (id) => box.__sheets.Orders.objects().find((o) => o.OrderId === id).Status;
 
 /* ---- switched off ---- */
-let r = dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true });
+let r = dan('actionDriverApply', Object.assign(driverDocs(), { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true }));
 ok('off by default: nobody can apply', !r.ok && /not open/.test(r.error));
 const o0 = order(); ready(o0);
 ok('off by default: no driver step in the order room', seller('actionGetTxRoom', { orderId: o0 }).room.delivery === null);
 box.__props.DELIVERY_JOBS = 'on';
 
 /* ---- applying ---- */
-ok('apply needs a real local phone and the rules agreed', !dan('actionDriverApply', { name: 'Dan', phone: '12345', vehicle: 'motorbike', area: 'South Tarawa', agree: true }).ok
-  && !dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa' }).ok);
-ok('an island that is not a Kiribati island is refused', !dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'Atlantis', agree: true }).ok);
+ok('apply needs a real local phone and the signed agreement', !dan('actionDriverApply', Object.assign(driverDocs(), { name: 'Dan', phone: '12345', vehicle: 'motorbike', area: 'South Tarawa', agree: true })).ok
+  && !dan('actionDriverApply', Object.assign(driverDocs({ contract: null }), { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa' })).ok);
+ok('an island that is not a Kiribati island is refused', !dan('actionDriverApply', Object.assign(driverDocs(), { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'Atlantis', agree: true })).ok);
 ok('every Kiribati island is open to drivers by default', box.deliveryAreas().length === 23 && box.deliveryAreas().indexOf('Abaiang') !== -1 && box.deliveryAreas().indexOf('Kiritimati') !== -1);
-r = dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true });
+r = dan('actionDriverApply', Object.assign(driverDocs(), { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true }));
 ok('a customer applies to drive -> pending, admins emailed', r.ok && r.status === 'pending' && box.__mail.some((m) => /admin@x.test/.test(m[0]) && /driver application/i.test(m[1])));
-ok('one application per account', !dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'car', area: 'South Tarawa', agree: true }).ok);
-eve('actionDriverApply', { name: 'Eve', phone: '73000008', vehicle: 'car', area: 'South Tarawa', agree: true });
-drv('c-adm')('actionDriverApply', { name: 'Admin', phone: '73000006', vehicle: 'car', area: 'South Tarawa', agree: true });
+ok('one application per account', !dan('actionDriverApply', Object.assign(driverDocs(), { name: 'Dan', phone: '73000009', vehicle: 'car', area: 'South Tarawa', agree: true })).ok);
+eve('actionDriverApply', Object.assign(driverDocs(), { name: 'Eve', phone: '73000008', vehicle: 'car', area: 'South Tarawa', agree: true }));
+drv('c-adm')('actionDriverApply', Object.assign(driverDocs(), { name: 'Admin', phone: '73000006', vehicle: 'car', area: 'South Tarawa', agree: true }));
 const drivers = () => box.__sheets.Drivers.objects();
 const idOf = (name) => drivers().find((d) => d.Name === name).DriverId;
 ok('a pending driver sees no jobs and cannot go online', dan('actionGetDriverHome', {}).open.length === 0 && !dan('actionDriverSetAvailable', { available: true }).ok);

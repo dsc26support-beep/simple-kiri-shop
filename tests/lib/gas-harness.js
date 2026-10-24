@@ -170,4 +170,28 @@ function signInDefaultShopper(box, sheets) {
   });
 }
 
-module.exports = { makeBox, FakeSheet, TEST_SHOPPER_TOKEN };
+/**
+ * A real (tiny, 40x40) PNG, base64 - passes the backend's byte sniffing as an
+ * image. Used for driver ID, face and signature photos in tests.
+ */
+function testPngBase64(w, h) {
+  const zlib = require('zlib');
+  w = w || 40; h = h || 40;
+  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (buf) => { let c = 0xffffffff; for (const b of buf) c = crcTable[(c ^ b) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const raw = Buffer.alloc((w * 3 + 1) * h, 200);
+  for (let y = 0; y < h; y++) raw[y * (w * 3 + 1)] = 0;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]).toString('base64');
+}
+
+/** The extra fields a driver application needs since Oct 2026 (DriverOnboarding.gs). */
+function driverDocs(extra) {
+  const png = testPngBase64();
+  return Object.assign({ messenger: 'dan.driver', idType: 'national', idNumber: 'N1234567', idPhotoBase64: png, selfieBase64: png,
+    faceResult: 'passed', faceScore: 0.41,
+    contract: { version: '2026-10-v1', method: 'digital', agree: true, signedName: 'Dan Driver', signatureBase64: png } }, extra || {});
+}
+
+module.exports = { makeBox, FakeSheet, TEST_SHOPPER_TOKEN, testPngBase64, driverDocs };

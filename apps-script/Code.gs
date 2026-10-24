@@ -128,7 +128,9 @@ var PROTECTED_POST_ACTIONS = [
   'adminListDeliveries', 'adminSetDriverStatus', 'adminConfirmJobPayment', 'adminRejectJobPayment', 'adminMarkJobRefunded',
   'adminListPayouts', 'adminMarkPayoutPaid', 'adminReversePayout', 'adminAdjustDriverWallet', 'adminResolveJobPayment',
   // Seller applications (SellerApplications.gs) - isOwnerAdmin inside.
-  'adminListSellerApplications', 'adminReviewSellerApplication'
+  'adminListSellerApplications', 'adminReviewSellerApplication',
+  // Driver documents (DriverOnboarding.gs) - isOwnerAdmin inside.
+  'adminDriverDocs'
 ];
 
 // Chat send abuse guard: burst cap catches a stuck retry loop, sustained cap
@@ -148,7 +150,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'auth2-2026-10-23';
+var APP_VERSION = 'drv1-2026-10-24';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -742,6 +744,7 @@ function doPost(e) {
         case 'adminResolveJobPayment': return jsonOut(actionAdminResolveJobPayment(owner, body));
         case 'adminListSellerApplications': return jsonOut(actionAdminListSellerApplications(owner, body));
         case 'adminReviewSellerApplication': return jsonOut(actionAdminReviewSellerApplication(owner, body));
+        case 'adminDriverDocs': return jsonOut(actionAdminDriverDocs(owner, body));
       }
     }
 

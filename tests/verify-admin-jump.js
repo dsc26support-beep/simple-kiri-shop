@@ -47,9 +47,11 @@ const RESULTS = {
   await page.click('.admin-jump a[href="#mkt-heading"]');
   await page.waitForTimeout(900);
   const pos = await page.evaluate(() => ({ top: document.getElementById('mkt-heading').getBoundingClientRect().top,
-    menu: document.querySelector('.admin-jump').getBoundingClientRect() }));
+    menu: document.querySelector('.admin-jump').getBoundingClientRect(),
+    bar: document.querySelector('.owner-topbar').getBoundingClientRect().bottom }));
   ok('menu: jumps to Marketing, heading not hidden under the menu', pos.top >= pos.menu.bottom - 2 && pos.top < 300, JSON.stringify(pos));
-  ok('menu: stays at the top while scrolling', Math.round(pos.menu.top) === 0, pos.menu.top);
+  // The purple top bar stays on screen too (Oct 2026); the menu sits just below it.
+  ok('menu: stays at the top while scrolling, just below the purple bar', Math.abs(pos.menu.top - pos.bar) <= 1, JSON.stringify({ menu: pos.menu.top, bar: pos.bar }));
   await page.waitForTimeout(300);
   ok('menu: marks where you are', (await page.getAttribute('.admin-jump a[href="#mkt-heading"]', 'aria-current')) === 'true');
   ok('menu: no sideways page scroll on a phone', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
