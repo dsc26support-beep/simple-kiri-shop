@@ -139,7 +139,11 @@ function resolveDriver(body) {
   return { customer: customer, driver: findDriverByCustomer(customer.CustomerId) };
 }
 
-/** body: name, phone, vehicle, area, agree. One application per account. */
+/**
+ * body: name, phone, vehicle, area, plus messenger, email, idType, idNumber,
+ * idPhotoBase64, selfieBase64, faceResult, faceScore and contract
+ * (DriverOnboarding.gs). One application per account.
+ */
 function actionDriverApply(body) {
   if (!deliveriesEnabled()) return fail('Driving for Mwakete is not open yet.');
   var who = resolveDriver(body);
@@ -151,23 +155,33 @@ function actionDriverApply(body) {
   if (!DRIVER_VEHICLES[vehicle]) return fail('Choose your vehicle.');
   var area = String(body.area || '');
   if (deliveryAreas().indexOf(area) === -1) return fail('Choose the island you will drive on.');
-  if (body.agree !== true) return fail('Please agree to the driver rules.');
+  // Messenger, email, one ID, the face check and the signed agreement
+  // (DriverOnboarding.gs). All checked before anything is written.
+  var docs = checkDriverOnboarding(body, who.customer);
+  if (docs.error) return fail(docs.error);
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
+  var row;
   try {
+    var sheet = driversSheetWithDocs();
     var existing = findDriverByCustomer(who.customer.CustomerId);
     if (existing && existing.Status !== 'rejected') return fail('You have already applied. Your status: ' + existing.Status + '.');
+    if (existing) trashDriverFiles(existing);   // a fresh application replaces the old documents
     var now = nowIso();
-    var row = { DriverId: newId('drv'), CustomerId: who.customer.CustomerId, Name: name, Phone: phone, Email: normalizeEmail(who.customer.Email),
-      Vehicle: vehicle, Area: area, Status: 'pending', Available: '', ReviewedBy: '', ReviewedAt: '', ReviewNote: '', CreatedAt: now, UpdatedAt: now };
-    if (existing) updateRowFromObject(driversSheet(), existing.__row, row); else appendRowFromObject(driversSheet(), row);
-    appendAudit({ actorId: who.customer.CustomerId, actorRole: 'driver', action: 'DRIVER_APPLIED', entityType: 'driver', entityId: row.DriverId });
+    row = Object.assign({ DriverId: existing ? existing.DriverId : newId('drv'), CustomerId: who.customer.CustomerId, Name: name, Phone: phone,
+      Vehicle: vehicle, Area: area, Status: 'pending', Available: '', ReviewedBy: '', ReviewedAt: '', ReviewNote: '', CreatedAt: now, UpdatedAt: now }, docs.fields);
+    Object.assign(row, saveDriverDocs(row.DriverId, docs.files));
+    if (existing) updateRowFromObject(sheet, existing.__row, row); else appendRowFromObject(sheet, row);
+    appendAudit({ actorId: who.customer.CustomerId, actorRole: 'driver', action: 'DRIVER_APPLIED', entityType: 'driver', entityId: row.DriverId,
+      next: 'contract ' + DRIVER_CONTRACT_VERSION + ' (' + row.ContractMethod + '), face ' + row.FaceResult });
   } finally {
     lock.releaseLock();
   }
   try {
     var admins = getAdminEmails();
     if (admins.length) sendAppEmail(admins.join(','), 'New driver application - ' + name, name + ' (' + DRIVER_VEHICLES[vehicle] + ', ' + area + ') applied to drive for Mwakete.\n\n' +
+      'ID: ' + DRIVER_ID_TYPES[row.IdType] + '\nFace check: ' + DRIVER_FACE_RESULTS[row.FaceResult] + '\nAgreement: signed ' + (row.ContractMethod === 'digital' ? 'in the app' : 'on paper (photos)') +
+      '\nMessenger (send the decision here): ' + row.Messenger + '\n\n' +
       (siteBaseUrl() ? 'Review it: ' + siteBaseUrl() + '/owner/admin.html#deliveries' : 'Review it in the admin page, Deliveries & drivers.'));
   } catch (e) { /* best effort */ }
   return ok({ status: 'pending' });
@@ -179,6 +193,7 @@ function actionGetDriverHome(body) {
   if (who.error) return txFail(who.error, { authRequired: who.auth });
   var d = who.driver;
   var out = { enabled: deliveriesEnabled(), areas: deliveryAreas(), vehicles: DRIVER_VEHICLES, failReasons: DELIVERY_FAIL_REASONS,
+    idTypes: DRIVER_ID_TYPES, contractVersion: DRIVER_CONTRACT_VERSION,
     driver: d ? { status: d.Status, name: d.Name, vehicle: d.Vehicle, area: d.Area, available: d.Available === 'yes', note: d.Status === 'rejected' || d.Status === 'suspended' ? d.ReviewNote : '' } : null,
     open: [], mine: [], history: [], earnings: { delivered: 0, fees: 0, feesPaid: 0 } };
   if (!d || d.Status !== 'approved') return ok(out);
@@ -606,7 +621,7 @@ function actionAdminListDeliveries(owner, body) {
     drivers: drivers.sort(function (a, b) { return (a.Status === 'pending' ? 0 : 1) - (b.Status === 'pending' ? 0 : 1) || String(b.CreatedAt).localeCompare(String(a.CreatedAt)); })
       .map(function (d) {
         return { driverId: d.DriverId, name: d.Name, phone: d.Phone, email: d.Email, vehicle: DRIVER_VEHICLES[d.Vehicle] || d.Vehicle, area: d.Area,
-          status: d.Status, online: d.Available === 'yes', note: d.ReviewNote, createdAt: d.CreatedAt,
+          status: d.Status, online: d.Available === 'yes', note: d.ReviewNote, createdAt: d.CreatedAt, docs: driverDocsSummary(d),
           delivered: all.filter(function (j) { return j.DriverId === d.DriverId && j.Status === 'delivered'; }).length,
           failed: all.filter(function (j) { return j.DriverId === d.DriverId && j.Status === 'failed'; }).length };
       })

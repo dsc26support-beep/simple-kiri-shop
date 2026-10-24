@@ -40,15 +40,56 @@
 
       <section id="drv-apply" class="dash-section" hidden aria-labelledby="drv-apply-h">
         <h2 id="drv-apply-h">Apply to drive</h2>
-        <p class="helper-text">Independent drivers deliver orders for Mwakete sellers. Each job shows the delivery fee. You and the seller agree it in the job chat; the seller pays it to Mwakete, and once the buyer confirms the delivery Mwakete credits it to you and pays it to your bank account when you claim it (<a href="terms.html#drivers">how this works</a>). Mwakete holds only the delivery fee, never the price of the goods. A Mwakete admin approves every driver.</p>
+        <p class="helper-text">Independent drivers deliver orders for Mwakete sellers on their own island. <strong>You set your own fee</strong>: for each job you and the seller agree it in the job chat. The seller pays it to Mwakete, and once the buyer confirms the delivery Mwakete credits it to you and pays it to your bank account when you claim it (<a href="terms.html#drivers">how this works</a>). Mwakete holds only the delivery fee, never the price of the goods. A Mwakete admin checks every application.</p>
         <form id="drv-apply-form" novalidate>
-          <div class="field"><label for="drv-name">Your name</label><input id="drv-name" maxlength="80" autocomplete="name"></div>
+          <h3 class="drv-step">1. About you</h3>
+          <div class="field"><label for="drv-name">Your full name</label><input id="drv-name" maxlength="80" autocomplete="name"></div>
           <div class="field"><label for="drv-phone">Phone</label><input id="drv-phone" type="tel" maxlength="30" autocomplete="tel"><p class="helper-text">Buyers and sellers call this number about a job you accept.</p></div>
+          <div class="field"><label for="drv-messenger">Facebook Messenger</label><input id="drv-messenger" maxlength="200" autocomplete="off" placeholder="e.g. your.name or a link to your profile">
+            <p class="helper-text drv-note">Mwakete will contact you on <strong>Messenger</strong> about your approval.</p></div>
+          <div class="field"><label for="drv-email">Email</label><input id="drv-email" type="email" maxlength="254" autocomplete="email"></div>
           <div class="field"><label for="drv-vehicle">Vehicle</label><select id="drv-vehicle"></select></div>
           <div class="field"><label for="drv-area">Your island</label><select id="drv-area"></select><p class="helper-text">You only get jobs on this island, from stores here to buyers here.</p></div>
-          <div class="field tx-check"><input id="drv-agree" type="checkbox"><label for="drv-agree">I will handle goods with care, record pickup and delivery honestly, keep buyers' details private, and only share my location while on a job.</label></div>
+
+          <h3 class="drv-step">2. Your ID</h3>
+          <p class="helper-text">Add ONE of these. It is kept private - only Mwakete admins see it - and deleted 90 days after you stop driving.</p>
+          <fieldset class="field drv-idtypes"><legend class="sr-only">ID type</legend>
+            <label class="radio-row"><input type="radio" name="drv-idtype" value="kpf"> <span>KPF ID</span></label>
+            <label class="radio-row"><input type="radio" name="drv-idtype" value="national"> <span>National ID</span></label>
+            <label class="radio-row"><input type="radio" name="drv-idtype" value="passport"> <span>Passport</span></label>
+          </fieldset>
+          <div class="field"><label for="drv-idnumber">ID number</label><input id="drv-idnumber" maxlength="30" autocomplete="off" autocapitalize="characters"></div>
+          <div class="field"><label for="drv-idphoto">Photo of your ID</label><input id="drv-idphoto" type="file" accept="image/*" capture="environment">
+            <p class="helper-text">The side with your photo. Flat, in good light, every corner showing.</p>
+            <img id="drv-idpreview" class="drv-preview" alt="Your ID photo" hidden></div>
+
+          <h3 class="drv-step">3. Face check</h3>
+          <p class="helper-text">Look at the camera, then turn your head left and right until the ring around your face is all green. We then match your face with your ID photo. It runs on your phone.</p>
+          <div id="drv-face" class="drv-face"></div>
+          <button type="button" id="drv-face-start" class="btn btn-outline">Start face check</button>
+          <p id="drv-face-result" class="helper-text" role="status" aria-live="polite"></p>
+          <div class="field drv-selfie-fallback" id="drv-selfie-fallback" hidden><label for="drv-selfie">Take a photo of your face instead</label><input id="drv-selfie" type="file" accept="image/*" capture="user"></div>
+
+          <h3 class="drv-step">4. Driver agreement</h3>
+          <p><a href="driver-contract.html" target="_blank" rel="noopener">Read the driver agreement (2 pages)</a></p>
+          <fieldset class="field"><legend>How will you sign?</legend>
+            <label class="radio-row"><input type="radio" name="drv-sign" value="digital" checked> <span>Sign here on the phone</span></label>
+            <label class="radio-row"><input type="radio" name="drv-sign" value="physical"> <span>Print it, sign on paper, and add photos of the signed pages</span></label>
+          </fieldset>
+          <div id="drv-sign-digital">
+            <div class="field tx-check"><input id="drv-agree" type="checkbox"><label for="drv-agree">I have read the driver agreement and agree to it.</label></div>
+            <div class="field"><label for="drv-signname">Type your full name</label><input id="drv-signname" maxlength="80" autocomplete="name"></div>
+            <div class="field"><span class="drv-sig-label" id="drv-sig-label">Sign with your finger</span>
+              <canvas id="drv-sig" class="drv-sig" width="600" height="180" aria-labelledby="drv-sig-label" role="img"></canvas>
+              <button type="button" id="drv-sig-clear" class="btn btn-small">Clear</button></div>
+          </div>
+          <div id="drv-sign-physical" hidden>
+            <p><a class="btn btn-small btn-outline" href="driver-contract.html" target="_blank" rel="noopener">Open the agreement to print</a></p>
+            <div class="field"><label for="drv-pages">Photos of the signed pages (both pages)</label><input id="drv-pages" type="file" accept="image/*,application/pdf" multiple></div>
+          </div>
+
           <p id="drv-apply-error" class="form-error" role="alert"></p>
-          <button type="submit" class="btn btn-primary">Apply</button>
+          <button type="submit" class="btn btn-primary">Send application</button>
         </form>
       </section>
 
@@ -78,6 +119,7 @@
   <script defer src="assets/js/api.min.js"></script>
   <script defer src="assets/js/helpers.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/driver-face.min.js"></script>
   <script defer src="assets/js/driver.min.js"></script>
 </body>
 </html>

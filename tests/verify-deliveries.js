@@ -7,7 +7,7 @@
  */
 const zlib = require('zlib');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
-const { makeBox } = require('./lib/gas-harness.js');
+const { makeBox, driverDocs } = require('./lib/gas-harness.js');
 const BASE = process.env.TX_BASE || 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
 const FUT = new Date(Date.now() + 9e8).toISOString();
@@ -69,9 +69,11 @@ function realPng(w, h) {
   ok('a signed-in customer sees the apply form, name and phone filled in', (await dp.inputValue('#drv-name')) === 'Dan Driver' && (await dp.inputValue('#drv-phone')) === '73000009');
   await dp.click('#drv-apply-form button[type="submit"]');
   await dp.waitForFunction(() => document.getElementById('drv-apply-error').textContent, null, { timeout: 8000 });
-  ok('the rules must be agreed first', /agree/.test(await dp.textContent('#drv-apply-error')));
-  await dp.check('#drv-agree');
-  await dp.click('#drv-apply-form button[type="submit"]');
+  ok('the ID, face check and agreement must be done first', /ID/.test(await dp.textContent('#drv-apply-error')));
+  // The ID / face check / signing screens are covered by verify-driver-apply.js
+  // (fake camera); here the application goes straight to the real backend.
+  backend(JSON.stringify(Object.assign(driverDocs(), { action: 'driverApply', token: 'c-d', name: 'Dan Driver', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa' })));
+  await dp.reload({ waitUntil: 'load' });
   await dp.waitForSelector('#drv-wait:not([hidden])', { timeout: 8000 });
   ok('applied -> waiting for approval', /waiting for a Mwakete admin/.test(await dp.textContent('#drv-wait')));
 

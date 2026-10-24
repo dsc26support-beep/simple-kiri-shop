@@ -444,6 +444,15 @@ const HELP_FAQS = [
     related: ['buying-pickup']
   },
 
+  {
+    id: 'delivery-drive', category: 'delivery',
+    title: 'How do I become a Mwakete driver?',
+    subtitle: 'Apply with your ID, a face check and the Driver Agreement',
+    description: 'Open My Account and tap Drive with Mwakete (it shows once driving is open). Fill in your name, phone, Facebook Messenger and email, your vehicle and island. Add ONE ID - your KPF ID, National ID or passport - with a photo of it, then do the face check: look at the camera and turn your head left and right until the ring is green. Finally sign the 2-page Driver Agreement, in the app or on paper. A Mwakete admin checks your application and tells you on Messenger.\n\nAs a driver you are your own boss: you choose your jobs and set your own fee for each one with the seller. Your ID and photos are kept private and deleted 90 days after you stop driving.',
+    keywords: ['driver', 'drive', 'job', 'deliver', 'delivery driver', 'apply', 'id', 'kpf', 'passport', 'national id', 'face check', 'agreement', 'contract'],
+    related: ['delivery-who-pays']
+  },
+
   /* ---------- Account ---------- */
   {
     id: 'account-need', category: 'account',

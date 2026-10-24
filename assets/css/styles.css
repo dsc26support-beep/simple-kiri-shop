@@ -8723,3 +8723,27 @@ html.auth-signup #email-continue { display: none; }
   .cust-quick .cust-quick-dup { display: none; }
   .dash-links:not(:has(.dash-store-link.is-visible)) { display: none; }
 }
+
+/* ---- Drive with Mwakete application: ID, face check, agreement ---- */
+.drv-step { font-size: 1.05rem; margin: var(--space-4) 0 var(--space-2); color: var(--color-purple); }
+.drv-note { color: var(--color-purple); }
+.drv-idtypes { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); border: 0; padding: 0; }
+.drv-preview { display: block; max-width: 240px; max-height: 160px; margin-top: var(--space-2); border-radius: var(--radius); border: 1px solid var(--color-border, #e5e5e5); }
+.face-check { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: var(--space-2) 0; }
+.fc-stage { position: relative; width: min(280px, 80vw); aspect-ratio: 3 / 4; border-radius: 50% / 45%; overflow: visible; }
+.fc-video { position: absolute; inset: 8%; width: 84%; height: 84%; object-fit: cover; border-radius: 50%; transform: scaleX(-1); background: #111; }
+.fc-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fc-oval { fill: none; stroke: rgba(255, 255, 255, 0.6); stroke-width: 0.6; }
+.fc-tick { stroke: #c9c9c9; stroke-width: 1.6; stroke-linecap: round; transition: stroke 0.15s ease; }
+.fc-tick.is-on { stroke: #1e8e3e; }
+.fc-say { text-align: center; font-weight: 600; min-height: 2.6em; }
+#drv-face-result.is-ok { color: #1e8e3e; font-weight: 600; }
+.drv-sig { display: block; width: 100%; max-width: 600px; height: auto; aspect-ratio: 600 / 180; border: 1px dashed var(--color-purple); border-radius: var(--radius); background: #fff; touch-action: none; margin: var(--space-1) 0; }
+.drv-sig-label { display: block; font-weight: 600; }
+.dlv-face { font-weight: 600; color: var(--color-danger); }
+.dlv-face.is-ok { color: #1e8e3e; }
+.dlv-docs { margin-top: var(--space-2); }
+.dlv-docs-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.dlv-docs-grid figure { margin: 0; }
+.dlv-docs-grid img { display: block; max-width: 220px; max-height: 220px; border: 1px solid var(--color-border, #e5e5e5); border-radius: 8px; background: #fff; }
+.dlv-docs-grid figcaption { font-size: 0.8rem; color: var(--color-muted); }

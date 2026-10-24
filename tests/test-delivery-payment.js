@@ -5,7 +5,7 @@
  * gate, details hidden from the driver until then, and refunds when a job
  * ends before the goods are collected.
  */
-const { makeBox } = require('./lib/gas-harness.js');
+const { makeBox, driverDocs } = require('./lib/gas-harness.js');
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
 const J = (x) => JSON.stringify(x).slice(0, 400);
 const FUT = new Date(Date.now() + 9e8).toISOString();
@@ -47,7 +47,7 @@ const job = (id) => box.__sheets.DeliveryJobs.objects().filter((j) => j.OrderId 
 const stateOf = (id) => box.__sheets.TxState.objects().find((s) => s.OrderId === id);
 const status = (id) => box.__sheets.Orders.objects().find((o) => o.OrderId === id).Status;
 box.__props.DELIVERY_JOBS = 'on';
-dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true });
+dan('actionDriverApply', Object.assign(driverDocs(), { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true }));
 const idOf = (name) => box.__sheets.Drivers.objects().find((d) => d.Name === name).DriverId;
 box.actionAdminSetDriverStatus(A, { driverId: idOf('Dan'), status: 'approved' });
 dan('actionDriverSetAvailable', { available: true });

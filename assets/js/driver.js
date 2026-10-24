@@ -12,6 +12,8 @@ const DriverPage = (() => {
   const esc = (s) => escapeHtml(s == null ? '' : String(s));
   const rid = () => 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   let home = null;
+  // The application's ID photo, face check and signature (owner request, Oct 2026).
+  const apply = { idBlob: null, idUrl: '', face: null, sigDrawn: false };
   let watchId = null, watchJob = '', lastSent = 0;
   const proofs = {};
 
@@ -20,6 +22,7 @@ const DriverPage = (() => {
   async function init() {
     if (!CustomerAuth.getToken()) { show('drv-signin'); $('drv-status').textContent = ''; return; }
     $('drv-apply-form').addEventListener('submit', onApply);
+    wireApplyForm();
     $('drv-online').addEventListener('click', onToggleOnline);
     document.addEventListener('click', onClick);
     document.addEventListener('change', onChange);
@@ -50,12 +53,13 @@ const DriverPage = (() => {
         const p = CustomerAuth.getCustomer() || {};
         $('drv-name').value = p.name || '';
         $('drv-phone').value = p.phone || '';
+        $('drv-email').value = p.email || '';
       }
       return;
     }
     if (d.status !== 'approved') {
       show('drv-wait');
-      $('drv-wait-text').textContent = d.status === 'pending' ? 'Thank you - your application is waiting for a Mwakete admin. You will get an email when it is approved.'
+      $('drv-wait-text').textContent = d.status === 'pending' ? 'Thank you - your application is waiting for a Mwakete admin. We will contact you on Facebook Messenger about your approval (and by email).'
         : `Your driver status is: ${d.status}.${d.note ? ' Reason: ' + d.note : ''}`;
       return;
     }
@@ -209,11 +213,106 @@ const DriverPage = (() => {
     await load();
   }
 
+  /* ---------- Apply: ID, face check, agreement ---------- */
+
+  function wireApplyForm() {
+    $('drv-idphoto').addEventListener('change', async () => {
+      const f = $('drv-idphoto').files[0];
+      apply.face = null;
+      $('drv-face-result').textContent = '';
+      if (!f) return;
+      try {
+        const { blob } = await shrink(f);
+        apply.idBlob = blob;
+        if (apply.idUrl) URL.revokeObjectURL(apply.idUrl);
+        apply.idUrl = URL.createObjectURL(blob);
+        $('drv-idpreview').src = apply.idUrl;
+        $('drv-idpreview').hidden = false;
+      } catch (e) { $('drv-apply-error').textContent = 'That photo could not be read. Please take it again.'; }
+    });
+    $('drv-face-start').addEventListener('click', onFaceCheck);
+    document.querySelectorAll('input[name="drv-sign"]').forEach((r) => r.addEventListener('change', () => {
+      const digital = signMethod() === 'digital';
+      $('drv-sign-digital').hidden = !digital;
+      $('drv-sign-physical').hidden = digital;
+    }));
+    wireSignature();
+  }
+
+  const signMethod = () => (document.querySelector('input[name="drv-sign"]:checked') || {}).value || 'digital';
+
+  async function onFaceCheck() {
+    const out = $('drv-face-result');
+    if (!apply.idBlob) { out.textContent = 'Add the photo of your ID first - the face check compares you with it.'; return; }
+    $('drv-face-start').hidden = true;
+    try {
+      const r = await DriverFace.run({ mount: $('drv-face'), idImageUrl: apply.idUrl });
+      apply.face = r;
+      out.textContent = r.note;
+      out.classList.toggle('is-ok', r.result === 'passed');
+      $('drv-selfie-fallback').hidden = r.result !== 'unsupported' || !!r.selfie;
+    } catch (e) {
+      out.textContent = 'Face check stopped. Tap Start face check to try again.';
+    }
+    $('drv-face').innerHTML = '';
+    $('drv-face-start').hidden = false;
+    $('drv-face-start').textContent = apply.face ? 'Do the face check again' : 'Start face check';
+  }
+
+  function wireSignature() {
+    const c = $('drv-sig');
+    const ctx = c.getContext('2d');
+    const reset = () => { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); apply.sigDrawn = false; };
+    reset();
+    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+    let drawing = false;
+    const pt = (e) => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+    c.addEventListener('pointerdown', (e) => { drawing = true; c.setPointerCapture(e.pointerId); const [x, y] = pt(e); ctx.beginPath(); ctx.moveTo(x, y); e.preventDefault(); });
+    c.addEventListener('pointermove', (e) => { if (!drawing) return; const [x, y] = pt(e); ctx.lineTo(x, y); ctx.stroke(); apply.sigDrawn = true; e.preventDefault(); });
+    const end = () => { drawing = false; };
+    c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+    $('drv-sig-clear').addEventListener('click', reset);
+  }
+
+  const canvasBlob = (c) => new Promise((r) => c.toBlob((b) => r(b), 'image/png'));
+
   async function onApply(e) {
     e.preventDefault();
     const err = $('drv-apply-error');
     err.textContent = '';
-    const res = await call('driverApply', { name: $('drv-name').value.trim(), phone: $('drv-phone').value.trim(), vehicle: $('drv-vehicle').value, area: $('drv-area').value, agree: $('drv-agree').checked });
+    const idType = (document.querySelector('input[name="drv-idtype"]:checked') || {}).value || '';
+    if (!idType) { err.textContent = 'Choose your ID: KPF ID, National ID or passport.'; return; }
+    if (!apply.idBlob) { err.textContent = 'Add a photo of your ID.'; return; }
+    let face = apply.face;
+    if (!face) { err.textContent = 'Do the face check (step 3) before sending.'; return; }
+    let selfie = face.selfie;
+    if (!selfie && $('drv-selfie').files[0]) selfie = (await shrink($('drv-selfie').files[0])).blob;
+    if (!selfie) { err.textContent = 'Take a photo of your face (step 3).'; return; }
+
+    const method = signMethod();
+    const contract = { version: home && home.contractVersion, method };
+    if (method === 'digital') {
+      if (!$('drv-agree').checked) { err.textContent = 'Tick that you have read and agree to the driver agreement.'; return; }
+      if ($('drv-signname').value.trim().length < 3) { err.textContent = 'Type your full name to sign.'; return; }
+      if (!apply.sigDrawn) { err.textContent = 'Draw your signature in the box.'; return; }
+      contract.agree = true;
+      contract.signedName = $('drv-signname').value.trim();
+      contract.signatureBase64 = await toB64(await canvasBlob($('drv-sig')));
+    } else {
+      const pages = [...$('drv-pages').files].slice(0, 3);
+      if (!pages.length) { err.textContent = 'Add photos of both signed pages of the agreement.'; return; }
+      contract.pagesBase64 = await Promise.all(pages.map(async (f) => toB64(f.type === 'application/pdf' ? f : (await shrink(f)).blob)));
+    }
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    const busyDone = setButtonBusy(btn, 'Sending');
+    const res = await call('driverApply', {
+      name: $('drv-name').value.trim(), phone: $('drv-phone').value.trim(), messenger: $('drv-messenger').value.trim(), email: $('drv-email').value.trim(),
+      vehicle: $('drv-vehicle').value, area: $('drv-area').value,
+      idType, idNumber: $('drv-idnumber').value.trim(), idPhotoBase64: await toB64(apply.idBlob), selfieBase64: await toB64(selfie),
+      faceResult: face.result, faceScore: face.score, contract
+    });
+    busyDone();
     if (!res.ok) { err.textContent = res.error || 'Not sent - try again.'; return; }
     await load();
   }
