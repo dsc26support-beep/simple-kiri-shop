@@ -5686,18 +5686,19 @@ button.seller-badge {
   color: var(--color-blue);
 }
 
-/* "Not yet checked": no fill, a dashed grey edge and muted words - plainly a
-   status, not an award, and never mistaken for Verified's solid shield. */
+/* "Not yet checked": no fill, a dashed edge - plainly a status, not an award,
+   and never mistaken for Verified's solid shield. Red (owner request, Oct
+   2026) so shoppers take extra care. */
 .seller-badge--plain {
   background: transparent;
-  border: 1px dashed var(--color-muted);
+  border: 1px dashed var(--color-danger);
   border-radius: 4px;
-  color: var(--color-muted);
+  color: var(--color-danger);
   font-weight: 600;
 }
 
 .seller-badge--plain svg {
-  color: var(--color-muted);
+  color: var(--color-danger);
 }
 
 /* Pill like a plain chip, so the weight and the fill are what separate them. */
