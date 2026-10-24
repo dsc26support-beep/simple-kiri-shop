@@ -32,6 +32,14 @@ agent would help, get it or ask for the one step only the owner can complete
   authority to acquire tools is not authority to skip approval gates on
   production changes.
 
+## Brand face
+
+- The AI-generated woman in `assets/img/auth-welcome.jpg` (red hibiscus,
+  purple-and-white island-print dress) is **the face of Mwakete**. She is
+  AI, not a real person. Use her when a page, ad, or design needs a person
+  representing the company, and keep her look consistent. Don't swap in a
+  different face without the owner's say-so. (Owner, 24 Oct 2026.)
+
 ## Standing technical constraints (carried over, still in force)
 
 - Google Apps Script backend deploys are **manual and unverifiable from this
