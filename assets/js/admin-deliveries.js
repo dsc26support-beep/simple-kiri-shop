@@ -18,7 +18,7 @@ const DeliveriesAdmin = (() => {
     $('dlv-bank').textContent = res.bankDetailsSet ? '' : 'Mwakete’s bank details are not set (Script Property MWAKETE_BANK_DETAILS), so sellers cannot pay for wallet deliveries yet.';
     loadPayouts();
     $('dlv-drivers').innerHTML = res.drivers.length ? `<table class="dash-table"><thead><tr><th scope="col">Driver</th><th scope="col">Vehicle / area</th><th scope="col">Record</th><th scope="col">Status</th></tr></thead><tbody>${res.drivers.map((d) => `<tr>
-      <td data-label="Driver">${escapeHtml(d.name)}<span class="dash-table-sub"><a href="tel:${escapeHtml(d.phone)}">${escapeHtml(d.phone)}</a> · ${escapeHtml(d.email)}</span></td>
+      <td data-label="Driver">${escapeHtml(d.name)}<span class="dash-table-sub"><a href="tel:${escapeHtml(d.phone)}">${escapeHtml(d.phone)}</a> · ${escapeHtml(d.email)}</span>${driverDocsCell(d)}</td>
       <td data-label="Vehicle / area">${escapeHtml(d.vehicle)}<span class="dash-table-sub">${escapeHtml(d.area)}</span></td>
       <td data-label="Record">${d.delivered} delivered · ${d.failed} failed</td>
       <td data-label="Status"><strong>${escapeHtml(d.status)}</strong>${d.online ? ' · online' : ''}${d.note ? `<span class="dash-table-sub">${escapeHtml(d.note)}</span>` : ''}
@@ -113,7 +113,37 @@ const DeliveriesAdmin = (() => {
     await load();
   }
 
+  // ID, face check and agreement (DriverOnboarding.gs). The approval decision
+  // is sent to the driver on Messenger - the link is here for that.
+  function driverDocsCell(d) {
+    const x = d.docs || {};
+    if (!x.idType && !x.messenger) return '';
+    const face = x.faceResult === 'passed' ? `<span class="dlv-face is-ok">${escapeHtml(x.faceLabel)}</span>` : `<span class="dlv-face">${escapeHtml(x.faceLabel || 'No face check')}</span>`;
+    const signed = x.contractMethod ? `Agreement ${escapeHtml(x.contractVersion)} signed ${x.contractMethod === 'digital' ? 'in the app' + (x.contractSignedName ? ' as “' + escapeHtml(x.contractSignedName) + '”' : '') : 'on paper'}` : 'No agreement';
+    return `<span class="dash-table-sub">${escapeHtml(x.idType)} ${escapeHtml(x.idNumber)} · ${face}</span>
+      <span class="dash-table-sub">${signed}</span>
+      <span class="dash-table-sub">${x.messenger ? `<a href="${escapeHtml(x.messenger)}" target="_blank" rel="noopener noreferrer">Message on Messenger</a> · ` : ''}${x.hasDocs ? `<button type="button" class="linklike" data-driver-docs="${escapeHtml(d.driverId)}">View ID &amp; photos</button>` : (x.docsDeletedAt ? 'Documents deleted ' + escapeHtml(String(x.docsDeletedAt).slice(0, 10)) : '')}</span>
+      <div class="dlv-docs" id="dlv-docs-${escapeHtml(d.driverId)}" hidden></div>`;
+  }
+
+  async function onDocs(btn) {
+    const box = $('dlv-docs-' + btn.dataset.driverDocs);
+    if (!box.hidden) { box.hidden = true; box.innerHTML = ''; return; }
+    const busyDone = setButtonBusy(btn, 'Opening');
+    const res = await Api.post('adminDriverDocs', { token: Auth.getToken(), driverId: btn.dataset.driverDocs });
+    busyDone();
+    if (!res.ok) { alert(res.error || 'Could not open the documents.'); return; }
+    const fig = (f) => !f ? '' : f.missing ? `<figure><figcaption>${escapeHtml(f.label)} - file missing</figcaption></figure>`
+      : f.mimeType === 'application/pdf' ? `<figure><a href="${f.dataUrl}" download="signed-page.pdf">${escapeHtml(f.label)} (PDF)</a></figure>`
+      : `<figure><img src="${f.dataUrl}" alt="${escapeHtml(f.label)}"><figcaption>${escapeHtml(f.label)}</figcaption></figure>`;
+    box.innerHTML = `<p class="dash-table-sub">Compare the face photo with the ID before approving. Private - do not share or download.</p>
+      <div class="dlv-docs-grid">${fig(res.id)}${fig(res.selfie)}${res.contract.map(fig).join('')}</div>`;
+    box.hidden = false;
+  }
+
   async function onClick(e) {
+    const docs = e.target.closest('[data-driver-docs]');
+    if (docs) { await onDocs(docs); return; }
     const pay = e.target.closest('[data-pay]');
     if (pay) { await onPay(pay); return; }
     const po = e.target.closest('[data-payout]');
@@ -125,7 +155,7 @@ const DeliveriesAdmin = (() => {
     if (status !== 'approved') {
       reason = prompt(`Reason to ${status === 'rejected' ? 'reject' : 'suspend'} this driver (they will see it):`) || '';
       if (!reason) return;
-    } else if (!confirm('Approve this driver? Only approve someone you have spoken to.')) return;
+    } else if (!confirm('Approve this driver? Check that the face photo matches the ID first. Then tell them on Messenger.')) return;
     const busyDone = setButtonBusy(b, 'Saving');
     const res = await Api.post('adminSetDriverStatus', { token: Auth.getToken(), driverId: b.dataset.driver, status, reason });
     if (!res.ok) { alert(res.error || 'Not saved.'); busyDone(); return; }

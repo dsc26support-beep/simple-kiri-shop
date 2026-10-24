@@ -6,7 +6,7 @@
  *  - an existing sheet made before the wallet is upgraded in place;
  *  - turning the switch off never strands money or skips a payment check.
  */
-const { makeBox } = require('./lib/gas-harness.js');
+const { makeBox, driverDocs } = require('./lib/gas-harness.js');
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
 const J = (x) => JSON.stringify(x).slice(0, 400);
 const FUT = new Date(Date.now() + 9e8).toISOString();
@@ -53,8 +53,8 @@ const post = (b) => { Object.keys(box.__cache).filter((k) => k.indexOf('ratelimi
   try { return JSON.parse(box.doPost({ postData: { contents: JSON.stringify(b) } }).s); } catch (e) { return { ok: false, error: String(e.message || e) }; } };
 box.__props.DELIVERY_JOBS = 'on';
 box.__props.MWAKETE_BANK_DETAILS = 'ANZ Bank, Mwakete Ltd, account 000111222';
-dan('actionDriverApply', { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true });
-eve('actionDriverApply', { name: 'Eve', phone: '73000008', vehicle: 'car', area: 'South Tarawa', agree: true });
+dan('actionDriverApply', Object.assign(driverDocs(), { name: 'Dan', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true }));
+eve('actionDriverApply', Object.assign(driverDocs(), { name: 'Eve', phone: '73000008', vehicle: 'car', area: 'South Tarawa', agree: true }));
 const idOf = (name) => box.__sheets.Drivers.objects().find((d) => d.Name === name).DriverId;
 box.actionAdminSetDriverStatus(A, { driverId: idOf('Dan'), status: 'approved' });
 box.actionAdminSetDriverStatus(A, { driverId: idOf('Eve'), status: 'approved' });

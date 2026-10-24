@@ -1,5 +1,16 @@
 // Shared logout + unread-messages badge wiring for every owner/*.html page.
 document.addEventListener('DOMContentLoaded', () => {
+  // The purple top bar stays on screen (owner.css). Its height - it wraps to
+  // two lines on a narrow phone - goes in --owner-topbar-h so the other sticky
+  // parts of a page (admin section menu, previews) sit just below it.
+  const topbar = document.querySelector('.owner-topbar');
+  if (topbar) {
+    const publish = () => document.documentElement.style.setProperty('--owner-topbar-h', topbar.offsetHeight + 'px');
+    publish();
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(publish).observe(topbar);
+    else window.addEventListener('resize', publish);
+  }
+
   const logoutLink = document.getElementById('logout-link');
   if (logoutLink) {
     logoutLink.addEventListener('click', async (e) => {

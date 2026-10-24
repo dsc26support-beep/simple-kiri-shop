@@ -102,7 +102,8 @@ const dirty = (page) => page.evaluate(() => UnsavedGuard.isDirty());
     await page.fill('#profile-phone-input', '73099999');
     await page.waitForTimeout(250);
 
-    await page.click('.dash-links a[href="customer-messages.html"]');
+    // A link on the page (My Messages is hidden on phones since Oct 2026).
+    await page.click('.bottom-nav a[href*="customer-messages"]');
     await page.waitForTimeout(400);
     ok('tapping a link with unsaved edits asks first',
       await page.locator('#unsaved-dialog').isVisible());
@@ -114,7 +115,7 @@ const dirty = (page) => page.evaluate(() => UnsavedGuard.isDirty());
       && await page.locator('#unsaved-dialog').count() === 0);
     ok('and the edit is still there', (await page.inputValue('#profile-phone-input')) === '73099999');
 
-    await page.click('.dash-links a[href="customer-messages.html"]');
+    await page.click('.bottom-nav a[href*="customer-messages"]');
     await page.waitForTimeout(400);
     await page.click('#unsaved-leave');
     await page.waitForTimeout(900);
@@ -136,7 +137,7 @@ const dirty = (page) => page.evaluate(() => UnsavedGuard.isDirty());
     ok('saving clears it', (await dirty(page)) === false);
     ok('and releases the beforeunload listener', (await listeners(page)) === 0);
 
-    await page.click('.dash-links a[href="customer-messages.html"]');
+    await page.click('.bottom-nav a[href*="customer-messages"]');
     await page.waitForTimeout(700);
     ok('so leaving afterwards asks nothing', /customer-messages/.test(page.url()), page.url());
     await ctx.close();

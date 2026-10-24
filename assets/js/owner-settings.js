@@ -36,6 +36,7 @@ async function init() {
   populateIslandSelect();
   wireLocationFields();
   wirePasswordToggle('new-password');
+  wirePasswordToggle('hint-current-password');
   document.getElementById('logo-image-input').addEventListener('change', onLogoFileChange);
   document.getElementById('idlicense-image-input').addEventListener('change', onIdLicenseFileChange);
 

@@ -5686,18 +5686,19 @@ button.seller-badge {
   color: var(--color-blue);
 }
 
-/* "Not yet checked": no fill, a dashed grey edge and muted words - plainly a
-   status, not an award, and never mistaken for Verified's solid shield. */
+/* "Not yet checked": no fill, a dashed edge - plainly a status, not an award,
+   and never mistaken for Verified's solid shield. Red (owner request, Oct
+   2026) so shoppers take extra care. */
 .seller-badge--plain {
   background: transparent;
-  border: 1px dashed var(--color-muted);
+  border: 1px dashed var(--color-danger);
   border-radius: 4px;
-  color: var(--color-muted);
+  color: var(--color-danger);
   font-weight: 600;
 }
 
 .seller-badge--plain svg {
-  color: var(--color-muted);
+  color: var(--color-danger);
 }
 
 /* Pill like a plain chip, so the weight and the fill are what separate them. */
@@ -8344,16 +8345,26 @@ html.auth-signup .auth-divider {
 }
 .password-field input {
   width: 100%;
-  padding-right: 4.25rem;
+  padding-right: 3rem;
 }
+/* An eye icon, not the word Show (owner request, Oct 2026). */
 .password-field .password-toggle {
   position: absolute;
-  right: 0.75rem;
+  right: 0.35rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
   color: var(--color-purple);
 }
+.password-field .password-toggle svg { width: 20px; height: 20px; display: block; }
 /* "Forgot password?" and "Email me a code instead" under the password. */
 .auth-alt-links {
   display: flex;
@@ -8434,7 +8445,7 @@ html.auth-signup .auth-divider {
   .auth-page .auth-card .linklike {
     color: #fff;
   }
-  /* Show / Hide sits inside the white password box, so it stays purple. */
+  /* The eye icon sits inside the white password box, so it stays purple. */
   .auth-page .auth-card .password-field .password-toggle {
     color: var(--color-purple);
   }
@@ -8665,7 +8676,11 @@ html.auth-signup .auth-divider {
 /* The email form waits behind "Continue with email" (customer-login.js). */
 html:not(.email-open) .auth-card--customer #login-form { display: none; }
 html.email-open #email-continue,
-html.auth-signup #email-continue { display: none; }
+html.auth-signup #email-continue,
+html.auth-signup #auth-create-line { display: none; }
+/* "New to Mwakete? Create an account" / "Already have an account? Sign in". */
+.auth-card--customer .auth-switch { margin: var(--space-2) 0 0; text-align: center; font-size: 0.95rem; }
+html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(-1 * var(--space-1)); }
 
 @media (max-width: 899px) {
   .auth-page .auth-card .auth-provider-btn {
@@ -8683,3 +8698,66 @@ html.auth-signup #email-continue { display: none; }
   min-height: 48px;
   padding: 0 48px;
 }
+
+/* ---- Computers: the search bar stays on screen (sticky-search.js) ----
+   Owner request, Oct 2026. Pinned to the top - under the red header on the
+   home page - on a full-width white strip, the bar itself the same width as
+   before. The spacer left behind keeps the page from jumping. */
+@media (min-width: 1025px) {
+  form.search-box.is-pinned {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(40em, calc(100vw - 2 * var(--space-3)));
+    margin: 0;
+    z-index: 999;
+  }
+  form.search-box.is-pinned::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--space-2));
+    bottom: calc(-1 * var(--space-2));
+    left: -50vw;
+    right: -50vw;
+    z-index: -1;
+    background: var(--color-bg, #fff);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* My Account on phones (owner request, Oct 2026): "My Messages" goes - the
+   bottom bar already has Messages. Tablets and computers have no bottom bar,
+   so they keep it. With it gone, a shopper with no store has nothing in the
+   row, so the row closes up; a seller's "My Store" stays, same size, on the
+   left. */
+@media (max-width: 700px) {
+  .dash-messages-link { display: none; }
+  /* Same for the "Browse stores" and "My carts" shortcuts: the header has
+     Browse Stores and the bottom bar has Cart (my-carts.html). */
+  .cust-quick .cust-quick-dup { display: none; }
+  .dash-links:not(:has(.dash-store-link.is-visible)) { display: none; }
+}
+
+/* ---- Drive with Mwakete application: ID, face check, agreement ---- */
+.drv-step { font-size: 1.05rem; margin: var(--space-4) 0 var(--space-2); color: var(--color-purple); }
+.drv-note { color: var(--color-purple); }
+.drv-idtypes { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); border: 0; padding: 0; }
+.drv-preview { display: block; max-width: 240px; max-height: 160px; margin-top: var(--space-2); border-radius: var(--radius); border: 1px solid var(--color-border, #e5e5e5); }
+.face-check { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: var(--space-2) 0; }
+.fc-stage { position: relative; width: min(280px, 80vw); aspect-ratio: 3 / 4; border-radius: 50% / 45%; overflow: visible; }
+.fc-video { position: absolute; inset: 8%; width: 84%; height: 84%; object-fit: cover; border-radius: 50%; transform: scaleX(-1); background: #111; }
+.fc-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fc-oval { fill: none; stroke: rgba(255, 255, 255, 0.6); stroke-width: 0.6; }
+.fc-tick { stroke: #c9c9c9; stroke-width: 1.6; stroke-linecap: round; transition: stroke 0.15s ease; }
+.fc-tick.is-on { stroke: #1e8e3e; }
+.fc-say { text-align: center; font-weight: 600; min-height: 2.6em; }
+#drv-face-result.is-ok { color: #1e8e3e; font-weight: 600; }
+.drv-sig { display: block; width: 100%; max-width: 600px; height: auto; aspect-ratio: 600 / 180; border: 1px dashed var(--color-purple); border-radius: var(--radius); background: #fff; touch-action: none; margin: var(--space-1) 0; }
+.drv-sig-label { display: block; font-weight: 600; }
+.dlv-face { font-weight: 600; color: var(--color-danger); }
+.dlv-face.is-ok { color: #1e8e3e; }
+.dlv-docs { margin-top: var(--space-2); }
+.dlv-docs-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.dlv-docs-grid figure { margin: 0; }
+.dlv-docs-grid img { display: block; max-width: 220px; max-height: 220px; border: 1px solid var(--color-border, #e5e5e5); border-radius: 8px; background: #fff; }
+.dlv-docs-grid figcaption { font-size: 0.8rem; color: var(--color-muted); }

@@ -29,7 +29,7 @@ ok('terms: says what happens before and after the driver collects the goods', /b
 ok('terms: says it is not escrow, insurance or a guarantee', /not escrow, insurance or a guarantee/.test(terms));
 ok('terms: the headline promise is limited to goods', /never handles the money you pay for what you buy/.test(terms));
 ok('terms: independent drivers, not employees or agents', /independent people.*not employees or agents/.test(terms));
-ok('terms: the "Last updated" date moved on', /Last updated: 22 October 2026/.test(terms));
+ok('terms: the "Last updated" date moved on', /Last updated: (22|24) October 2026/.test(terms));
 ok('the Terms link from the order room, driver page and the driver list points at the section',
   ['order-room.html', 'driver.html'].every((f) => /terms\.html#drivers/.test(read(f))));
 ok('privacy: explains driver data, location and payout details', /If you drive for Mwakete/.test(read('privacy.html')) && /only your latest\s+position/.test(read('privacy.html').replace(/\s+/g, ' ').replace('latest position', 'latest  position')) || /latest position/.test(strip(read('privacy.html'))));

@@ -20,8 +20,11 @@ function init() {
     return;
   }
 
-  document.getElementById('tab-signin').addEventListener('click', () => showTab('signin'));
-  document.getElementById('tab-signup').addEventListener('click', () => showTab('signup'));
+  document.getElementById('show-signup').addEventListener('click', () => {
+    showTab('signup');
+    document.getElementById('signup-name').focus();
+  });
+  document.getElementById('show-signin').addEventListener('click', () => showTab('signin'));
 
   document.getElementById('email-continue').addEventListener('click', () => {
     openEmailForm();
@@ -117,7 +120,7 @@ function togglePassword(e) {
   const input = document.getElementById(btn.dataset.for);
   const show = input.type === 'password';
   input.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Hide' : 'Show';
+  btn.innerHTML = show ? EYE_OFF_ICON_SVG : EYE_ICON_SVG;
   btn.setAttribute('aria-pressed', show ? 'true' : 'false');
   btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
 }
@@ -191,13 +194,10 @@ function openEmailForm() {
 
 function showTab(which) {
   const signin = which === 'signin';
-  document.getElementById('tab-signin').classList.toggle('is-active', signin);
-  document.getElementById('tab-signin').setAttribute('aria-selected', signin ? 'true' : 'false');
-  document.getElementById('tab-signup').classList.toggle('is-active', !signin);
-  document.getElementById('tab-signup').setAttribute('aria-selected', !signin ? 'true' : 'false');
   document.getElementById('panel-signin').classList.toggle('hidden', !signin);
   document.getElementById('panel-signup').classList.toggle('hidden', signin);
   document.getElementById('panel-reset').classList.add('hidden');
+  document.getElementById('auth-create-line').hidden = !signin;
   document.getElementById('auth-title').textContent = signin ? 'Sign in to Mwakete' : 'Create your Mwakete account';
   // Owner request (Oct 2026): Create Account is for making an account, so the
   // Guest button and the "or" line go; Sign In brings them back.
@@ -394,6 +394,7 @@ function showReset(email) {
   document.getElementById('panel-signin').classList.add('hidden');
   document.getElementById('panel-signup').classList.add('hidden');
   document.getElementById('panel-reset').classList.remove('hidden');
+  document.getElementById('auth-create-line').hidden = true;
   document.getElementById('reset-request-form').classList.remove('hidden');
   document.getElementById('reset-form').classList.add('hidden');
   document.getElementById('auth-title').textContent = 'Set a new password';

@@ -118,7 +118,7 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     await p.fill('#login-password', 'secret123'); await p.waitForTimeout(400);
     const c2 = await vis();
     ok('...and "Sign in" once a password is typed', c2.code && c2.terms, J(c2));
-    await p.click('#tab-signup'); await p.waitForTimeout(400);
+    await p.click('#show-signup'); await p.waitForTimeout(400);
     const d = await vis();
     ok('Create Account: hidden until name, email and password are right', !d.signupCode && !d.terms, J(d));
     await p.fill('#signup-name', 'Aroita'); await p.fill('#signup-email', 'a@example.com'); await p.fill('#signup-password', 'short'); await p.waitForTimeout(400);

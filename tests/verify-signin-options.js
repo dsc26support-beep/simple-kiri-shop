@@ -297,12 +297,12 @@ async function makeContext(browser, opts) {
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(1300);
 
-    const order = await page.$$eval('.auth-quick > *, .auth-tabs',
+    const order = await page.$$eval('.auth-quick > *, .auth-tabs, #auth-create-line',
       (els) => els.map((e) => e.id || e.className.split(' ')[0]));
     // Facebook's slot sits after Google's (hidden until FACEBOOK_APP_ID is set).
-    ok(label + ': the tabs, then Google, Facebook, guest, the divider, then "Continue with email"',
+    ok(label + ': no tabs; Google, Facebook, guest, the divider, "Continue with email", then "Create an account"',
       JSON.stringify(order) === JSON.stringify(
-        ['auth-tabs', 'google-signin-wrap', 'facebook-signin-wrap', 'auth-guest-row', 'auth-divider', 'email-continue']), JSON.stringify(order));
+        ['google-signin-wrap', 'facebook-signin-wrap', 'auth-guest-row', 'auth-divider', 'email-continue', 'auth-create-line']), JSON.stringify(order));
 
     // The one that matters. The guest button is the fallback for exactly the
     // person who cannot use Google, so it must never be hidden along with it.

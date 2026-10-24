@@ -8,7 +8,7 @@
  */
 const zlib = require('zlib');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
-const { makeBox } = require('./lib/gas-harness.js');
+const { makeBox, driverDocs } = require('./lib/gas-harness.js');
 const BASE = process.env.TX_BASE || 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
 const FUT = new Date(Date.now() + 9e8).toISOString();
@@ -79,7 +79,7 @@ const ledger = () => (box.__sheets.DriverLedger ? box.__sheets.DriverLedger.obje
 
   // Setup through the backend: the driver applies and is approved and online (the apply/approve screens are covered by verify-deliveries.js).
   const dct = { token: 'c-d' };
-  box.actionDriverApply(Object.assign({ name: 'Dan Driver', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true }, dct));
+  box.actionDriverApply(Object.assign(driverDocs(), { name: 'Dan Driver', phone: '73000009', vehicle: 'motorbike', area: 'South Tarawa', agree: true }, dct));
   const driverId = box.__sheets.Drivers.objects()[0].DriverId;
   box.actionAdminSetDriverStatus(box.__sheets.Owners.objects()[1], { driverId, status: 'approved' });
   box.actionDriverSetAvailable(Object.assign({ available: true }, dct));
