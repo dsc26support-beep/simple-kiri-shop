@@ -95,6 +95,20 @@ function findMarketingPreference(customerId) {
   })[0] || null;
 }
 
+/**
+ * A brand-new shopper account starts opted in (owner decision, Oct 2026):
+ * the create-account form says so, and every email has a link to stop them.
+ * Only for accounts created from then on - existing shoppers were told "only
+ * if you ask" and keep exactly what they chose (or didn't). Never overrides a
+ * row that already exists. Best effort: a failure here never blocks sign-up.
+ */
+function optInNewCustomer(customer) {
+  try {
+    if (!customer || findMarketingPreference(customer.CustomerId)) return;
+    setMarketingOptIn(customer, true);
+  } catch (e) { Logger.log('default opt-in failed: ' + e); }
+}
+
 /** Opted in only on an explicit 'true'. A missing row means "never asked" = no. */
 function isOptedIn(pref) {
   return !!pref && String(pref.PromotionalEmailOptIn) === 'true';

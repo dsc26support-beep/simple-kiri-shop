@@ -440,7 +440,9 @@ function createVerifiedCustomer_(data) {
       UpdatedAt: nowIso(),
       PasswordHash: data.passwordHash || ''
     });
-    return findRowById(sheet, 'CustomerId', customerId);
+    var created = findRowById(sheet, 'CustomerId', customerId);
+    optInNewCustomer(created);
+    return created;
   }
   // A row that exists but was never confirmed (from before codes) is completed
   // here; an already-confirmed one is never given a password by a sign-up.

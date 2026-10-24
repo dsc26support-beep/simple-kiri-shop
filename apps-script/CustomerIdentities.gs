@@ -168,6 +168,7 @@ function resolveProviderSignIn(profile, body) {
         });
         addProviderIdentity_(customerId, provider, profile.providerUserId, email);
         result = { customer: findRowById(sheet, 'CustomerId', customerId), created: true };
+        optInNewCustomer(result.customer);
       }
     }
   } finally {
