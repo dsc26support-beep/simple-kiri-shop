@@ -42,8 +42,9 @@ function wireSecurity() {
     const input = document.getElementById(e.currentTarget.dataset.for);
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
-    e.currentTarget.textContent = show ? 'Hide' : 'Show';
+    e.currentTarget.innerHTML = show ? EYE_OFF_ICON_SVG : EYE_ICON_SVG;
     e.currentTarget.setAttribute('aria-pressed', String(show));
+    e.currentTarget.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   }));
   // google-signin.js / facebook-signin.js call these after linking.
   window.onProviderLinked = (res) => {

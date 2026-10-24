@@ -83,14 +83,10 @@
       <div class="auth-split-form">
       <section class="container auth-card-wrap">
         <div class="auth-card auth-card--customer">
-          <!-- Owner request (Oct 2026): same layout as the seller sign-in - the
-               tabs come first and there is no big heading. The heading stays
-               for screen readers. -->
+          <!-- No big heading (owner request, Oct 2026); it stays for screen
+               readers. There are no Sign In / Create Account tabs: creating an
+               account is the link under "Continue with email". -->
           <h1 id="auth-title" class="sr-only">Sign in to Mwakete</h1>
-          <div class="auth-tabs" role="tablist" aria-label="Sign in or create an account">
-            <button type="button" class="auth-tab is-active" id="tab-signin" role="tab" aria-selected="true">Sign In</button>
-            <button type="button" class="auth-tab" id="tab-signup" role="tab" aria-selected="false">Create Account</button>
-          </div>
           <!-- Why they're here, when chat sent them to request a meeting. Filled
                synchronously right here, before first paint, so it can't shift
                the form down after load. textContent only - the store name
@@ -168,7 +164,7 @@
                 <label for="login-password">Password</label>
                 <div class="password-field">
                   <input id="login-password" type="password" autocomplete="current-password" maxlength="200">
-                  <button type="button" class="linklike password-toggle" data-for="login-password" aria-pressed="false">Show</button>
+                  <button type="button" class="password-toggle" data-for="login-password" aria-pressed="false" aria-label="Show password"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
                 </div>
               </div>
               <p class="auth-alt-links">
@@ -193,8 +189,14 @@
             </form>
           </div>
 
+          <!-- Owner request (Oct 2026): replaces the Create Account tab. Sits
+               under "Continue with email", or under Sign in once the email
+               form is open. -->
+          <p class="auth-switch" id="auth-create-line">New to Mwakete? <button type="button" class="linklike" id="show-signup">Create an account</button></p>
+
           <!-- Create account -->
           <div id="panel-signup" class="auth-panel hidden">
+            <h2 class="auth-step-title">Create your account</h2>
             <form id="signup-form" novalidate>
               <div class="field">
                 <label for="signup-name">Your Name</label>
@@ -208,7 +210,7 @@
                 <label for="signup-password">Password</label>
                 <div class="password-field">
                   <input id="signup-password" type="password" autocomplete="new-password" minlength="8" maxlength="200" aria-describedby="signup-password-help" required>
-                  <button type="button" class="linklike password-toggle" data-for="signup-password" aria-pressed="false">Show</button>
+                  <button type="button" class="password-toggle" data-for="signup-password" aria-pressed="false" aria-label="Show password"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
                 </div>
                 <p class="helper-text" id="signup-password-help">At least 8 characters. A short sentence is easy to remember and hard to guess.</p>
               </div>
@@ -228,6 +230,7 @@
               <button type="button" class="btn btn-block resend-btn" data-for="signup" disabled>Send the code again</button>
               <button type="button" id="signup-back" class="btn btn-block">Change my details</button>
             </form>
+            <p class="auth-switch">Already have an account? <button type="button" class="linklike" id="show-signin">Sign in</button></p>
           </div>
 
           <!-- Forgot password / set a password (no tab: reached from Sign In,
@@ -254,7 +257,7 @@
                 <label for="reset-password">New password</label>
                 <div class="password-field">
                   <input id="reset-password" type="password" autocomplete="new-password" minlength="8" maxlength="200" required>
-                  <button type="button" class="linklike password-toggle" data-for="reset-password" aria-pressed="false">Show</button>
+                  <button type="button" class="password-toggle" data-for="reset-password" aria-pressed="false" aria-label="Show password"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
                 </div>
                 <p class="helper-text">At least 8 characters. You will be signed out on your other devices.</p>
               </div>

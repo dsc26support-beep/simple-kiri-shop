@@ -8345,16 +8345,26 @@ html.auth-signup .auth-divider {
 }
 .password-field input {
   width: 100%;
-  padding-right: 4.25rem;
+  padding-right: 3rem;
 }
+/* An eye icon, not the word Show (owner request, Oct 2026). */
 .password-field .password-toggle {
   position: absolute;
-  right: 0.75rem;
+  right: 0.35rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
   color: var(--color-purple);
 }
+.password-field .password-toggle svg { width: 20px; height: 20px; display: block; }
 /* "Forgot password?" and "Email me a code instead" under the password. */
 .auth-alt-links {
   display: flex;
@@ -8435,7 +8445,7 @@ html.auth-signup .auth-divider {
   .auth-page .auth-card .linklike {
     color: #fff;
   }
-  /* Show / Hide sits inside the white password box, so it stays purple. */
+  /* The eye icon sits inside the white password box, so it stays purple. */
   .auth-page .auth-card .password-field .password-toggle {
     color: var(--color-purple);
   }
@@ -8666,7 +8676,11 @@ html.auth-signup .auth-divider {
 /* The email form waits behind "Continue with email" (customer-login.js). */
 html:not(.email-open) .auth-card--customer #login-form { display: none; }
 html.email-open #email-continue,
-html.auth-signup #email-continue { display: none; }
+html.auth-signup #email-continue,
+html.auth-signup #auth-create-line { display: none; }
+/* "New to Mwakete? Create an account" / "Already have an account? Sign in". */
+.auth-card--customer .auth-switch { margin: var(--space-2) 0 0; text-align: center; font-size: 0.95rem; }
+html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(-1 * var(--space-1)); }
 
 @media (max-width: 899px) {
   .auth-page .auth-card .auth-provider-btn {
