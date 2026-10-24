@@ -617,6 +617,24 @@ section {
   border-color: var(--color-purple);
 }
 
+/* While typing (owner request, Oct 2026): instead of the thick blue focus
+   ring, a thin red -> purple -> yellow gradient outline - the header, brand
+   and ticker colours. Drawn as a 2px border (a gradient can't be an outline):
+   the padding gives back the extra 1px so the box and its text don't move. */
+.search-box input:focus,
+.search-box input:focus-visible {
+  outline: none;
+  border: 2px solid transparent;
+  padding: calc(0.6em - 1px) calc(0.7em - 1px);
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, var(--color-red), var(--color-purple), var(--color-gold)) border-box;
+}
+.search-box--voice input:focus,
+.search-box--voice input:focus-visible {
+  padding-right: 43px;
+}
+
 /* ---- the microphone, home only ----------------------------------------- *
  *
  * .search-box--voice is on the home form alone. That box has no submit button
