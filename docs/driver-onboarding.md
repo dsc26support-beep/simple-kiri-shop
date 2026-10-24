@@ -3,7 +3,7 @@
 These are the owner's requests and decisions for driver onboarding:
 
 - **Contact details:** Messenger and email sit under Phone. The approval decision goes to the driver on Messenger.
-- **ID:** the driver gives ONE ID (KPF ID, National ID or passport) plus a photo of it.
+- **ID:** the driver gives ONE ID (KPF ID, National ID, passport or driver's licence) plus a photo of it.
 - **Face check:** a head-turn liveness check, where the ring around the face goes green, followed by a match against the ID photo.
   - Passing approves the **face step only**. An admin still approves the driver.
   - If the check fails, the application is still sent, flagged for the admin to check by eye.
@@ -63,7 +63,6 @@ Every result lets the driver send the application.
 5. In the editor, run **`installDriverDocsTrigger`** once. This sets up the daily 90-day clean-up.
 6. Driving is still switched off until the Script Property `DELIVERY_JOBS` is set to `on`.
 
-## Owner to review before going live
-- **`driver-contract.html`:** written to match how Drive with Mwakete works today. It is not legal advice; have someone who knows Kiribati law check it.
-- **Terms and Privacy:** the new driver sections in `terms.html` and `privacy.html`.
+## The agreement
+- **`driver-contract.html`** is final: approved by the owner (a lawyer) on 24 Oct 2026, with the Terms and Privacy driver sections.
 - **Changing the agreement:** bump `DRIVER_CONTRACT_VERSION` (in `DriverOnboarding.gs`) and the version printed in `driver-contract.html` together. New applicants must then sign the new version.

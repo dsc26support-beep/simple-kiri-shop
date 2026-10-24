@@ -30,7 +30,7 @@ const pdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF').toStr
 const refuse = (label, extra, re) => { const r = apply('c-d', extra); ok(label, !r.ok && re.test(r.error || ''), J(r)); };
 refuse('Messenger is required', { messenger: '' }, /Messenger/);
 refuse('a valid email is required', { email: 'not-an-email' }, /email/i);
-refuse('one of KPF ID, National ID or passport', { idType: 'driving-licence' }, /KPF ID, National ID or passport/);
+refuse("one of KPF ID, National ID, passport or driver's licence", { idType: 'birth-certificate' }, /KPF ID, National ID, passport or driver's licence/);
 refuse('the ID number is required and checked', { idNumber: '##' }, /number on your National ID/);
 refuse('a photo of the ID is required', { idPhotoBase64: '' }, /photo of your ID/);
 refuse('...and it must be a photo, not a PDF', { idPhotoBase64: pdf }, /photo of your ID/i);
@@ -86,8 +86,9 @@ ok('...and the admin is told they were deleted', /deleted/.test(box.actionAdminD
 ok('approved drivers are never purged', box.purgeOldDriverDocs() === 0 && !files[dan.IdFileId].trashed);
 
 /* ---------- applying again after rejection ---------- */
-r = apply('c-e', { name: 'Eve Driver', phone: '73000008', messenger: 'eve.drv', idType: 'kpf', idNumber: 'KPF-778' });
-ok('a rejected driver can apply again with new documents', r.ok && drivers().filter((d) => d.Name === 'Eve Driver').length === 1 && drivers().find((d) => d.Name === 'Eve Driver').IdType === 'kpf', J(r));
+r = apply('c-e', { name: 'Eve Driver', phone: '73000008', messenger: 'eve.drv', idType: 'licence', idNumber: 'DL-55667' });
+ok("a rejected driver can apply again, with a driver's licence as the ID", r.ok && drivers().filter((d) => d.Name === 'Eve Driver').length === 1 && drivers().find((d) => d.Name === 'Eve Driver').IdType === 'licence', J(r));
+ok("...shown to the admin as Driver's licence", box.actionAdminListDeliveries(A, {}).drivers.find((d) => d.name === 'Eve Driver').docs.idType === "Driver's licence");
 
 R.forEach((x) => console.log(x[0], x[1], String(x[2]).slice(0, 300)));
 const failed = R.filter((x) => x[0] === 'FAIL').length;

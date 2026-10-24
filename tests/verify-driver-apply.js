@@ -36,7 +36,7 @@ const FAKE_FACEAPI = `
       if (b.action) posted.push(b);
       const res = b.action === 'getDriverHome'
         ? { ok: true, enabled: true, driver: posted.some((p) => p.action === 'driverApply') ? { status: 'pending' } : null, vehicles: { motorbike: 'Motorbike' }, areas: ['South Tarawa'],
-          idTypes: { kpf: 'KPF ID', national: 'National ID', passport: 'Passport' }, contractVersion: '2026-10-v1' }
+          idTypes: { kpf: 'KPF ID', national: 'National ID', passport: 'Passport', licence: "Driver's licence" }, contractVersion: '2026-10-v1' }
         : { ok: true, status: 'pending' };
       r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(res) });
     });
@@ -55,7 +55,7 @@ const FAKE_FACEAPI = `
     ok('Messenger and email come right under phone', order[0] < order[1] && order[1] < order[2], JSON.stringify(order));
     ok('...with the note that approval comes on Messenger', /contact you on\s+Messenger about your approval/i.test(await page.textContent('#drv-apply')));
     ok('email is filled from the account', (await page.inputValue('#drv-email')) === 'dan@x.com');
-    ok('ID choices: KPF ID, National ID, Passport', (await page.$$eval('input[name="drv-idtype"]', (r) => r.map((x) => x.value).join())) === 'kpf,national,passport');
+    ok("ID choices: KPF ID, National ID, Passport, Driver's licence", (await page.$$eval('input[name="drv-idtype"]', (r) => r.map((x) => x.value).join())) === 'kpf,national,passport,licence');
     await page.fill('#drv-messenger', 'dan.driver');
     await page.click('#drv-face-start');
     ok('the face check asks for the ID photo first', /photo of your ID first/.test(await page.textContent('#drv-face-result')));
@@ -121,7 +121,7 @@ const FAKE_FACEAPI = `
     const text = await page.textContent('.contract');
     ok('...between MainKT Enterprise (Mwakete) and the driver, as an independent driver who sets their own fee',
       /MainKT Enterprise, trading as Mwakete/.test(text) && /independent driver/.test(text) && /You set your own fee/.test(text));
-    ok('...covering ID, face check, privacy and the 90-day deletion', /KPF ID, National ID or passport/.test(text) && /face check/.test(text) && /deleted 90 days/.test(text));
+    ok('...covering ID, face check, privacy and the 90-day deletion', /KPF ID, National ID, passport or driver\u2019s licence/.test(text) && /face check/.test(text) && /deleted 90 days/.test(text));
     await page.close();
   }
 

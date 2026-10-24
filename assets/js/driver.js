@@ -281,7 +281,7 @@ const DriverPage = (() => {
     const err = $('drv-apply-error');
     err.textContent = '';
     const idType = (document.querySelector('input[name="drv-idtype"]:checked') || {}).value || '';
-    if (!idType) { err.textContent = 'Choose your ID: KPF ID, National ID or passport.'; return; }
+    if (!idType) { err.textContent = "Choose your ID: KPF ID, National ID, passport or driver's licence."; return; }
     if (!apply.idBlob) { err.textContent = 'Add a photo of your ID.'; return; }
     let face = apply.face;
     if (!face) { err.textContent = 'Do the face check (step 3) before sending.'; return; }

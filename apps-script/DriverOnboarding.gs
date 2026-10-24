@@ -3,7 +3,8 @@
  *
  * A driver application (actionDriverApply, Deliveries.gs) now also carries:
  *  - Facebook Messenger and email (approval status is sent by Messenger);
- *  - ONE ID: KPF ID, National ID or passport - its type, number and a photo;
+ *  - ONE ID: KPF ID, National ID, passport or driver's licence - its type,
+ *    number and a photo;
  *  - a live selfie from the face check on the phone (head turn + match with
  *    the ID photo, assets/js/driver-face.js). The check runs ON THE PHONE and
  *    can be fooled by a determined person, so its result is only advice: an
@@ -26,7 +27,7 @@
  */
 
 var DRIVER_CONTRACT_VERSION = '2026-10-v1';
-var DRIVER_ID_TYPES = { kpf: 'KPF ID', national: 'National ID', passport: 'Passport' };
+var DRIVER_ID_TYPES = { kpf: 'KPF ID', national: 'National ID', passport: 'Passport', licence: "Driver's licence" };
 var DRIVER_FACE_RESULTS = {
   passed: 'Face matched the ID photo',
   not_matched: 'Face did not match - check by eye',
@@ -75,7 +76,7 @@ function checkDriverOnboarding(body, customer) {
   if (!EMAIL_FORMAT_RE.test(email) || email.length > 254) return { error: 'Enter a valid email address.' };
 
   var idType = String(body.idType || '');
-  if (!DRIVER_ID_TYPES[idType]) return { error: 'Choose your ID: KPF ID, National ID or passport.' };
+  if (!DRIVER_ID_TYPES[idType]) return { error: "Choose your ID: KPF ID, National ID, passport or driver's licence." };
   var idNumber = String(body.idNumber || '').trim().toUpperCase().replace(/\s+/g, '');
   if (!/^[A-Z0-9\-\/]{4,30}$/.test(idNumber)) return { error: 'Enter the number on your ' + DRIVER_ID_TYPES[idType] + ' (letters and numbers only).' };
 
