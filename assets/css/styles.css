@@ -8683,3 +8683,29 @@ html.auth-signup #email-continue { display: none; }
   min-height: 48px;
   padding: 0 48px;
 }
+
+/* ---- Computers: the search bar stays on screen (sticky-search.js) ----
+   Owner request, Oct 2026. Pinned to the top - under the red header on the
+   home page - on a full-width white strip, the bar itself the same width as
+   before. The spacer left behind keeps the page from jumping. */
+@media (min-width: 1025px) {
+  form.search-box.is-pinned {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(40em, calc(100vw - 2 * var(--space-3)));
+    margin: 0;
+    z-index: 999;
+  }
+  form.search-box.is-pinned::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--space-2));
+    bottom: calc(-1 * var(--space-2));
+    left: -50vw;
+    right: -50vw;
+    z-index: -1;
+    background: var(--color-bg, #fff);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+}
