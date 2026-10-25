@@ -1,17 +1,15 @@
 /**
- * On a computer the search bar never scrolls out of sight (owner request,
- * Oct 2026). Once it reaches the top it is pinned there - just under the red
- * header on the home page, where the header itself stays on screen - on a
- * white strip, and a spacer of the same height takes its place so nothing
- * below moves. Phones and tablets keep their usual scrolling: a pinned bar
- * would eat too much of a small screen.
+ * The search bar never scrolls out of sight (owner requests, Oct 2026: first
+ * computers, then phones and tablets too). Once it reaches the top it is
+ * pinned there, on a white strip, just under whatever stays on screen above
+ * it - the red header on a computer, the yellow strip on a phone or tablet
+ * home page - or at the very top where nothing does. A spacer of the same
+ * height takes its place so nothing below moves.
  *
  * Used on the pages with a main search box (form.search-box): home, Stores,
  * Categories and a storefront. Help has its own sticky bar.
  */
 (function () {
-  var DESKTOP = window.matchMedia('(min-width: 1025px)');
-
   function init() {
     var form = document.querySelector('form.search-box[role="search"]');
     if (!form) return;
@@ -19,17 +17,25 @@
     spacer.className = 'search-pin-spacer';
     spacer.setAttribute('aria-hidden', 'true');
     form.parentNode.insertBefore(spacer, form);
-    var header = document.querySelector('header.site-header');
+    // The bars that can stay on screen above the search: the red header (sticky
+    // on a computer) and the yellow strip (sticky on phones and tablets).
+    var bars = [document.querySelector('header.site-header'), document.querySelector('.header-ticker')]
+      .filter(Boolean);
     var pinned = false;
     var queued = false;
 
-    // How far down the pinned bar sits: below the header where the header
-    // itself stays on screen (sticky), otherwise at the very top - plus the
-    // white strip's own margin above the box.
+    // How far down the pinned bar sits: below the lowest bar that stays on
+    // screen (sticky and showing), otherwise at the very top - plus the white
+    // strip's own margin above the box.
     var GAP = 8;
     function pinTop() {
-      if (!header || getComputedStyle(header).position !== 'sticky') return GAP;
-      return Math.max(0, header.getBoundingClientRect().bottom) + GAP;
+      var bottom = 0;
+      bars.forEach(function (bar) {
+        var cs = getComputedStyle(bar);
+        if (cs.position !== 'sticky' || cs.display === 'none') return;
+        bottom = Math.max(bottom, bar.getBoundingClientRect().bottom);
+      });
+      return bottom + GAP;
     }
 
     function setPinned(on, top) {
@@ -45,7 +51,6 @@
 
     function update() {
       queued = false;
-      if (!DESKTOP.matches) { setPinned(false); return; }
       var top = pinTop();
       // The spacer marks where the bar lives in the page, pinned or not.
       setPinned(spacer.getBoundingClientRect().top < top, top);
@@ -59,7 +64,6 @@
 
     window.addEventListener('scroll', queue, { passive: true });
     window.addEventListener('resize', queue);
-    if (DESKTOP.addEventListener) DESKTOP.addEventListener('change', queue);
     update();
   }
 

@@ -1,6 +1,7 @@
-// Computers: the search bar never scrolls out of sight (owner request, Oct
-// 2026, sticky-search.js). Pinned under the red header on the home page, at
-// the top elsewhere; nothing jumps; phones and tablets unchanged.
+// The search bar never scrolls out of sight (owner requests, Oct 2026,
+// sticky-search.js): computers first, then phones and tablets too. Pinned
+// under the red header on a computer, under the yellow strip on a phone or
+// tablet home page, at the top where nothing stays on screen; nothing jumps.
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e === undefined ? '' : e]);
@@ -39,28 +40,34 @@ const BODY = JSON.stringify({ ok: true, products: prods, stores, topProducts: pr
     await ctx.close();
   }
 
-  for (const path of ['index.html', 'stores.html', 'store.html?store=s']) {
-    const { ctx, p } = await open(1280, path);
+  for (const [w, dev] of [[1280, 'computer'], [820, 'tablet'], [390, 'phone']]) for (const path of ['index.html', 'stores.html', 'store.html?store=s']) {
+    const { ctx, p } = await open(w, path);
     const before = await box(p);
     const below = await p.evaluate(() => { const f = document.querySelector('form.search-box'); const n = [...document.querySelectorAll('main *')].find((el) => (f.compareDocumentPosition(el) & 4) && !f.contains(el) && !el.classList.contains('search-pin-spacer') && el.getBoundingClientRect().height > 0); return n ? n.getBoundingClientRect().top + scrollY : -1; });
     await p.evaluate(() => window.scrollTo(0, 1500)); await p.waitForTimeout(300);
     const after = await box(p);
-    const hdr = await p.evaluate(() => { const h = document.querySelector('header.site-header'); return getComputedStyle(h).position === 'sticky' ? h.getBoundingClientRect().bottom : 0; });
-    ok(`${path}: computer - the search bar stays on screen after scrolling`, after.pinned && after.top >= 0 && after.bottom <= 800, JSON.stringify(after));
-    ok(`${path}: ...just below the red header when it stays, else at the top`, Math.abs(after.top - (hdr + 8)) <= 1, JSON.stringify({ after, hdr }));
-    ok(`${path}: ...same width as before`, Math.abs(after.w - before.w) <= 1, JSON.stringify({ before: before.w, after: after.w }));
+    // The lowest bar that stays on screen: the red header, or the yellow strip.
+    const hdr = await p.evaluate(() => Math.max(0, ...['header.site-header', '.header-ticker'].map((q) => document.querySelector(q))
+      .filter((h) => h && getComputedStyle(h).position === 'sticky' && getComputedStyle(h).display !== 'none').map((h) => h.getBoundingClientRect().bottom)));
+    ok(`${path}: ${dev} - the search bar stays on screen after scrolling`, after.pinned && after.top >= 0 && after.bottom <= 800, JSON.stringify(after));
+    ok(`${path}: ...just below the bar that stays on screen (header or yellow strip), else at the top`, Math.abs(after.top - (hdr + 8)) <= 1, JSON.stringify({ after, hdr }));
+    ok(`${path} ${w}px: ...same width as before`, Math.abs(after.w - before.w) <= 1, JSON.stringify({ before: before.w, after: after.w }));
     const belowNow = await p.evaluate(() => { const f = document.querySelector('form.search-box'); const n = [...document.querySelectorAll('main *')].find((el) => (f.compareDocumentPosition(el) & 4) && !f.contains(el) && !el.classList.contains('search-pin-spacer') && el.getBoundingClientRect().height > 0); return n ? n.getBoundingClientRect().top + scrollY : -1; });
-    ok(`${path}: ...and nothing below it jumps`, Math.abs(belowNow - below) <= 1, JSON.stringify({ below, belowNow }));
+    ok(`${path} ${w}px: ...and nothing below it jumps`, Math.abs(belowNow - below) <= 1, JSON.stringify({ below, belowNow }));
     await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300);
     const back = await box(p);
-    ok(`${path}: back at the top it returns to its place`, !back.pinned && Math.abs(back.top - before.top) <= 1, JSON.stringify({ before, back }));
+    ok(`${path} ${w}px: back at the top it returns to its place`, !back.pinned && Math.abs(back.top - before.top) <= 1, JSON.stringify({ before, back }));
     await ctx.close();
   }
-  for (const w of [390, 820]) {
-    const { ctx, p } = await open(w, 'index.html');
+  // Phone home page: right under the yellow strip, not under it or over it.
+  {
+    const { ctx, p } = await open(390, 'index.html');
     await p.evaluate(() => window.scrollTo(0, 1500)); await p.waitForTimeout(300);
-    const r = await box(p);
-    ok(`${w}px: phones and tablets scroll as before (not pinned)`, !r.pinned && r.bottom < 0, JSON.stringify(r));
+    const r = await p.evaluate(() => { const f = document.querySelector('form.search-box').getBoundingClientRect(), t = document.querySelector('.header-ticker').getBoundingClientRect();
+      const el = document.elementFromPoint(f.left + 40, f.top + f.height / 2);
+      return { tickerTop: t.top, tickerBottom: t.bottom, top: f.top, onTop: !!el && !!el.closest('form.search-box') }; });
+    ok('390px home: the yellow strip stays at the top, the search box just beneath it', r.tickerTop === 0 && r.top >= r.tickerBottom && r.top - r.tickerBottom <= 9, JSON.stringify(r));
+    ok('...and nothing covers the search box', r.onTop, JSON.stringify(r));
     await ctx.close();
   }
   await browser.close();
