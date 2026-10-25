@@ -8490,6 +8490,14 @@ html.auth-signup .auth-divider {
   .auth-page .auth-card .form-success {
     color: #c9f5d3;
   }
+  /* Note boxes (e.g. seller Register Store's "First, your Mwakete account")
+     keep a light grey fill elsewhere; here their words are white, so the box
+     becomes a see-through white tint on the purple instead. */
+  .auth-page .auth-card .auth-note {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #fff;
+  }
   /* Outlined like every button on the site - in white, so it shows on the
      purple. */
   .auth-page .auth-card .btn:not(.btn-save) {

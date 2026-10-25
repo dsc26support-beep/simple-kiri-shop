@@ -99,6 +99,17 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     await ctx.close();
   }
 
+  // phones: a note box (seller Register Store, signed out) must not keep its
+  // light grey fill under white words - it becomes a white tint on the purple.
+  {
+    const { ctx, p } = await open(390, 'owner/login.html?tab=register');
+    const n = await p.evaluate(() => { const g = document.getElementById('register-account-gate');
+      return { hidden: g.hidden, bg: getComputedStyle(g).backgroundColor, text: getComputedStyle(g.querySelector('p')).color }; });
+    ok('owner/login.html 390px: "First, your Mwakete account" is readable - white words on a see-through tint, not on light grey',
+      !n.hidden && n.text === 'rgb(255, 255, 255)' && /^rgba\(255, 255, 255, 0\.1/.test(n.bg), J(n));
+    await ctx.close();
+  }
+
   // shopper: "Sign in" / "Create account" and the Terms line wait for a correct entry
   {
     const { ctx, p } = await open(390, 'customer-login.html');
