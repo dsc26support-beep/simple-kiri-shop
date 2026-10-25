@@ -40,13 +40,13 @@
 
       <section id="drv-apply" class="dash-section" hidden aria-labelledby="drv-apply-h">
         <h2 id="drv-apply-h">Apply to drive</h2>
-        <p class="helper-text">Independent drivers deliver orders for Mwakete sellers on their own island. <strong>You set your own fee</strong>: for each job you and the seller agree it in the job chat. The seller pays it to Mwakete, and once the buyer confirms the delivery Mwakete credits it to you and pays it to your bank account when you claim it (<a href="terms.html#drivers">how this works</a>). Mwakete holds only the delivery fee, never the price of the goods. A Mwakete admin checks every application.</p>
+        <p class="helper-text">Independent drivers deliver orders for Mwakete sellers on their own island. <strong>You set your own fee.</strong> <a href="terms.html#drivers">How this works</a></p>
         <form id="drv-apply-form" novalidate>
           <h3 class="drv-step">1. About you</h3>
           <div class="field"><label for="drv-name">Your full name</label><input id="drv-name" maxlength="80" autocomplete="name"></div>
           <div class="field"><label for="drv-phone">Phone</label><input id="drv-phone" type="tel" maxlength="30" autocomplete="tel"><p class="helper-text">Buyers and sellers call this number about a job you accept.</p></div>
-          <div class="field"><label for="drv-messenger">Facebook Messenger</label><input id="drv-messenger" maxlength="200" autocomplete="off" placeholder="e.g. your.name or a link to your profile">
-            <p class="helper-text drv-note">Mwakete will contact you on <strong>Messenger</strong> about your approval.</p></div>
+          <div class="field"><label for="drv-messenger">Facebook Messenger</label><div class="fbh-field"><input id="drv-messenger" maxlength="200" autocomplete="off" placeholder="e.g. https://m.me/username" aria-describedby="drv-messenger-note"><button type="button" class="fbh-btn" data-fb-help aria-expanded="false" aria-label="Help finding your Facebook username">Help?</button></div>
+            <p class="helper-text drv-note" id="drv-messenger-note" data-fb-help-swap>Mwakete will contact you on <strong>Messenger</strong> about your approval.</p></div>
           <div class="field"><label for="drv-email">Email</label><input id="drv-email" type="email" maxlength="254" autocomplete="email"></div>
           <div class="field"><label for="drv-vehicle">Vehicle</label><select id="drv-vehicle"></select></div>
           <div class="field"><label for="drv-area">Your island</label><select id="drv-area"></select><p class="helper-text">You only get jobs on this island, from stores here to buyers here.</p></div>
@@ -60,12 +60,12 @@
             <label class="radio-row"><input type="radio" name="drv-idtype" value="licence"> <span>Driver&rsquo;s licence</span></label>
           </fieldset>
           <div class="field"><label for="drv-idnumber">ID number</label><input id="drv-idnumber" maxlength="30" autocomplete="off" autocapitalize="characters"></div>
-          <div class="field"><label for="drv-idphoto">Photo of your ID</label><input id="drv-idphoto" type="file" accept="image/*" capture="environment">
+          <div class="field"><label for="drv-idphoto">Photo of your ID</label><input id="drv-idphoto" type="file" accept="image/*">
             <p class="helper-text">The side with your photo. Flat, in good light, every corner showing.</p>
             <img id="drv-idpreview" class="drv-preview" alt="Your ID photo" hidden></div>
 
           <h3 class="drv-step">3. Face check</h3>
-          <p class="helper-text">Look at the camera, then turn your head left and right until the ring around your face is all green. We then match your face with your ID photo. It runs on your phone.</p>
+          <p class="helper-text">Look at the camera, then turn your head left and right until the ring around your face is all green.</p>
           <div id="drv-face" class="drv-face"></div>
           <button type="button" id="drv-face-start" class="btn btn-outline">Start face check</button>
           <p id="drv-face-result" class="helper-text" role="status" aria-live="polite"></p>
@@ -120,6 +120,7 @@
   <script defer src="assets/js/api.min.js"></script>
   <script defer src="assets/js/helpers.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/fb-help.min.js"></script>
   <script defer src="assets/js/driver-face.min.js"></script>
   <script defer src="assets/js/driver.min.js"></script>
 </body>
