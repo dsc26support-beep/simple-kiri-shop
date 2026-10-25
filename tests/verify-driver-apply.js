@@ -56,6 +56,15 @@ const FAKE_FACEAPI = `
     ok('...with the note that approval comes on Messenger', /contact you on\s+Messenger about your approval/i.test(await page.textContent('#drv-apply')));
     ok('email is filled from the account', (await page.inputValue('#drv-email')) === 'dan@x.com');
     ok("ID choices: KPF ID, National ID, Passport, Driver's licence", (await page.$$eval('input[name="drv-idtype"]', (r) => r.map((x) => x.value).join())) === 'kpf,national,passport,licence');
+    // Owner request (Oct 2026): ID photo offers camera AND upload (no capture
+    // attribute); the backup face photo stays camera-only.
+    ok('ID photo: phone offers Camera and Upload (no camera-only lock)', await page.$eval('#drv-idphoto', (i) => !i.hasAttribute('capture') && i.accept === 'image/*'));
+    ok('...the backup face photo stays camera-only', (await page.getAttribute('#drv-selfie', 'capture')) === 'user');
+    const intro = await page.evaluate(() => { const p = document.querySelector('#drv-apply > p.helper-text'); const a = p.querySelector('a');
+      return { text: p.textContent.replace(/\s+/g, ' ').trim(), link: a && a.textContent.trim(), href: a && a.getAttribute('href') }; });
+    ok('intro is short: own fee, then "How this works" (capital H) to the driver terms',
+      intro.text === 'Independent drivers deliver orders for Mwakete sellers on their own island. You set your own fee. How this works' && intro.link === 'How this works' && intro.href === 'terms.html#drivers', JSON.stringify(intro));
+    ok('face check text no longer says it matches your ID / runs on your phone', !/We then match|runs on your phone/.test(await page.textContent('#drv-apply')));
     await page.fill('#drv-messenger', 'dan.driver');
     await page.click('#drv-face-start');
     ok('the face check asks for the ID photo first', /photo of your ID first/.test(await page.textContent('#drv-face-result')));
