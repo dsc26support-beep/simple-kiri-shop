@@ -65,6 +65,23 @@ const FAKE_FACEAPI = `
     ok('intro is short: own fee, then "How this works" (capital H) to the driver terms',
       intro.text === 'Independent drivers deliver orders for Mwakete sellers on their own island. You set your own fee. How this works' && intro.link === 'How this works' && intro.href === 'terms.html#drivers', JSON.stringify(intro));
     ok('face check text no longer says it matches your ID / runs on your phone', !/We then match|runs on your phone/.test(await page.textContent('#drv-apply')));
+    // Messenger "Help?" (owner request, Oct 2026): inside the box at its right
+    // edge; pressing it swaps "Mwakete will contact you..." for the steps, and
+    // pressing again swaps back.
+    ok('Messenger: placeholder e.g. https://m.me/username, "Help?" inside the box at the far right', await page.evaluate(() => {
+      const i = document.getElementById('drv-messenger'), b = i.parentNode.querySelector('.fbh-btn'), r = i.getBoundingClientRect(), q = b.getBoundingClientRect();
+      return i.placeholder === 'e.g. https://m.me/username' && b.textContent.trim() === 'Help?' && q.left > r.left + r.width / 2 && q.right <= r.right && r.right - q.right < 12 && q.top >= r.top && q.bottom <= r.bottom; }));
+    const swap = () => page.evaluate(() => { const v = (el) => !!el && !el.hidden && el.getBoundingClientRect().height > 0;
+      const steps = document.querySelector('#drv-messenger-steps');
+      return { note: v(document.getElementById('drv-messenger-note')), steps: v(steps), text: steps ? steps.textContent : '' }; });
+    const s0 = await swap();
+    await page.click('#drv-apply .fbh-btn');
+    const s1 = await swap();
+    await page.click('#drv-apply .fbh-btn');
+    const s2 = await swap();
+    ok('...Help? hides "Mwakete will contact you" and shows the steps in its place', s0.note && !s0.steps && !s1.note && s1.steps
+      && s1.text === 'Open Messenger > Menu > Settings > Username, then enter m.me/your-username', JSON.stringify({ s0, s1 }));
+    ok('...pressing Help? again brings the note back and hides the steps', s2.note && !s2.steps, JSON.stringify(s2));
     await page.fill('#drv-messenger', 'dan.driver');
     await page.click('#drv-face-start');
     ok('the face check asks for the ID photo first', /photo of your ID first/.test(await page.textContent('#drv-face-result')));

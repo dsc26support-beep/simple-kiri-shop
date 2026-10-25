@@ -45,8 +45,8 @@
           <h3 class="drv-step">1. About you</h3>
           <div class="field"><label for="drv-name">Your full name</label><input id="drv-name" maxlength="80" autocomplete="name"></div>
           <div class="field"><label for="drv-phone">Phone</label><input id="drv-phone" type="tel" maxlength="30" autocomplete="tel"><p class="helper-text">Buyers and sellers call this number about a job you accept.</p></div>
-          <div class="field"><label for="drv-messenger">Facebook Messenger</label><input id="drv-messenger" maxlength="200" autocomplete="off" placeholder="e.g. your.name or a link to your profile">
-            <p class="helper-text drv-note">Mwakete will contact you on <strong>Messenger</strong> about your approval.</p></div>
+          <div class="field"><label for="drv-messenger">Facebook Messenger</label><div class="fbh-field"><input id="drv-messenger" maxlength="200" autocomplete="off" placeholder="e.g. https://m.me/username" aria-describedby="drv-messenger-note"><button type="button" class="fbh-btn" data-fb-help aria-expanded="false" aria-label="Help finding your Facebook username">Help?</button></div>
+            <p class="helper-text drv-note" id="drv-messenger-note" data-fb-help-swap>Mwakete will contact you on <strong>Messenger</strong> about your approval.</p></div>
           <div class="field"><label for="drv-email">Email</label><input id="drv-email" type="email" maxlength="254" autocomplete="email"></div>
           <div class="field"><label for="drv-vehicle">Vehicle</label><select id="drv-vehicle"></select></div>
           <div class="field"><label for="drv-area">Your island</label><select id="drv-area"></select><p class="helper-text">You only get jobs on this island, from stores here to buyers here.</p></div>
@@ -120,6 +120,7 @@
   <script defer src="assets/js/api.min.js"></script>
   <script defer src="assets/js/helpers.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
+  <script defer src="assets/js/fb-help.min.js"></script>
   <script defer src="assets/js/driver-face.min.js"></script>
   <script defer src="assets/js/driver.min.js"></script>
 </body>

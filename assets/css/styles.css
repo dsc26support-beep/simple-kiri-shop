@@ -8062,7 +8062,30 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 .cart-line-bulk { flex-basis: 100%; margin: 0; }
 .cart-line-bulk:empty { display: none; }
 
-/* ===== "Help?" under the Messenger box (fb-help.js): one line of steps ===== */
+/* ===== "Help?" for the Messenger box (fb-help.js) =====
+   The button sits inside the box at its right edge (owner request, Oct 2026),
+   like the eye in a password box; the box keeps room for it on the right.
+   Pressing it shows one line of steps under the box. */
+.fbh-field { position: relative; }
+.fbh-field input { width: 100%; padding-right: 4.75rem; }
+.fbh-btn {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  min-height: 0;
+  padding: 0.4rem 0.5rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-purple);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.fbh-btn:hover { background: var(--color-bg-alt); }
 .fbh-steps { display: block; margin-top: var(--space-1); color: var(--color-ink); font-weight: 600; }
 .fbh-steps[hidden] { display: none; }
 
