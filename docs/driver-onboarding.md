@@ -60,7 +60,8 @@ Every result lets the driver send the application.
 2. Replace `Deliveries.gs` and `Code.gs` with the new versions.
 3. Save, then Deploy → Manage deployments → edit → New version.
 4. Check that `?action=getVersion` returns `drv1-2026-10-24`.
-5. In the editor, run **`installDriverDocsTrigger`** once. This sets up the daily 90-day clean-up.
+5. Set up the daily 90-day clean-up. In the editor go to **Triggers → Add Trigger**, choose **`purgeOldDriverDocs`**, event source **Time-driven**, **Day timer**, **3am to 4am**, then save.
+   - Running `installDriverDocsTrigger` from the editor does the same thing, but it fails with "Specified permissions are not sufficient to call ScriptApp.getProjectTriggers" unless `https://www.googleapis.com/auth/script.scriptapp` is in `oauthScopes` in `appsscript.json`. This project lists its scopes by hand, so the Triggers screen is the simpler route.
 6. Driving is still switched off until the Script Property `DELIVERY_JOBS` is set to `on`.
 
 ## The agreement
