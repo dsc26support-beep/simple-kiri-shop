@@ -144,12 +144,15 @@ const contrast = (a, b) => {
   }
 
   // ---------- focus is still blue, and still tells you it is focus ---------
+  // (Search boxes use a red-yellow-purple gradient instead - owner request,
+  // Oct 2026, verify-search-gradient.js - so this uses an ordinary field.)
   {
-    const page = await ctx.newPage();
-    await page.goto(BASE + '/index.html', { waitUntil: 'load' });
+    // A fresh context: signed out, so the sign-in page doesn't redirect.
+    const page = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+    await page.goto(BASE + '/customer-login.html?tab=signup', { waitUntil: 'load' });
     await page.waitForTimeout(700);
     const focus = await page.evaluate(() => {
-      const i = document.querySelector('.search-box input[type="search"]');
+      const i = document.getElementById('signup-name');
       i.focus();
       const cs = getComputedStyle(i);
       return { outline: cs.outlineColor, width: cs.outlineWidth, offset: cs.outlineOffset,

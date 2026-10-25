@@ -17,7 +17,9 @@
  * PRIVACY. The files go in a private Drive folder only the script account can
  * open; admins see them through actionAdminDriverDocs. They are deleted 90
  * days after a driver is rejected or suspended (purgeOldDriverDocs - install
- * its daily trigger with installDriverDocsTrigger, once, from the editor).
+ * its daily trigger from the editor's Triggers screen: purgeOldDriverDocs,
+ * Time-driven, Day timer. installDriverDocsTrigger does the same but needs the
+ * script.scriptapp scope in appsscript.json, which this project doesn't list).
  * Only the ID type and number stay in the sheet.
  *
  * Drivers sheet columns added here (additive, ensureColumn):
@@ -190,7 +192,11 @@ function purgeOldDriverDocs() {
   return purged;
 }
 
-/** Run once from the Apps Script editor: purgeOldDriverDocs every day. */
+/**
+ * Optional: purgeOldDriverDocs every day. Needs
+ * https://www.googleapis.com/auth/script.scriptapp in appsscript.json's
+ * oauthScopes; without it, add the trigger by hand (Triggers > Add Trigger).
+ */
 function installDriverDocsTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'purgeOldDriverDocs') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('purgeOldDriverDocs').timeBased().everyDays(1).atHour(3).create();

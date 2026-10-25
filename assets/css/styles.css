@@ -617,6 +617,24 @@ section {
   border-color: var(--color-purple);
 }
 
+/* While typing (owner request, Oct 2026): instead of the thick blue focus
+   ring, a thin red -> yellow -> purple gradient outline, left to right - the
+   header, ticker and brand colours. Drawn as a 2px border (a gradient can't be an outline):
+   the padding gives back the extra 1px so the box and its text don't move. */
+.search-box input:focus,
+.search-box input:focus-visible {
+  outline: none;
+  border: 2px solid transparent;
+  padding: calc(0.6em - 1px) calc(0.7em - 1px);
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, var(--color-red), var(--color-gold), var(--color-purple)) border-box;
+}
+.search-box--voice input:focus,
+.search-box--voice input:focus-visible {
+  padding-right: 43px;
+}
+
 /* ---- the microphone, home only ----------------------------------------- *
  *
  * .search-box--voice is on the home form alone. That box has no submit button
@@ -8700,30 +8718,30 @@ html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(
   padding: 0 48px;
 }
 
-/* ---- Computers: the search bar stays on screen (sticky-search.js) ----
-   Owner request, Oct 2026. Pinned to the top - under the red header on the
-   home page - on a full-width white strip, the bar itself the same width as
-   before. The spacer left behind keeps the page from jumping. */
-@media (min-width: 1025px) {
-  form.search-box.is-pinned {
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(40em, calc(100vw - 2 * var(--space-3)));
-    margin: 0;
-    z-index: 999;
-  }
-  form.search-box.is-pinned::before {
-    content: '';
-    position: absolute;
-    top: calc(-1 * var(--space-2));
-    bottom: calc(-1 * var(--space-2));
-    left: -50vw;
-    right: -50vw;
-    z-index: -1;
-    background: var(--color-bg, #fff);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  }
+/* ---- The search bar stays on screen (sticky-search.js) ----------------
+   Owner requests, Oct 2026: computers first, then phones and tablets too.
+   Pinned to the top - under the red header on a computer, under the yellow
+   strip on a phone or tablet home page - on a full-width white strip, the bar
+   itself the same width as before. The spacer left behind keeps the page from
+   jumping. */
+form.search-box.is-pinned {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(40em, calc(100vw - 2 * var(--space-3)));
+  margin: 0;
+  z-index: 999;
+}
+form.search-box.is-pinned::before {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--space-2));
+  bottom: calc(-1 * var(--space-2));
+  left: -50vw;
+  right: -50vw;
+  z-index: -1;
+  background: var(--color-bg, #fff);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* My Account on phones (owner request, Oct 2026): "My Messages" goes - the
