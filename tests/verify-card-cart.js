@@ -63,7 +63,11 @@ const cart = (page, slug) => page.evaluate((s) => JSON.parse(localStorage.getIte
     const price = c.querySelector('.product-price').getBoundingClientRect();
     const btn = c.querySelector('.card-cart-btn').getBoundingClientRect();
     const body = c.querySelector('.product-card-body').getBoundingClientRect();
+    const photo = c.querySelector('.product-card-photo').getBoundingClientRect();
     return {
+      onPhoto: !!c.querySelector('.product-card-photo .product-card-shade .product-name') && !!c.querySelector('.product-card-shade .product-price')
+        && price.bottom <= photo.bottom + 1 && price.top >= photo.top,
+      btnCorner: Math.abs(btn.top - photo.top) < 14 && Math.abs(btn.right - photo.right) < 14,
       tag: c.tagName, kids,
       title: title.textContent.trim(), oneLine: getComputedStyle(title).whiteSpace === 'nowrap' && getComputedStyle(title).textOverflow === 'ellipsis',
       linkName: c.querySelector('.product-card-link').getAttribute('aria-label'),
@@ -76,10 +80,18 @@ const cart = (page, slug) => page.evaluate((s) => JSON.parse(localStorage.getIte
     };
   });
   ok('card is an <article> (a button can\'t live inside a link)', card.tag === 'ARTICLE', card.tag);
-  ok('order: text line, price + cart, stars, place row, Verified row', card.kids.join(',') === 'product-name,product-card-buy,rating,product-card-meta,product-card-verified', card.kids.join(','));
+  // Homepage cards (owner request, 28 Oct 2026): name and price on the photo,
+  // the cart button in the photo's top-right corner, the rest underneath.
+  ok('home: under the photo - stars, place row, Verified row', card.kids.join(',') === 'rating,product-card-meta,product-card-verified', card.kids.join(','));
   ok('text line: the description, on one line cut with …', card.title.startsWith('Bright solar lamp') && card.oneLine, card.title);
   ok('the link is named by the product and store for a screen reader', card.linkName === 'Solar Lamp, Bong Store', card.linkName);
-  ok('price at the left, round cart button at the right, same row', card.priceLeft && card.btnRight && card.sameRow, JSON.stringify(card));
+  ok('home: name and price on the photo, round cart button in its top-right corner', card.onPhoto && card.btnCorner, JSON.stringify(card));
+  const plain = await page.evaluate(() => {
+    const box = document.createElement('div');
+    box.innerHTML = renderBrowseProductCard({ productId: 'q', name: 'N', storeSlug: 's', storeName: 'S', sellerBadges: ['verified'], rating: 4, reviewCount: 2, variants: [{ variantId: 'v', label: 'a', price: 1 }] });
+    return Array.from(box.querySelector('.product-card-body').children).map((k) => k.className.split(' ')[0]).join(',');
+  });
+  ok('other pages keep the usual card: text line, price + cart, stars, place row, Verified row', plain === 'product-name,product-card-buy,rating,product-card-meta,product-card-verified', plain);
   ok('cart button says what it adds', card.btnLabel === 'Add Solar Lamp to cart');
   ok('place row: place, delivery, other badges (Verified has its own row)', card.meta.join(',') === 'place:Abaiang,delivery,recommended', card.meta.join(','));
   const vrow = await page.$eval('#trending-products-list .product-card[data-product-id="p1"] .product-card-verified', (r) => r.textContent.trim()).catch(() => null);

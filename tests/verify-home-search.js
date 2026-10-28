@@ -193,7 +193,10 @@ const ph = (page) => page.$eval('#search-input', (el) => el.placeholder);
     });
     ok('the hero has no background of its own',
       hero.bg === 'rgba(0, 0, 0, 0)' && hero.img === 'none', JSON.stringify(hero));
-    ok('but keeps its breathing room', parseFloat(hero.pad) > 0, hero.pad);
+    // The search sits straight under the tabs (28 Oct 2026); the room around
+    // it is the gap between the sections, not the hero's own padding.
+    const gap = await page.evaluate(() => Math.round(document.querySelector('.hero').getBoundingClientRect().top - document.querySelector('.home-quick-actions').getBoundingClientRect().bottom));
+    ok('but keeps its breathing room', gap >= 8, gap + 'px');
     await ctx.close();
   }
 

@@ -37,22 +37,19 @@ const BASE = 'http://127.0.0.1:8099';
   // moved up) -> product grid. Popular Categories, the Tips pill and the
   // trust strip were removed from the homepage by request (the trust lines
   // live in the header ticker now).
-  ok('mobile: search above everything else', mob.t.hero < mob.t.stores, JSON.stringify(mob.t));
+  // Owner request, 28 Oct 2026, every screen size: tabs (quick actions)
+  // right under the yellow strip, then search, Popular Stores, products.
+  const chain = (t) => t.quickActions < t.hero && t.hero < t.stores && t.stores < t.products;
   ok('mobile: search above products', mob.t.hero < mob.t.products, JSON.stringify(mob.t));
-  ok('mobile: full section chain is in order',
-    mob.t.hero < mob.t.quickActions &&
-    mob.t.quickActions < mob.t.stores && mob.t.stores < mob.t.products,
-    JSON.stringify(mob.t));
+  ok('mobile: tabs, search, Popular Stores, products', chain(mob.t), JSON.stringify(mob.t));
 
   const tab = await measure(900, 1200, 'tablet');
   // Wider than a phone (Oct 2026, owner request): Popular Stores right under
   // the header, above the search. Phones keep search first (checked above).
-  ok('tablet: Popular Stores under the header, above search', tab.t.stores < tab.t.hero, JSON.stringify(tab.t));
+  ok('tablet: tabs, search, Popular Stores, products', chain(tab.t), JSON.stringify(tab.t));
 
   const desk = await measure(1280, 900, 'desktop');
-  ok('desktop: Popular Stores under the header, above search', desk.t.stores < desk.t.hero, JSON.stringify(desk.t));
-  ok('desktop: quick actions directly beneath search',
-    desk.t.hero < desk.t.quickActions && desk.t.quickActions < desk.t.products, JSON.stringify(desk.t));
+  ok('desktop: tabs, search, Popular Stores, products', chain(desk.t), JSON.stringify(desk.t));
   ok('desktop: discovery above products',
     desk.t.stores < desk.t.products, JSON.stringify(desk.t));
 
@@ -69,17 +66,17 @@ const BASE = 'http://127.0.0.1:8099';
       stores = r('.trending-stores'),
       prod = r('.trending-products');
     return {
-      heroToQa: Math.round(qa.top - hero.bottom),
-      qaToStores: Math.round(stores.top - qa.bottom),
+      qaToHero: Math.round(hero.top - qa.bottom),
+      heroToStores: Math.round(stores.top - hero.bottom),
       storesToProd: Math.round(prod.top - stores.bottom)
     };
   });
   await page.close();
-  // row-gap var(--space-4)=1.5rem=24px is added between flex items; every gap
-  // should be >= ~24 (some sections zero their own top/bottom padding, so the
-  // row-gap is the only spacer between them - exactly what this checks for).
+  // The app-style layout (28 Oct 2026) is tighter: row-gap var(--space-3)
+  // = 12px between flex items, the only spacer where a section zeroes its own
+  // padding - so every pair keeps at least that.
   Object.keys(gaps).forEach((k) => {
-    ok('mobile: extra spacer ' + k + ' (>=24px)', gaps[k] >= 24, k + '=' + gaps[k]);
+    ok('mobile: spacer ' + k + ' (>=12px)', gaps[k] >= 12, k + '=' + gaps[k]);
   });
 
   await browser.close();

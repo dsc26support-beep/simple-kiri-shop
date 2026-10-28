@@ -36,17 +36,12 @@ const layout = (page) => page.evaluate(() => {
     quickActionsTop: quickActions ? Math.round(quickActions.top) : null,
     storesTop: stores ? Math.round(stores.top) : null,
     trendingTop: trending ? Math.round(trending.top) : null,
-    // Alibaba-inspired order: search -> quick actions -> discovery (Popular
-    // Stores, moved up) -> product grid. Popular Categories, the Tips pill and
-    // the trust strip were removed from the homepage by request - the trust
-    // lines live in the header ticker now.
+    // Owner request, 28 Oct 2026, every screen size: the tabs (quick
+    // actions) right under the yellow strip, then search, Popular Stores,
+    // the product grid.
     orderOk: !!(search && quickActions && stores && trending &&
-      search.top < quickActions.top &&
-      quickActions.top < stores.top && stores.top < trending.top),
-    // Wider than a phone (Oct 2026, owner request): Popular Stores sits right
-    // under the header, above the search; the rest keeps its order.
-    wideOrderOk: !!(search && quickActions && stores && trending &&
-      stores.top < search.top && search.top < quickActions.top && quickActions.top < trending.top),
+      quickActions.top < search.top &&
+      search.top < stores.top && stores.top < trending.top),
     quickActionCount: document.querySelectorAll('.quick-action-item').length,
     // Count-independent: all tiles share one row rather than wrapping,
     // regardless of whether that row happens to need horizontal scroll at
@@ -72,7 +67,7 @@ const layout = (page) => page.evaluate(() => {
   {
     const { ctx, page } = await open(browser, '/index.html', 390, 844);
     const m = await layout(page);
-    ok('mobile: search sits at the top, above everything else', m.searchTop !== null && m.orderOk,
+    ok('mobile: tabs, then search, Popular Stores, products', m.searchTop !== null && m.orderOk,
       JSON.stringify(m));
     ok('mobile: the search box is prominent (>80% of the width)', m.searchWidthPct >= 80,
       String(m.searchWidthPct) + '%');
@@ -121,7 +116,7 @@ const layout = (page) => page.evaluate(() => {
   {
     const { ctx, page } = await open(browser, '/index.html', 820, 1100);
     const t = await layout(page);
-    ok('tablet: Popular Stores under the header, then search, quick actions, products', t.wideOrderOk === true, JSON.stringify(t));
+    ok('tablet: tabs, then search, Popular Stores, products', t.orderOk === true, JSON.stringify(t));
     ok('tablet: uses the extra width - more product columns than a phone',
       t.gridCols >= 3, String(t.gridCols));
     ok('tablet: bottom nav is hidden above 700px', t.navDisplay === 'none', String(t.navDisplay));
@@ -133,7 +128,7 @@ const layout = (page) => page.evaluate(() => {
   {
     const { ctx, page } = await open(browser, '/index.html', 1366, 900);
     const d = await layout(page);
-    ok('desktop: Popular Stores under the header, then search, quick actions, products', d.wideOrderOk === true, JSON.stringify(d));
+    ok('desktop: tabs, then search, Popular Stores, products', d.orderOk === true, JSON.stringify(d));
     ok('desktop: existing sections still there', d.trendingTop !== null);
     ok('desktop: nothing overflows sideways', d.noHorizontalOverflow === true);
     const kept = await page.evaluate(() => ({
