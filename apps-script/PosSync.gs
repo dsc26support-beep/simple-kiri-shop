@@ -143,7 +143,7 @@ function posItemOf(v, p, bulkOn, showCost) {
     barcode: posCleanBarcode(v.Barcode), price: roundMoney(Number(v.Price) || 0), tiers: bulkOn ? priceTiersOf(v) : [], minQty: bulkOn ? minOrderQtyOf(v) : 1,
     tracked: tracked, stock: tracked ? physicalOf(v) : null, reserved: tracked ? reservedOf(v) : 0, available: tracked ? availableOf(v) : null,
     health: stockHealthOf(v), reorderLevel: v.ReorderLevel === '' || v.ReorderLevel === undefined ? null : Number(v.ReorderLevel),
-    active: v.Status === 'active' && !!p && p.Status !== 'archived' && p.Status !== 'deleted',
+    active: v.Status === 'active' && !!p && p.Status !== 'archived' && p.Status !== 'deleted' && p.Status !== 'hidden',
     category: p ? (p.CategoryId || '') : '', image: p ? (p.ImageUrl || '') : '' };
   if (showCost) item.costPrice = v.CostPrice === '' || v.CostPrice === undefined ? null : Number(v.CostPrice);
   return item;
@@ -405,4 +405,113 @@ function actionPosVoidSale(owner, body, actor) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/* ==================== Stock work from a till ==================== */
+
+/**
+ * Receive goods or record damaged / expired / returned / counted stock from a
+ * till - online, or queued while offline. body: opId (8-64), type
+ * ('receive' | 'damaged' | 'expired' | 'returned' | 'count'), variantId,
+ * quantity | newCount, supplier?, invoice?, unitCost?, notes?, offline?
+ *
+ * The same opId is never applied twice, however late it arrives: the change is
+ * found again in the stock ledger itself (a tag in its notes), not in a
+ * short-lived cache. A COUNT is refused when it was made offline: it is an
+ * absolute number that may already be out of date, and applying it later
+ * would silently overwrite sales made since. Count again when online.
+ */
+function actionPosStockOp(owner, body, actor) {
+  if (!posHubEnabled()) return hubOff();
+  actor = actor || posOwnerActor(owner);
+  var opId = cleanRequestId(body && body.opId);
+  if (!opId) return posFail('This stock change has no reference number. Reload and try again.');
+  var type = String(body.type || '');
+  var perm = type === 'receive' ? 'receive_stock' : 'adjust_stock';
+  if (['receive', 'damaged', 'expired', 'returned', 'count'].indexOf(type) === -1) return posFail('Choose what kind of stock change this is.');
+  if (!posCan(actor, perm)) return posDenied(actor, perm);
+  if (type === 'count' && body.offline === true) return posFail('A stock count made offline cannot be applied later - sales may have happened since. Count again while online.', 'invalid');
+  var tag = '[op:' + opId + ']';
+  var ledger = SpreadsheetApp.getActive().getSheetByName('StockMovements');
+  var prior = (ledger ? sheetToObjects(ledger) : []).filter(function (m) { return m.OwnerId === owner.OwnerId && String(m.Notes || '').indexOf(tag) !== -1; })[0];
+  if (prior) return ok({ replayed: true, variantId: prior.VariantId, newStock: Number(prior.NewStock) });
+  var who = 'by ' + actor.name + (body.offline === true ? ' (offline)' : '');
+  var res;
+  if (type === 'receive') {
+    res = actionReceiveStock(owner, { variantId: body.variantId, quantity: body.quantity, supplier: body.supplier, invoice: body.invoice, unitCost: body.unitCost,
+      locationId: body.locationId, requestId: opId, opTag: who + ' ' + tag });
+  } else {
+    res = actionAdjustStock(owner, { variantId: body.variantId, reason: type, quantity: body.quantity, newCount: body.newCount, notes: String(body.notes || '').slice(0, 150),
+      locationId: body.locationId, requestId: opId, opTag: who + ' ' + tag });
+  }
+  if (res && res.ok) appendAudit({ actorId: actor.id, actorRole: 'pos_' + actor.role, action: 'POS_STOCK_' + type.toUpperCase(), entityType: 'variant', entityId: String(body.variantId || ''), next: String(body.quantity || body.newCount || '') });
+  else if (res && !res.errorKind) res.errorKind = 'invalid';
+  return res;
+}
+
+/**
+ * Price, SKU, barcode, low-stock level and cost from a till. Only the fields
+ * sent change. A new price applies to sales from now on; sales already made
+ * keep the price they were sold at (their lines store it).
+ * body: variantId, price?, sku?, barcode?, reorderLevel?, costPrice?
+ */
+function actionPosUpdateItem(owner, body, actor) {
+  if (!posHubEnabled()) return hubOff();
+  actor = actor || posOwnerActor(owner);
+  if (!posCan(actor, 'edit_products')) return posDenied(actor, 'edit_products');
+  var sheet = getSheet('Variants');
+  ensureInventoryColumns(sheet);
+  var v = findRowById(sheet, 'VariantId', String((body && body.variantId) || ''));
+  if (!v || v.OwnerId !== owner.OwnerId) return posFail('That item was not found.');
+  // The stock-settings save writes every field, so unsent ones keep their current value.
+  var pick = function (k, cur) { return body[k] === undefined ? cur : body[k]; };
+  if (body.sku !== undefined || body.barcode !== undefined || body.reorderLevel !== undefined || body.costPrice !== undefined) {
+    var r = actionUpdateStockSettings(owner, { variantId: v.VariantId, sku: pick('sku', v.SKU), barcode: pick('barcode', v.Barcode), reorderLevel: pick('reorderLevel', v.ReorderLevel),
+      reorderQty: v.ReorderQty, costPrice: pick('costPrice', v.CostPrice) });
+    if (!r.ok) return posFail(r.error);
+  }
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (body.price !== undefined) {
+      var price = Number(body.price);
+      if (!isFinite(price) || price <= 0 || price > 1000000) return posFail('Enter a price above $0.');
+      var fresh = findRowById(sheet, 'VariantId', v.VariantId);
+      updateRowFromObject(sheet, fresh.__row, { Price: roundMoney(price), UpdatedAt: nowIso() });
+      appendAudit({ actorId: actor.id, actorRole: 'pos_' + actor.role, action: 'POS_PRICE_CHANGED', entityType: 'variant', entityId: v.VariantId, prev: String(fresh.Price), next: String(roundMoney(price)) });
+    }
+    posEmitCatalogChange(owner.OwnerId, v.ProductId);
+  } finally {
+    lock.releaseLock();
+  }
+  invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
+  var products = {};
+  sheetToObjects(getSheet('Products')).forEach(function (p) { if (p.ProductId === v.ProductId) products[p.ProductId] = p; });
+  return ok({ item: posItemOf(findRowById(sheet, 'VariantId', v.VariantId), products[v.ProductId], bulkPricingOn(owner), posCan(actor, 'view_costs')) });
+}
+
+/** Shows or hides a product (online shop and tills). body: productId, active (true/false). */
+function actionPosSetProductActive(owner, body, actor) {
+  if (!posHubEnabled()) return hubOff();
+  actor = actor || posOwnerActor(owner);
+  if (!posCan(actor, 'edit_products')) return posDenied(actor, 'edit_products');
+  var sheet = getSheet('Products');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var p = findRowById(sheet, 'ProductId', String((body && body.productId) || ''));
+    if (!p || p.OwnerId !== owner.OwnerId || p.Status === 'archived' || p.Status === 'deleted') return posFail('That product was not found.');
+    // A listing still waiting for its check (ListingReview.gs) is not the till's to publish.
+    if (p.Status === 'review') return posFail('This product is waiting for its listing check. Change it in Products once the check is done.');
+    var next = body.active === true ? 'active' : 'hidden';
+    if (p.Status !== next) {
+      updateRowFromObject(sheet, p.__row, { Status: next, UpdatedAt: nowIso() });
+      appendAudit({ actorId: actor.id, actorRole: 'pos_' + actor.role, action: 'POS_PRODUCT_' + (next === 'active' ? 'SHOWN' : 'HIDDEN'), entityType: 'product', entityId: p.ProductId });
+      posEmitCatalogChange(owner.OwnerId, p.ProductId);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
+  return ok({ productId: body.productId, active: body.active === true });
 }

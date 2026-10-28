@@ -18,7 +18,7 @@ already exists, what is missing, the risks, and the plan.
 
 ## 2. What already exists and will be reused (not rebuilt)
 
-* **Native POS** (`Pos.gs`, `owner/pos.html`, `owner-pos.js`), behind Script Property `POS_HUB`:
+* **Native POS** (`Pos.gs`, `owner/pos.html`, then `owner-pos.js` - replaced by the shared `pos-app.js` in this work), behind Script Property `POS_HUB`:
   search/scan (keyboard-wedge scanners), cart, **server-side pricing**, discount cap,
   tax-inclusive receipts, cash change, refunds with optional restock, reports,
   `clientTxnId` idempotency checked inside the lock, validate-all-then-move-stock.
@@ -93,3 +93,21 @@ All of it stays behind `POS_HUB`, so nothing changes for stores until it is swit
 * **Payments:** Cash = paid. EFTPOS = paid, recorded from the bank terminal (no
   integration). IB and MPaisa = pending verification until a manager or the owner
   confirms (or marks it failed).
+
+## 7. Built (stages 1–5)
+
+All five stages are built. How to deploy, install and recover:
+[`mwakete-pos-guide.md`](mwakete-pos-guide.md). What was tested, the measured
+sync delay and the implemented / not-implemented list:
+[`mwakete-pos-test-report.md`](mwakete-pos-test-report.md).
+
+Changes from the plan above, on the evidence of the build:
+
+* Stages 2–5 ship together in one PR (the shared app, the standalone app and
+  staff sign-in depend on each other).
+* Polling is 3 s for a minute after activity, 12 s otherwise, 45 s idle, and
+  paused while the page is hidden. Measured delay ≈ 3 s locally; the
+  sub-second target is not met on this backend.
+* Stock operations use a durable `[op:<id>]` tag in the ledger for
+  idempotency instead of the 30-minute cache replay.
+* Shifts, voids, refunds, price edits and stock counts are online-only.

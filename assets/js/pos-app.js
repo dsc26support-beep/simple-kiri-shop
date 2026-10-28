@@ -1,0 +1,996 @@
+// Mwakete POS - the app. ONE app, mounted in two places (Oct 2026):
+//   owner/pos.html  inside the seller dashboard (signed-in owner)
+//   pos/index.html  the standalone installable app (owner, or staff on a registered till)
+// Both run this file, PosCore (prices: the same code as the server), PosDB
+// (this device's storage) and PosEngine (sync). They differ only in the shell
+// they are mounted in (window.POS_SHELL), so they cannot drift apart.
+// docs/mwakete-pos-architecture.md.
+const PosApp = (function () {
+  let shell = null;
+  let session = null;
+  const S = { items: new Map(), meta: {}, cart: [], mode: 'retail', discount: { type: 'percent', value: '' }, method: 'cash', tendered: '', reference: '',
+    txnId: '', view: 'sell', query: '', busy: false, lastScan: { code: '', at: 0 }, invFilter: 'all', invQuery: '' };
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+  const esc = (s) => escapeHtml(s == null ? '' : String(s));
+  const money = (n) => '$' + posCents(n).toFixed(2);
+  const can = (perm) => ((S.meta.actor && S.meta.actor.perms) || []).indexOf(perm) !== -1;
+  const fmtTime = (iso) => { const t = Date.parse(iso); return isFinite(t) ? new Date(t).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; };
+  const ago = (iso) => { const t = Date.parse(iso); if (!isFinite(t)) return 'never'; const s = Math.round((Date.now() - t) / 1000); return s < 60 ? s + 's ago' : s < 3600 ? Math.round(s / 60) + ' min ago' : fmtTime(iso); };
+  const opId = () => 'op-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+
+  const VIEWS = [
+    { id: 'sell', label: 'Sell', perm: 'sell' },
+    { id: 'shift', label: 'Cash drawer', perm: 'manage_shift' },
+    { id: 'sales', label: 'Sales', perm: null },
+    { id: 'orders', label: 'Online orders', perm: 'view_reports' },
+    { id: 'inventory', label: 'Inventory', perm: null },
+    { id: 'payments', label: 'Payments to confirm', perm: 'confirm_payment' },
+    { id: 'reviews', label: 'Reviews', perm: 'resolve_cases' },
+    { id: 'reports', label: 'Reports', perm: 'view_reports' },
+    { id: 'sync', label: 'Sync Centre', perm: null },
+    { id: 'settings', label: 'Settings', perm: null }
+  ];
+
+  /* ================= start ================= */
+
+  async function start(shellConfig) {
+    shell = shellConfig;
+    const root = document.getElementById('pos-root');
+    root.innerHTML = `<p class="pos-main pos-muted" role="status">Opening the till…</p>`;
+    try {
+      session = await shell.session();
+    } catch (e) {
+      root.innerHTML = `<div class="pos-main"><p class="pos-note is-bad">${esc(e.message || e)}</p></div>`;
+      return;
+    }
+    if (!session) return; // the shell is sending them to sign in
+    renderShell(root);
+    PosEngine.on('status', renderStatus);
+    PosEngine.on('queue', renderStatus);
+    PosEngine.on('items', debounce(onItemsChanged, 150));
+    PosEngine.on('meta', (m) => { loadMeta().then(() => { renderNav(); if (S.view === 'sell') renderView(); }); });
+    PosEngine.on('sales', () => { if (S.view === 'sales') renderView(); });
+    PosEngine.on('cases', (cases) => toast(cases.length + ' sale' + (cases.length === 1 ? '' : 's') + ' need a review (see Reviews).'));
+    try {
+      await PosEngine.start({ ownerId: session.ownerId, auth: session.auth, deviceCode: session.deviceCode, sessionKey: session.key || session.who, sessionLabel: session.who });
+    } catch (e) {
+      $('#pos-view').innerHTML = `<p class="pos-note is-bad">${esc(e.message || 'This browser cannot run the till.')}</p>`;
+      return;
+    }
+    await loadMeta();
+    await loadItems();
+    S.shift = await PosDB.getMeta('shift', null);
+    restoreDraft();
+    if (can('manage_shift')) refreshShift();
+    if (!S.txnId) S.txnId = PosEngine.newTxnId();
+    if (!can('sell') && S.view === 'sell') S.view = 'inventory';
+    renderNav();
+    renderView();
+    renderStatus(PosEngine.status());
+    document.addEventListener('keydown', scannerKeys, true);
+  }
+
+  async function loadMeta() {
+    S.meta = { settings: await PosDB.getMeta('settings', {}), store: await PosDB.getMeta('store', {}), methods: await PosDB.getMeta('methods', []),
+      actor: session.actor || (await PosDB.getMeta('actor', null)) || { role: 'owner', perms: [] }, bulkOn: await PosDB.getMeta('bulkOn', false) };
+    if (!S.meta.bulkOn) S.mode = 'retail';
+  }
+  async function loadItems() {
+    const rows = await PosDB.all('items');
+    S.items = new Map(rows.map((i) => [i.variantId, i]));
+  }
+  async function onItemsChanged() {
+    await loadItems();
+    if (S.view === 'sell') { renderTiles(); renderCart(); }
+    if (S.view === 'inventory') renderInventoryList();
+  }
+
+  /* ================= shell ================= */
+
+  function renderShell(root) {
+    root.className = 'pos-app';
+    root.innerHTML = `
+      <aside class="pos-side" aria-label="Till menu">
+        <div class="pos-side-head">${esc(session.storeName || 'Mwakete POS')}<small id="pos-who">${esc(session.who || '')}</small></div>
+        <nav class="pos-nav" id="pos-nav-side"></nav>
+        <div class="pos-side-foot">${shell.footerHtml ? shell.footerHtml() : ''}</div>
+      </aside>
+      <div class="pos-body">
+        <header class="pos-top">
+          <button type="button" class="pos-menu-btn" id="pos-menu-btn" aria-expanded="false" aria-controls="pos-drawer">Menu</button>
+          <span class="pos-top-title" id="pos-top-title">Sell</span>
+        </header>
+        <div class="pos-drawer hidden" id="pos-drawer"><nav class="pos-nav" id="pos-nav-top"></nav><div class="pos-main pos-muted" style="padding-top:0">${shell.footerHtml ? shell.footerHtml() : ''}</div></div>
+        <div class="pos-statusbar" id="pos-statusbar" role="status" aria-live="polite"></div>
+        <main class="pos-main" id="pos-view" tabindex="-1"></main>
+      </div>
+      <div class="pos-print-area hidden" id="pos-print-area"></div>`;
+    $('#pos-menu-btn').addEventListener('click', () => {
+      const d = $('#pos-drawer'); const open = d.classList.contains('hidden');
+      d.classList.toggle('hidden', !open); $('#pos-menu-btn').setAttribute('aria-expanded', String(open));
+    });
+  }
+
+  function renderNav() {
+    const visible = VIEWS.filter((v) => !v.perm || can(v.perm));
+    const html = visible.map((v) => `<button type="button" data-view="${v.id}" class="${S.view === v.id ? 'is-active' : ''}" ${S.view === v.id ? 'aria-current="page"' : ''}>
+      <span>${esc(v.label)}</span>${v.id === 'sync' ? '<span class="pos-badge hidden" data-badge="sync"></span>' : ''}</button>`).join('');
+    ['#pos-nav-side', '#pos-nav-top'].forEach((sel) => {
+      const nav = $(sel); nav.innerHTML = html;
+      $$('button[data-view]', nav).forEach((b) => b.addEventListener('click', () => go(b.dataset.view)));
+    });
+    renderStatus(PosEngine.status());
+  }
+
+  function go(view) {
+    S.view = view;
+    $('#pos-drawer').classList.add('hidden'); $('#pos-menu-btn').setAttribute('aria-expanded', 'false');
+    renderNav(); renderView();
+    PosEngine.touch();
+  }
+
+  function renderStatus(st) {
+    st = st && st.online !== undefined ? st : PosEngine.status();
+    const bar = $('#pos-statusbar');
+    if (!bar) return;
+    const cls = !st.online ? 'is-offline' : st.syncing ? 'is-syncing' : '';
+    const warn = st.failed > 0 || st.authProblem;
+    bar.innerHTML = `<button type="button" class="pos-pill ${cls}" data-go="sync">${st.online ? (st.syncing ? 'Syncing' : 'Online') : 'Offline'}</button>
+      <button type="button" class="pos-pill ${st.pending ? 'is-syncing' : ''}" data-go="sync">${st.pending} waiting to sync</button>
+      ${warn ? `<button type="button" class="pos-pill is-warn" data-go="sync">${st.authProblem ? 'Sign in again' : st.failed + ' need attention'}</button>` : ''}
+      <span class="pos-muted">Last sync: ${esc(st.lastSyncAt ? ago(st.lastSyncAt) : 'not yet')}</span>`;
+    $$('[data-go]', bar).forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
+    $$('[data-badge="sync"]').forEach((b) => { b.textContent = st.pending; b.classList.toggle('hidden', !st.pending); });
+    if (S.view === 'sync') renderSyncSummary();
+  }
+
+  function renderView() {
+    const v = VIEWS.find((x) => x.id === S.view) || VIEWS[0];
+    $('#pos-top-title').textContent = v.label;
+    const box = $('#pos-view');
+    ({ sell: viewSell, shift: viewShift, sales: viewSales, orders: viewOrders, inventory: viewInventory, payments: viewPayments, reviews: viewReviews, reports: viewReports, sync: viewSync, settings: viewSettings }[v.id])(box);
+  }
+
+  function toast(msg, bad) {
+    const el = document.createElement('div');
+    el.className = 'pos-note ' + (bad ? 'is-bad' : 'is-good');
+    el.setAttribute('role', 'status');
+    el.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:1100;max-width:92vw;box-shadow:0 6px 18px rgba(0,0,0,.2)';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4200);
+  }
+
+  function dialog(html, onMount) {
+    const wrap = document.createElement('div');
+    wrap.className = 'pos-dialog';
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-modal', 'true');
+    wrap.innerHTML = `<div class="pos-dialog-box">${html}</div>`;
+    document.body.appendChild(wrap);
+    const close = () => { wrap.remove(); document.removeEventListener('keydown', onEsc); };
+    const onEsc = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onEsc);
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
+    $$('[data-close]', wrap).forEach((b) => b.addEventListener('click', close));
+    const first = $('input, select, textarea, button', wrap);
+    if (first) first.focus();
+    if (onMount) onMount(wrap, close);
+    return { wrap, close };
+  }
+
+  function confirmBox(title, text, okLabel) {
+    return new Promise((resolve) => {
+      dialog(`<h2>${esc(title)}</h2><p>${esc(text)}</p><div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" data-ok>${esc(okLabel || 'OK')}</button></div>`,
+        (w, close) => { $('[data-ok]', w).addEventListener('click', () => { close(); resolve(true); }); $$('[data-close]', w).forEach((b) => b.addEventListener('click', () => resolve(false))); });
+    });
+  }
+
+  /* ================= sell ================= */
+
+  function activeItems() { return Array.from(S.items.values()).filter((i) => i.active); }
+
+  function viewSell(box) {
+    if (!can('sell')) { box.innerHTML = '<p class="pos-note">Your role cannot sell. Ask a manager.</p>'; return; }
+    box.innerHTML = `<h1 class="sr-only">Sell</h1>
+      <div class="pos-sell">
+        <section aria-label="Find items">
+          <div class="pos-search-row">
+            <input type="search" id="pos-q" placeholder="Scan a barcode, or type a name or SKU" autocomplete="off" aria-label="Scan a barcode, or search" value="${esc(S.query)}">
+            ${shell.camera ? '<button type="button" class="btn" id="pos-cam">Camera</button>' : ''}
+          </div>
+          <div id="pos-scan-msg" aria-live="polite"></div>
+          <div class="pos-grid-items" id="pos-tiles"></div>
+        </section>
+        <section class="pos-card pos-cart" aria-label="Sale" id="pos-cart"></section>
+      </div>`;
+    const q = $('#pos-q');
+    q.addEventListener('input', debounce(() => { S.query = q.value; renderTiles(); }, 120));
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleScan(q.value); } });
+    if ($('#pos-cam')) $('#pos-cam').addEventListener('click', () => shell.camera((code) => handleScan(code)));
+    renderTiles(); renderCart();
+    if (window.matchMedia('(min-width: 900px)').matches) q.focus();
+  }
+
+  function renderTiles() {
+    const box = $('#pos-tiles');
+    if (!box) return;
+    const items = activeItems();
+    const list = S.query.trim() ? posFindItems(items, S.query, 60).items : items.sort((a, b) => String(a.name).localeCompare(String(b.name))).slice(0, 60);
+    if (!S.items.size) { box.innerHTML = '<p class="pos-muted">No items yet. When the till is online it loads your products.</p>'; return; }
+    box.innerHTML = list.length ? list.map((i) => {
+      const low = i.tracked && i.available <= 0;
+      return `<button type="button" class="pos-tile" data-v="${esc(i.variantId)}" ${low && navigator.onLine && PosEngine.status().online ? 'aria-describedby="out-hint"' : ''}>
+        <strong>${esc(i.name)}${i.label ? ' <span class="pos-muted">' + esc(i.label) + '</span>' : ''}</strong>
+        <span class="pos-tile-stock ${i.tracked && i.available <= (i.reorderLevel || 0) ? 'is-low' : ''}">${i.tracked ? (i.available > 0 ? i.available + ' in stock' : 'None in stock') : 'Not counted'}</span>
+        <span class="pos-tile-price">${money(i.price)}</span></button>`;
+    }).join('') : '<p class="pos-muted">No match.</p>';
+    $$('.pos-tile', box).forEach((b) => b.addEventListener('click', () => addToCart(b.dataset.v)));
+  }
+
+  function handleScan(raw) {
+    const code = posCleanBarcode(raw);
+    if (!code) return;
+    // A scanner firing twice for one beep: ignore the same code within 0.7 s.
+    if (S.lastScan.code === code && Date.now() - S.lastScan.at < 700) return;
+    S.lastScan = { code, at: Date.now() };
+    const found = posFindItems(activeItems(), code, 2);
+    const msg = $('#pos-scan-msg');
+    if (found.exact) { addToCart(found.exact.variantId); const q = $('#pos-q'); if (q) { q.value = ''; S.query = ''; renderTiles(); } if (msg) msg.innerHTML = ''; return; }
+    if (found.items.length === 1) { addToCart(found.items[0].variantId); if (msg) msg.innerHTML = ''; return; }
+    if (msg) {
+      msg.innerHTML = `<p class="pos-note">No item has the code <strong>${esc(code)}</strong>.${can('edit_products') ? ' <button type="button" class="btn btn-small" id="pos-assign">Add this barcode to an item</button>' : ' Ask a manager to add it.'}</p>`;
+      if ($('#pos-assign')) $('#pos-assign').addEventListener('click', () => assignBarcode(code));
+    }
+  }
+
+  // Keyboard-wedge scanners type fast and press Enter. Caught here when no field has focus.
+  let keyBuf = '', keyAt = 0;
+  function scannerKeys(e) {
+    const t = e.target;
+    if (S.view !== 'sell' || (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) || $('.pos-dialog')) return;
+    const now = Date.now();
+    if (now - keyAt > 80) keyBuf = '';
+    keyAt = now;
+    if (e.key === 'Enter') { if (keyBuf.length >= 4) { e.preventDefault(); handleScan(keyBuf); } keyBuf = ''; return; }
+    if (e.key.length === 1) keyBuf += e.key;
+  }
+
+  function addToCart(variantId) {
+    const it = S.items.get(variantId);
+    if (!it) return;
+    const line = S.cart.find((l) => l.variantId === variantId);
+    if (line) line.qty += 1;
+    else S.cart.push({ variantId, qty: Math.max(1, S.mode === 'wholesale' && S.meta.bulkOn ? Number(it.minQty) || 1 : 1) });
+    PosEngine.touch();
+    saveDraft(); renderCart();
+  }
+
+  function priceNow() {
+    const items = {};
+    S.cart.forEach((l) => { const it = S.items.get(l.variantId); if (it) items[l.variantId] = { price: it.price, tiers: it.tiers || [], minQty: it.minQty || 1, name: it.name + (it.label ? ' - ' + it.label : '') }; });
+    const d = Number(S.discount.value) > 0 ? { type: S.discount.type, value: Number(S.discount.value) } : null;
+    return posPriceCart(S.cart.map((l) => ({ variantId: l.variantId, qty: l.qty })), items,
+      { mode: S.mode, bulkOn: S.meta.bulkOn, discount: d, maxDiscountPct: can('discount') ? Number((S.meta.settings || {}).maxDiscountPct) || 0 : 0, taxPercent: Number((S.meta.settings || {}).taxPercent) || 0 });
+  }
+
+  function renderCart() {
+    const box = $('#pos-cart');
+    if (!box) return;
+    const st = PosEngine.status();
+    if (!S.cart.length) {
+      box.innerHTML = `<h2>Sale</h2><p class="pos-muted">Scan or tap items to add them.</p>${S.meta.bulkOn ? modeHtml() : ''}`;
+      wireMode(box); return;
+    }
+    const pr = priceNow();
+    const byId = {};
+    (pr.lines || []).forEach((l) => { byId[l.variantId] = l; });
+    const warnings = [];
+    const linesHtml = S.cart.map((l, idx) => {
+      const it = S.items.get(l.variantId) || {};
+      const p = byId[l.variantId];
+      if (it.tracked && l.qty > Number(it.available)) warnings.push(`Only ${it.available} of ${it.name}${it.label ? ' - ' + it.label : ''} in stock${st.online ? ' - Mwakete will refuse the sale' : ' - the sale will be flagged for review'}.`);
+      return `<div class="pos-line"><div class="pos-line-name">${esc(it.name || 'Item')}${it.label ? ' <span class="pos-muted">' + esc(it.label) + '</span>' : ''}
+          <small>${p ? money(p.unitPrice) + ' each' + (p.bulk ? ' · bulk price (normal ' + money(p.normalPrice) + ')' : '') : ''}</small></div>
+        <div class="pos-line-ctl"><button type="button" class="btn" data-dec="${idx}" aria-label="One less">−</button>
+          <input type="number" min="1" step="1" inputmode="numeric" value="${l.qty}" data-qty="${idx}" aria-label="Quantity">
+          <button type="button" class="btn" data-inc="${idx}" aria-label="One more">+</button>
+          <button type="button" class="btn" data-del="${idx}" aria-label="Remove">✕</button></div>
+        <div class="pos-line-total"><span></span><span>${p ? money(p.lineTotal) : ''}</span></div></div>`;
+    }).join('');
+    const methods = (S.meta.methods && S.meta.methods.length ? S.meta.methods : POS_CORE_METHODS.map((m) => ({ id: m, label: POS_CORE_METHOD_LABEL[m], verify: posInitialPaymentStatus(m) !== 'paid' })));
+    const total = pr.ok ? pr.total : 0;
+    const cash = S.method === 'cash' ? posCashChange(total, S.tendered === '' ? undefined : S.tendered) : null;
+    box.innerHTML = `<h2>Sale <button type="button" class="btn btn-small" id="pos-clear">Clear</button></h2>
+      ${S.meta.bulkOn ? modeHtml() : ''}
+      ${linesHtml}
+      ${can('discount') ? `<div class="field" style="margin-top:var(--space-3)"><label for="pos-disc">Discount <span class="pos-muted">(up to ${Number((S.meta.settings || {}).maxDiscountPct) || 0}%)</span></label>
+        <div style="display:flex;gap:6px"><input type="number" id="pos-disc" min="0" step="0.01" inputmode="decimal" value="${esc(S.discount.value)}" style="flex:1;min-height:44px">
+        <select id="pos-disc-type" aria-label="Discount type" style="min-height:44px"><option value="percent" ${S.discount.type === 'percent' ? 'selected' : ''}>%</option><option value="amount" ${S.discount.type === 'amount' ? 'selected' : ''}>$</option></select></div></div>` : ''}
+      <div class="pos-totals">
+        <div><span>Subtotal</span><span>${money(pr.subtotal || 0)}</span></div>
+        ${pr.discount ? `<div><span>${esc(pr.discountNote)}</span><span>−${money(pr.discount)}</span></div>` : ''}
+        ${pr.tax ? `<div class="pos-muted"><span>Includes tax ${esc(pr.taxPercent)}%</span><span>${money(pr.tax)}</span></div>` : ''}
+        <div class="pos-grand"><span>Total</span><span>${money(total)}</span></div>
+      </div>
+      ${!pr.ok ? `<p class="pos-note is-bad" role="alert">${esc(pr.error)}</p>` : ''}
+      ${warnings.map((w) => `<p class="pos-note">${esc(w)}</p>`).join('')}
+      <div class="pos-methods" role="group" aria-label="Paid by">${methods.map((m) => `<button type="button" data-method="${m.id}" aria-pressed="${S.method === m.id}">${esc(m.label)}${m.verify ? '<small>needs confirming</small>' : ''}</button>`).join('')}</div>
+      <div class="pos-pay-fields">
+        ${S.method === 'cash' ? `<div class="field"><label for="pos-tender">Cash given</label><input type="number" id="pos-tender" min="0" step="0.05" inputmode="decimal" value="${esc(S.tendered)}" placeholder="${total.toFixed(2)}">
+          <div class="pos-quick-cash">${quickCash(total).map((v) => `<button type="button" data-cash="${v}">${money(v)}</button>`).join('')}</div>
+          <p class="${cash && cash.ok ? 'pos-change' : 'pos-note is-bad'}" id="pos-change">${cash ? (cash.ok ? 'Change: ' + money(cash.change) : esc(cash.error)) : ''}</p></div>` : ''}
+        ${S.method === 'eftpos' ? `<p class="pos-note">Take the card payment on the bank's EFTPOS terminal first. Mwakete is not connected to it.</p>
+          <div class="field"><label for="pos-ref">Approval code <span class="pos-muted">(optional)</span></label><input type="text" id="pos-ref" maxlength="40" value="${esc(S.reference)}"></div>` : ''}
+        ${S.method === 'ib' || S.method === 'mpaisa' ? `<p class="pos-note">Recorded as <strong>pending verification</strong> until a manager confirms the money arrived. A screenshot is not proof.</p>
+          <div class="field"><label for="pos-ref">${S.method === 'ib' ? 'IB transfer reference' : 'MPaisa reference'}</label><input type="text" id="pos-ref" maxlength="40" value="${esc(S.reference)}"></div>` : ''}
+      </div>
+      <p id="pos-sale-error" class="form-error" role="alert"></p>
+      <button type="button" class="btn btn-primary btn-block pos-complete" id="pos-complete" ${!pr.ok || S.busy || (cash && !cash.ok) ? 'disabled' : ''}>${S.busy ? 'Saving…' : 'Complete sale · ' + money(total)}</button>
+      <p class="pos-muted" style="margin-top:6px">${st.online ? 'Online: Mwakete confirms the sale.' : 'Offline: the sale is saved on this till and sent when the connection is back.'}</p>`;
+    wireMode(box);
+    $('#pos-clear').addEventListener('click', clearCart);
+    $$('[data-inc]', box).forEach((b) => b.addEventListener('click', () => { S.cart[+b.dataset.inc].qty++; saveDraft(); renderCart(); }));
+    $$('[data-dec]', box).forEach((b) => b.addEventListener('click', () => { const l = S.cart[+b.dataset.dec]; if (l.qty > 1) l.qty--; else S.cart.splice(+b.dataset.dec, 1); saveDraft(); renderCart(); }));
+    $$('[data-del]', box).forEach((b) => b.addEventListener('click', () => { S.cart.splice(+b.dataset.del, 1); saveDraft(); renderCart(); }));
+    $$('[data-qty]', box).forEach((i) => i.addEventListener('change', () => { const n = Math.floor(Number(i.value)); if (n >= 1) S.cart[+i.dataset.qty].qty = n; saveDraft(); renderCart(); }));
+    if ($('#pos-disc')) {
+      $('#pos-disc').addEventListener('change', () => { S.discount.value = $('#pos-disc').value; renderCart(); });
+      $('#pos-disc-type').addEventListener('change', () => { S.discount.type = $('#pos-disc-type').value; renderCart(); });
+    }
+    $$('[data-method]', box).forEach((b) => b.addEventListener('click', () => { S.method = b.dataset.method; S.reference = ''; renderCart(); }));
+    if ($('#pos-tender')) $('#pos-tender').addEventListener('input', debounce(() => { S.tendered = $('#pos-tender').value; renderCart(); const t = $('#pos-tender'); if (t) { t.focus(); t.setSelectionRange && t.type !== 'number' && t.setSelectionRange(t.value.length, t.value.length); } }, 400));
+    $$('[data-cash]', box).forEach((b) => b.addEventListener('click', () => { S.tendered = b.dataset.cash; renderCart(); }));
+    if ($('#pos-ref')) $('#pos-ref').addEventListener('input', () => { S.reference = $('#pos-ref').value; });
+    $('#pos-complete').addEventListener('click', completeSale);
+  }
+
+  function quickCash(total) {
+    if (!(total > 0)) return [];
+    const out = [posCents(total)];
+    [5, 10, 20, 50, 100].forEach((n) => { const v = Math.ceil(total / n) * n; if (v > total && out.indexOf(v) === -1 && out.length < 4) out.push(v); });
+    return out;
+  }
+
+  function modeHtml() {
+    return `<div class="pos-mode" role="group" aria-label="Price list"><button type="button" data-mode="retail" aria-pressed="${S.mode === 'retail'}">Retail price</button>
+      <button type="button" data-mode="wholesale" aria-pressed="${S.mode === 'wholesale'}">Wholesale price</button></div>`;
+  }
+  function wireMode(box) { $$('[data-mode]', box).forEach((b) => b.addEventListener('click', () => { S.mode = b.dataset.mode; saveDraft(); renderCart(); })); }
+
+  function clearCart() {
+    S.cart = []; S.discount = { type: 'percent', value: '' }; S.tendered = ''; S.reference = ''; S.method = 'cash';
+    saveDraft(); renderCart();
+  }
+
+  // The cart is a draft: kept across a reload on this device, never a sale and never stock.
+  function draftKey() { return 'mwk_pos_draft:' + session.ownerId; }
+  function saveDraft() { try { localStorage.setItem(draftKey(), JSON.stringify({ cart: S.cart, mode: S.mode, txnId: S.txnId })); } catch (e) { /* private mode */ } }
+  function restoreDraft() {
+    try { const d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); if (d) { S.cart = (d.cart || []).filter((l) => S.items.has(l.variantId)); S.mode = d.mode || 'retail'; S.txnId = d.txnId || ''; } } catch (e) { /* ignore */ }
+  }
+
+  async function completeSale() {
+    if (S.busy) return;
+    const pr = priceNow();
+    if (!pr.ok) return;
+    const errEl = $('#pos-sale-error');
+    S.busy = true; renderCart();
+    const tender = S.method === 'cash' && S.tendered !== '' ? Number(S.tendered) : undefined;
+    const cash = S.method === 'cash' ? posCashChange(pr.total, tender) : null;
+    const body = { clientTxnId: S.txnId, priceMode: S.mode, lines: pr.lines.map((l) => ({ variantId: l.variantId, qty: l.qty, unitPrice: l.unitPrice })),
+      discount: Number(S.discount.value) > 0 ? { type: S.discount.type, value: Number(S.discount.value) } : undefined,
+      payment: { method: S.method, amountTendered: tender, reference: S.reference || undefined }, clientTotal: pr.total, shiftId: S.shift ? S.shift.shiftId : undefined };
+    const local = { lines: pr.lines.map((l) => { const it = S.items.get(l.variantId) || {}; return { variantId: l.variantId, name: it.name, label: it.label, qty: l.qty, unitPrice: l.unitPrice, lineTotal: l.net }; }),
+      subtotal: pr.subtotal, discount: pr.discount, discountNote: pr.discountNote, tax: pr.tax, taxPercent: pr.taxPercent, total: pr.total, method: S.method,
+      tendered: cash && cash.ok ? cash.tendered : null, change: cash && cash.ok ? cash.change : 0, cashier: session.who || '', priceMode: S.mode };
+    let res;
+    try {
+      res = await PosEngine.completeSale(body, local);
+    } catch (e) {
+      S.busy = false; renderCart();
+      if (errEl) errEl.textContent = 'This till could not save the sale: ' + (e.message || e) + '. Nothing was sold.';
+      return;
+    }
+    S.busy = false;
+    if (res.state === 'rejected') {
+      S.txnId = PosEngine.newTxnId(); saveDraft(); renderCart();
+      const el = $('#pos-sale-error'); if (el) el.textContent = res.error + ' Nothing was sold.';
+      return;
+    }
+    const r = res.state === 'synced' ? receiptFromServer(res.receipt, res.sale) : receiptFromLocal(res.entry);
+    r.sync = res.state;
+    if (res.cases && res.cases.length) r.cases = res.cases;
+    S.cart = []; S.discount = { type: 'percent', value: '' }; S.tendered = ''; S.reference = ''; S.method = 'cash'; S.txnId = PosEngine.newTxnId();
+    saveDraft(); renderCart();
+    showReceipt(r);
+  }
+
+  /* ================= receipts ================= */
+
+  function receiptFromServer(rc, sale) {
+    return { store: rc.store, receiptNo: rc.receiptNo, at: rc.completedAt || rc.createdAt, cashier: rc.cashier, lines: rc.lines, subtotal: rc.subtotal, discount: rc.discount,
+      tax: rc.tax, taxPercent: rc.taxPercent, total: rc.total, methodLabel: rc.payment.methodLabel, payLabel: rc.payment.label, tendered: rc.payment.tendered, change: rc.payment.change,
+      returnPolicy: rc.returnPolicy, footer: rc.footer, offline: rc.offline, statusLabel: rc.statusLabel, saleId: sale && sale.saleId };
+  }
+  function receiptFromLocal(entry) {
+    const l = entry.local; const st = S.meta.settings || {};
+    return { store: S.meta.store || {}, receiptNo: l.receiptNo || '(number when confirmed)', at: entry.createdAt, cashier: l.cashier, lines: l.lines, subtotal: l.subtotal,
+      discount: l.discount, tax: l.tax, taxPercent: l.taxPercent, total: l.total, methodLabel: POS_CORE_METHOD_LABEL[l.method], payLabel: POS_CORE_PAY_STATUS_LABEL[posInitialPaymentStatus(l.method)],
+      tendered: l.tendered, change: l.change, returnPolicy: st.returnPolicy, footer: st.receiptFooter, offline: !!entry.body.offline };
+  }
+
+  function receiptHtml(r) {
+    const syncLabel = { synced: 'Synchronised with Mwakete', saved_locally: 'Saved on this till (offline) - not yet sent to Mwakete', awaiting: 'Saved on this till - awaiting confirmation from Mwakete' }[r.sync] || '';
+    return `<div class="pos-receipt">
+      <p class="pos-r-center"><strong>${esc((r.store && r.store.name) || '')}</strong>${r.store && r.store.phone ? '<br>' + esc(r.store.phone) : ''}${r.store && (r.store.village || r.store.island) ? '<br>' + esc([r.store.village, r.store.island].filter(Boolean).join(', ')) : ''}</p>
+      <p>Receipt ${esc(r.receiptNo)}<br>${esc(fmtTime(r.at))}${r.cashier ? '<br>Served by ' + esc(r.cashier) : ''}${r.offline ? '<br>Made while offline' : ''}</p>
+      <table>${(r.lines || []).map((l) => `<tr><td>${esc(l.name)}${l.label ? ' ' + esc(l.label) : ''}<br>${l.qty} × ${money(l.unitPrice)}</td><td>${money(l.lineTotal)}</td></tr>`).join('')}
+        ${r.discount ? `<tr><td>Discount</td><td>−${money(r.discount)}</td></tr>` : ''}
+        <tr class="pos-r-total"><td>TOTAL</td><td>${money(r.total)}</td></tr>
+        ${r.tax ? `<tr><td>Includes tax ${esc(r.taxPercent)}%</td><td>${money(r.tax)}</td></tr>` : ''}
+        <tr><td>${esc(r.methodLabel || '')}</td><td>${esc(r.payLabel || '')}</td></tr>
+        ${r.tendered !== null && r.tendered !== undefined ? `<tr><td>Cash given</td><td>${money(r.tendered)}</td></tr><tr><td>Change</td><td>${money(r.change)}</td></tr>` : ''}
+      </table>
+      ${syncLabel ? `<p class="pos-r-status">${esc(syncLabel)}</p>` : ''}
+      ${r.returnPolicy ? `<p>${esc(r.returnPolicy)}</p>` : ''}${r.footer ? `<p class="pos-r-center">${esc(r.footer)}</p>` : ''}</div>`;
+  }
+
+  function showReceipt(r) {
+    const casesHtml = (r.cases || []).length ? `<p class="pos-note">Mwakete recorded this sale and flagged it for review: ${r.cases.map((c) => esc(c.label)).join('; ')}.</p>` : '';
+    const banner = r.sync === 'synced' ? '<p class="pos-note is-good">Sale complete - confirmed by Mwakete.</p>'
+      : r.sync === 'saved_locally' ? '<p class="pos-note">Sale complete - saved on this till. It will be sent to Mwakete when the connection is back.</p>'
+        : r.sync === 'awaiting' ? '<p class="pos-note">Sale saved on this till. Mwakete has not answered yet - the till will check and send it. Do not ring it up again.</p>' : '';
+    dialog(`<h2>Receipt</h2>${banner}${casesHtml}${receiptHtml(r)}
+      <div class="pos-dialog-actions"><button type="button" class="btn" id="pos-print">Print</button><button type="button" class="btn btn-primary" data-close>New sale</button></div>`,
+      (w) => { $('#pos-print', w).addEventListener('click', () => printReceipt(r)); });
+  }
+
+  function printReceipt(r) {
+    const area = $('#pos-print-area');
+    area.innerHTML = receiptHtml(r);
+    area.classList.remove('hidden');
+    document.body.classList.add('pos-printing');
+    const done = () => { document.body.classList.remove('pos-printing'); area.classList.add('hidden'); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+    setTimeout(done, 1500);
+  }
+
+  /* ================= sales history ================= */
+
+  async function viewSales(box) {
+    box.innerHTML = `<h1>Sales</h1>
+      <div class="pos-toolbar"><label>Receipt number<input type="search" id="sl-q" placeholder="R-20261028-0001"></label><button type="button" class="btn" id="sl-go">Search</button></div>
+      <div id="sl-local"></div><h2>Confirmed by Mwakete</h2><div id="sl-server" class="pos-rows"><p class="pos-muted">Loading…</p></div>`;
+    $('#sl-go').addEventListener('click', () => loadServerSales($('#sl-q').value.trim()));
+    const pending = (await PosDB.all('queue')).filter((e) => !e.kind || e.kind === 'sale');
+    $('#sl-local').innerHTML = pending.length ? `<h2>On this till, not yet confirmed</h2><div class="pos-rows">${pending.map((e) => `<div class="pos-row"><div>
+        <div class="pos-row-title">${esc(e.local.receiptNo || '(no number yet)')} · ${money(e.local.total)}</div>
+        <div class="pos-row-sub">${esc(fmtTime(e.createdAt))} · ${esc(POS_CORE_METHOD_LABEL[e.local.method] || '')} · ${syncTag(e.state)}${e.error ? ' · ' + esc(e.error) : ''}</div></div>
+        <div class="pos-row-actions"><button type="button" class="btn btn-small" data-local="${esc(e.clientTxnId)}">Receipt</button></div></div>`).join('')}</div>` : '';
+    $$('[data-local]', box).forEach((b) => b.addEventListener('click', async () => { const e = await PosDB.get('queue', b.dataset.local); if (e) { const r = receiptFromLocal(e); r.sync = e.state; showReceipt(r); } }));
+    loadServerSales('');
+  }
+
+  function syncTag(state) {
+    const cls = state === 'synced' ? 'is-ok' : state === 'failed' || state === 'conflict' ? 'is-bad' : 'is-wait';
+    return `<span class="pos-tag ${cls}">${esc(POS_CORE_SYNC_LABEL[state === 'saved_locally' ? 'saved_locally' : state] || state)}</span>`;
+  }
+  function payTag(status, label) {
+    const cls = status === 'paid' || status === 'received' ? 'is-ok' : status === 'pending_verification' || status === 'partially_paid' || status === 'unpaid' ? 'is-wait' : 'is-bad';
+    return `<span class="pos-tag ${cls}">${esc(label || status)}</span>`;
+  }
+
+  async function loadServerSales(q) {
+    const box = $('#sl-server');
+    if (!box) return;
+    const res = await PosEngine.call('posListSales', { q, limit: 50 });
+    if (!res.ok) { box.innerHTML = `<p class="pos-muted">${res.network ? 'Offline - confirmed sales show when the till is online.' : esc(res.error)}</p>`; return; }
+    box.innerHTML = res.sales.length ? res.sales.map((s) => `<div class="pos-row"><div>
+        <div class="pos-row-title">${esc(s.receiptNo)} · ${money(s.total)} ${s.status !== 'completed' ? '<span class="pos-tag is-bad">' + esc(s.statusLabel) + '</span>' : ''}</div>
+        <div class="pos-row-sub">${esc(fmtTime(s.createdAt))} · ${esc(s.methodLabel)} ${payTag(s.paymentStatus, s.paymentLabel)}${s.offline ? ' · made offline' : ''}${s.staffName ? ' · ' + esc(s.staffName) : ''}</div></div>
+        <div class="pos-row-actions"><button type="button" class="btn btn-small" data-sale="${esc(s.saleId)}">Open</button></div></div>`).join('') : '<p class="pos-muted">No sales found.</p>';
+    $$('[data-sale]', box).forEach((b) => b.addEventListener('click', () => openSale(b.dataset.sale)));
+  }
+
+  async function openSale(saleId) {
+    const res = await PosEngine.call('posGetSale', { saleId });
+    if (!res.ok) { toast(res.error, true); return; }
+    const s = res.sale;
+    const r = receiptFromServer(res.receipt, s); r.sync = 'synced';
+    const sameDay = new Date(Date.parse(s.createdAt) + 12 * 3600000).toISOString().slice(0, 10) === new Date(Date.now() + 12 * 3600000).toISOString().slice(0, 10);
+    const pending = s.payments.find((p) => p.status === 'pending_verification');
+    dialog(`<h2>Sale ${esc(s.receiptNo)}</h2>
+      <p>${esc(s.statusLabel)} · ${payTag(s.paymentStatus, s.paymentLabel)}${s.voided ? ' · voided by ' + esc(s.voided.by) + ': ' + esc(s.voided.reason) : ''}</p>
+      ${receiptHtml(r)}
+      ${s.refunds.length ? `<p>Refunds: ${s.refunds.map((x) => money(x.amount) + ' (' + esc(x.reason) + ')').join(', ')}</p>` : ''}
+      <div class="pos-dialog-actions">
+        <button type="button" class="btn" id="sd-print">Print</button>
+        ${pending && can('confirm_payment') ? '<button type="button" class="btn btn-primary" id="sd-confirm">Money arrived</button><button type="button" class="btn" id="sd-fail">Not received</button>' : ''}
+        ${can('refund') && s.status !== 'voided' && s.status !== 'refunded' ? '<button type="button" class="btn" id="sd-refund">Refund</button>' : ''}
+        ${can('void') && s.status === 'completed' && !s.refunded && sameDay ? '<button type="button" class="btn" id="sd-void">Void sale</button>' : ''}
+        <button type="button" class="btn" data-close>Close</button></div>`, (w, close) => {
+      $('#sd-print', w).addEventListener('click', () => printReceipt(r));
+      if ($('#sd-confirm', w)) $('#sd-confirm', w).addEventListener('click', () => confirmPayment(s.saleId, pending.paymentId, 'confirmed', close));
+      if ($('#sd-fail', w)) $('#sd-fail', w).addEventListener('click', () => confirmPayment(s.saleId, pending.paymentId, 'failed', close));
+      if ($('#sd-refund', w)) $('#sd-refund', w).addEventListener('click', () => { close(); refundDialog(s); });
+      if ($('#sd-void', w)) $('#sd-void', w).addEventListener('click', () => { close(); voidDialog(s); });
+    });
+  }
+
+  async function confirmPayment(saleId, paymentId, outcome, close) {
+    const res = await PosEngine.call('posConfirmPayment', { saleId, paymentId, outcome });
+    if (!res.ok) { toast(res.network ? 'Needs a connection.' : res.error, true); return; }
+    if (close) close();
+    toast(outcome === 'confirmed' ? 'Payment confirmed.' : 'Payment marked as not received.');
+    if (S.view === 'payments' || S.view === 'sales') renderView();
+  }
+
+  function refundDialog(s) {
+    const lines = s.lines.filter((l) => l.qty - l.refundedQty > 0);
+    dialog(`<h2>Refund ${esc(s.receiptNo)}</h2><div class="pos-form">
+      ${lines.map((l) => `<div class="field"><label>${esc(l.name)} ${esc(l.label)} <span class="pos-muted">(up to ${l.qty - l.refundedQty})</span></label>
+        <div style="display:flex;gap:8px;align-items:center"><input type="number" min="0" max="${l.qty - l.refundedQty}" value="0" data-line="${esc(l.lineId)}" style="width:100px">
+        <label class="check"><input type="checkbox" data-restock="${esc(l.lineId)}" checked> Back in stock</label></div></div>`).join('')}
+      <div class="field"><label for="rf-reason">Reason</label><input id="rf-reason" maxlength="120" placeholder="e.g. wrong size"></div>
+      <p class="form-error" id="rf-err" role="alert"></p></div>
+      <div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" id="rf-go">Record refund</button></div>`, (w, close) => {
+      const reqId = opId();
+      $('#rf-go', w).addEventListener('click', async () => {
+        const out = $$('[data-line]', w).map((i) => ({ lineId: i.dataset.line, qty: Math.floor(Number(i.value)), restock: $(`[data-restock="${i.dataset.line}"]`, w).checked })).filter((x) => x.qty > 0);
+        if (!out.length) { $('#rf-err', w).textContent = 'Enter how many to refund.'; return; }
+        const res = await PosEngine.call('posRefundSale', { saleId: s.saleId, requestId: reqId, lines: out, reason: $('#rf-reason', w).value });
+        if (!res.ok) { $('#rf-err', w).textContent = res.network ? 'Refunds need a connection.' : res.error; return; }
+        close(); toast(res.note || 'Refund recorded.');
+        if (S.view === 'sales') renderView();
+      });
+    });
+  }
+
+  function voidDialog(s) {
+    dialog(`<h2>Void ${esc(s.receiptNo)}?</h2><p>The whole sale is cancelled: items go back into stock and any paid money is marked refunded (give it back to the customer). The sale stays in the records, marked voided.</p>
+      <div class="pos-form"><div class="field"><label for="vd-reason">Reason</label><input id="vd-reason" maxlength="120"></div><p class="form-error" id="vd-err" role="alert"></p></div>
+      <div class="pos-dialog-actions"><button type="button" class="btn" data-close>Keep the sale</button><button type="button" class="btn btn-primary" id="vd-go">Void sale</button></div>`, (w, close) => {
+      const reqId = opId();
+      $('#vd-go', w).addEventListener('click', async () => {
+        const res = await PosEngine.call('posVoidSale', { saleId: s.saleId, requestId: reqId, reason: $('#vd-reason', w).value });
+        if (!res.ok) { $('#vd-err', w).textContent = res.network ? 'Voids need a connection.' : res.error; return; }
+        close(); toast(res.note || 'Voided.');
+        if (S.view === 'sales') renderView();
+      });
+    });
+  }
+
+  /* ================= inventory ================= */
+
+  function viewInventory(box) {
+    box.innerHTML = `<h1>Inventory</h1>
+      <div class="pos-toolbar">
+        <label style="flex:1;min-width:200px">Search<input type="search" id="iv-q" placeholder="Name, SKU or barcode" value="${esc(S.invQuery)}"></label>
+        <label>Show<select id="iv-f"><option value="all">Everything</option><option value="low">Low or out of stock</option><option value="inactive">Hidden</option></select></label>
+        ${shell.productsHref ? `<a class="btn" href="${esc(shell.productsHref)}">Full product editor</a>` : ''}
+      </div>
+      <p class="pos-muted">Stock numbers are Mwakete's, less this till's sales that are not synced yet. Receiving and stock changes made offline are sent when the till is back online.</p>
+      <div id="iv-list" class="pos-rows"></div>`;
+    $('#iv-f').value = S.invFilter;
+    $('#iv-q').addEventListener('input', debounce(() => { S.invQuery = $('#iv-q').value; renderInventoryList(); }, 150));
+    $('#iv-f').addEventListener('change', () => { S.invFilter = $('#iv-f').value; renderInventoryList(); });
+    renderInventoryList();
+  }
+
+  function renderInventoryList() {
+    const box = $('#iv-list');
+    if (!box) return;
+    let items = Array.from(S.items.values());
+    if (S.invQuery.trim()) items = posFindItems(items, S.invQuery, 300).items;
+    else items.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    if (S.invFilter === 'low') items = items.filter((i) => i.tracked && i.available <= Math.max(0, Number(i.reorderLevel) || 0));
+    if (S.invFilter === 'inactive') items = items.filter((i) => !i.active);
+    else if (S.invFilter !== 'inactive') items = items.filter((i) => i.active || S.invFilter === 'all');
+    box.innerHTML = items.slice(0, 300).map((i) => `<div class="pos-row"><div>
+        <div class="pos-row-title">${esc(i.name)} ${i.label ? '<span class="pos-muted">' + esc(i.label) + '</span>' : ''} ${!i.active ? '<span class="pos-tag">Hidden</span>' : ''}</div>
+        <div class="pos-row-sub">${i.tracked ? `<strong>${i.available}</strong> available · ${i.stock} in stock${i.reserved ? ' · ' + i.reserved + ' held for online orders' : ''}${i.localSold ? ' · ' + i.localSold + ' sold here, not synced' : ''}` : 'Stock not counted'}
+          · ${money(i.price)}${(i.tiers || []).length ? ' · bulk from ' + i.tiers[0].minQty : ''}${i.costPrice !== undefined && i.costPrice !== null ? ' · cost ' + money(i.costPrice) : ''}
+          ${i.sku ? ' · SKU ' + esc(i.sku) : ''}${i.barcode ? ' · ' + esc(i.barcode) : ''}</div></div>
+        <div class="pos-row-actions">
+          ${can('receive_stock') ? `<button type="button" class="btn btn-small" data-act="receive" data-v="${esc(i.variantId)}">Receive</button>` : ''}
+          ${can('adjust_stock') ? `<button type="button" class="btn btn-small" data-act="adjust" data-v="${esc(i.variantId)}">Adjust</button>` : ''}
+          <button type="button" class="btn btn-small" data-act="history" data-v="${esc(i.variantId)}">History</button>
+          ${can('edit_products') ? `<button type="button" class="btn btn-small" data-act="edit" data-v="${esc(i.variantId)}">Edit</button>` : ''}
+        </div></div>`).join('') || '<p class="pos-muted">Nothing to show.</p>';
+    $$('[data-act]', box).forEach((b) => b.addEventListener('click', () => ({ receive: receiveDialog, adjust: adjustDialog, history: historyDialog, edit: editDialog }[b.dataset.act])(S.items.get(b.dataset.v))));
+  }
+
+  /** Stock work: sent now when online; queued (durably) when offline. */
+  async function stockOp(body, signedQty) {
+    body.opId = opId();
+    const online = PosEngine.status().online;
+    if (online) {
+      const res = await PosEngine.call('posStockOp', body);
+      if (res.ok) { PosEngine.touch(); PosEngine.pollChanges(); return { ok: true }; }
+      if (!res.network) return res;
+    }
+    if (body.type === 'count') return { ok: false, error: 'A stock count needs a connection (sales may happen while it waits).' };
+    body.offline = true;
+    const entry = { clientTxnId: body.opId, kind: 'op', createdAt: new Date().toISOString(), state: 'saved_locally', attempts: 0, nextTry: 0, body,
+      local: { lines: [{ variantId: body.variantId, qty: signedQty }], label: body.type }, server: null, error: '' };
+    await PosDB.saveSaleLocally(entry, signedQty > 0 ? [{ variantId: body.variantId, qty: signedQty }] : []);
+    if (signedQty < 0) { const it = await PosDB.get('items', body.variantId); if (it && it.tracked) { it.localSold = Number(it.localSold || 0) + signedQty; it.available = Number(it.available || 0) - signedQty; await PosDB.put('items', it); } }
+    await PosEngine.refreshCounts();
+    await loadItems(); renderInventoryList();
+    return { ok: true, queued: true };
+  }
+
+  function receiveDialog(it) {
+    dialog(`<h2>Receive ${esc(it.name)} ${esc(it.label)}</h2><div class="pos-form">
+      <div class="field"><label for="rc-q">How many arrived</label><input id="rc-q" type="number" min="1" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="rc-s">Supplier <span class="pos-muted">(optional)</span></label><input id="rc-s" maxlength="100"></div>
+      <div class="field"><label for="rc-i">Invoice number <span class="pos-muted">(optional)</span></label><input id="rc-i" maxlength="60"></div>
+      ${can('view_costs') ? '<div class="field"><label for="rc-c">Cost each <span class="pos-muted">(optional)</span></label><input id="rc-c" type="number" min="0" step="0.01" inputmode="decimal"></div>' : ''}
+      <p class="form-error" id="rc-err" role="alert"></p></div>
+      <div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" id="rc-go">Add to stock</button></div>`, (w, close) => {
+      $('#rc-go', w).addEventListener('click', async () => {
+        const q = Math.floor(Number($('#rc-q', w).value));
+        if (!(q > 0)) { $('#rc-err', w).textContent = 'Enter how many arrived.'; return; }
+        const res = await stockOp({ type: 'receive', variantId: it.variantId, quantity: q, supplier: $('#rc-s', w).value, invoice: $('#rc-i', w).value, unitCost: $('#rc-c', w) ? $('#rc-c', w).value : '' }, -q);
+        if (!res.ok) { $('#rc-err', w).textContent = res.error; return; }
+        close(); toast(res.queued ? 'Saved on this till - sent when online.' : 'Stock received.');
+      });
+    });
+  }
+
+  function adjustDialog(it) {
+    dialog(`<h2>Adjust ${esc(it.name)} ${esc(it.label)}</h2><div class="pos-form">
+      <div class="field"><label for="aj-r">Reason</label><select id="aj-r"><option value="damaged">Damaged (remove)</option><option value="expired">Expired (remove)</option>
+        <option value="returned">Returned by a customer (add)</option><option value="count">I counted the shelf (set the number)</option></select></div>
+      <div class="field"><label for="aj-q" id="aj-ql">How many</label><input id="aj-q" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="aj-n">Note <span class="pos-muted">(optional)</span></label><input id="aj-n" maxlength="150"></div>
+      <p class="form-error" id="aj-err" role="alert"></p></div>
+      <div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" id="aj-go">Save</button></div>`, (w, close) => {
+      $('#aj-r', w).addEventListener('change', () => { $('#aj-ql', w).textContent = $('#aj-r', w).value === 'count' ? 'How many are on the shelf' : 'How many'; });
+      $('#aj-go', w).addEventListener('click', async () => {
+        const type = $('#aj-r', w).value;
+        const n = Math.floor(Number($('#aj-q', w).value));
+        if (!(n >= 0) || (type !== 'count' && n < 1)) { $('#aj-err', w).textContent = 'Enter a whole number.'; return; }
+        const body = { type, variantId: it.variantId, notes: $('#aj-n', w).value };
+        if (type === 'count') body.newCount = n; else body.quantity = n;
+        const res = await stockOp(body, type === 'returned' ? -n : n);
+        if (!res.ok) { $('#aj-err', w).textContent = res.error; return; }
+        close(); toast(res.queued ? 'Saved on this till - sent when online.' : 'Stock updated.');
+      });
+    });
+  }
+
+  async function historyDialog(it) {
+    const d = dialog(`<h2>${esc(it.name)} ${esc(it.label)} - stock history</h2><div id="hs-body"><p class="pos-muted">Loading…</p></div><div class="pos-dialog-actions"><button type="button" class="btn" data-close>Close</button></div>`);
+    const res = await PosEngine.call('posStockHistory', { variantId: it.variantId, limit: 50 });
+    const body = $('#hs-body', d.wrap);
+    if (!body) return;
+    if (!res.ok) { body.innerHTML = `<p class="pos-muted">${res.network ? 'History needs a connection.' : esc(res.error)}</p>`; return; }
+    const rows = res.movements || res.items || [];
+    body.innerHTML = rows.length ? `<div class="pos-table-wrap"><table class="pos-table"><thead><tr><th>When</th><th>What</th><th class="num">Change</th><th class="num">After</th></tr></thead><tbody>
+      ${rows.map((m) => `<tr><td>${esc(fmtTime(m.createdAt || m.CreatedAt))}</td><td>${esc(m.typeLabel || m.type || m.movementType || '')}${m.notes || m.Notes ? '<br><span class="pos-muted">' + esc(m.notes || m.Notes) + '</span>' : ''}</td>
+        <td class="num">${esc(m.quantity !== undefined ? m.quantity : m.Quantity)}</td><td class="num">${esc(m.newStock !== undefined ? m.newStock : m.NewStock)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="pos-muted">No changes recorded yet.</p>';
+  }
+
+  function editDialog(it) {
+    dialog(`<h2>Edit ${esc(it.name)} ${esc(it.label)}</h2><div class="pos-form">
+      <div class="field"><label for="ed-p">Price</label><input id="ed-p" type="number" min="0.01" step="0.01" inputmode="decimal" value="${esc(it.price)}"></div>
+      <div class="field"><label for="ed-b">Barcode</label><input id="ed-b" maxlength="64" value="${esc(it.barcode)}" inputmode="numeric" autocomplete="off"></div>
+      <div class="field"><label for="ed-s">SKU</label><input id="ed-s" maxlength="64" value="${esc(it.sku)}"></div>
+      <div class="field"><label for="ed-r">Low-stock level</label><input id="ed-r" type="number" min="0" step="1" value="${it.reorderLevel === null || it.reorderLevel === undefined ? '' : esc(it.reorderLevel)}"></div>
+      ${can('view_costs') ? `<div class="field"><label for="ed-c">Cost each</label><input id="ed-c" type="number" min="0" step="0.01" value="${it.costPrice === null || it.costPrice === undefined ? '' : esc(it.costPrice)}"></div>` : ''}
+      <p class="pos-muted">A new price applies from now on. Sales already made keep their price.</p>
+      <label class="check"><input type="checkbox" id="ed-a" ${it.active ? 'checked' : ''}> Show this product (online shop and tills)</label>
+      <p class="form-error" id="ed-err" role="alert"></p></div>
+      <div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" id="ed-go">Save</button></div>`, (w, close) => {
+      $('#ed-go', w).addEventListener('click', async () => {
+        if (!PosEngine.status().online) { $('#ed-err', w).textContent = 'Changing products needs a connection.'; return; }
+        const body = { variantId: it.variantId };
+        const p = Number($('#ed-p', w).value);
+        if (posCents(p) !== posCents(it.price)) body.price = p;
+        if ($('#ed-b', w).value !== String(it.barcode || '')) body.barcode = posCleanBarcode($('#ed-b', w).value);
+        if ($('#ed-s', w).value !== String(it.sku || '')) body.sku = $('#ed-s', w).value.trim();
+        if (String($('#ed-r', w).value) !== String(it.reorderLevel === null || it.reorderLevel === undefined ? '' : it.reorderLevel)) body.reorderLevel = $('#ed-r', w).value;
+        if ($('#ed-c', w) && String($('#ed-c', w).value) !== String(it.costPrice === null || it.costPrice === undefined ? '' : it.costPrice)) body.costPrice = $('#ed-c', w).value;
+        if (Object.keys(body).length > 1) {
+          const res = await PosEngine.call('posUpdateItem', body);
+          if (!res.ok) { $('#ed-err', w).textContent = res.network ? 'Changing products needs a connection.' : res.error; return; }
+        }
+        if ($('#ed-a', w).checked !== !!it.active) {
+          const r2 = await PosEngine.call('posSetProductActive', { productId: it.productId, active: $('#ed-a', w).checked });
+          if (!r2.ok) { $('#ed-err', w).textContent = r2.error; return; }
+        }
+        close(); toast('Saved.'); PosEngine.pollChanges();
+      });
+    });
+  }
+
+  function assignBarcode(code) {
+    dialog(`<h2>Add barcode ${esc(code)}</h2><p>Choose the item this barcode belongs to.</p>
+      <input type="search" id="ab-q" placeholder="Search items" style="width:100%;min-height:44px"><div id="ab-list" class="pos-rows" style="margin-top:8px"></div>
+      <p class="form-error" id="ab-err" role="alert"></p><div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button></div>`, (w, close) => {
+      const draw = () => {
+        const list = posFindItems(Array.from(S.items.values()), $('#ab-q', w).value || ' ', 8).items;
+        $('#ab-list', w).innerHTML = list.map((i) => `<button type="button" class="pos-row" data-v="${esc(i.variantId)}" style="text-align:left;cursor:pointer"><span>${esc(i.name)} ${esc(i.label)}</span><span>${i.barcode ? esc(i.barcode) : ''}</span></button>`).join('');
+        $$('[data-v]', w).forEach((b) => b.addEventListener('click', async () => {
+          const res = await PosEngine.call('posUpdateItem', { variantId: b.dataset.v, barcode: code });
+          if (!res.ok) { $('#ab-err', w).textContent = res.network ? 'Needs a connection.' : res.error; return; }
+          close(); toast('Barcode saved.'); await PosEngine.pollChanges(); handleScan(code);
+        }));
+      };
+      $('#ab-q', w).addEventListener('input', debounce(draw, 120));
+    });
+  }
+
+  /* ================= payments, reviews, reports ================= */
+
+  async function viewPayments(box) {
+    box.innerHTML = `<h1>Payments to confirm</h1><p class="pos-muted">IB and MPaisa payments stay "pending verification" until you check the money arrived in your account.</p><div id="pm-list" class="pos-rows"><p class="pos-muted">Loading…</p></div>`;
+    const res = await PosEngine.call('posPendingPayments', {});
+    const list = $('#pm-list');
+    if (!res.ok) { list.innerHTML = `<p class="pos-muted">${res.network ? 'Needs a connection.' : esc(res.error)}</p>`; return; }
+    list.innerHTML = res.payments.length ? res.payments.map((p) => `<div class="pos-row"><div><div class="pos-row-title">${esc(p.methodLabel)} · ${money(p.amount)} · ${esc(p.receiptNo)}</div>
+      <div class="pos-row-sub">Reference: ${esc(p.reference || '-')} · ${esc(fmtTime(p.createdAt))}${p.staffName ? ' · ' + esc(p.staffName) : ''}</div></div>
+      <div class="pos-row-actions"><button type="button" class="btn btn-small btn-primary" data-ok="${esc(p.saleId)}|${esc(p.paymentId)}">Money arrived</button>
+      <button type="button" class="btn btn-small" data-no="${esc(p.saleId)}|${esc(p.paymentId)}">Not received</button></div></div>`).join('') : '<p class="pos-muted">Nothing waiting.</p>';
+    $$('[data-ok]', list).forEach((b) => b.addEventListener('click', () => { const [s, p] = b.dataset.ok.split('|'); confirmPayment(s, p, 'confirmed'); }));
+    $$('[data-no]', list).forEach((b) => b.addEventListener('click', async () => { if (await confirmBox('Not received?', 'The payment will be marked failed. The sale stays recorded.', 'Mark failed')) { const [s, p] = b.dataset.no.split('|'); confirmPayment(s, p, 'failed'); } }));
+  }
+
+  async function viewReviews(box) {
+    box.innerHTML = `<h1>Reviews</h1><p class="pos-muted">Sales Mwakete recorded but wants a person to look at: sold more than was in stock, a price that had changed, a discount above the limit. The sales themselves are never changed here.</p>
+      <div class="pos-toolbar"><label>Show<select id="cs-f"><option value="open">Open</option><option value="resolved">Resolved</option><option value="all">All</option></select></label></div><div id="cs-list" class="pos-rows"></div>`;
+    const load = async () => {
+      const res = await PosEngine.call('posListCases', { status: $('#cs-f').value });
+      const list = $('#cs-list');
+      if (!res.ok) { list.innerHTML = `<p class="pos-muted">${res.network ? 'Needs a connection.' : esc(res.error)}</p>`; return; }
+      list.innerHTML = res.cases.length ? res.cases.map((c) => `<div class="pos-row"><div><div class="pos-row-title">${esc(c.label)} ${c.status === 'open' ? '<span class="pos-tag is-wait">Open</span>' : '<span class="pos-tag is-ok">Resolved</span>'}</div>
+        <div class="pos-row-sub">${esc(c.detail)} · ${esc(c.receiptNo || '')} · ${esc(fmtTime(c.createdAt))}${c.resolution ? ' · ' + esc(c.resolvedBy) + ': ' + esc(c.resolution) : ''}</div></div>
+        <div class="pos-row-actions">${c.status === 'open' ? `<button type="button" class="btn btn-small" data-case="${esc(c.caseId)}">Resolve</button>` : ''}</div></div>`).join('') : '<p class="pos-muted">Nothing here.</p>';
+      $$('[data-case]', list).forEach((b) => b.addEventListener('click', () => dialog(`<h2>Resolve</h2><div class="pos-form"><div class="field"><label for="cs-n">What was done</label>
+        <input id="cs-n" maxlength="200" placeholder="e.g. counted the shelf and adjusted stock"></div><p class="form-error" id="cs-e" role="alert"></p></div>
+        <div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" id="cs-go">Resolve</button></div>`, (w, close) => {
+        $('#cs-go', w).addEventListener('click', async () => {
+          const r = await PosEngine.call('posResolveCase', { caseId: b.dataset.case, resolution: $('#cs-n', w).value });
+          if (!r.ok) { $('#cs-e', w).textContent = r.error; return; }
+          close(); load();
+        });
+      })));
+    };
+    $('#cs-f').addEventListener('change', load);
+    load();
+  }
+
+  async function viewReports(box) {
+    const today = new Date(Date.now() + 12 * 3600000).toISOString().slice(0, 10);
+    box.innerHTML = `<h1>Reports</h1><div class="pos-toolbar"><label>From<input type="date" id="rp-f" value="${today}"></label><label>To<input type="date" id="rp-t" value="${today}"></label><button type="button" class="btn" id="rp-go">Show</button></div><div id="rp-body"></div>`;
+    const load = async () => {
+      const body = $('#rp-body');
+      body.innerHTML = '<p class="pos-muted">Loading…</p>';
+      const r = await PosEngine.call('posReport', { from: $('#rp-f').value, to: $('#rp-t').value });
+      if (!r.ok) { body.innerHTML = `<p class="pos-muted">${r.network ? 'Reports need a connection.' : esc(r.error)}</p>`; return; }
+      const p = r.channels.pos;
+      const st = PosEngine.status();
+      body.innerHTML = `${st.pending ? `<p class="pos-note">${st.pending} sale(s) on this till are not synced yet and are not in these numbers.</p>` : ''}
+        <div class="pos-kpis">
+          <div class="pos-kpi"><span>In-store sales</span><strong>${money(p.gross)}</strong><span>${p.sales} sales${p.offline ? ' · ' + p.offline + ' made offline' : ''}</span></div>
+          <div class="pos-kpi"><span>Refunds</span><strong>${money(p.refunds)}</strong></div>
+          <div class="pos-kpi"><span>Net (in store)</span><strong>${money(p.net)}</strong></div>
+          <div class="pos-kpi"><span>Retail / wholesale</span><strong>${money(p.retail)} / ${money(p.wholesale)}</strong></div>
+          <div class="pos-kpi"><span>Discounts given</span><strong>${money(p.discounts)}</strong></div>
+          <div class="pos-kpi"><span>Tax included</span><strong>${money(p.tax)}</strong></div>
+          <div class="pos-kpi"><span>Voided (not counted)</span><strong>${money(p.voided.amount)}</strong><span>${p.voided.sales} sales</span></div>
+          <div class="pos-kpi"><span>Online orders</span><strong>${money(r.channels.online.gross)}</strong><span>${r.channels.online.orders} orders</span></div>
+          ${r.profit.available ? `<div class="pos-kpi"><span>Profit (estimate)</span><strong>${money(r.profit.estimated)}</strong></div>` : ''}
+        </div>
+        <h2>Payments</h2><div class="pos-table-wrap"><table class="pos-table"><thead><tr><th>Method</th><th>Status</th><th class="num">Count</th><th class="num">Amount</th></tr></thead><tbody>
+          ${r.payments.map((x) => `<tr><td>${esc(x.methodLabel)}</td><td>${esc(x.label)}</td><td class="num">${x.count}</td><td class="num">${money(x.amount)}</td></tr>`).join('') || '<tr><td colspan="4">None</td></tr>'}</tbody></table></div>
+        <h2>By staff</h2><div class="pos-table-wrap"><table class="pos-table"><tbody>${r.cashiers.map((c) => `<tr><td>${esc(c.name)}</td><td class="num">${c.sales} sales</td><td class="num">${money(c.gross)}</td></tr>`).join('') || '<tr><td>None</td></tr>'}</tbody></table></div>
+        ${!r.profit.available ? `<p class="pos-muted">${esc(r.profit.note)}</p>` : ''}
+        <h2>Low stock</h2>${r.lowStock.length ? `<ul>${r.lowStock.map((l) => `<li>${esc(l.name)} ${esc(l.label)}: ${l.available} available</li>`).join('')}</ul>` : '<p class="pos-muted">Nothing low.</p>'}`;
+    };
+    $('#rp-go').addEventListener('click', load);
+    load();
+  }
+
+  /* ================= sync centre ================= */
+
+  function viewSync(box) {
+    box.innerHTML = `<h1>Sync Centre</h1>
+      <div id="sy-summary" class="pos-kpis"></div>
+      <div class="pos-toolbar" style="margin-top:var(--space-3)">
+        <button type="button" class="btn btn-primary" id="sy-now">Sync now</button>
+        <button type="button" class="btn" id="sy-check">Check unconfirmed sales</button>
+        <button type="button" class="btn" id="sy-reload">Reload catalogue</button>
+      </div>
+      <h2>Waiting on this till</h2><div id="sy-queue" class="pos-rows"></div>
+      <h2>Recent activity</h2><div id="sy-log" class="pos-table-wrap"></div>
+      <h2>Keeping sales safe</h2>
+      <p>Sales and stock changes waiting here live only in this browser on this device until Mwakete confirms them. Do <strong>not</strong> clear this browser's data,
+      uninstall the app or reset the device while anything is waiting. Signing out does not delete them - they are sent after the next sign-in on this device.</p>`;
+    $('#sy-now').addEventListener('click', async () => { await PosEngine.flushQueue(true); await PosEngine.pollChanges(); renderSyncSummary(); toast('Sync finished.'); });
+    $('#sy-check').addEventListener('click', async () => { const r = await PosEngine.reconcileUnknown(); toast(r.ok === false ? (r.network ? 'No connection.' : r.error) : 'Checked ' + (r.checked || 0) + ', found ' + (r.found || 0) + ' already at Mwakete.'); renderSyncSummary(); });
+    $('#sy-reload').addEventListener('click', async () => { const r = await PosEngine.loadCatalog(); toast(r.ok ? 'Catalogue reloaded.' : (r.network ? 'No connection.' : r.error), !r.ok); });
+    renderSyncSummary();
+  }
+
+  async function renderSyncSummary() {
+    const sum = $('#sy-summary');
+    if (!sum) return;
+    const st = PosEngine.status();
+    const lat = PosEngine.latencyStats();
+    sum.innerHTML = `<div class="pos-kpi"><span>Connection</span><strong>${st.online ? 'Online' : 'Offline'}</strong></div>
+      <div class="pos-kpi"><span>Waiting to sync</span><strong>${st.pending}</strong><span>${st.awaiting} awaiting answer · ${st.failed} need attention</span></div>
+      <div class="pos-kpi"><span>Last sync</span><strong>${esc(st.lastSyncAt ? ago(st.lastSyncAt) : 'not yet')}</strong></div>
+      <div class="pos-kpi"><span>Change cursor</span><strong>${esc(st.cursor)}</strong><span>${st.latest !== null && st.latest !== undefined ? 'Mwakete is at ' + esc(st.latest) : ''}</span></div>
+      <div class="pos-kpi"><span>Update delay (measured)</span><strong>${lat ? (lat.medianMs / 1000).toFixed(1) + ' s' : '-'}</strong><span>${lat ? 'median of ' + lat.samples + ', 95%: ' + (lat.p95Ms / 1000).toFixed(1) + ' s' : 'no samples yet'}</span></div>
+      ${st.authProblem ? '<div class="pos-kpi"><span>Sign-in</span><strong>Needed</strong><span>Waiting sales are kept.</span></div>' : ''}`;
+    const q = await PosDB.all('queue');
+    const qb = $('#sy-queue');
+    if (qb) {
+      qb.innerHTML = q.length ? q.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).map((e) => `<div class="pos-row"><div>
+          <div class="pos-row-title">${e.kind === 'op' ? 'Stock: ' + esc(e.local.label) : 'Sale ' + esc(e.local.receiptNo || '')} ${e.kind !== 'op' ? '· ' + money(e.local.total) : ''} ${syncTag(e.state)}</div>
+          <div class="pos-row-sub">${esc(fmtTime(e.createdAt))} · tries: ${e.attempts || 0}${e.error ? ' · ' + esc(e.error) : ''} · ref ${esc(e.clientTxnId)}</div></div>
+          <div class="pos-row-actions">${e.state === 'failed' ? `<button type="button" class="btn btn-small" data-retry="${esc(e.clientTxnId)}">Send again</button>` : ''}</div></div>`).join('')
+        : '<p class="pos-muted">Nothing waiting. Everything on this till is confirmed by Mwakete.</p>';
+      $$('[data-retry]', qb).forEach((b) => b.addEventListener('click', async () => { await PosEngine.retryFailed(b.dataset.retry); renderSyncSummary(); }));
+    }
+    const log = (await PosDB.all('log')).slice(-25).reverse();
+    const lb = $('#sy-log');
+    if (lb) lb.innerHTML = `<table class="pos-table"><tbody>${log.map((l) => `<tr><td>${esc(fmtTime(l.at))}</td><td>${esc(l.kind)}</td><td>${esc(l.message)}</td></tr>`).join('') || '<tr><td>No activity yet.</td></tr>'}</tbody></table>`;
+  }
+
+  /* ================= settings ================= */
+
+  function viewSettings(box) {
+    const st = S.meta.settings || {};
+    box.innerHTML = `<h1>Settings</h1>
+      ${can('manage_settings') ? `<div class="pos-card pos-form">
+        <div class="field"><label for="st-disc">Biggest discount a cashier may give (%)</label><input id="st-disc" type="number" min="0" max="50" value="${esc(st.maxDiscountPct)}"></div>
+        <div class="field"><label for="st-tax">Tax included in your prices (%)</label><input id="st-tax" type="number" min="0" max="30" step="0.1" value="${esc(st.taxPercent)}"></div>
+        <div class="field"><label for="st-pol">Returns policy on the receipt</label><textarea id="st-pol" maxlength="300" rows="2">${esc(st.returnPolicy)}</textarea></div>
+        <div class="field"><label for="st-foot">Receipt footer</label><input id="st-foot" maxlength="200" value="${esc(st.receiptFooter)}"></div>
+        <p class="form-error" id="st-err" role="alert"></p><button type="button" class="btn btn-primary" id="st-save">Save</button></div>` : ''}
+      ${can('manage_staff') ? '<h2>Staff</h2><p class="pos-muted">Staff sign in on a registered till with their own PIN. Their role decides what they can do - checked by Mwakete on every action.</p><div id="st-staff"></div>' : ''}
+      ${can('manage_devices') ? '<h2>Tills</h2><p class="pos-muted">Revoking a till signs everyone out of it at once. Sales waiting on it stay on that device; sign in there as the owner to send them.</p><div id="st-devices"></div>' : ''}
+      <div id="st-extra"></div>
+      <h2>This device</h2><p class="pos-muted">Till code ${esc(session.deviceLabel || '')} · signed in as ${esc(session.who || '')}</p>
+      <button type="button" class="btn" id="st-out">Sign out</button>`;
+    if ($('#st-save')) $('#st-save').addEventListener('click', async () => {
+      const res = await PosEngine.call('posSaveSettings', { maxDiscountPct: $('#st-disc').value, taxPercent: $('#st-tax').value, returnPolicy: $('#st-pol').value, receiptFooter: $('#st-foot').value });
+      if (!res.ok) { $('#st-err').textContent = res.network ? 'Needs a connection.' : res.error; return; }
+      await PosDB.setMeta('settings', res.settings); await loadMeta(); toast('Saved.');
+    });
+    $('#st-out').addEventListener('click', signOut);
+    if (shell.settingsExtra) shell.settingsExtra($('#st-extra'), { can, call: PosEngine.call, dialog, toast, esc });
+    if (can('manage_staff')) loadStaff();
+    if (can('manage_devices')) loadDevices();
+  }
+
+  async function loadStaff() {
+    const box = $('#st-staff');
+    if (!box) return;
+    const res = await PosEngine.call('posListStaff', {});
+    if (!res.ok) { box.innerHTML = `<p class="pos-muted">${res.network ? 'Needs a connection.' : esc(res.error)}</p>`; return; }
+    box.innerHTML = `<div class="pos-rows">${res.staff.map((m) => `<div class="pos-row"><div><div class="pos-row-title">${esc(m.name)} ${m.status !== 'active' ? '<span class="pos-tag">Off</span>' : ''}${m.locked ? ' <span class="pos-tag is-bad">Locked (wrong PINs)</span>' : ''}</div>
+      <div class="pos-row-sub">${esc(m.roleLabel)}</div></div><div class="pos-row-actions"><button type="button" class="btn btn-small" data-staff="${esc(m.staffId)}">Edit</button></div></div>`).join('') || '<p class="pos-muted">No staff yet.</p>'}</div>
+      <button type="button" class="btn" id="st-add" style="margin-top:8px">Add staff</button>`;
+    const edit = (m) => dialog(`<h2>${m ? 'Edit ' + esc(m.name) : 'Add staff'}</h2><div class="pos-form">
+      <div class="field"><label for="sf-n">Name</label><input id="sf-n" maxlength="40" value="${esc(m ? m.name : '')}"></div>
+      <div class="field"><label for="sf-r">Role</label><select id="sf-r">${res.roles.map((r) => `<option value="${r.id}" ${m && m.role === r.id ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}</select></div>
+      <div class="field"><label for="sf-p">${m ? 'New PIN (leave blank to keep)' : 'PIN (4-6 digits)'}</label><input id="sf-p" inputmode="numeric" maxlength="6" autocomplete="off"></div>
+      ${m ? `<label class="check"><input type="checkbox" id="sf-a" ${m.status === 'active' ? 'checked' : ''}> Can sign in</label>` : ''}
+      <p class="pos-muted">Cashier: sell and give discounts up to the limit. Manager: also refunds, voids, price changes, stock and confirming IB/MPaisa. Inventory: stock and products only. Reports: read only.</p>
+      <p class="form-error" id="sf-e" role="alert"></p></div>
+      <div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" id="sf-go">Save</button></div>`, (w, close) => {
+      $('#sf-go', w).addEventListener('click', async () => {
+        const r = await PosEngine.call('posSaveStaff', { staffId: m ? m.staffId : undefined, name: $('#sf-n', w).value, role: $('#sf-r', w).value, pin: $('#sf-p', w).value, active: m ? $('#sf-a', w).checked : true });
+        if (!r.ok) { $('#sf-e', w).textContent = r.network ? 'Needs a connection.' : r.error; return; }
+        close(); loadStaff();
+      });
+    });
+    $$('[data-staff]', box).forEach((b) => b.addEventListener('click', () => edit(res.staff.find((x) => x.staffId === b.dataset.staff))));
+    $('#st-add').addEventListener('click', () => edit(null));
+  }
+
+  async function loadDevices() {
+    const box = $('#st-devices');
+    if (!box) return;
+    const res = await PosEngine.call('posListDevices', {});
+    if (!res.ok) { box.innerHTML = `<p class="pos-muted">${res.network ? 'Needs a connection.' : esc(res.error)}</p>`; return; }
+    box.innerHTML = `<div class="pos-rows">${res.devices.map((d) => `<div class="pos-row"><div><div class="pos-row-title">${esc(d.name)} (${esc(d.code)}) ${d.status === 'revoked' ? '<span class="pos-tag is-bad">Revoked</span>' : ''}</div>
+      <div class="pos-row-sub">Set up ${esc(fmtTime(d.createdAt))}${d.lastSeenAt ? ' · last sign-in ' + esc(fmtTime(d.lastSeenAt)) : ''}</div></div>
+      <div class="pos-row-actions">${d.status === 'active' ? `<button type="button" class="btn btn-small" data-revoke="${esc(d.deviceId)}">Revoke</button>` : ''}</div></div>`).join('') || '<p class="pos-muted">No tills set up yet. Open the till app on the device and choose "Use this device as a till".</p>'}</div>`;
+    $$('[data-revoke]', box).forEach((b) => b.addEventListener('click', async () => {
+      if (!(await confirmBox('Revoke this till?', 'Everyone signed in on it is signed out now, and it cannot be used until set up again.', 'Revoke'))) return;
+      const r = await PosEngine.call('posRevokeDevice', { deviceId: b.dataset.revoke });
+      if (!r.ok) { toast(r.error, true); return; }
+      loadDevices();
+    }));
+  }
+
+  /* ================= cash drawer (shift) ================= */
+
+  async function refreshShift() {
+    const res = await PosEngine.call('posShiftCurrent', {});
+    if (res.ok) { S.shift = res.shift; await PosDB.setMeta('shift', res.shift); if (S.view === 'shift') renderView(); }
+  }
+
+  async function viewShift(box) {
+    const sh = S.shift;
+    box.innerHTML = `<h1>Cash drawer</h1><div id="sh-body"></div>`;
+    const body = $('#sh-body');
+    if (!sh) {
+      body.innerHTML = `<p>No shift is open on this till. Count the cash in the drawer to start.</p><div class="pos-form pos-card"><div class="field"><label for="sh-f">Cash in the drawer now</label>
+        <input id="sh-f" type="number" min="0" step="0.05" inputmode="decimal"></div><p class="form-error" id="sh-e" role="alert"></p><button type="button" class="btn btn-primary" id="sh-open">Open shift</button></div>`;
+      $('#sh-open').addEventListener('click', async () => {
+        const r = await PosEngine.call('posOpenShift', { openingFloat: $('#sh-f').value });
+        if (!r.ok) { $('#sh-e').textContent = r.network ? 'Opening a shift needs a connection.' : r.error; return; }
+        S.shift = r.shift; await PosDB.setMeta('shift', r.shift); renderView();
+      });
+      return;
+    }
+    const st = PosEngine.status();
+    body.innerHTML = `<div class="pos-kpis"><div class="pos-kpi"><span>Opened</span><strong>${esc(fmtTime(sh.openedAt))}</strong><span>${esc(sh.staffName)}</span></div>
+        <div class="pos-kpi"><span>Opening cash</span><strong>${money(sh.openingFloat)}</strong></div>
+        <div class="pos-kpi"><span>Cash expected now</span><strong>${sh.expectedCash !== null && sh.expectedCash !== undefined ? money(sh.expectedCash) : '-'}</strong><span>from synced sales</span></div></div>
+      ${(sh.movements || []).length ? `<h2>Cash in / out</h2><ul>${sh.movements.map((m) => `<li>${m.type === 'in' ? 'In' : 'Out'} ${money(m.amount)} - ${esc(m.reason)} (${esc(m.by)})</li>`).join('')}</ul>` : ''}
+      <div class="pos-toolbar" style="margin-top:12px"><button type="button" class="btn" id="sh-in">Cash in</button><button type="button" class="btn" id="sh-out">Cash out</button>
+        <button type="button" class="btn btn-primary" id="sh-close">Close shift</button></div>
+      ${st.pending ? `<p class="pos-note">${st.pending} sale(s) are not synced yet. Sync before closing so the expected cash includes them.</p>` : ''}`;
+    const move = (type) => dialog(`<h2>Cash ${type}</h2><div class="pos-form"><div class="field"><label for="mv-a">Amount</label><input id="mv-a" type="number" min="0.05" step="0.05" inputmode="decimal"></div>
+      <div class="field"><label for="mv-r">Why</label><input id="mv-r" maxlength="80"></div><p class="form-error" id="mv-e" role="alert"></p></div>
+      <div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" id="mv-go">Save</button></div>`, (w, close) => {
+      $('#mv-go', w).addEventListener('click', async () => {
+        const r = await PosEngine.call('posCashMove', { shiftId: sh.shiftId, type, amount: $('#mv-a', w).value, reason: $('#mv-r', w).value });
+        if (!r.ok) { $('#mv-e', w).textContent = r.network ? 'Needs a connection.' : r.error; return; }
+        S.shift = r.shift; await PosDB.setMeta('shift', r.shift); close(); renderView();
+      });
+    });
+    $('#sh-in').addEventListener('click', () => move('in'));
+    $('#sh-out').addEventListener('click', () => move('out'));
+    $('#sh-close').addEventListener('click', () => dialog(`<h2>Close shift</h2><div class="pos-form"><div class="field"><label for="cl-c">Count the cash in the drawer</label>
+      <input id="cl-c" type="number" min="0" step="0.05" inputmode="decimal"></div><div class="field"><label for="cl-n">Note <span class="pos-muted">(optional)</span></label><input id="cl-n" maxlength="200"></div>
+      <p class="form-error" id="cl-e" role="alert"></p></div><div class="pos-dialog-actions"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" id="cl-go">Close shift</button></div>`, (w, close) => {
+      $('#cl-go', w).addEventListener('click', async () => {
+        await PosEngine.flushQueue(true);
+        const r = await PosEngine.call('posCloseShift', { shiftId: sh.shiftId, countedCash: $('#cl-c', w).value, note: $('#cl-n', w).value });
+        if (!r.ok) { $('#cl-e', w).textContent = r.network ? 'Closing a shift needs a connection.' : r.error; return; }
+        close(); S.shift = null; await PosDB.setMeta('shift', null);
+        const v = r.shift.variance;
+        dialog(`<h2>Shift closed</h2><p>Expected ${money(r.shift.expectedCash)} · counted ${money(r.shift.countedCash)}</p>
+          <p class="pos-note ${v === 0 ? 'is-good' : 'is-bad'}">${v === 0 ? 'The drawer matches.' : (v > 0 ? 'Over by ' : 'Short by ') + money(Math.abs(v))}</p>
+          <div class="pos-dialog-actions"><button type="button" class="btn btn-primary" data-close>OK</button></div>`);
+        renderView();
+      });
+    }));
+    refreshShift();
+  }
+
+  /* ================= online orders (kept apart from in-store sales) ================= */
+
+  async function viewOrders(box) {
+    box.innerHTML = `<h1>Online orders</h1><p class="pos-muted">Orders placed on Mwakete.com. They are not in-store sales: they have their own payment, delivery and order room, and are completed in Orders.</p><div id="oo-list" class="pos-rows"><p class="pos-muted">Loading…</p></div>`;
+    const res = await PosEngine.call('posOnlineOrders', {});
+    const list = $('#oo-list');
+    if (!res.ok) { list.innerHTML = `<p class="pos-muted">${res.network ? 'Needs a connection.' : esc(res.error)}</p>`; return; }
+    list.innerHTML = res.orders.length ? res.orders.map((o) => `<div class="pos-row"><div><div class="pos-row-title">${esc(o.customerName || 'Customer')} · ${money(o.total)} <span class="pos-tag is-wait">${esc(o.status)}</span></div>
+      <div class="pos-row-sub">${esc(fmtTime(o.createdAt))}${o.delivery ? ' · ' + esc(o.delivery) : ''} · ${esc(o.orderNumber)}</div></div>
+      <div class="pos-row-actions">${shell.ordersHref ? `<a class="btn btn-small" href="${esc(shell.ordersHref)}">Open in Orders</a>` : ''}</div></div>`).join('') : '<p class="pos-muted">No open online orders.</p>';
+  }
+
+  async function signOut() {
+    const st = PosEngine.status();
+    const msg = st.pending ? st.pending + ' sale(s) or stock change(s) on this till are not synced yet. They stay on this device and are sent after the next sign-in here. Sign out anyway?' : 'Sign out of the till?';
+    if (!(await confirmBox('Sign out', msg, 'Sign out'))) return;
+    PosEngine.stop();
+    shell.signOut();
+  }
+
+  function debounce(fn, ms) { let t; return function () { const a = arguments; clearTimeout(t); t = setTimeout(() => fn.apply(null, a), ms); }; }
+
+  return { start, _S: S };
+})();

@@ -387,7 +387,7 @@ function actionReceiveStock(owner, body) {
       OwnerId: owner.OwnerId, ProductId: v.ProductId, VariantId: v.VariantId, Quantity: qty, MovementType: 'STOCK_RECEIVED',
       PreviousStock: isStockTracked(v) ? before : '', NewStock: after, PreviousReserved: reservedOf(v), NewReserved: reservedOf(v),
       Source: 'receive', ReferenceId: invoice, UserId: owner.OwnerId, LocationId: locationId,
-      Notes: [supplier && 'Supplier: ' + supplier, invoice && 'Invoice: ' + invoice, cost !== null && 'Unit cost: ' + cost].filter(Boolean).join(' · ')
+      Notes: [supplier && 'Supplier: ' + supplier, invoice && 'Invoice: ' + invoice, cost !== null && 'Unit cost: ' + cost, body.opTag].filter(Boolean).join(' · ')
     }]);
     invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
     v.StockQty = after;
@@ -450,7 +450,7 @@ function actionAdjustStock(owner, body) {
     recordStockMovements([{
       OwnerId: owner.OwnerId, ProductId: v.ProductId, VariantId: v.VariantId, Quantity: after - before, MovementType: type,
       PreviousStock: isStockTracked(v) ? before : '', NewStock: after, PreviousReserved: held, NewReserved: held,
-      Source: 'adjust', UserId: owner.OwnerId, Notes: notes, LocationId: locationId
+      Source: 'adjust', UserId: owner.OwnerId, Notes: [notes, body.opTag].filter(Boolean).join(' · '), LocationId: locationId
     }]);
     invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
     v.StockQty = after;

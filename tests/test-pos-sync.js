@@ -190,5 +190,31 @@ ok('a manager closes it with what was done', r.ok && r.case.status === 'resolved
 ok('every POS action is audited', ['POS_SALE', 'POS_SALE_OFFLINE', 'POS_VOID', 'POS_PAYMENT_CONFIRMED', 'POS_CASE_RESOLVED'].every((a) => box.__sheets.Audit_Log.objects().some((x) => x.Action === a)));
 ok('switched off: nothing answers', (() => { box.__props.POS_HUB = 'off'; const x = box.actionPosChanges(A, { since: 0 }); box.__props.POS_HUB = 'on'; return !x.ok; })());
 
+/* ---------- stock work from a till (durable, even when queued offline) ---------- */
+const inv = { role: 'inventory', id: 'st_3', name: 'Kiri (inventory)', deviceId: 'dev_2' };
+const sv = stock('v1');
+r = box.actionPosStockOp(A, { opId: 'op-recv-000001', type: 'receive', variantId: 'v1', quantity: 12, supplier: 'Tarawa Wholesale', offline: true }, inv);
+ok('goods received from a till (even sent late from offline): +12, in the ledger with who', r.ok && stock('v1') === sv + 12
+  && box.__sheets.StockMovements.objects().some((m) => /Kiri \(inventory\).*\[op:op-recv-000001\]/.test(m.Notes)), J(r));
+box.CacheService.getScriptCache().remove ? box.CacheService.getScriptCache().remove('v1:invreq:own_a:op-recv-000001') : null;
+r = box.actionPosStockOp(A, { opId: 'op-recv-000001', type: 'receive', variantId: 'v1', quantity: 12 }, inv);
+ok('the same stock change sent again (hours later, cache gone) is not applied twice', r.ok && r.replayed && stock('v1') === sv + 12, J(r));
+ok('a cashier cannot receive or adjust stock', box.actionPosStockOp(A, { opId: 'op-recv-000002', type: 'receive', variantId: 'v1', quantity: 1 }, cashier).errorKind === 'forbidden');
+ok('a stock count made offline is refused (it would overwrite sales made since)', !box.actionPosStockOp(A, { opId: 'op-count-00001', type: 'count', variantId: 'v1', newCount: 3, offline: true }, inv).ok && stock('v1') === sv + 12);
+r = box.actionPosStockOp(A, { opId: 'op-dmg-000001', type: 'damaged', variantId: 'v1', quantity: 2, notes: 'wet bags' }, inv);
+ok('damaged stock: -2, audited', r.ok && stock('v1') === sv + 10 && box.__sheets.Audit_Log.objects().some((x) => x.Action === 'POS_STOCK_DAMAGED'), J(r));
+const curs = box.actionPosChanges(A, { since: 0 }).latest;
+r = box.actionPosUpdateItem(A, { variantId: 'v1', price: 2.5, barcode: '0093000099' }, manager);
+ok('a manager changes a price and barcode; the barcode keeps its leading zeros', r.ok && r.item.price === 2.5 && r.item.barcode === '0093000099', J(r));
+ok('...tills are told (catalogue change)', box.actionPosChanges(A, { since: curs }).changes.some((c) => c.kind === 'catalog' && c.productId === 'prod_a'));
+ok('...sales already made keep the price they were sold at', box.__sheets.PosSaleLines.objects().filter((l) => l.VariantId === 'v1').every((l) => Number(l.UnitPrice) !== 2.5 || l.PriceOverride === 'yes'));
+ok('...other fields were left as they were', Number(box.__sheets.Variants.objects().find((x) => x.VariantId === 'v1').CostPrice) === 1);
+ok('a cashier cannot change prices', box.actionPosUpdateItem(A, { variantId: 'v1', price: 0.1 }, cashier).errorKind === 'forbidden');
+ok('nobody can change another store\'s item', !box.actionPosUpdateItem(B, { variantId: 'v1', price: 0.1 }).ok);
+r = box.actionPosSetProductActive(A, { productId: 'prod_a', active: false }, manager);
+ok('a manager hides a product: tills stop offering it', r.ok && box.actionPosCatalog(A, {}).items.every((i) => !i.active), J(r));
+box.actionPosSetProductActive(A, { productId: 'prod_a', active: true }, manager);
+ok('...and shows it again', box.actionPosCatalog(A, {}).items.every((i) => i.active));
+
 console.log(`\n${pass}/${pass + fails} passed`);
 process.exit(fails ? 1 : 0);
