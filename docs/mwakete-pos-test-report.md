@@ -14,7 +14,7 @@ network** — see "Not tested" at the end.
 | `tests/test-pos-native.js` | Older till tests, updated for the new payment wording | pass |
 | `tests/verify-pos-app.js` | Playwright (Chromium) — the embedded till and the standalone app open side by side, both talking to the real `.gs` code through `tests/lib/pos-live-backend.js` | 48/48 |
 | `tests/verify-pos-hub.js` | Playwright — existing POS/Integration hub page | 16/16 |
-| Full regression | Every `tests/*.js` | see "J" |
+| Full regression | Every `tests/*.js` (231) | see "J" |
 
 ## A. Dual-interface equivalence — implemented and tested
 
@@ -133,7 +133,14 @@ network** — see "Not tested" at the end.
   (additive only).
 * PWA checks: `verify-pwa`, `verify-manifest`, plus the installability and
   offline checks inside `verify-pos-app`.
-* Full regression: REGRESSION_RESULT
+* Full regression: 231 suites run. 226 passed first time. Of the other 5:
+  * `verify-universal-loading` — **caused by this work** (the dashboard till lost
+    its first-paint "Loading" and used plain "Loading…" text). Fixed; 19/19.
+  * `verify-admin-search` (11/16) and `verify-searchbtn2` — failed only while
+    the whole suite ran; 16/16 and 34/34 when run alone (timing under load).
+  * `verify-perf` (27/28) — `driver-contract.html` has no backend preconnect.
+    **Pre-existing** (that page is unchanged here); not fixed in this work.
+  * `verify-terms` (35/37) — **pre-existing**, known before this work.
 
 ## Status matrix
 

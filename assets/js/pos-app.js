@@ -37,13 +37,17 @@ const PosApp = (function () {
   async function start(shellConfig) {
     shell = shellConfig;
     const root = document.getElementById('pos-root');
-    root.innerHTML = `<p class="pos-main pos-muted" role="status">Opening the till…</p>`;
+    // A page may show its own "Loading" from the first paint (owner/pos.html); cleared once the till opens.
+    const pre = document.getElementById('pos-status');
+    if (!pre) root.innerHTML = `<p class="pos-main pos-muted" role="status">Opening the till…</p>`;
     try {
       session = await shell.session();
     } catch (e) {
+      if (pre) pre.textContent = '';
       root.innerHTML = `<div class="pos-main"><p class="pos-note is-bad">${esc(e.message || e)}</p></div>`;
       return;
     }
+    if (pre && session) pre.textContent = '';
     if (!session) return; // the shell is sending them to sign in
     renderShell(root);
     PosEngine.on('status', renderStatus);
@@ -463,7 +467,7 @@ const PosApp = (function () {
   async function viewSales(box) {
     box.innerHTML = `<h1>Sales</h1>
       <div class="pos-toolbar"><label>Receipt number<input type="search" id="sl-q" placeholder="R-20261028-0001"></label><button type="button" class="btn" id="sl-go">Search</button></div>
-      <div id="sl-local"></div><h2>Confirmed by Mwakete</h2><div id="sl-server" class="pos-rows"><p class="pos-muted">Loading…</p></div>`;
+      <div id="sl-local"></div><h2>Confirmed by Mwakete</h2><div id="sl-server" class="pos-rows"><p class="pos-muted">${loadingMessageHtml()}</p></div>`;
     $('#sl-go').addEventListener('click', () => loadServerSales($('#sl-q').value.trim()));
     const pending = (await PosDB.all('queue')).filter((e) => !e.kind || e.kind === 'sale');
     $('#sl-local').innerHTML = pending.length ? `<h2>On this till, not yet confirmed</h2><div class="pos-rows">${pending.map((e) => `<div class="pos-row"><div>
@@ -664,7 +668,7 @@ const PosApp = (function () {
   }
 
   async function historyDialog(it) {
-    const d = dialog(`<h2>${esc(it.name)} ${esc(it.label)} - stock history</h2><div id="hs-body"><p class="pos-muted">Loading…</p></div><div class="pos-dialog-actions"><button type="button" class="btn" data-close>Close</button></div>`);
+    const d = dialog(`<h2>${esc(it.name)} ${esc(it.label)} - stock history</h2><div id="hs-body"><p class="pos-muted">${loadingMessageHtml()}</p></div><div class="pos-dialog-actions"><button type="button" class="btn" data-close>Close</button></div>`);
     const res = await PosEngine.call('posStockHistory', { variantId: it.variantId, limit: 50 });
     const body = $('#hs-body', d.wrap);
     if (!body) return;
@@ -728,7 +732,7 @@ const PosApp = (function () {
   /* ================= payments, reviews, reports ================= */
 
   async function viewPayments(box) {
-    box.innerHTML = `<h1>Payments to confirm</h1><p class="pos-muted">IB and MPaisa payments stay "pending verification" until you check the money arrived in your account.</p><div id="pm-list" class="pos-rows"><p class="pos-muted">Loading…</p></div>`;
+    box.innerHTML = `<h1>Payments to confirm</h1><p class="pos-muted">IB and MPaisa payments stay "pending verification" until you check the money arrived in your account.</p><div id="pm-list" class="pos-rows"><p class="pos-muted">${loadingMessageHtml()}</p></div>`;
     const res = await PosEngine.call('posPendingPayments', {});
     const list = $('#pm-list');
     if (!res.ok) { list.innerHTML = `<p class="pos-muted">${res.network ? 'Needs a connection.' : esc(res.error)}</p>`; return; }
@@ -769,7 +773,7 @@ const PosApp = (function () {
     box.innerHTML = `<h1>Reports</h1><div class="pos-toolbar"><label>From<input type="date" id="rp-f" value="${today}"></label><label>To<input type="date" id="rp-t" value="${today}"></label><button type="button" class="btn" id="rp-go">Show</button></div><div id="rp-body"></div>`;
     const load = async () => {
       const body = $('#rp-body');
-      body.innerHTML = '<p class="pos-muted">Loading…</p>';
+      body.innerHTML = `<p class="pos-muted">${loadingMessageHtml()}</p>`;
       const r = await PosEngine.call('posReport', { from: $('#rp-f').value, to: $('#rp-t').value });
       if (!r.ok) { body.innerHTML = `<p class="pos-muted">${r.network ? 'Reports need a connection.' : esc(r.error)}</p>`; return; }
       const p = r.channels.pos;
@@ -973,7 +977,7 @@ const PosApp = (function () {
   /* ================= online orders (kept apart from in-store sales) ================= */
 
   async function viewOrders(box) {
-    box.innerHTML = `<h1>Online orders</h1><p class="pos-muted">Orders placed on Mwakete.com. They are not in-store sales: they have their own payment, delivery and order room, and are completed in Orders.</p><div id="oo-list" class="pos-rows"><p class="pos-muted">Loading…</p></div>`;
+    box.innerHTML = `<h1>Online orders</h1><p class="pos-muted">Orders placed on Mwakete.com. They are not in-store sales: they have their own payment, delivery and order room, and are completed in Orders.</p><div id="oo-list" class="pos-rows"><p class="pos-muted">${loadingMessageHtml()}</p></div>`;
     const res = await PosEngine.call('posOnlineOrders', {});
     const list = $('#oo-list');
     if (!res.ok) { list.innerHTML = `<p class="pos-muted">${res.network ? 'Needs a connection.' : esc(res.error)}</p>`; return; }

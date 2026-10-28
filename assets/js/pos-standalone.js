@@ -36,7 +36,7 @@
   function pinScreen(device) {
     return new Promise((resolve) => {
       const draw = async () => {
-        const root = screen(`<p class="pos-muted">Till: ${esc(device.name)} · ${esc(device.storeName || '')}</p><div id="pin-body"><p class="pos-muted">Loading staff…</p></div>
+        const root = screen(`<p class="pos-muted">Till: ${esc(device.name)} · ${esc(device.storeName || '')}</p><div id="pin-body"><p class="pos-muted">${loadingMessageHtml()}</p></div>
           <p style="margin-top:2rem"><a href="../owner/login.html?next=pos-app.html">Store owner? Sign in here</a></p>`);
         const info = await post('posDeviceInfo', { deviceId: device.deviceId, deviceSecret: device.deviceSecret });
         const body = root.querySelector('#pin-body');
@@ -64,7 +64,7 @@
           const err = body.querySelector('#pin-err');
           if (!picked) { err.textContent = 'Choose your name first.'; return; }
           if (pin.length < 4) { err.textContent = 'Enter your 4-6 digit PIN.'; return; }
-          err.textContent = 'Checking…';
+          err.innerHTML = loadingMessageHtml('Checking');
           const res = await post('posStaffLogin', { deviceId: device.deviceId, deviceSecret: device.deviceSecret, staffId: picked, pin });
           pin = ''; dots();
           if (!res.ok) { err.textContent = res.network ? 'No connection. Try again when online.' : res.error; return; }
