@@ -68,13 +68,19 @@
 .pos-tile .pos-tile-stock.is-low { color: var(--color-danger); font-weight: 700; }
 
 .pos-cart h2 { margin-top: 0; display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
-.pos-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
-.pos-line-name { overflow-wrap: anywhere; }
+/* Name across the top, quantity controls and the line total underneath, so
+   a narrow cart never squeezes the name to a word per line. */
+.pos-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "ctl total"; align-items: center; gap: 6px var(--space-2);
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
+.pos-line-name { grid-area: name; overflow-wrap: anywhere; }
 .pos-line-name small { display: block; color: var(--color-muted); }
-.pos-line-ctl { display: flex; align-items: center; gap: 6px; }
+.pos-line-ctl { grid-area: ctl; display: flex; align-items: center; gap: 6px; }
 .pos-line-ctl .btn { min-width: 44px; min-height: 44px; padding: 0; }
 .pos-line-ctl input { width: 64px; min-height: 44px; text-align: center; }
-.pos-line-total { grid-column: 1 / -1; display: flex; justify-content: space-between; font-weight: 700; }
+.pos-line-total { grid-area: total; font-weight: 700; text-align: right; white-space: nowrap; }
+.pos-disc-row { display: flex; gap: 6px; }
+.pos-disc-row input { flex: 1; min-width: 0; width: auto; min-height: 44px; }
+.pos-disc-row select { flex: 0 0 76px; width: 76px; min-height: 44px; }
 .pos-mode { display: flex; gap: 4px; padding: 3px; border-radius: var(--radius); background: var(--color-bg-alt); }
 .pos-mode button { flex: 1; min-height: 40px; border: 0; border-radius: calc(var(--radius) - 3px); background: none; font: inherit; font-weight: 700; cursor: pointer; }
 .pos-mode button[aria-pressed="true"] { background: #fff; color: var(--color-purple); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
@@ -103,6 +109,10 @@
 .pos-row-sub { font-size: 0.85rem; color: var(--color-muted); overflow-wrap: anywhere; }
 .pos-row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 .pos-row-actions .btn { min-height: 40px; }
+@media (max-width: 600px) {
+  .pos-row { grid-template-columns: minmax(0, 1fr); }
+  .pos-row-actions { justify-content: flex-start; }
+}
 .pos-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.78rem; font-weight: 700; background: var(--color-bg-alt); border: 1px solid var(--color-border); }
 .pos-tag.is-ok { background: #e8f5ec; border-color: var(--color-success); color: var(--color-success); }
 .pos-tag.is-wait { background: var(--color-gold-soft, #fff7d6); border-color: var(--color-gold); color: #6b5300; }
@@ -153,3 +163,28 @@
 .owner-pos-page .pos-side { top: var(--owner-topbar-h, 0px); height: calc(100vh - var(--owner-topbar-h, 0px)); }
 .owner-pos-page .pos-top { top: var(--owner-topbar-h, 0px); }
 .owner-pos-page .pos-drawer { top: calc(var(--owner-topbar-h, 0px) + 56px); }
+
+/* Plain buttons: white with a thin border, so they read as buttons on the
+   till's light grey background (the shared .btn fill is that same grey). */
+#pos-root .btn:not(.btn-primary):not(.btn-solid):not(.btn-save),
+.pos-dialog .btn:not(.btn-primary):not(.btn-solid):not(.btn-save) { background: #fff; border-color: var(--color-border); }
+#pos-root .btn:not(.btn-primary):not(.btn-solid):not(.btn-save):hover,
+.pos-dialog .btn:not(.btn-primary):not(.btn-solid):not(.btn-save):hover { border-color: var(--color-purple); }
+
+/* Inside the seller dashboard on a computer the dashboard already has its
+   sidebar, so the till's menu is a row of tabs across the top instead of a
+   second sidebar - the sale gets the width. */
+@media (min-width: 900px) {
+  .owner-pos-page .pos-app { display: block; }
+  .owner-pos-page .pos-side { position: sticky; top: var(--owner-topbar-h, 0px); z-index: 40; height: auto; flex-direction: row; align-items: center; overflow: visible; }
+  .owner-pos-page .pos-side-head { display: none; }
+  .owner-pos-page .pos-side .pos-nav { flex-direction: row; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: thin; padding: 6px var(--space-2); }
+  .owner-pos-page .pos-side .pos-nav button, .owner-pos-page .pos-side .pos-nav a { flex: none; min-height: 40px; white-space: nowrap; }
+  .owner-pos-page .pos-side-foot { margin: 0; flex: none; border-top: 0; padding: 0 var(--space-3); }
+}
+
+/* On a phone or tablet the dashboard has its own bottom tabs and menu, so
+   the top bar keeps only Log Out. */
+@media (max-width: 1023px) {
+  .owner-pos-page .owner-nav li:not(:last-child) { display: none; }
+}
