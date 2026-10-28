@@ -47,6 +47,7 @@ class FakeSheet {
   }
   appendRow(values) { this.grid.push(values.slice()); }
   deleteRow(n) { this.grid.splice(n - 1, 1); }
+  deleteRows(n, count) { this.grid.splice(n - 1, count); }
   // Test helper: rows as objects.
   objects() {
     const [h, ...rest] = this.grid;

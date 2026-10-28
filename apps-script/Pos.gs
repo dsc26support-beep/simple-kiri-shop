@@ -30,15 +30,16 @@
  */
 
 var POS_SALE_HEADERS = ['SaleId', 'OwnerId', 'ReceiptNo', 'LocationId', 'Status', 'Subtotal', 'Discount', 'DiscountNote', 'Tax', 'Total', 'Currency',
-  'PaymentMethod', 'PaymentStatus', 'AmountTendered', 'ChangeGiven', 'RefundedAmount', 'ClientTxnId', 'CreatedBy', 'CreatedAt', 'UpdatedAt', 'Note'];
+  'PaymentMethod', 'PaymentStatus', 'AmountTendered', 'ChangeGiven', 'RefundedAmount', 'ClientTxnId', 'CreatedBy', 'CreatedAt', 'UpdatedAt', 'Note',
+  // Mwakete POS (Oct 2026, PosSync.gs): channel, offline facts, who and where, voids.
+  'Channel', 'Fulfilment', 'FulfilmentStatus', 'PriceMode', 'CompletedOffline', 'CompletedAt', 'ReceivedAt', 'DeviceId', 'StaffId', 'StaffName',
+  'PaidAmount', 'ShiftId', 'VoidedAt', 'VoidedBy', 'VoidReason', 'VoidRequestId'];
 var POS_LINE_HEADERS = ['LineId', 'SaleId', 'OwnerId', 'VariantId', 'ProductId', 'Name', 'Label', 'SKU', 'Qty', 'UnitPrice', 'LineDiscount', 'LineTotal', 'CostPrice',
-  'RefundedQty', 'TrackedStock'];
-var POS_PAYMENT_HEADERS = ['PaymentId', 'SaleId', 'OwnerId', 'Method', 'Amount', 'Status', 'Reference', 'Note', 'CreatedAt'];
+  'RefundedQty', 'TrackedStock', 'NormalPrice', 'BulkPrice', 'PriceOverride'];
+var POS_PAYMENT_HEADERS = ['PaymentId', 'SaleId', 'OwnerId', 'Method', 'Amount', 'Status', 'Reference', 'Note', 'CreatedAt', 'VerifiedBy', 'VerifiedAt', 'VerifyNote'];
 var POS_REFUND_HEADERS = ['RefundId', 'SaleId', 'OwnerId', 'Amount', 'Reason', 'LinesJson', 'IdempotencyKey', 'Status', 'CreatedBy', 'CreatedAt'];
 var POS_SETTINGS_HEADERS = ['OwnerId', 'SettingsJson', 'UpdatedAt'];
-var POS_METHODS = ['cash', 'card', 'mobile', 'other'];
-var POS_PAYMENT_LABEL = { received: 'Cash received', recorded_unverified: 'Recorded by the seller. Not verified by Mwakete.' };
-var POS_MAX_LINES = 100;
+// Payment methods, statuses and their labels: PosCore.gs (shared with the tills).
 var POS_CURRENCY = 'AUD';
 var POS_DEFAULTS = { returnPolicy: '', receiptFooter: '', maxDiscountPct: 10, taxPercent: 0 };
 
@@ -143,23 +144,35 @@ function posReceiptNumber(owner) {
 }
 
 function posSaleView(sale, lines, payments, refunds) {
-  return { saleId: sale.SaleId, receiptNo: sale.ReceiptNo, locationId: sale.LocationId, status: sale.Status, subtotal: Number(sale.Subtotal) || 0, discount: Number(sale.Discount) || 0,
-    discountNote: sale.DiscountNote || '', tax: Number(sale.Tax) || 0, total: Number(sale.Total) || 0, currency: sale.Currency, paymentMethod: sale.PaymentMethod, paymentStatus: sale.PaymentStatus,
-    paymentLabel: POS_PAYMENT_LABEL[sale.PaymentStatus] || sale.PaymentStatus, amountTendered: sale.AmountTendered === '' ? null : Number(sale.AmountTendered), change: Number(sale.ChangeGiven) || 0,
+  var payStatus = sale.PaymentStatus;
+  return { saleId: sale.SaleId, receiptNo: sale.ReceiptNo, locationId: sale.LocationId, status: sale.Status, statusLabel: POS_CORE_SALE_STATUS_LABEL[sale.Status] || sale.Status,
+    subtotal: Number(sale.Subtotal) || 0, discount: Number(sale.Discount) || 0,
+    discountNote: sale.DiscountNote || '', tax: Number(sale.Tax) || 0, total: Number(sale.Total) || 0, currency: sale.Currency, paymentMethod: sale.PaymentMethod,
+    methodLabel: POS_CORE_METHOD_LABEL[sale.PaymentMethod] || sale.PaymentMethod, paymentStatus: payStatus,
+    paymentLabel: POS_CORE_PAY_STATUS_LABEL[payStatus] || payStatus, amountTendered: sale.AmountTendered === '' || sale.AmountTendered === undefined ? null : Number(sale.AmountTendered), change: Number(sale.ChangeGiven) || 0,
     refunded: Number(sale.RefundedAmount) || 0, createdAt: sale.CreatedAt, note: sale.Note || '',
+    channel: sale.Channel || 'in_store', fulfilment: sale.Fulfilment || 'take_away_now', fulfilmentStatus: sale.FulfilmentStatus || 'collected', priceMode: sale.PriceMode || 'retail',
+    completedOffline: sale.CompletedOffline === 'yes', completedAt: sale.CompletedAt || sale.CreatedAt, receivedAt: sale.ReceivedAt || sale.CreatedAt,
+    staffName: sale.StaffName || '', deviceId: sale.DeviceId || '', clientTxnId: sale.ClientTxnId || '',
+    voided: sale.Status === 'voided' ? { at: sale.VoidedAt || '', by: sale.VoidedBy || '', reason: sale.VoidReason || '' } : null,
     lines: (lines || []).map(function (l) {
       return { lineId: l.LineId, variantId: l.VariantId, name: l.Name, label: l.Label, sku: l.SKU, qty: Number(l.Qty), unitPrice: Number(l.UnitPrice), lineDiscount: Number(l.LineDiscount) || 0,
-        lineTotal: Number(l.LineTotal), refundedQty: Number(l.RefundedQty) || 0 };
+        lineTotal: Number(l.LineTotal), refundedQty: Number(l.RefundedQty) || 0, bulk: l.BulkPrice === 'yes', normalPrice: l.NormalPrice === '' || l.NormalPrice === undefined ? null : Number(l.NormalPrice),
+        priceOverride: l.PriceOverride === 'yes' };
     }),
-    payments: (payments || []).map(function (p) { return { method: p.Method, amount: Number(p.Amount), status: p.Status, reference: p.Reference || '' }; }),
-    refunds: (refunds || []).map(function (r) { return { refundId: r.RefundId, amount: Number(r.Amount), reason: r.Reason, createdAt: r.CreatedAt }; }) };
+    payments: (payments || []).map(function (p) {
+      return { paymentId: p.PaymentId, method: p.Method, methodLabel: POS_CORE_METHOD_LABEL[p.Method] || p.Method, amount: Number(p.Amount), status: p.Status,
+        statusLabel: POS_CORE_PAY_STATUS_LABEL[p.Status] || p.Status, reference: p.Reference || '', note: p.Note || '', verifiedBy: p.VerifiedBy || '', verifiedAt: p.VerifiedAt || '' };
+    }),
+    refunds: (refunds || []).map(function (r) { return { refundId: r.RefundId, amount: Number(r.Amount), reason: r.Reason, status: r.Status, createdAt: r.CreatedAt }; }) };
 }
 
 function posReceiptOf(owner, view) {
   var s = posSettingsOf(owner);
   return { store: { name: owner.StoreName || '', phone: owner.Phone || '', island: owner.Island || '', village: owner.Village || '' }, receiptNo: view.receiptNo, createdAt: view.createdAt,
     lines: view.lines, subtotal: view.subtotal, discount: view.discount, tax: view.tax, taxIncluded: Number(s.taxPercent) > 0, taxPercent: Number(s.taxPercent) || 0, total: view.total, currency: view.currency,
-    payment: { method: view.paymentMethod, status: view.paymentStatus, label: view.paymentLabel, tendered: view.amountTendered, change: view.change },
+    payment: { method: view.paymentMethod, methodLabel: view.methodLabel, status: view.paymentStatus, label: view.paymentLabel, tendered: view.amountTendered, change: view.change },
+    cashier: view.staffName, offline: view.completedOffline, completedAt: view.completedAt, status: view.status, statusLabel: view.statusLabel,
     returnPolicy: s.returnPolicy || '', footer: s.receiptFooter || '' };
 }
 
@@ -169,21 +182,52 @@ function posSaleParts(saleId) {
 }
 
 /**
- * body: clientTxnId (8-64 letters, digits, - _), lines [{variantId, qty}], discount? {type:'percent'|'amount', value, note?},
- *       payment {method, amountTendered? (cash), reference? (not proof)}, locationId?, note?
+ * body: clientTxnId (8-64 letters, digits, - _), lines [{variantId, qty, priceOverride?, unitPrice? (offline: what the till charged)}],
+ *       priceMode? ('retail' | 'wholesale'), discount? {type:'percent'|'amount', value, note?},
+ *       payment {method: cash|eftpos|ib|mpaisa, amountTendered? (cash), amount? (less than the total = credit sale), reference? (not proof)},
+ *       locationId?, note?,
+ *       offline? (true: the till completed this sale without a connection), completedAt? (offline: when), receiptNo? (offline: the till's own number),
+ *       clientTotal? (what the till showed)
  */
-function actionPosCheckout(owner, body) {
+function actionPosCheckout(owner, body, actor) {
   if (!posHubEnabled()) return hubOff();
+  return posCheckoutCore(owner, body || {}, actor || posOwnerActor(owner));
+}
+
+/**
+ * One sale, online or uploaded after being made offline. Prices come from
+ * posPriceCart (PosCore.gs - the same code the tills run).
+ *
+ * ONLINE: everything is checked before any stock moves; a sale that does not
+ * fit the stock, the discount limit or the prices is refused (nothing sold).
+ *
+ * OFFLINE: the sale already happened - the customer has the goods. It is
+ * recorded as it was made (the till's prices and discount, its own receipt
+ * number and time) and anything that does not match Mwakete today becomes a
+ * case for a person to review: sold more than was in stock (stock stops at 0),
+ * a price that changed, a discount above the limit. Owner decision, Oct 2026:
+ * "allow, then flag for review". Never last-write-wins on stock.
+ */
+function posCheckoutCore(owner, body, actor) {
   var clientTxnId = cleanRequestId(body.clientTxnId);
-  if (!clientTxnId) return fail('This sale has no reference number. Reload the page and try again.');
+  if (!clientTxnId) return posFail('This sale has no reference number. Reload the page and try again.');
+  if (!posCan(actor, 'sell')) return posDenied(actor, 'sell');
+  var offline = body.offline === true;
   var req = Array.isArray(body.lines) ? body.lines : [];
-  if (!req.length) return fail('Add at least one item.');
-  if (req.length > POS_MAX_LINES) return fail('A sale can have at most ' + POS_MAX_LINES + ' lines.');
   var pay = body.payment && typeof body.payment === 'object' ? body.payment : {};
-  var method = String(pay.method || '');
-  if (POS_METHODS.indexOf(method) === -1) return fail('Choose how the customer paid.');
+  var method = posNormalizeMethod(pay.method);
+  if (!method) return posFail('Choose how the customer paid: cash, card (EFTPOS), IB or MPaisa.');
   var locationId = String(body.locationId || DEFAULT_LOCATION_ID);
   var note = String(body.note || '').trim().slice(0, 200);
+  var nowMs = Date.now();
+  var completedMs = nowMs;
+  if (offline) {
+    completedMs = hubParseTime(body.completedAt);
+    if (!isFinite(completedMs)) return posFail('This offline sale has no time.');
+    if (completedMs > nowMs + 5 * 60000) return posFail('This offline sale is dated in the future. Check the till\'s clock.');
+    if (completedMs < nowMs - 30 * 86400000) return posFail('This offline sale is more than 30 days old. Ask the owner to enter it by hand.', 'too_old');
+  }
+  var mode = body.priceMode === 'wholesale' ? 'wholesale' : 'retail';
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -201,92 +245,123 @@ function actionPosCheckout(owner, body) {
     sheetToObjects(getSheet('Products')).forEach(function (p) { if (p.OwnerId === owner.OwnerId) products[p.ProductId] = p; });
     if (locationId !== DEFAULT_LOCATION_ID) {
       var locErr = typeof locationDeltaError === 'function' ? locationDeltaError(owner, { VariantId: '' }, locationId, 0) : 'Locations are not available.';
-      if (locErr) return fail(locErr);
+      if (locErr) return posFail(locErr);
     }
-    // Merge repeated varieties, then validate EVERYTHING before any stock moves.
-    var wanted = {};
-    var order = [];
-    for (var i = 0; i < req.length; i++) {
-      var q = Number(req[i] && req[i].qty);
-      var id = String(req[i] && req[i].variantId || '');
-      if (!id || !isFinite(q) || q < 1 || Math.floor(q) !== q || q > 10000) return fail('Every item needs a whole quantity of 1 or more.');
-      if (!wanted[id]) { wanted[id] = 0; order.push(id); }
-      wanted[id] += q;
+    var bulkOn = bulkPricingOn(owner);
+    // Offline: an item made inactive since the till last synced was still sold, so it is priced too.
+    var pool = ctx.byId;
+    if (offline) {
+      pool = {};
+      sheetToObjects(ctx.sheet).forEach(function (v) { if (v.OwnerId === owner.OwnerId) { v.__sheet = ctx.sheet; pool[v.VariantId] = v; } });
     }
-    var priced = [];
-    var subtotal = 0;
-    for (var j = 0; j < order.length; j++) {
-      var v = ctx.byId[order[j]];
-      if (!v) return fail('One of the items is no longer available. Refresh and try again.');
-      var price = roundMoney(Number(v.Price));
-      if (!isFinite(price) || price <= 0) return fail('"' + v.Label + '" has no price. Set its price in Products first.');
-      var qty = wanted[order[j]];
-      if (isStockTracked(v)) {
-        var avail = availableOf(v);
-        var room = avail;
-        if (locationId !== DEFAULT_LOCATION_ID) room = Math.min(avail, ((ownLocationStock(owner.OwnerId)[v.VariantId]) || {})[locationId] || 0);
-        if (qty > room) return fail('Only ' + room + ' of "' + (products[v.ProductId] ? products[v.ProductId].Name : '') + ' - ' + v.Label + '" can be sold' + (avail < physicalOf(v) ? ' (some are held for online orders)' : '') + '.');
-      }
-      var lineTotal = roundMoney(qty * price);
-      subtotal = roundMoney(subtotal + lineTotal);
-      priced.push({ variant: v, product: products[v.ProductId] || {}, qty: qty, price: price, lineTotal: lineTotal });
-    }
-    // Discount, capped by the seller's own setting, calculated here.
-    var discount = 0, discountNote = '';
-    if (body.discount && typeof body.discount === 'object' && Number(body.discount.value) > 0) {
-      var dv = Number(body.discount.value);
-      var cap = Number(settings.maxDiscountPct) || 0;
-      if (!isFinite(dv)) return fail('The discount is not a number.');
-      discount = body.discount.type === 'percent' ? roundMoney(subtotal * dv / 100) : roundMoney(dv);
-      if (discount > roundMoney(subtotal * cap / 100) + 0.005) return fail(cap > 0 ? 'A discount can be at most ' + cap + '% of the sale. You can change this in POS settings.' : 'Discounts are switched off. Turn them on in POS settings.');
-      if (discount >= subtotal) return fail('The discount cannot be the whole sale.');
-      discountNote = String(body.discount.note || '').trim().slice(0, 80) || (body.discount.type === 'percent' ? dv + '% off' : 'Discount');
-    }
-    var total = roundMoney(subtotal - discount);
-    var taxPct = Number(settings.taxPercent) || 0;
-    var tax = taxPct > 0 ? roundMoney(total * taxPct / (100 + taxPct)) : 0;
-    var tendered = null, change = 0, status;
-    if (method === 'cash') {
-      tendered = pay.amountTendered === undefined || pay.amountTendered === '' ? total : roundMoney(Number(pay.amountTendered));
-      if (!isFinite(tendered) || tendered + 0.005 < total) return fail('The cash given is less than the total of ' + orderMoney(total) + '.');
-      change = roundMoney(tendered - total);
-      status = 'received';
-    } else {
-      status = 'recorded_unverified';
-    }
-    var saleId = newId('pos');
-    var receiptNo = posReceiptNumber(owner);
-    var now = nowIso();
-    // Allocate the discount over the lines in proportion, so refunds can be worked out per line.
-    var allocated = 0;
-    priced.forEach(function (p, idx) {
-      var share = idx === priced.length - 1 ? roundMoney(discount - allocated) : roundMoney(discount * p.lineTotal / subtotal);
-      allocated = roundMoney(allocated + share);
-      p.lineDiscount = share;
-      p.net = roundMoney(p.lineTotal - share);
+    var items = {};
+    Object.keys(pool).forEach(function (id) {
+      var v = pool[id];
+      items[id] = { price: Number(v.Price), tiers: bulkOn ? priceTiersOf(v) : [], minQty: bulkOn ? minOrderQtyOf(v) : 1,
+        name: ((products[v.ProductId] || {}).Name || '') + (v.Label ? ' - ' + v.Label : '') };
     });
-    // Stock: the single inventory model. Validated above, so these cannot fail halfway.
-    var linesOut = [];
-    for (var k = 0; k < priced.length; k++) {
-      var pr = priced[k];
-      var d = applyStockDelta(owner, pr.variant, locationId, -pr.qty, 'SALE', 'pos', saleId, 'POS sale ' + receiptNo, { fact: false, userId: owner.OwnerId });
-      if (d.error) return fail(d.error + ' Nothing was sold.');
-      linesOut.push({ LineId: newId('pl'), SaleId: saleId, OwnerId: owner.OwnerId, VariantId: pr.variant.VariantId, ProductId: pr.variant.ProductId, Name: pr.product.Name || '', Label: pr.variant.Label || '',
-        SKU: pr.variant.SKU || '', Qty: pr.qty, UnitPrice: pr.price, LineDiscount: pr.lineDiscount, LineTotal: pr.net, CostPrice: pr.variant.CostPrice === '' || pr.variant.CostPrice === undefined ? '' : Number(pr.variant.CostPrice),
-        RefundedQty: 0, TrackedStock: isStockTracked(pr.variant) ? 'yes' : 'no' });
+    var cases = [];
+    var reqLines = req.map(function (l) { return { variantId: String((l && l.variantId) || ''), qty: l && l.qty, priceOverride: l && l.priceOverride, unitPrice: l && l.unitPrice }; });
+    var overrides = reqLines.filter(function (l) { return l.priceOverride !== undefined && l.priceOverride !== null && l.priceOverride !== ''; });
+    if (overrides.length && !posCan(actor, 'override_price')) return posDenied(actor, 'override_price');
+    overrides.forEach(function (l) {
+      var n = Number(l.priceOverride);
+      if (items[l.variantId] && isFinite(n) && n > 0) items[l.variantId] = Object.assign({}, items[l.variantId], { price: posCents(n), tiers: [], overridden: true });
+    });
+    if (overrides.some(function (l) { return !(Number(l.priceOverride) > 0); })) return posFail('A changed price must be more than $0.');
+    var priceOpts = { mode: mode, bulkOn: bulkOn, discount: body.discount, maxDiscountPct: posCan(actor, 'discount') ? settings.maxDiscountPct : 0, taxPercent: settings.taxPercent };
+    var priced = posPriceCart(reqLines, items, priceOpts);
+    if (!priced.ok && offline && (priced.errorCode === 'discount_cap' || priced.errorCode === 'min_qty')) {
+      // It already happened at the till: record it, and ask a person to look.
+      if (priced.errorCode === 'discount_cap') cases.push({ kind: 'discount_over_cap', detail: 'Discount of $' + posCents(priced.discount).toFixed(2) + ' is above the ' + (Number(settings.maxDiscountPct) || 0) + '% limit.' });
+      else cases.push({ kind: 'min_qty', variantId: priced.variantId, detail: priced.error });
+      priced = posPriceCart(reqLines, items, Object.assign({}, priceOpts, { maxDiscountPct: 100, bulkOn: priced.errorCode === 'min_qty' ? false : bulkOn }));
     }
-    appendRowFromObject(posSalesSheet(), { SaleId: saleId, OwnerId: owner.OwnerId, ReceiptNo: receiptNo, LocationId: locationId, Status: 'completed', Subtotal: subtotal, Discount: discount,
-      DiscountNote: discountNote, Tax: tax, Total: total, Currency: POS_CURRENCY, PaymentMethod: method, PaymentStatus: status, AmountTendered: tendered === null ? '' : tendered, ChangeGiven: change,
-      RefundedAmount: 0, ClientTxnId: clientTxnId, CreatedBy: owner.OwnerId, CreatedAt: now, UpdatedAt: now, Note: note });
+    if (!priced.ok) return posFail(priced.error, priced.errorCode === 'unknown_item' ? 'conflict' : 'invalid', { errorCode: priced.errorCode });
+    // Offline: the price the till charged is what the customer paid.
+    if (offline) {
+      var tillPrice = {};
+      reqLines.forEach(function (l) { if (l.unitPrice !== undefined && Number(l.unitPrice) > 0) tillPrice[l.variantId] = posCents(l.unitPrice); });
+      var differ = priced.lines.filter(function (l) { return tillPrice[l.variantId] !== undefined && Math.abs(tillPrice[l.variantId] - l.unitPrice) > 0.004; });
+      if (differ.length) {
+        differ.forEach(function (l) {
+          cases.push({ kind: 'price_differs', variantId: l.variantId, detail: (items[l.variantId] || {}).name + ': till charged $' + tillPrice[l.variantId].toFixed(2) + ', Mwakete price $' + l.unitPrice.toFixed(2) + '.' });
+          items[l.variantId] = Object.assign({}, items[l.variantId], { price: tillPrice[l.variantId], tiers: [] });
+        });
+        priced = posPriceCart(reqLines, items, Object.assign({}, priceOpts, { maxDiscountPct: 100 }));
+        if (!priced.ok) return posFail(priced.error);
+      }
+    }
+    // Stock. Online: refuse what is not there. Offline: a fact (checked again below).
+    if (!offline) {
+      for (var j = 0; j < priced.lines.length; j++) {
+        var v = pool[priced.lines[j].variantId];
+        if (!isStockTracked(v)) continue;
+        var avail = availableOf(v);
+        var room = locationId !== DEFAULT_LOCATION_ID ? Math.min(avail, ((ownLocationStock(owner.OwnerId)[v.VariantId]) || {})[locationId] || 0) : avail;
+        if (priced.lines[j].qty > room) {
+          return posFail('Only ' + room + ' of "' + items[v.VariantId].name + '" can be sold' + (avail < physicalOf(v) ? ' (some are held for online orders)' : '') + '.', 'conflict', { variantId: v.VariantId, available: room });
+        }
+      }
+    }
+    // Payment.
+    var total = priced.total;
+    var amount = pay.amount === undefined || pay.amount === null || pay.amount === '' ? total : posCents(pay.amount);
+    if (!isFinite(amount) || amount < 0 || amount > total + 0.005) return posFail('The amount paid must be between $0 and the total.');
+    if (amount + 0.005 < total && !posCan(actor, 'credit_sale')) return posDenied(actor, 'credit_sale');
+    var tendered = null, change = 0;
+    if (method === 'cash' && amount + 0.005 >= total) {
+      var cc = posCashChange(total, pay.amountTendered);
+      if (!cc.ok) return posFail(cc.error);
+      tendered = cc.tendered; change = cc.change;
+    }
+    var payStatus = amount > 0 ? posInitialPaymentStatus(method) : 'unpaid';
+    var summary = posPaymentSummary(total, amount > 0 ? [{ amount: amount, status: payStatus }] : []);
+
+    var saleId = newId('pos');
+    var receiptNo = '';
+    if (offline && posValidReceiptNo(body.receiptNo) && !hubRows('PosSales').some(function (s) { return s.OwnerId === owner.OwnerId && s.ReceiptNo === body.receiptNo; })) receiptNo = body.receiptNo;
+    if (!receiptNo) receiptNo = posReceiptNumber(owner);
+    var now = nowIso();
+    var completedAt = new Date(completedMs).toISOString();
+
+    var linesOut = [];
+    for (var k = 0; k < priced.lines.length; k++) {
+      var pl = priced.lines[k];
+      var pv = pool[pl.variantId];
+      var d = applyStockDelta(owner, pv, locationId, -pl.qty, 'SALE', 'pos', saleId, 'POS sale ' + receiptNo + (offline ? ' (offline)' : ''), { fact: offline, userId: actor.id });
+      if (d.error) return posFail(d.error + ' Nothing was sold.', 'conflict');
+      if (offline && d.shortfall > 0) cases.push({ kind: 'oversold', variantId: pv.VariantId, detail: items[pv.VariantId].name + ': sold ' + pl.qty + ', Mwakete had ' + (pl.qty - d.shortfall) + '. Stock stopped at 0 - count the shelf.' });
+      else if (offline && d.belowReserved) cases.push({ kind: 'below_reserved', variantId: pv.VariantId, detail: items[pv.VariantId].name + ': stock is now below what online orders are holding.' });
+      var prod = products[pv.ProductId] || {};
+      linesOut.push({ LineId: newId('pl'), SaleId: saleId, OwnerId: owner.OwnerId, VariantId: pv.VariantId, ProductId: pv.ProductId, Name: prod.Name || '', Label: pv.Label || '',
+        SKU: pv.SKU || '', Qty: pl.qty, UnitPrice: pl.unitPrice, LineDiscount: pl.lineDiscount, LineTotal: pl.net, CostPrice: pv.CostPrice === '' || pv.CostPrice === undefined ? '' : Number(pv.CostPrice),
+        RefundedQty: 0, TrackedStock: isStockTracked(pv) ? 'yes' : 'no', NormalPrice: pl.normalPrice, BulkPrice: pl.bulk ? 'yes' : 'no',
+        PriceOverride: items[pl.variantId].overridden ? 'yes' : 'no' });
+    }
+    appendRowFromObject(posSalesSheet(), { SaleId: saleId, OwnerId: owner.OwnerId, ReceiptNo: receiptNo, LocationId: locationId, Status: 'completed', Subtotal: priced.subtotal,
+      Discount: priced.discount, DiscountNote: priced.discountNote, Tax: priced.tax, Total: total, Currency: POS_CURRENCY, PaymentMethod: method, PaymentStatus: summary.status,
+      AmountTendered: tendered === null ? '' : tendered, ChangeGiven: change, RefundedAmount: 0, ClientTxnId: clientTxnId, CreatedBy: actor.id, CreatedAt: offline ? completedAt : now,
+      UpdatedAt: now, Note: note, Channel: 'in_store', Fulfilment: 'take_away_now', FulfilmentStatus: 'collected', PriceMode: mode,
+      CompletedOffline: offline ? 'yes' : 'no', CompletedAt: completedAt, ReceivedAt: now, DeviceId: actor.deviceId || '', StaffId: actor.id, StaffName: actor.name,
+      PaidAmount: summary.paid, ShiftId: String(body.shiftId || '').slice(0, 40) });
     var ls = posLinesSheet();
     linesOut.forEach(function (l) { appendRowFromObject(ls, l); });
-    appendRowFromObject(posPaymentsSheet(), { PaymentId: newId('pay'), SaleId: saleId, OwnerId: owner.OwnerId, Method: method, Amount: total, Status: status,
-      Reference: method === 'cash' ? '' : String(pay.reference || '').trim().slice(0, 40), Note: method === 'cash' ? '' : 'Recorded by the seller. Mwakete has not verified this payment.', CreatedAt: now });
-    appendAudit({ actorId: owner.OwnerId, actorRole: 'seller', action: 'POS_SALE', entityType: 'pos_sale', entityId: saleId, next: receiptNo + ' ' + total });
+    if (amount > 0) {
+      appendRowFromObject(posPaymentsSheet(), { PaymentId: newId('pay'), SaleId: saleId, OwnerId: owner.OwnerId, Method: method, Amount: amount, Status: payStatus,
+        Reference: method === 'cash' ? '' : String(pay.reference || '').trim().slice(0, 40),
+        Note: method === 'eftpos' ? 'Paid on the bank\'s EFTPOS terminal. Mwakete is not connected to it.' : payStatus === 'pending_verification' ? 'Waiting for a manager to confirm the money arrived.' : '',
+        CreatedAt: offline ? completedAt : now });
+    }
+    var view0 = { saleId: saleId, receiptNo: receiptNo };
+    var caseViews = cases.map(function (c) { return posOpenCase(owner.OwnerId, c.kind, view0, c.variantId, c.detail, actor.deviceId); });
+    appendAudit({ actorId: actor.id, actorRole: 'pos_' + actor.role, action: offline ? 'POS_SALE_OFFLINE' : 'POS_SALE', entityType: 'pos_sale', entityId: saleId,
+      next: receiptNo + ' ' + total + (caseViews.length ? ' cases:' + caseViews.length : '') });
     invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
+    posEmitSaleChange(owner.OwnerId, saleId, 'sale');
     var parts = posSaleParts(saleId);
     var view = posSaleView(hubRows('PosSales').filter(function (s) { return s.SaleId === saleId; })[0], parts.lines, parts.payments, parts.refunds);
-    return ok({ sale: view, receipt: posReceiptOf(owner, view) });
+    return ok({ sale: view, receipt: posReceiptOf(owner, view), cases: caseViews });
   } finally {
     lock.releaseLock();
   }
@@ -305,8 +380,10 @@ function actionPosListSales(owner, body) {
   }).sort(function (a, b) { return String(b.CreatedAt).localeCompare(String(a.CreatedAt)); });
   var limit = Math.max(1, Math.min(200, parseInt(body.limit, 10) || 50));
   return ok({ sales: list.slice(0, limit).map(function (s) {
-    return { saleId: s.SaleId, receiptNo: s.ReceiptNo, status: s.Status, total: Number(s.Total) || 0, refunded: Number(s.RefundedAmount) || 0, paymentMethod: s.PaymentMethod,
-      paymentStatus: s.PaymentStatus, createdAt: s.CreatedAt };
+    return { saleId: s.SaleId, receiptNo: s.ReceiptNo, status: s.Status, statusLabel: POS_CORE_SALE_STATUS_LABEL[s.Status] || s.Status, total: Number(s.Total) || 0,
+      refunded: Number(s.RefundedAmount) || 0, paymentMethod: s.PaymentMethod, methodLabel: POS_CORE_METHOD_LABEL[s.PaymentMethod] || s.PaymentMethod,
+      paymentStatus: s.PaymentStatus, paymentLabel: POS_CORE_PAY_STATUS_LABEL[s.PaymentStatus] || s.PaymentStatus, createdAt: s.CreatedAt,
+      offline: s.CompletedOffline === 'yes', staffName: s.StaffName || '', priceMode: s.PriceMode || 'retail', clientTxnId: s.ClientTxnId || '' };
   }), total: list.length });
 }
 
@@ -324,8 +401,10 @@ function actionPosGetSale(owner, body) {
  * body: saleId, requestId (8-64), lines [{lineId, qty, restock}] (omit lines for a whole-sale void), reason.
  * Refunds are recorded; Mwakete moves no money. A line is put back in stock only when the seller says the goods are back (restock: true).
  */
-function actionPosRefundSale(owner, body) {
+function actionPosRefundSale(owner, body, actor) {
   if (!posHubEnabled()) return hubOff();
+  actor = actor || posOwnerActor(owner);
+  if (!posCan(actor, 'refund')) return posDenied(actor, 'refund');
   var requestId = cleanRequestId(body.requestId);
   if (!requestId) return fail('This refund has no reference number. Reload the page and try again.');
   var reason = String(body.reason || '').trim().slice(0, 120);
@@ -343,6 +422,7 @@ function actionPosRefundSale(owner, body) {
     var sale = findRowById(sheet, 'SaleId', String(body.saleId || ''));
     if (!sale || sale.OwnerId !== owner.OwnerId) return fail('That sale was not found.');
     if (sale.Status === 'refunded') return fail('That sale is already fully refunded.');
+    if (sale.Status === 'voided') return fail('That sale was voided, so there is nothing to refund.');
     var lines = hubRows('PosSaleLines').filter(function (l) { return l.SaleId === sale.SaleId; });
     var asked = Array.isArray(body.lines) && body.lines.length ? body.lines : lines.map(function (l) { return { lineId: l.LineId, qty: Number(l.Qty) - (Number(l.RefundedQty) || 0), restock: body.restockAll === true }; }).filter(function (x) { return x.qty > 0; });
     if (!asked.length) return fail('Nothing is left to refund on that sale.');
@@ -373,7 +453,7 @@ function actionPosRefundSale(owner, body) {
       if (p.restock && p.line.TrackedStock === 'yes') {
         var v = ctx.byId[p.line.VariantId];
         if (v) {
-          var d = applyStockDelta(owner, v, sale.LocationId, p.qty, 'RETURN', 'pos', sale.SaleId, 'POS refund of ' + sale.ReceiptNo, { fact: true, userId: owner.OwnerId });
+          var d = applyStockDelta(owner, v, sale.LocationId, p.qty, 'RETURN', 'pos', sale.SaleId, 'POS refund of ' + sale.ReceiptNo, { fact: true, userId: actor.id });
           restocked.push({ lineId: p.line.LineId, restocked: d.applied });
         }
       }
@@ -386,8 +466,9 @@ function actionPosRefundSale(owner, body) {
     var refundId = newId('ref');
     appendRowFromObject(posRefundsSheet(), { RefundId: refundId, SaleId: sale.SaleId, OwnerId: owner.OwnerId, Amount: amount, Reason: reason,
       LinesJson: JSON.stringify(plan.map(function (p) { return { lineId: p.line.LineId, qty: p.qty, amount: p.money, restock: p.restock && p.line.TrackedStock === 'yes' }; })),
-      IdempotencyKey: requestId, Status: 'recorded', CreatedBy: owner.OwnerId, CreatedAt: nowIso() });
-    appendAudit({ actorId: owner.OwnerId, actorRole: 'seller', action: 'POS_REFUND', entityType: 'pos_sale', entityId: sale.SaleId, next: String(amount), reason: reason });
+      IdempotencyKey: requestId, Status: 'recorded', CreatedBy: actor.id, CreatedAt: nowIso() });
+    appendAudit({ actorId: actor.id, actorRole: 'pos_' + actor.role, action: 'POS_REFUND', entityType: 'pos_sale', entityId: sale.SaleId, next: String(amount), reason: reason });
+    posEmitSaleChange(owner.OwnerId, sale.SaleId, 'refund');
     invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
     var fresh = findRowById(sheet, 'SaleId', sale.SaleId);
     var parts = posSaleParts(sale.SaleId);
@@ -412,7 +493,10 @@ function actionPosReport(owner, body) {
   var inRange = function (t) { return String(t) >= from && String(t) < to; };
   var money = function (n) { return roundMoney(n); };
 
-  var sales = hubRows('PosSales').filter(function (s) { return s.OwnerId === owner.OwnerId && inRange(s.CreatedAt); });
+  var allSales = hubRows('PosSales').filter(function (s) { return s.OwnerId === owner.OwnerId && inRange(s.CreatedAt); });
+  // A voided sale never happened as far as money goes: counted apart, not in gross.
+  var voided = allSales.filter(function (s) { return s.Status === 'voided'; });
+  var sales = allSales.filter(function (s) { return s.Status !== 'voided'; });
   var saleIds = {};
   sales.forEach(function (s) { saleIds[s.SaleId] = true; });
   var refunds = hubRows('PosRefunds').filter(function (r) { return r.OwnerId === owner.OwnerId && inRange(r.CreatedAt); });
@@ -423,7 +507,7 @@ function actionPosReport(owner, body) {
   var byMethod = {};
   hubRows('PosPayments').filter(function (p) { return p.OwnerId === owner.OwnerId && saleIds[p.SaleId]; }).forEach(function (p) {
     var k = p.Method + '|' + p.Status;
-    byMethod[k] = byMethod[k] || { method: p.Method, status: p.Status, label: POS_PAYMENT_LABEL[p.Status] || p.Status, count: 0, amount: 0 };
+    byMethod[k] = byMethod[k] || { method: p.Method, methodLabel: POS_CORE_METHOD_LABEL[p.Method] || p.Method, status: p.Status, label: POS_CORE_PAY_STATUS_LABEL[p.Status] || p.Status, count: 0, amount: 0 };
     byMethod[k].count++; byMethod[k].amount = money(byMethod[k].amount + (Number(p.Amount) || 0));
   });
 
@@ -451,7 +535,7 @@ function actionPosReport(owner, body) {
   var byUser = {};
   sales.forEach(function (s) {
     var k = s.CreatedBy || owner.OwnerId;
-    byUser[k] = byUser[k] || { userId: k, name: k === owner.OwnerId ? (owner.StoreName || 'Owner') + ' (owner)' : k, sales: 0, gross: 0 };
+    byUser[k] = byUser[k] || { userId: k, name: s.StaffName || (k === owner.OwnerId ? (owner.StoreName || 'Owner') + ' (owner)' : k), sales: 0, gross: 0 };
     byUser[k].sales++; byUser[k].gross = money(byUser[k].gross + (Number(s.Total) || 0));
   });
 
@@ -471,7 +555,13 @@ function actionPosReport(owner, body) {
 
   return ok({ range: { from: fromDay, to: toDay, tzOffsetHours: posTzOffsetHours() }, currency: POS_CURRENCY,
     channels: {
-      pos: { sales: sales.length, gross: posGross, refunds: posRefunds, net: money(posGross - posRefunds) },
+      pos: { sales: sales.length, gross: posGross, refunds: posRefunds, net: money(posGross - posRefunds),
+        voided: { sales: voided.length, amount: money(voided.reduce(function (n, s) { return n + (Number(s.Total) || 0); }, 0)) },
+        offline: sales.filter(function (s) { return s.CompletedOffline === 'yes'; }).length,
+        retail: money(sales.filter(function (s) { return s.PriceMode !== 'wholesale'; }).reduce(function (n, s) { return n + (Number(s.Total) || 0); }, 0)),
+        wholesale: money(sales.filter(function (s) { return s.PriceMode === 'wholesale'; }).reduce(function (n, s) { return n + (Number(s.Total) || 0); }, 0)),
+        discounts: money(sales.reduce(function (n, s) { return n + (Number(s.Discount) || 0); }, 0)),
+        tax: money(sales.reduce(function (n, s) { return n + (Number(s.Tax) || 0); }, 0)) },
       online: { orders: online.length, gross: onlineGross, refunds: 0, net: onlineGross, note: 'Paid and fulfilled orders, including delivery. Online refunds are handled in each order.' },
       connected: { sales: ext.length, gross: extGross, refunds: extRefunds, net: money(extGross - extRefunds), note: 'Sales reported by your connected POS systems.' }
     },

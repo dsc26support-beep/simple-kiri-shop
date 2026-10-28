@@ -74,6 +74,10 @@ function recordStockMovements(movements) {
       m.NewStock !== '' && m.PreviousStock !== '' && Number(m.NewStock) < Number(m.PreviousStock);
   });
   if (fell.length && typeof rebalanceLocationStock === 'function') rebalanceLocationStock(fell);
+
+  // Mwakete POS tills follow stock through this change log (PosSync.gs).
+  // typeof guard: this file must keep working if that one isn't deployed.
+  if (typeof posEmitStockMovements === 'function') posEmitStockMovements(movements);
 }
 
 /* ==================== Stock maths (pure) ==================== */

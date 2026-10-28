@@ -3,6 +3,7 @@
  * Copies backend rule files that the browser must run identically:
  *   apps-script/ListingRules.gs   -> assets/js/listing-rules.js    (listing checks)
  *   apps-script/ProductOptions.gs -> assets/js/product-options.js  (options / variants)
+ *   apps-script/PosCore.gs        -> assets/js/pos-core.js         (POS prices, payments)
  * One source each: edit the .gs, then `npm run build`.
  *
  *   node tools/build-shared.js          write the copies
@@ -14,7 +15,8 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const PAIRS = [
   ['apps-script/ListingRules.gs', 'assets/js/listing-rules.js'],
-  ['apps-script/ProductOptions.gs', 'assets/js/product-options.js']
+  ['apps-script/ProductOptions.gs', 'assets/js/product-options.js'],
+  ['apps-script/PosCore.gs', 'assets/js/pos-core.js']
 ];
 const CHECK = process.argv.includes('--check');
 let stale = 0;

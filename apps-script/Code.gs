@@ -102,6 +102,7 @@ var PROTECTED_POST_ACTIONS = [
   'listIntegrationMappings', 'saveIntegrationMapping', 'retireIntegrationMapping', 'listIntegrationEvents', 'resolveIntegrationEvent', 'listExternalSales',
   'listIntegrationOutbox', 'retryIntegrationOutbox', 'sendIntegrationOutboxNow',
   'posSearch', 'posCheckout', 'posListSales', 'posGetSale', 'posRefundSale', 'posReport', 'posGetSettings', 'posSaveSettings',
+  'posCatalog', 'posChanges', 'posUploadSales', 'posLookupTxns', 'posConfirmPayment', 'posPendingPayments', 'posVoidSale', 'posListCases', 'posResolveCase',
   // Marketing engine - every one checks isOwnerAdmin inside (Marketing.gs).
   'getMarketingOverview', 'createMarketingCampaign', 'setMarketingCampaignStatus', 'setMarketingPaused',
   'getInvoiceSettings', 'saveInvoiceSettings', 'previewInvoiceDesign', 'sendInvoice', 'listOrderDocuments', 'getCampaignStudio', 'setStoreBrandColor', 'getStoreLogoData', 'saveCampaignDraft', 'startCampaignPayment', 'submitCampaignPayment', 'campaignAction',
@@ -150,7 +151,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'optin1-2026-10-24';
+var APP_VERSION = 'pos2-2026-10-28';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -678,6 +679,15 @@ function doPost(e) {
         case 'posReport': return jsonOut(actionPosReport(owner, body));
         case 'posGetSettings': return jsonOut(actionPosGetSettings(owner));
         case 'posSaveSettings': return jsonOut(actionPosSaveSettings(owner, body));
+        case 'posCatalog': return jsonOut(actionPosCatalog(owner, body));
+        case 'posChanges': return jsonOut(actionPosChanges(owner, body));
+        case 'posUploadSales': return jsonOut(actionPosUploadSales(owner, body));
+        case 'posLookupTxns': return jsonOut(actionPosLookupTxns(owner, body));
+        case 'posConfirmPayment': return jsonOut(actionPosConfirmPayment(owner, body));
+        case 'posPendingPayments': return jsonOut(actionPosPendingPayments(owner, body));
+        case 'posVoidSale': return jsonOut(actionPosVoidSale(owner, body));
+        case 'posListCases': return jsonOut(actionPosListCases(owner, body));
+        case 'posResolveCase': return jsonOut(actionPosResolveCase(owner, body));
         case 'getMarketingOverview': return jsonOut(actionGetMarketingOverview(owner));
         // Seller Campaign Studio (SellerCampaigns.gs)
         case 'getCampaignStudio': return jsonOut(actionGetCampaignStudio(owner));
