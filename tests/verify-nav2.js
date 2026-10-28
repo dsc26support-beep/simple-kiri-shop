@@ -28,7 +28,8 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     };
   });
 
-  ok('active tab color is theme purple #332d63', st.activeColor === 'rgb(51, 45, 99)', st.activeColor);
+  // Floating bar (owner request, 28 Oct 2026): the current tab in Mwakete red.
+  ok('active tab color is Mwakete red #ce1126', st.activeColor === 'rgb(206, 17, 38)', st.activeColor);
 
   // A page with no matching tab must simply have none highlighted, not crash
   // or mark the wrong one.
