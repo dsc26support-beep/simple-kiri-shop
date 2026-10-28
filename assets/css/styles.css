@@ -8981,7 +8981,11 @@ form.search-box.is-pinned::before {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
   }
 
-  .bottom-nav-item.is-active { color: var(--color-red); }
+  /* Purple when tapped, and the tab you are on stays purple (owner
+     request, 28 Oct 2026 - it was red). Icon and label only, no fill. */
+  .bottom-nav-item.is-active,
+  .bottom-nav-item:active { color: var(--color-purple); }
+  .bottom-nav-item { -webkit-tap-highlight-color: transparent; }
 
   body.has-bottom-nav { padding-bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + 4px + env(safe-area-inset-bottom)); }
 
