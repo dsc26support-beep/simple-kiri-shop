@@ -27,6 +27,12 @@ async function init() {
   }
 
   renderRows(slugs);
+  // Items added before carts kept pictures: fetched per store, then just that
+  // store's picture row is redrawn (same height, so nothing moves).
+  slugs.forEach((slug) => Cart.fillPhotos(slug).then((changed) => {
+    const row = changed && document.querySelector(`[data-thumbs-for="${CSS.escape(slug)}"]`);
+    if (row) row.outerHTML = thumbsHtml(slug);
+  }));
   await hydrateStoreNames(slugs);
 }
 
@@ -47,6 +53,15 @@ function renderEmpty() {
  * (.my-cart-name is clamped in CSS), so the swap cannot change the row's
  * height and cannot move the page.
  */
+// Up to four of the cart's item pictures, then "+N" for the rest.
+const MY_CART_THUMBS = 4;
+function thumbsHtml(slug) {
+  const cart = Cart.getCart(slug);
+  if (!cart.length) return '';
+  const more = cart.length - MY_CART_THUMBS;
+  return `<p class="my-cart-thumbs" data-thumbs-for="${escapeHtml(slug)}">${cart.slice(0, MY_CART_THUMBS).map((l) => Cart.thumbHtml(l, 'cart-thumb--small')).join('')}${more > 0 ? `<span class="my-cart-more">+${more}</span>` : ''}</p>`;
+}
+
 function renderRows(slugs) {
   const rows = slugs.map((slug) => {
     const count = Cart.getItemCount(slug);
@@ -60,6 +75,7 @@ function renderRows(slugs) {
         <div class="my-cart-info">
           <p class="my-cart-name" data-name-for="${escapeHtml(slug)}">${escapeHtml(slug)}</p>
           <p class="my-cart-meta">${count} ${noun} · ${escapeHtml(formatMoney(total))}</p>
+          ${thumbsHtml(slug)}
           <p class="my-cart-actions">
             <a class="btn btn-primary btn-small" href="cart.html?store=${encodeURIComponent(slug)}">View Cart</a>
             <a class="btn btn-small" href="store.html?store=${encodeURIComponent(slug)}">Keep Shopping</a>

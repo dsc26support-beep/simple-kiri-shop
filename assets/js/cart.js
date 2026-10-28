@@ -58,6 +58,7 @@ const Cart = (function () {
     const existing = cart.find((line) => line.variantId === item.variantId);
     if (existing) {
       existing.qty += item.qty;
+      if (item.imageUrl && !existing.imageUrl) existing.imageUrl = item.imageUrl;
       // The listing's latest bulk prices win over what the line was added with.
       if (item.tiers !== undefined || item.minQty !== undefined) {
         existing.tiers = item.tiers;
@@ -112,5 +113,54 @@ const Cart = (function () {
     return Object.keys(ids).length;
   }
 
-  return { getCart, addItem, updateQty, removeItem, clearCart, getTotal, getItemCount, getDistinctProductCount, unitPriceOf, lineTotal, minQtyOf, nextTierOf };
+  // Product pictures in the cart (owner request, 28 Oct 2026). A line keeps
+  // imageUrl - the chosen option's own photo, else the product's main photo -
+  // saved when it is added. Lines from before that (or re-ordered from an old
+  // order) get theirs from the store's listing the first time a cart page
+  // opens: fillPhotos, one listProducts call per store, at most once a page.
+  function photoFor(product, variantId) {
+    const v = (product.variants || []).filter((x) => x.variantId === variantId)[0];
+    if (v && Array.isArray(v.images) && v.images[0]) return v.images[0];
+    const own = typeof productOwnPhotos === 'function' ? productOwnPhotos(product) : [product.imageUrl];
+    return own[0] || '';
+  }
+
+  const photoLookups = {};
+  function fillPhotos(storeSlug) {
+    const missing = getCart(storeSlug).filter((l) => !l.imageUrl && !l.noPhoto);
+    if (!missing.length || typeof Api === 'undefined') return Promise.resolve(false);
+    if (!photoLookups[storeSlug]) {
+      photoLookups[storeSlug] = Api.get('listProducts', { storeSlug })
+        .then((res) => (res && res.ok ? res.products || [] : null))
+        .catch(() => null);
+    }
+    return photoLookups[storeSlug].then((products) => {
+      if (!products) return false;   // offline or failed: try again on the next page
+      const cart = getCart(storeSlug);
+      let changed = false;
+      cart.forEach((line) => {
+        if (line.imageUrl || line.noPhoto) return;
+        const p = products.filter((x) => x.productId === line.productId)[0];
+        const url = p ? photoFor(p, line.variantId) : '';
+        if (url) line.imageUrl = url; else line.noPhoto = true;   // no photo to find - stop asking
+        changed = true;
+      });
+      if (changed) saveCart(storeSlug, cart);
+      return changed;
+    });
+  }
+
+  // The small picture for a line: the photo, or the product's initials in a
+  // coloured square when there is none (yet). Decorative - the name is beside it.
+  function thumbHtml(line, cls) {
+    const c = 'cart-thumb' + (cls ? ' ' + cls : '');
+    if (line.imageUrl) {
+      const src = typeof optimizedImageUrl === 'function' ? optimizedImageUrl(line.imageUrl, IMG_W.thumb) : line.imageUrl;
+      return `<img class="${c}" src="${escapeHtml(src)}" alt="" loading="lazy" decoding="async">`;
+    }
+    const name = String(line.label || '').split(' — ')[0];
+    return `<span class="${c} cart-thumb--empty" aria-hidden="true">${escapeHtml(typeof initials === 'function' ? initials(name) : name.charAt(0))}</span>`;
+  }
+
+  return { getCart, addItem, updateQty, removeItem, clearCart, getTotal, getItemCount, getDistinctProductCount, unitPriceOf, lineTotal, minQtyOf, nextTierOf, photoFor, fillPhotos, thumbHtml };
 })();

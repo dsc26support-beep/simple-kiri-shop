@@ -8993,3 +8993,69 @@ form.search-box.is-pinned::before {
 
   body.has-bottom-nav .card-cart-toast { bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + 12px + env(safe-area-inset-bottom)); }
 }
+
+/* Product pictures in carts (owner request, 28 Oct 2026): Your Cart, the
+   checkout summary and Your Carts. Cart.thumbHtml (cart.js) draws them. */
+.cart-thumb {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+}
+
+.cart-thumb--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+  font-weight: 700;
+}
+
+.cart-thumb--small {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 420px) {
+  .cart-thumb:not(.cart-thumb--small) { width: 56px; height: 56px; }
+}
+
+.my-cart-thumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin: 0 0 var(--space-2);
+}
+
+.my-cart-more {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+/* Your Cart on a phone: picture on the left; name and line total on top,
+   quantity and Remove underneath - so the name is not squeezed to a word a
+   line and nothing runs off the edge. */
+@media (max-width: 600px) {
+  #cart-items .cart-line {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "thumb info total" "thumb qty remove" "bulk bulk bulk";
+    align-items: center;
+    column-gap: var(--space-3);
+    row-gap: var(--space-2);
+  }
+  #cart-items .cart-thumb { grid-area: thumb; align-self: start; }
+  #cart-items .cart-line-info { grid-area: info; min-width: 0; }
+  #cart-items .cart-line-total { grid-area: total; align-self: start; }
+  #cart-items .cart-line-qty { grid-area: qty; justify-self: start; }
+  #cart-items [data-action="remove"] { grid-area: remove; }
+  #cart-items .cart-line-bulk { grid-area: bulk; }
+}

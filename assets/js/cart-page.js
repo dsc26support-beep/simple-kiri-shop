@@ -93,6 +93,7 @@ function render() {
     .map(
       (line) => `
       <div class="cart-line${hasBulk(line) ? ' cart-line--bulk' : ''}" data-variant-id="${escapeHtml(line.variantId)}">
+        ${Cart.thumbHtml(line)}
         <div class="cart-line-info">
           <strong>${escapeHtml(line.label)}</strong><br>
           <span class="helper-text cart-line-price">${linePriceHtml(line)}</span>
@@ -109,6 +110,8 @@ function render() {
 
   document.getElementById('cart-total').textContent = formatMoney(Cart.getTotal(currentSlug));
   liveEl.textContent = `${Cart.getItemCount(currentSlug)} item(s) in your cart.`;
+  // Items added before carts kept pictures get theirs from the store, once.
+  Cart.fillPhotos(currentSlug).then((changed) => { if (changed) render(); });
 }
 
 // "$16.50 each - Bulk price" (wholesale stores). A line without bulk prices
