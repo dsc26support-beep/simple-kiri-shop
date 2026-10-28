@@ -201,7 +201,7 @@ const PosApp = (function () {
       <div class="pos-sell">
         <section aria-label="Find items">
           <div class="pos-search-row">
-            <input type="search" id="pos-q" placeholder="Scan a barcode, or type a name or SKU" autocomplete="off" aria-label="Scan a barcode, or search" value="${esc(S.query)}">
+            <input type="search" id="pos-q" placeholder="Scan or search" autocomplete="off" aria-label="Scan a barcode, or search" value="${esc(S.query)}">
             ${shell.camera ? '<button type="button" class="btn" id="pos-cam">Camera</button>' : ''}
           </div>
           <div id="pos-scan-msg" aria-live="polite"></div>
@@ -301,7 +301,7 @@ const PosApp = (function () {
           <input type="number" min="1" step="1" inputmode="numeric" value="${l.qty}" data-qty="${idx}" aria-label="Quantity">
           <button type="button" class="btn" data-inc="${idx}" aria-label="One more">+</button>
           <button type="button" class="btn" data-del="${idx}" aria-label="Remove">✕</button></div>
-        <div class="pos-line-total"><span></span><span>${p ? money(p.lineTotal) : ''}</span></div></div>`;
+        <div class="pos-line-total">${p ? money(p.lineTotal) : ''}</div></div>`;
     }).join('');
     const methods = (S.meta.methods && S.meta.methods.length ? S.meta.methods : POS_CORE_METHODS.map((m) => ({ id: m, label: POS_CORE_METHOD_LABEL[m], verify: posInitialPaymentStatus(m) !== 'paid' })));
     const total = pr.ok ? pr.total : 0;
@@ -310,8 +310,8 @@ const PosApp = (function () {
       ${S.meta.bulkOn ? modeHtml() : ''}
       ${linesHtml}
       ${can('discount') ? `<div class="field" style="margin-top:var(--space-3)"><label for="pos-disc">Discount <span class="pos-muted">(up to ${Number((S.meta.settings || {}).maxDiscountPct) || 0}%)</span></label>
-        <div style="display:flex;gap:6px"><input type="number" id="pos-disc" min="0" step="0.01" inputmode="decimal" value="${esc(S.discount.value)}" style="flex:1;min-height:44px">
-        <select id="pos-disc-type" aria-label="Discount type" style="min-height:44px"><option value="percent" ${S.discount.type === 'percent' ? 'selected' : ''}>%</option><option value="amount" ${S.discount.type === 'amount' ? 'selected' : ''}>$</option></select></div></div>` : ''}
+        <div class="pos-disc-row"><input type="number" id="pos-disc" min="0" step="0.01" inputmode="decimal" value="${esc(S.discount.value)}">
+        <select id="pos-disc-type" aria-label="Discount type"><option value="percent" ${S.discount.type === 'percent' ? 'selected' : ''}>%</option><option value="amount" ${S.discount.type === 'amount' ? 'selected' : ''}>$</option></select></div></div>` : ''}
       <div class="pos-totals">
         <div><span>Subtotal</span><span>${money(pr.subtotal || 0)}</span></div>
         ${pr.discount ? `<div><span>${esc(pr.discountNote)}</span><span>−${money(pr.discount)}</span></div>` : ''}
