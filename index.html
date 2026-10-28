@@ -46,24 +46,37 @@
   </div>
 
   <main id="main" class="home-main page-products">
-    <!-- Alibaba-inspired addition: this is the SAME "Popular Stores" section
-         that used to sit below the product grid, moved up to do the job of a
-         discovery carousel and (see styles.css) made visible on mobile, where
-         it used to be hidden below 600px. No new component, no new data, no
-         new request - getHomePageData already fetches this.
-         First in the page since Oct 2026 (owner request): on a computer it
-         sits right under the header, above the search. Phones keep it below
-         the quick actions via the flex order in styles.css. -->
-    <section class="trending-stores" aria-labelledby="trending-stores-heading">
+    <!-- Quick actions to places that already exist, as one rounded row of text
+         tabs right under the yellow strip (owner request, 28 Oct 2026: the
+         homepage order is tabs, search, Popular Stores, products, on every
+         screen size).
+         "Request a Quote" and "Hire" were considered and left out - Mwakete has
+         no quote-request feature and no page dedicated to Hire, and this strip
+         only links to things a shopper can actually do today. -->
+    <section class="home-quick-actions">
       <div class="container">
-        <h2 id="trending-stores-heading">Popular Stores</h2>
-        <p id="trending-stores-status" class="helper-text" role="status"><span class="loading-msg">Loading<span class="loading-dots"><span></span><span></span><span></span></span></span></p>
-        <div id="trending-stores-list" class="logo-carousel"></div>
+        <nav class="quick-action-strip" aria-label="Quick actions">
+          <a class="quick-action-item" href="categories.html">
+            <span class="quick-action-label">Categories</span>
+          </a>
+          <a class="quick-action-item" href="stores.html">
+            <span class="quick-action-label">Stores</span>
+          </a>
+          <a class="quick-action-item" href="categories.html?category=rental">
+            <span class="quick-action-label">Rentals</span>
+          </a>
+          <a class="quick-action-item" href="categories.html?category=services">
+            <span class="quick-action-label">Services</span>
+          </a>
+          <a class="quick-action-item" href="recent.html">
+            <span class="quick-action-label">Recents</span>
+          </a>
+        </nav>
       </div>
     </section>
 
-    <!-- Search first, because that is how someone who knows what they want
-         gets there fastest. Everything below is for someone who does not. -->
+    <!-- Search straight after the tabs, because that is how someone who knows
+         what they want gets there fastest. -->
     <section class="hero">
       <div class="container">
         <!-- No submit button on this one. The magnifying glass is gone and the
@@ -87,34 +100,18 @@
       </div>
     </section>
 
-    <!-- Alibaba-inspired addition: quick actions to places that already exist.
-         "Request a Quote" and "Hire" were considered and left out - Mwakete has
-         no quote-request feature and no page dedicated to Hire, and this strip
-         only links to things a shopper can actually do today. -->
-    <section class="home-quick-actions">
+    <!-- Alibaba-inspired addition: this is the SAME "Popular Stores" section
+         that used to sit below the product grid, moved up to do the job of a
+         discovery carousel and (see styles.css) made visible on mobile, where
+         it used to be hidden below 600px. No new component, no new data, no
+         new request - getHomePageData already fetches this.
+         Under the search box on every screen size (owner request, 28 Oct
+         2026). -->
+    <section class="trending-stores" aria-labelledby="trending-stores-heading">
       <div class="container">
-        <nav class="quick-action-strip" aria-label="Quick actions">
-          <a class="quick-action-item" href="categories.html">
-            <span class="quick-action-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg></span>
-            <span class="quick-action-label">Categories</span>
-          </a>
-          <a class="quick-action-item" href="stores.html">
-            <span class="quick-action-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"></path><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"></path><path d="M5 11v9h14v-9"></path></svg></span>
-            <span class="quick-action-label">Stores</span>
-          </a>
-          <a class="quick-action-item" href="categories.html?category=rental">
-            <span class="quick-action-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span>
-            <span class="quick-action-label">Rentals</span>
-          </a>
-          <a class="quick-action-item" href="categories.html?category=services">
-            <span class="quick-action-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg></span>
-            <span class="quick-action-label">Services</span>
-          </a>
-          <a class="quick-action-item" href="recent.html">
-            <span class="quick-action-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4"></path><path d="M3 4v5h5"></path><path d="M12 8v4l3 2"></path></svg></span>
-            <span class="quick-action-label">Recents</span>
-          </a>
-        </nav>
+        <h2 id="trending-stores-heading">Popular Stores</h2>
+        <p id="trending-stores-status" class="helper-text" role="status"><span class="loading-msg">Loading<span class="loading-dots"><span></span><span></span><span></span></span></span></p>
+        <div id="trending-stores-list" class="logo-carousel"></div>
       </div>
     </section>
 
