@@ -43,74 +43,19 @@ const shot = async (p, name) => { if (SHOT) await p.screenshot({ path: `${SHOT}/
 
   // ---- feature off
   let p = await open(sellerCtx, 'owner/pos.html');
-  await p.waitForSelector('#pos-off:not(.hidden)', { timeout: 8000 }).catch(() => {});
-  ok('POS page explains when the feature is off', await p.isVisible('#pos-off') && !(await p.isVisible('#pos-main')));
+  await p.waitForFunction(() => /not switched on/i.test(document.body.innerText), null, { timeout: 8000 }).catch(() => {});
+  ok('POS page explains when the feature is off', /not switched on/i.test(await p.textContent('body')) && !(await p.$('.pos-tile')));
   await shot(p, 'pos-off');
   p = await open(sellerCtx, 'owner/integrations.html');
   await p.waitForSelector('#hub-off:not(.hidden)', { timeout: 8000 }).catch(() => {});
   ok('Integrations page explains when the feature is off', await p.isVisible('#hub-off') && !(await p.isVisible('#hub-main')));
 
-  // ---- switch on
+  // ---- switch on. The till itself (scan, sell, offline, refunds, reports) is
+  // tested end to end in tests/verify-pos-app.js since the Oct 2026 Mwakete POS.
   box.__props.POS_HUB = 'on';
-  p = await open(sellerCtx, 'owner/pos.html');
-  await p.waitForSelector('#pos-main:not(.hidden)', { timeout: 8000 });
-  ok('POS opens when on', await p.isVisible('#pos-q'));
-  await p.fill('#pos-q', '9300001'); await p.press('#pos-q', 'Enter');
-  await p.waitForSelector('.pos-line', { timeout: 8000 });
-  ok('scanning a barcode puts the item in the cart', (await p.textContent('#pos-lines')).includes('Rice'));
-  await p.click('.pos-qty [data-d="1"]');
-  ok('total is 2 x 20 = 40.00', /40\.00/.test(await p.textContent('#pos-total')));
-  await p.fill('#pos-tender', '50');
-  ok('change shown before charging', /10\.00/.test(await p.textContent('#pos-change')));
-  await shot(p, 'pos-cart');
-  await p.click('#pos-charge');
-  await p.waitForSelector('#receipt-modal:not(.hidden)', { timeout: 8000 });
-  ok('receipt shown with number and total', /R-\d{8}-\d{4}/.test(await p.textContent('#receipt-body')) && /40\.00/.test(await p.textContent('#receipt-body')));
-  ok('stock went 12 -> 10 on the server', stock('v1') === 10, stock('v1'));
-  ok('cart is cleared after the sale', (await p.textContent('#pos-lines')).includes('Nothing added'));
-  ok('POS page has no sideways scroll on a phone', await noScroll(p));
-  await shot(p, 'pos-receipt');
-  await p.click('#receipt-close');
-
-  // card payment is labelled as not verified
-  await p.fill('#pos-q', 'RICE1'); await p.press('#pos-q', 'Enter');
-  await p.waitForSelector('.pos-line');
-  await p.check('input[name="pay"][value="card"]');
-  ok('card shows the "not verified" warning', /not verified/i.test(await p.textContent('#pay-digital')));
-  await p.click('#pos-charge');
-  await p.waitForSelector('#receipt-modal:not(.hidden)');
-  ok('card receipt says recorded by seller / not verified', /not verified|unverified/i.test(await p.textContent('#receipt-body')));
-  await p.click('#receipt-close');
-
-  // offline blocks the sale
-  await p.fill('#pos-q', 'RICE1'); await p.press('#pos-q', 'Enter'); await p.waitForSelector('.pos-line');
-  await p.context().setOffline(true);
-  await p.evaluate(() => window.dispatchEvent(new Event('offline')));
-  ok('offline: banner shown and charging disabled', await p.isVisible('#pos-offline') && await p.isDisabled('#pos-charge'));
-  await shot(p, 'pos-offline');
-  await p.context().setOffline(false);
-  await p.evaluate(() => window.dispatchEvent(new Event('online')));
-  await p.click('#pos-clear');
-
-  // sales + refund
-  await p.click('[data-tab="sales"]');
-  await p.waitForSelector('#sales-list tbody tr');
-  ok('sales history lists both sales', (await p.$$('#sales-list tbody tr')).length === 2);
-  await p.click('#sales-list tbody tr:last-child button');
-  await p.waitForSelector('#rf-go');
-  await p.fill('.pos-refund-row input[type=number]', '1');
-  await p.check('.pos-refund-row input[type=checkbox]');
-  await p.fill('#rf-reason', 'wrong size');
-  await shot(p, 'pos-sale-detail');
-  await p.click('#rf-go');
-  await p.waitForFunction(() => /Refunds recorded/.test(document.getElementById('sale-detail').textContent), null, { timeout: 8000 });
-  ok('refund recorded, one unit back in stock', stock('v1') === 11, stock('v1'));
-  await p.click('[data-tab="report"]');
-  await p.waitForSelector('#rep-body table');
-  ok('report shows in-store, online, connected channels', /In-store/.test(await p.textContent('#rep-body')) && /Connected systems/.test(await p.textContent('#rep-body')));
-  await shot(p, 'pos-report');
 
   // ---- integrations
+  const v2start = stock('v2');
   p = await open(sellerCtx, 'owner/integrations.html');
   await p.waitForSelector('#hub-main:not(.hidden)', { timeout: 8000 });
   await p.click('#hub-add');
@@ -135,7 +80,7 @@ const shot = async (p, name) => { if (SHOT) await p.screenshot({ path: `${SHOT}/
   await p.click('#wiz-done');
   // an unknown item arrives
   const r1 = send({ type: 'sale', id: 'T-1', occurredAt: new Date().toISOString(), lines: [{ sku: 'MYSTERY', name: 'Mystery', qty: 1, unitPrice: 5 }], payment: { method: 'cash', status: 'paid' } });
-  ok('sale with an unknown item is held', r1.status === 'needs_mapping' && stock('v2') === 39, JSON.stringify(r1));
+  ok('sale with an unknown item is held', r1.status === 'needs_mapping' && stock('v2') === v2start, JSON.stringify(r1));
   await p.reload({ waitUntil: 'load' });
   await p.waitForSelector('.hub-map', { timeout: 8000 });
   await shot(p, 'hub-main');
@@ -146,7 +91,7 @@ const shot = async (p, name) => { if (SHOT) await p.screenshot({ path: `${SHOT}/
   await p.waitForFunction(() => /Nothing to match/.test(document.getElementById('hub-mappings').textContent), null, { timeout: 8000 });
   await p.click('#hub-events [data-do="retry"]'); await p.waitForTimeout(800); if (process.env.DBG) console.log(await p.textContent('#hub-events'), await p.textContent('#hub-status'));
   await p.waitForFunction(() => !document.querySelector('#hub-events [data-do="retry"]'), null, { timeout: 8000 });
-  ok('after matching and retry the stock came off', stock('v2') === 38, stock('v2'));
+  ok('after matching and retry the stock came off', stock('v2') === v2start - 1, stock('v2'));
   ok('Integrations page has no sideways scroll on a phone', await noScroll(p));
   await shot(p, 'hub-after');
   await p.click('.hub-card [data-act="settings"]');

@@ -933,9 +933,14 @@ function actionCreateOrUpdateProduct(owner, body) {
   try {
     // A retried Save (same requestId) gets the first answer back - never a
     // second product.
-    return idempotentResult('product:' + owner.OwnerId, body.requestId, function () {
+    var saved = idempotentResult('product:' + owner.OwnerId, body.requestId, function () {
       return saveProductLocked(owner, body, name, category, subcategoryId, listingType, gate, listingInput, detailsIn ? detailsIn.details : null);
     });
+    // Mwakete POS tills re-read a product whose name, prices or barcodes changed (PosSync.gs).
+    if (saved && saved.ok && !saved.replayed && typeof posEmitCatalogChange === 'function') {
+      posEmitCatalogChange(owner.OwnerId, (saved.product && (saved.product.productId || saved.product.ProductId)) || saved.productId || body.productId || '');
+    }
+    return saved;
   } finally {
     lock.releaseLock();
   }
@@ -1148,7 +1153,14 @@ function actionDeleteProduct(owner, body) {
   var sheet = getSheet('Products');
   var existing = findRowById(sheet, 'ProductId', body.productId);
   if (!existing || existing.OwnerId !== owner.OwnerId) return fail('Product not found');
-  updateRowFromObject(sheet, existing.__row, { Status: 'archived', UpdatedAt: nowIso() });
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    updateRowFromObject(sheet, existing.__row, { Status: 'archived', UpdatedAt: nowIso() });
+    if (typeof posEmitCatalogChange === 'function') posEmitCatalogChange(owner.OwnerId, existing.ProductId);
+  } finally {
+    lock.releaseLock();
+  }
   invalidateCache([storeProductsCacheKey(owner.StoreSlug)]);
   return ok({});
 }

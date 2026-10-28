@@ -220,7 +220,7 @@ function renderTrendingProducts(products) {
   }
 
   statusEl.textContent = '';
-  listEl.innerHTML = products.map((p) => renderBrowseProductCard(p, { showLocation: true })).join('');
+  listEl.innerHTML = products.map((p) => renderBrowseProductCard(p, { showLocation: true, overlay: true })).join('');
   dealInCards(listEl);
   // Card badges cannot carry their own popover (they are inside the card's
   // link), so the page explains them once. Renders nothing when no card on the

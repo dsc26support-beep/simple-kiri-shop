@@ -1,0 +1,17 @@
+{
+  "name": "Mwakete POS",
+  "short_name": "Mwakete POS",
+  "description": "Mwakete point of sale: sell in store, scan barcodes, manage stock - works offline and syncs with Mwakete.com.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#332d63",
+  "icons": [
+    { "src": "../assets/img/app-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "../assets/img/app-icon-android-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "../assets/img/app-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

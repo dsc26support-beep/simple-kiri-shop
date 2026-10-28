@@ -977,6 +977,36 @@ function renderBrowseProductCard(product, opts) {
   const cartBtn = booking || !(product.variants || []).length ? '' :
     `<button type="button" class="card-cart-btn" data-card-key="${escapeHtml(browseCardKey(product))}" aria-label="Add ${escapeHtml(product.name)} to cart">${CART_PLUS_ICON}</button>`;
 
+  const nameLink = `<a class="product-card-link" href="${escapeHtml(href)}" aria-label="${escapeHtml(product.name)}, ${escapeHtml(product.storeName)}">${escapeHtml(cardTextLine(product))}</a>`;
+  const priceHtml = `<strong class="product-price product-price--card">${String(priceText).replace('-', '-<wbr>')}</strong>`;
+
+  // The homepage (owner request, 28 Oct 2026): the name and price sit on the
+  // photo over a soft dark shade, the cart button in the photo's top-right
+  // corner; the rest of the card is unchanged underneath.
+  if (opts.overlay) {
+    return `
+    <article class="product-card product-card--overlay${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}">
+      <div class="product-card-photo">
+        ${media}
+        <div class="product-card-shade">
+          <h3 class="product-name">${nameLink}</h3>
+          ${priceHtml}
+        </div>
+        ${cartBtn}
+      </div>
+      <div class="product-card-body">
+        ${allVariantsSoldOut(product) ? '<span class="card-soldout">Sold out</span>' : ''}
+        ${cardSwatchesHtml(product)}
+        ${renderStars(product.rating, product.reviewCount)}
+        <div class="product-card-meta">
+          <span class="product-card-place">${escapeHtml(place)}</span>${deliveryIcons}${sellerBadgeRow(product)}
+        </div>
+        ${cardVerifiedRow(product)}
+      </div>
+    </article>
+  `;
+  }
+
   return `
     <article class="product-card${cardClass ? ' ' + cardClass : ''}" data-product-id="${escapeHtml(product.productId)}">
       ${media}

@@ -831,22 +831,15 @@ section {
     flex-direction: column;
     row-gap: var(--space-4);
   }
-  .home-main > .hero { order: 1; }
-  /* Alibaba-inspired sections, search -> quick actions -> discovery ->
-     product grid. Every new section added here needs its own order, same as
-     the warning above says. */
-  .home-main > .home-quick-actions { order: 3; }
-  .home-main > .trending-stores { order: 5; }
-  .home-main > .trending-products { order: 6; }
-  .home-main > noscript { order: 7; }
-}
-
-/* Popular Stores right under the header on a computer or tablet (owner
-   request, Oct 2026). It is first in index.html, so wider screens - plain
-   block flow above 1024px - already show it first; this keeps it first in the
-   flex order between 601 and 1024px too. Phones keep order 5 above. */
-@media (min-width: 601px) and (max-width: 1024px) {
-  .home-main > .trending-stores { order: 0; }
+  /* Tabs right under the yellow strip, then search, Popular Stores, the
+     product grid (owner request, 28 Oct 2026) - the same order index.html
+     has, so wider screens in plain block flow match. Every new section added
+     here needs its own order, same as the warning above says. */
+  .home-main > .home-quick-actions { order: 1; }
+  .home-main > .hero { order: 2; }
+  .home-main > .trending-stores { order: 3; }
+  .home-main > .trending-products { order: 4; }
+  .home-main > noscript { order: 5; }
 }
 
 /* One extra space (owner request, Oct 2026) on a computer or tablet:
@@ -8815,3 +8808,188 @@ form.search-box.is-pinned::before {
 .dlv-docs-grid figure { margin: 0; }
 .dlv-docs-grid img { display: block; max-width: 220px; max-height: 220px; border: 1px solid var(--color-border, #e5e5e5); border-radius: 8px; background: #fff; }
 .dlv-docs-grid figcaption { font-size: 0.8rem; color: var(--color-muted); }
+
+/* ==========================================================================
+   Homepage in the app-style layout (owner request, 28 Oct 2026): the quick
+   actions as one rounded row of text tabs, cards with the name and price on
+   the photo, and a floating bottom bar on phones (every customer page).
+   At the end of the file so these win over the older rules.
+   ========================================================================== */
+
+/* Tabs: one rounded box, five equal text tabs. */
+.home-quick-actions {
+  padding-top: var(--space-3);
+  padding-bottom: 0;
+}
+
+.home-main .quick-action-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  max-width: 40em;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 4px;
+  overflow: visible;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-bg-alt);
+}
+
+.home-main .quick-action-item {
+  flex: none;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 2px;
+  border-radius: 12px;
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.home-main .quick-action-label {
+  font-size: clamp(0.72rem, 3.3vw, 0.95rem);
+}
+
+.home-main .quick-action-item:hover,
+.home-main .quick-action-item:focus-visible,
+.home-main .quick-action-item:active {
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+}
+
+.home-main .quick-action-item:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: -3px;
+}
+
+/* The search box sits straight under the tabs: the flex row gap below
+   1025px, one small space above it on a computer. */
+.home-main > .hero {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@media (min-width: 601px) {
+  .home-main > .hero { margin-top: 0; }
+}
+
+@media (min-width: 1025px) {
+  .home-main > .hero { margin-top: var(--space-3); }
+}
+
+@media (max-width: 1024px) {
+  .home-main {
+    row-gap: var(--space-3);
+  }
+  .home-main > .trending-stores,
+  .home-main > .trending-products {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+}
+
+/* Cards with the name and price on the photo (homepage). The photo box holds
+   the picture, a soft dark shade at the bottom with the name and price, and
+   the round cart button in the top-right corner. */
+/* A one-cell grid stacks the shade on the photo without positioning either,
+   so the name link's ::after still stretches over the whole card (a tap
+   anywhere opens the product) and the cart button and picker are placed
+   against the card, whose top is the photo's top. */
+.product-card--overlay .product-card-photo {
+  display: grid;
+  overflow: hidden;
+}
+
+.product-card--overlay .product-card-photo > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.product-card--overlay .product-card-shade {
+  align-self: end;
+  z-index: 1;
+  padding: 28px 10px 8px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.35) 60%, rgba(0, 0, 0, 0));
+  color: #fff;
+  pointer-events: none;
+}
+
+.product-card--overlay .product-card-shade .product-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.product-card--overlay .product-card-shade .product-card-link {
+  color: #fff;
+  pointer-events: auto;
+}
+
+.product-card--overlay .product-card-shade .product-price--card {
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  color: #fff;
+  font-size: 1.05rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.product-card--overlay .product-card-photo > .card-cart-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Several options: the picker opens under the button, inside the card. */
+.product-card--overlay .product-card-photo > .card-cart-picker {
+  top: 50px;
+  bottom: auto;
+  left: 8px;
+  right: 8px;
+}
+
+/* The photo count moves to the top-left, clear of the shade. */
+.product-card--overlay .carousel-count {
+  top: 8px;
+  left: 8px;
+  right: auto;
+  bottom: auto;
+}
+
+.product-card--overlay .product-card-body:empty {
+  display: none;
+}
+
+/* Floating bottom bar on phones (every customer page): a rounded bar off the
+   screen edges, outline icons, the current tab in Mwakete red. */
+:root { --bottom-nav-gap: 10px; }
+
+@media (max-width: 700px) {
+  .bottom-nav {
+    left: var(--bottom-nav-gap);
+    right: var(--bottom-nav-gap);
+    bottom: calc(var(--bottom-nav-gap) + env(safe-area-inset-bottom));
+    padding: 2px 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 22px;
+    background: var(--color-bg);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+  }
+
+  .bottom-nav-item.is-active { color: var(--color-red); }
+
+  body.has-bottom-nav { padding-bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + 4px + env(safe-area-inset-bottom)); }
+
+  body.has-bottom-nav .chat-fab-btn,
+  body.has-bottom-nav .floating-action-btn--right,
+  body.has-bottom-nav .floating-action-btn--left:not(.cart-fab--corner) {
+    bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + max(var(--space-2), env(safe-area-inset-bottom)));
+  }
+
+  body.has-bottom-nav .card-cart-toast { bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + 12px + env(safe-area-inset-bottom)); }
+}

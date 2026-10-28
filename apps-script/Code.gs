@@ -10,6 +10,8 @@
 
 var PUBLIC_POST_ACTIONS = [
   'registerOwner', 'loginOwner', 'createOrder', 'createBookingRequest',
+  // Mwakete POS tills (PosStaff.gs): the till's own secret is the credential.
+  'posDeviceInfo', 'posStaffLogin',
   'verifyLoginCode', 'requestPasswordReset', 'resetPasswordWithCode',
   'saveAbandonedCart', 'recordProductViews', 'recordStoreVisit',
   // Chat: these three serve BOTH sides of a conversation (anonymous customer
@@ -101,7 +103,8 @@ var PROTECTED_POST_ACTIONS = [
   'posHubStatus', 'createPosConnection', 'rotatePosSecret', 'updatePosConnection', 'setPosConnectionState', 'testPosWebhook',
   'listIntegrationMappings', 'saveIntegrationMapping', 'retireIntegrationMapping', 'listIntegrationEvents', 'resolveIntegrationEvent', 'listExternalSales',
   'listIntegrationOutbox', 'retryIntegrationOutbox', 'sendIntegrationOutboxNow',
-  'posSearch', 'posCheckout', 'posListSales', 'posGetSale', 'posRefundSale', 'posReport', 'posGetSettings', 'posSaveSettings',
+  // Mwakete POS actions (posSearch, posCheckout, ...) are routed by doPost's POS gate
+  // (POS_ACTION_PERMS in PosStaff.gs), which checks the role for owner and staff alike.
   // Marketing engine - every one checks isOwnerAdmin inside (Marketing.gs).
   'getMarketingOverview', 'createMarketingCampaign', 'setMarketingCampaignStatus', 'setMarketingPaused',
   'getInvoiceSettings', 'saveInvoiceSettings', 'previewInvoiceDesign', 'sendInvoice', 'listOrderDocuments', 'getCampaignStudio', 'setStoreBrandColor', 'getStoreLogoData', 'saveCampaignDraft', 'startCampaignPayment', 'submitCampaignPayment', 'campaignAction',
@@ -150,7 +153,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'optin1-2026-10-24';
+var APP_VERSION = 'pos4-2026-10-28';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -567,6 +570,8 @@ function doPost(e) {
         case 'txCancelDriverJob': return jsonOut(actionTxCancelDriverJob(body));
         case 'txMarkDriverPaid': return jsonOut(actionTxMarkDriverPaid(body));
         case 'posPush': return jsonOut(actionPosPush(body));
+        case 'posDeviceInfo': return jsonOut(actionPosDeviceInfo(body));
+        case 'posStaffLogin': return jsonOut(actionPosStaffLogin(body));
         case 'txJobMessage': return jsonOut(actionTxJobMessage(body));
         case 'txProposeFee': return jsonOut(actionTxProposeFee(body));
         case 'txAgreeFee': return jsonOut(actionTxAgreeFee(body));
@@ -580,6 +585,19 @@ function doPost(e) {
     }
 
     if (action === 'logoutOwner') return jsonOut(actionLogoutOwner(body));
+
+    // Mwakete POS (PosStaff.gs): every POS action goes through one role check,
+    // for the owner (owner session) and for staff (a till session + the till's secret).
+    if (typeof POS_ACTION_PERMS !== 'undefined' && action in POS_ACTION_PERMS) {
+      if (body.posToken) {
+        var posSession;
+        try { posSession = requirePosSession(body.posToken, body.deviceSecret); } catch (posErr) { return jsonOut(posFail(posErr.message || 'Sign in again.', 'auth')); }
+        return jsonOut(dispatchPosAction(action, posSession.owner, posSession.actor, body));
+      }
+      var posOwner;
+      try { posOwner = requireAuth(body.token); } catch (ownerErr) { return jsonOut(posFail(ownerErr.message || 'Not authenticated', 'auth')); }
+      return jsonOut(dispatchPosAction(action, posOwner, posOwnerActor(posOwner), body));
+    }
 
     if (PROTECTED_POST_ACTIONS.indexOf(action) !== -1) {
       var owner;
@@ -670,14 +688,6 @@ function doPost(e) {
         case 'listIntegrationOutbox': return jsonOut(actionListIntegrationOutbox(owner, body));
         case 'retryIntegrationOutbox': return jsonOut(actionRetryIntegrationOutbox(owner, body));
         case 'sendIntegrationOutboxNow': return jsonOut(actionSendIntegrationOutboxNow(owner));
-        case 'posSearch': return jsonOut(actionPosSearch(owner, body));
-        case 'posCheckout': return jsonOut(actionPosCheckout(owner, body));
-        case 'posListSales': return jsonOut(actionPosListSales(owner, body));
-        case 'posGetSale': return jsonOut(actionPosGetSale(owner, body));
-        case 'posRefundSale': return jsonOut(actionPosRefundSale(owner, body));
-        case 'posReport': return jsonOut(actionPosReport(owner, body));
-        case 'posGetSettings': return jsonOut(actionPosGetSettings(owner));
-        case 'posSaveSettings': return jsonOut(actionPosSaveSettings(owner, body));
         case 'getMarketingOverview': return jsonOut(actionGetMarketingOverview(owner));
         // Seller Campaign Studio (SellerCampaigns.gs)
         case 'getCampaignStudio': return jsonOut(actionGetCampaignStudio(owner));

@@ -46,7 +46,7 @@ const CHECK = process.argv.includes('--check');
 
 // Everything a page loads, except sw.js - see the header.
 const JS_DIR = path.join(ROOT, 'assets', 'js');
-const CSS_FILES = ['assets/css/styles.css', 'assets/css/owner.css'];
+const CSS_FILES = ['assets/css/styles.css', 'assets/css/owner.css', 'assets/css/pos.css'];
 const EXCLUDE = new Set(['sw.js']);
 
 function minName(rel) {

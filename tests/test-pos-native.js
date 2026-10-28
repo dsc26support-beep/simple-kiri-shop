@@ -42,7 +42,7 @@ r = sell(A, [{ variantId: 'v2', qty: 2, price: 0.01 }], { payment: { method: 'ca
 ok('sale succeeds and ignores any price the browser sent', r.ok && r.sale.total === 19.98, JSON.stringify(r));
 ok('cash change worked out on the server', r.sale.change === 30.02 || (r.receipt && JSON.stringify(r.receipt).includes('30.02')), JSON.stringify(r.sale));
 ok('stock reduced', stock('v2') === 1);
-ok('cash is "received"', r.sale.paymentStatus === 'received');
+ok('cash is "paid" (owner decision, Oct 2026)', r.sale.paymentStatus === 'paid' && r.sale.payments[0].status === 'paid');
 ok('receipt number issued', /\S+/.test(r.sale.receiptNo));
 const first = r;
 const dup = box.actionPosCheckout(A, { clientTxnId: 'txn-1-abcdefgh', lines: [{ variantId: 'v2', qty: 2 }], payment: { method: 'cash' } });
@@ -70,7 +70,8 @@ ok('cap can be changed by the owner', box.actionPosSaveSettings(A, { maxDiscount
 
 // --- digital payments are not claimed as verified
 r = sell(A, [{ variantId: 'v2', qty: 1 }], { payment: { method: 'card', reference: 'AUTH123' } });
-ok('card is recorded as NOT verified by Mwakete', r.ok && r.sale.paymentStatus === 'recorded_unverified' && /not verified|unverified/i.test(JSON.stringify(r.sale) + JSON.stringify(r.receipt)), JSON.stringify(r.sale));
+ok('an older till\'s "card" means EFTPOS: paid on the bank terminal, and says Mwakete is not connected to it', r.ok && r.sale.paymentMethod === 'eftpos' && r.sale.paymentStatus === 'paid'
+  && /not connected/i.test(r.sale.payments[0].note), JSON.stringify(r.sale));
 
 // --- history / refunds
 const list = box.actionPosListSales(A, {});
@@ -96,7 +97,7 @@ ok('profit shown when every sold item has a cost', r.profit.available === true &
 sell(A, [{ variantId: 'v9', qty: 1 }]);
 r = box.actionPosReport(A, {});
 ok('profit withheld once an item without a cost is sold', r.profit.available === false && r.profit.estimated === null, JSON.stringify(r.profit));
-ok('payments listed with an honest label', r.payments.some((p) => p.method === 'card' && /not verified|unverified/i.test(p.label)) || r.payments.some((p) => p.method === 'card'), JSON.stringify(r.payments));
+ok('payments listed by method with their status', r.payments.some((p) => p.method === 'eftpos' && p.methodLabel === 'Card (EFTPOS)' && p.label === 'Paid') && r.payments.some((p) => p.method === 'cash'), JSON.stringify(r.payments));
 ok('other seller sees none of it', box.actionPosReport(B, {}).channels.pos.gross === 0);
 ok('bad date range refused', !box.actionPosReport(A, { from: '2026-02-01', to: '2026-01-01' }).ok && !box.actionPosReport(A, { from: '2020-01-01', to: '2026-01-01' }).ok);
 
