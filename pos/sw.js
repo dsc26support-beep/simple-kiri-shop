@@ -10,7 +10,7 @@
 //
 // Bump CACHE whenever a file below changes. Only caches named mwakete-pos-*
 // are this worker's; the site's main worker (../sw.js) leaves them alone.
-var CACHE = 'mwakete-pos-v1';
+var CACHE = 'mwakete-pos-v2';
 var SHELL = [
   './',
   'index.html',
