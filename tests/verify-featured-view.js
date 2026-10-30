@@ -19,6 +19,7 @@
  * category" guard - so editing that listing's price would force a re-file.
  */
 const fs = require('fs');
+const { openRail, pickCategory } = require('./lib/browse-rail.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -117,9 +118,9 @@ const tiles = (page) => page.$$eval('#category-list a', (els) => els.map((e) => 
     // already current - and this block would assert nothing about the tap.
     // Going somewhere else first makes it a real navigation again, which is
     // also what a shopper does.
-    await page.click('.category-rail-item[data-category="fishing"]');
+    await pickCategory(page, '.category-rail-item[data-category="fishing"]');
     await page.waitForTimeout(400);
-    await page.click('.category-rail-item[data-category="featured"]');
+    await pickCategory(page, '.category-rail-item[data-category="featured"]');
     await page.waitForTimeout(500);
 
     const names = await tiles(page);
@@ -150,9 +151,9 @@ const tiles = (page) => page.$$eval('#category-list a', (els) => els.map((e) => 
   /* ---- and back off it again -------------------------------------------- */
   {
     const { ctx, page } = await open(browser, '/categories.html');
-    await page.click('.category-rail-item[data-category="featured"]');
+    await pickCategory(page, '.category-rail-item[data-category="featured"]');
     await page.waitForTimeout(400);
-    await page.click('.category-rail-item[data-category="solar"]');
+    await pickCategory(page, '.category-rail-item[data-category="solar"]');
     await page.waitForTimeout(600);
     const names = await tiles(page);
     ok('leaving Featured loads the real category', names.some((n) => /solar item/.test(n)), names.join(' | '));
@@ -176,7 +177,7 @@ const tiles = (page) => page.$$eval('#category-list a', (els) => els.map((e) => 
   /* ---- nothing curated yet ---------------------------------------------- */
   {
     const { ctx, page } = await open(browser, '/categories.html', { noFeatured: true });
-    await page.click('.category-rail-item[data-category="featured"]');
+    await pickCategory(page, '.category-rail-item[data-category="featured"]');
     await page.waitForTimeout(500);
     ok('an empty Featured says so and points somewhere useful',
       /Nothing featured right now/.test(await page.$eval('#category-status', (e) => e.textContent)),

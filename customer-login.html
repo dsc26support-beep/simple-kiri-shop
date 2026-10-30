@@ -99,11 +99,11 @@
                 var store = (q.get('store') || '').trim().slice(0, 80);
                 var note = document.getElementById('auth-reason');
                 var lines = {
-                  meeting: 'Please sign in to request a meeting' + (store ? ' with ' + store : '') +
-                    '. You\u2019ll go straight back to your chat afterwards.',
-                  order: 'Please sign in to place your order. Your cart is kept, and you\u2019ll go straight back to checkout.',
-                  book: 'Please sign in to send a booking request. You\u2019ll go straight back afterwards.',
-                  message: 'Please sign in to message the seller. You\u2019ll go straight back to the chat afterwards.'
+                  // One short line each (owner request, Oct 2026).
+                  meeting: 'Please sign in to request a meeting' + (store ? ' with ' + store : '') + '.',
+                  order: 'Please sign in to place your order.',
+                  book: 'Please sign in to send a booking request.',
+                  message: 'Please sign in to message the seller.'
                 };
                 if (!lines[q.get('reason')]) return;
                 note.textContent = lines[q.get('reason')];

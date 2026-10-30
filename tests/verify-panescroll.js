@@ -6,6 +6,7 @@
 // scroll as one lump, which is exactly the bug being fixed.
 const fs = require('fs');
 const { assertCacheBump } = require('./lib/cache-bump.js');
+const { openRail, pickCategory } = require('./lib/browse-rail.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -37,7 +38,7 @@ async function open(browser, width, height) {
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e)));
   await page.goto(BASE + '/categories.html', { waitUntil: 'load' });
-  await page.waitForSelector('.category-rail-item');
+  await page.waitForSelector('.category-rail-item', { state: 'attached' });   // in the ☰ drawer below 1024px
   await page.waitForTimeout(700);
   return { ctx, page, errs };
 }
@@ -75,6 +76,9 @@ async function suite(browser, label, width, height) {
     document.querySelector('.category-pane').scrollTop = 0;
   });
   await page.waitForTimeout(150);
+  // Below 1024px the rail is a drawer behind ☰ (Oct 2026): open it for the
+  // rail checks, close it again (Escape) before the product checks.
+  await openRail(page);
   const m0 = await metrics(page);
 
   ok(`${label}: the document itself no longer scrolls`, !m0.docScrollable,
@@ -104,6 +108,8 @@ async function suite(browser, label, width, height) {
   ok(`${label}: scrolling the rail leaves the products still`, m1.paneTop === m0.paneTop,
     `${m0.paneTop} -> ${m1.paneTop}`);
   ok(`${label}: scrolling the rail leaves the document still`, m1.doc === 0, String(m1.doc));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
 
   await page.locator('.category-pane').hover();
   await page.mouse.wheel(0, 400);
@@ -133,6 +139,7 @@ async function suite(browser, label, width, height) {
   await page.mouse.wheel(0, 600);
   await page.waitForTimeout(250);
   const before = await metrics(page);
+  await openRail(page);
   await page.locator('.category-rail-item').nth(3).click();
   await page.waitForTimeout(600);
   const after = await metrics(page);

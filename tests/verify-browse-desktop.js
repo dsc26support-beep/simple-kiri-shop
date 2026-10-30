@@ -15,6 +15,7 @@
  * 1920px window the moment the tiles were free to size themselves. Measured at
  * eight widths rather than asserted from the CSS.
  */
+const { openRail, pickCategory } = require('./lib/browse-rail.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 let pass = 0, fail = 0;
@@ -99,7 +100,7 @@ const selected = (page) => page.evaluate(() =>
   {
     const { ctx, page } = await open(browser, '/categories.html',
       { featured: [], tipsDelay: 900, settle: 150 });
-    await page.click('.category-rail-item[data-category="fishing"]');
+    await pickCategory(page, '.category-rail-item[data-category="fishing"]');
     await page.waitForTimeout(1400);
     ok('a category tapped while the curated list was loading is not overridden',
       (await selected(page)) === 'fishing', String(await selected(page)));
@@ -153,8 +154,11 @@ const selected = (page) => page.evaluate(() =>
   ok('tiles per row never decreases as the window grows',
     rows.every((r, i) => i === 0 || r.perRow >= rows[i - 1].perRow),
     rows.map((r) => r.width + ':' + r.perRow).join(' '));
-  ok('a wide screen shows meaningfully more than a phone',
-    rows[rows.length - 1].perRow >= rows[1].perRow * 2,
+  // Phones gained a column when the category list became a drawer behind ☰
+  // (Oct 2026: 3 -> 4 across), so "twice a phone" no longer holds - a wide
+  // screen still shows clearly more.
+  ok('a wide screen shows more than a phone',
+    rows[rows.length - 1].perRow > rows[1].perRow,
     rows.map((r) => r.width + ':' + r.perRow).join(' '));
   ok('and it stops widening at the ceiling rather than running on forever',
     rows[rows.length - 1].browserW === 1600, String(rows[rows.length - 1].browserW));
