@@ -33,6 +33,7 @@ async function init() {
   if (typeof TxAdmin !== 'undefined') TxAdmin.init();                 // admin-tx.js
   if (typeof DeliveriesAdmin !== 'undefined') DeliveriesAdmin.init(); // admin-deliveries.js
   if (typeof CampaignsAdmin !== 'undefined') CampaignsAdmin.init(); // admin-campaigns.js
+  if (typeof SmsAdmin !== 'undefined') SmsAdmin.init();               // admin-sms.js
 }
 
 async function loadStores() {

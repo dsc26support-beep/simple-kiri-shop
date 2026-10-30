@@ -68,7 +68,9 @@ const SellerShell = (() => {
     collapse: '<path d="m15 6-6 6 6 6"/>',
     pos: '<rect x="4" y="3" width="16" height="7" rx="1"/><path d="M6 14h3M11 14h3M16 14h2M6 18h3M11 18h3M16 18h2"/>',
     integrations: '<path d="M9 7H6a3 3 0 0 0 0 6h3M15 7h3a3 3 0 0 1 0 6h-3M8 10h8"/><path d="M12 14v6"/>',
-    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>'
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    contacts: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
+    sms: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/>'
   };
   const svg = (name) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">${ICON[name]}</svg>`;
   const ITEMS = [
@@ -96,6 +98,8 @@ const SellerShell = (() => {
     const items = ITEMS.slice();
     // POS / Integrations only when the feature is switched on for this deployment.
     if (owner.posHub) { items.splice(items.findIndex((it) => it[0] === 'inventory.html') + 1, 0, ['pos.html', 'Point of Sale', 'pos'], ['integrations.html', 'POS & Integrations', 'integrations']); }
+    // Contacts / SMS only when CONTACTS_SMS is switched on (Contacts.gs).
+    if (owner.contactsSms) { items.splice(items.findIndex((it) => it[0] === 'messages.html') + 1, 0, ['contacts.html', 'Contacts', 'contacts'], ['sms.html', 'SMS', 'sms']); }
     if (owner.isAdmin) items.push(['admin.html', 'Admin', 'admin']);
     const link = (it, cls) => `<a class="${cls}${it[0] === here ? ' is-active' : ''}" href="${it[0]}"${it[0] === here ? ' aria-current="page"' : ''}>
       ${svg(it[2])}<span class="${cls}-label">${it[1]}</span>${it[2] === 'messages' ? '<span class="seller-nav-badge" data-seller-badge="messages" hidden></span>' : ''}</a>`;

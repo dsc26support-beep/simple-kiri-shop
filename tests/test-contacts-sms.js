@@ -157,6 +157,16 @@ ok('estimate (promotions): only people who said yes, with valid numbers', r.ok &
 ok('...previews show each person’s own message and segments', r.previews[0].text.startsWith('Mauri ') && r.previews[0].segments === 1 && r.segments === 2, J(r.previews));
 r = A('smsCampaignEstimate', { kind: 'transactional', body: 'Your order is ready', contactIds: ids });
 ok('estimate (order updates): consent not needed (a promotions "no" does not block them), bad numbers still left out', r.ok && r.recipients === 5 && r.skipped.opted_out === 0 && r.skipped.invalid_number === 1, J(r));
+{
+  const all = A('smsCampaignEstimate', { kind: 'transactional', body: 'Hi', allContacts: true });
+  const valid = rows('Contacts').filter((c) => c.OwnerId === 'own_a' && c.Status === 'active' && c.PhoneStatus === 'ok').length;
+  ok('"all my contacts": everyone in this store with a usable number, once each', all.ok && all.recipients + all.skipped.duplicate_number + all.skipped.opted_out === valid, J([all.recipients, all.skipped, valid]));
+  const ex = A('smsCampaignEstimate', { kind: 'transactional', body: 'Hi', allContacts: true, excludeIds: [c1.contactId] });
+  ok('..."leave out" still works with it', ex.ok && ex.recipients === all.recipients - 1, J(ex.recipients));
+  const dr = A('smsCampaignSave', { name: 'Everyone', kind: 'transactional', body: 'Hi', allContacts: true });
+  ok('...and a draft remembers it', dr.ok && dr.campaign.allContacts === true && dr.campaign.groupIds.length === 0, J(dr));
+  A('smsCampaignDelete', { campaignId: dr.campaign && dr.campaign.campaignId });
+}
 r = A('smsCampaignEstimate', { kind: 'promotional', body: 'Mauri ā {first_name}', contactIds: ids });
 ok('...a special character switches to Unicode and is named', r.ok && r.template.encoding === 'ucs2' && r.unicodeChars.includes('ā'), J(r.template));
 
@@ -240,6 +250,23 @@ box.__props.SMS_LIMITS = JSON.stringify({ utcOffset: 0, maxCampaignRecipients: 1
 const t5 = A('smsCampaignSave', { name: 'Big', kind: 'transactional', body: 'Hi', contactIds: [c1.contactId, c3.ContactId], deviceId: dev.deviceId, simKey: sim2.simKey }).campaign;
 ok('campaign size limit: a campaign over it cannot start', /at most 1/.test(A('smsCampaignApprove', { campaignId: t5.campaignId, confirmRecipients: 2 }).error));
 delete box.__props.SMS_LIMITS;
+
+/* ---------- a campaign with a start time ---------- */
+{
+  const later = new Date(Date.now() + 3600000).toISOString();
+  const ts = A('smsCampaignSave', { name: 'Later', kind: 'transactional', body: 'Hi', contactIds: [kanoa.ContactId], deviceId: dev.deviceId, simKey: sim2.simKey, scheduledAt: later }).campaign;
+  r = A('smsCampaignApprove', { campaignId: ts.campaignId, confirmRecipients: 1 });
+  ok('a campaign with a start time is "scheduled"', r.ok && r.campaign.status === 'scheduled', J(r));
+  r = sync({ sims: SIMS, take: 50 });
+  ok('...the phone gets nothing from it before that time', !r.messages.some((m) => m.campaignId === ts.campaignId), J(r.messages));
+  const sheet = box.__sheets.SmsCampaigns;
+  const idx = sheet.grid.findIndex((line) => line[sheet.grid[0].indexOf('CampaignId')] === ts.campaignId);
+  sheet.grid[idx][sheet.grid[0].indexOf('ScheduledAt')] = new Date(Date.now() - 60000).toISOString();   // time has passed
+  r = sync({ sims: SIMS, take: 50 });
+  ok('...and gets it once the time has come; the campaign starts', r.messages.some((m) => m.campaignId === ts.campaignId)
+    && rows('SmsCampaigns').find((c) => c.CampaignId === ts.campaignId).Status === 'processing', J(r.messages));
+  sync({ results: r.messages.map((m) => ({ messageId: m.messageId, status: 'sent' })) });
+}
 
 /* ---------- opt-outs ---------- */
 r = sync({ inbound: [{ from: '+68673033333', text: 'STOP' }, { from: '+68673011111', text: 'stop the music please' }] });

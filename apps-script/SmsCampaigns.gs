@@ -30,7 +30,8 @@ function smsOwnerCampaign(owner, campaignId) {
 function smsCampaignView(c) {
   return {
     campaignId: c.CampaignId, name: c.Name, kind: c.Kind, kindLabel: SMS_KIND_LABEL[c.Kind] || c.Kind, body: c.Body, status: c.Status,
-    statusLabel: SMS_CAMPAIGN_STATUS_LABEL[c.Status] || c.Status, groupIds: ctParse(c.GroupIdsJson, []), contactIds: ctParse(c.ContactIdsJson, []),
+    statusLabel: SMS_CAMPAIGN_STATUS_LABEL[c.Status] || c.Status, groupIds: ctParse(c.GroupIdsJson, []).filter(function (g) { return g !== SMS_ALL_CONTACTS; }),
+    allContacts: ctParse(c.GroupIdsJson, []).indexOf(SMS_ALL_CONTACTS) !== -1, contactIds: ctParse(c.ContactIdsJson, []),
     excludeIds: ctParse(c.ExcludeIdsJson, []), deviceId: c.DeviceId, simKey: c.SimKey, intervalSeconds: Number(c.IntervalSeconds) || 0,
     scheduledAt: c.ScheduledAt || '', recipients: Number(c.Recipients) || 0, suppressed: Number(c.Suppressed) || 0, segments: Number(c.Segments) || 0,
     approvedAt: c.ApprovedAt || '', startedAt: c.StartedAt || '', completedAt: c.CompletedAt || '', cancelReason: c.CancelReason || '',
@@ -50,8 +51,9 @@ function smsResolveRecipients(owner, spec) {
   var exclude = {};
   (Array.isArray(spec.excludeIds) ? spec.excludeIds : []).forEach(function (id) { exclude[String(id)] = true; });
   var wantIds = {};
+  var everyone = groupIds.indexOf(SMS_ALL_CONTACTS) !== -1;
   contactIds.forEach(function (id) { wantIds[id] = true; });
-  if (groupIds.length) {
+  if (groupIds.length && !everyone) {
     var gset = {};
     ownerGroups(owner).forEach(function (g) { if (groupIds.indexOf(g.GroupId) !== -1) gset[g.GroupId] = true; });
     smsRows('ContactGroupMembers').filter(function (m) { return m.OwnerId === owner.OwnerId && gset[m.GroupId]; }).forEach(function (m) { wantIds[m.ContactId] = true; });
@@ -62,7 +64,7 @@ function smsResolveRecipients(owner, spec) {
   var send = [], skipped = { opted_out: [], no_consent: [], invalid_number: [], not_mobile: [], duplicate_number: [], too_long: [] };
   var segments = 0;
   ownerContactRows(owner).forEach(function (c) {
-    if (!wantIds[c.ContactId] || exclude[c.ContactId]) return;
+    if ((!everyone && !wantIds[c.ContactId]) || exclude[c.ContactId]) return;
     var may = contactMaySend(c, kind, suppressed);
     if (!may.ok) { skipped[may.reason].push(contactView(c)); return; }
     if (seenPhone[c.Phone]) { skipped.duplicate_number.push(contactView(c)); return; }
@@ -76,9 +78,14 @@ function smsResolveRecipients(owner, spec) {
   return { send: send, skipped: skipped, segments: segments, kind: kind };
 }
 
+// Stored in GroupIdsJson for "all my contacts" (no new column).
+var SMS_ALL_CONTACTS = '__all__';
+
 function smsCampaignSpecFrom(body) {
+  var groupIds = Array.isArray(body.groupIds) ? body.groupIds.map(String).filter(function (g) { return g !== SMS_ALL_CONTACTS; }).slice(0, 50) : [];
+  if (body.allContacts === true || (Array.isArray(body.groupIds) && body.groupIds.indexOf(SMS_ALL_CONTACTS) !== -1)) groupIds = [SMS_ALL_CONTACTS];
   return { name: ctText(body.name, 80), kind: SMS_KINDS.indexOf(body.kind) !== -1 ? body.kind : 'promotional', body: String(body.body || '').slice(0, 2000),
-    groupIds: Array.isArray(body.groupIds) ? body.groupIds.slice(0, 50) : [], contactIds: Array.isArray(body.contactIds) ? body.contactIds.slice(0, 5000) : [],
+    groupIds: groupIds, contactIds: Array.isArray(body.contactIds) ? body.contactIds.slice(0, 5000) : [],
     excludeIds: Array.isArray(body.excludeIds) ? body.excludeIds.slice(0, 5000) : [] };
 }
 

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMS — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">SMS</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>SMS</h1>
+      <p class="helper-text">Messages go out from your own Android phone and SIM, using your own credit or SMS bundle. Mwakete does not charge for them - your carrier may.</p>
+      <p id="sm-status" class="helper-text" role="status" aria-live="polite"></p>
+
+      <div id="sm-app" hidden>
+        <p class="sx-note is-bad" id="sm-suspended" hidden></p>
+        <div class="sx-tabs" role="tablist" aria-label="SMS">
+          <button type="button" class="sx-tab" role="tab" id="tab-overview" aria-controls="panel-overview" data-tab="overview">Overview</button>
+          <button type="button" class="sx-tab" role="tab" id="tab-compose" aria-controls="panel-compose" data-tab="compose">New message</button>
+          <button type="button" class="sx-tab" role="tab" id="tab-campaigns" aria-controls="panel-campaigns" data-tab="campaigns">Campaigns</button>
+          <button type="button" class="sx-tab" role="tab" id="tab-phones" aria-controls="panel-phones" data-tab="phones">Phones &amp; SIMs</button>
+          <button type="button" class="sx-tab" role="tab" id="tab-templates" aria-controls="panel-templates" data-tab="templates">Templates</button>
+          <button type="button" class="sx-tab" role="tab" id="tab-settings" aria-controls="panel-settings" data-tab="settings">Settings</button>
+        </div>
+
+        <!-- Overview -->
+        <section class="sx-panel" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" hidden>
+          <div class="sx-stats" id="ov-stats"></div>
+          <div id="ov-next"></div>
+          <h2>Last 30 days</h2>
+          <p class="helper-text" id="ov-usage-note"></p>
+          <div class="sx-table-wrap"><table class="sx-table"><thead><tr><th scope="col">Day</th><th scope="col" class="sx-num">Messages</th><th scope="col" class="sx-num">SMS (parts)</th></tr></thead><tbody id="ov-days"></tbody></table></div>
+        </section>
+
+        <!-- Compose -->
+        <section class="sx-panel" role="tabpanel" id="panel-compose" aria-labelledby="tab-compose" hidden>
+          <form id="cp-form" novalidate>
+            <div class="sx-composer">
+              <div>
+                <div class="sx-grid">
+                  <div class="field"><label for="cp-name">Campaign name</label><input id="cp-name" maxlength="80" placeholder="e.g. New stock, November"></div>
+                  <div class="field"><label for="cp-kind">Type</label>
+                    <select id="cp-kind"><option value="promotional">Promotion</option><option value="transactional">Order &amp; delivery update</option><option value="service">Service announcement</option></select></div>
+                  <div class="field"><label for="cp-template">Start from a template</label><select id="cp-template"><option value="">-</option></select></div>
+                </div>
+                <p class="helper-text" id="cp-kind-help"></p>
+
+                <div class="field">
+                  <label for="cp-body">Message</label>
+                  <div class="sx-fields" id="cp-fields" aria-label="Insert a personal field"></div>
+                  <textarea id="cp-body" maxlength="2000" aria-describedby="cp-counter"></textarea>
+                  <div class="sx-counter" id="cp-counter" aria-live="polite"></div>
+                  <p class="helper-text">{first_name|friend} puts "friend" where a contact has no first name. Add your store name so people know who wrote.</p>
+                </div>
+
+                <fieldset>
+                  <legend>Who gets it</legend>
+                  <div class="sx-checks"><label><input type="checkbox" id="cp-all"> All my contacts</label></div>
+                  <div class="sx-checks" id="cp-groups"></div>
+                  <p class="helper-text"><a href="contacts.html">Make groups on the Contacts page.</a> Promotions and announcements only go to people who said yes; nobody who replied STOP is ever sent one.</p>
+                </fieldset>
+
+                <fieldset>
+                  <legend>Send from</legend>
+                  <div class="sx-grid">
+                    <div class="field"><label for="cp-device">Phone</label><select id="cp-device"></select></div>
+                    <div class="field"><label for="cp-sim">SIM</label><select id="cp-sim"></select></div>
+                    <div class="field"><label for="cp-interval">Seconds between messages</label><input id="cp-interval" type="number" min="3" max="600" step="1"></div>
+                    <div class="field"><label for="cp-when">Start at (optional)</label><input id="cp-when" type="datetime-local"></div>
+                  </div>
+                  <p class="helper-text" id="cp-device-help"></p>
+                </fieldset>
+
+                <p id="cp-error" class="form-error" role="alert"></p>
+                <div class="sx-actions">
+                  <button type="button" class="btn btn-light-purple" id="cp-check">Check who gets it</button>
+                  <button type="button" class="btn btn-light-purple" id="cp-save">Save draft</button>
+                  <button type="button" class="btn btn-primary" id="cp-start">Review &amp; send</button>
+                  <button type="button" class="btn btn-light-purple" id="cp-new" hidden>Start a new message</button>
+                </div>
+                <div id="cp-estimate"></div>
+              </div>
+
+              <aside class="sx-phone" aria-label="Preview on a phone">
+                <div class="sx-phone-screen" id="cp-preview"></div>
+              </aside>
+            </div>
+          </form>
+        </section>
+
+        <!-- Campaigns -->
+        <section class="sx-panel" role="tabpanel" id="panel-campaigns" aria-labelledby="tab-campaigns" hidden>
+          <div class="sx-table-wrap">
+            <table class="sx-table"><thead><tr><th scope="col">Campaign</th><th scope="col">Status</th><th scope="col" class="sx-num">People</th><th scope="col" class="sx-hide-sm">Progress</th><th scope="col"></th></tr></thead>
+              <tbody id="cm-rows"></tbody></table>
+          </div>
+        </section>
+
+        <!-- Phones -->
+        <section class="sx-panel" role="tabpanel" id="panel-phones" aria-labelledby="tab-phones" hidden>
+          <div class="sx-device">
+            <h2>Connect an Android phone</h2>
+            <ol>
+              <li>Install the <strong>Mwakete SMS</strong> app on the phone that has your SIM.</li>
+              <li>Press <em>Get a code</em> here, then type the code into the app within 10 minutes.</li>
+              <li>Allow the app to send SMS when Android asks.</li>
+            </ol>
+            <p><button type="button" class="btn btn-primary" id="ph-pair">Get a code</button></p>
+            <div id="ph-code" hidden><p><span class="sx-code" id="ph-code-text"></span></p><p class="helper-text" id="ph-code-exp" aria-live="polite"></p></div>
+            <p id="ph-error" class="form-error" role="alert"></p>
+          </div>
+          <div id="ph-list"></div>
+        </section>
+
+        <!-- Templates -->
+        <section class="sx-panel" role="tabpanel" id="panel-templates" aria-labelledby="tab-templates" hidden>
+          <p><button type="button" class="btn btn-primary" id="tp-add">New template</button></p>
+          <div id="tp-list"></div>
+        </section>
+
+        <!-- Settings -->
+        <section class="sx-panel" role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" hidden>
+          <form id="st-form" class="sx-device" novalidate>
+            <h2>Sending</h2>
+            <div class="sx-grid">
+              <div class="field"><label for="st-quiet-start">Quiet hours from</label><select id="st-quiet-start"></select></div>
+              <div class="field"><label for="st-quiet-end">until</label><select id="st-quiet-end"></select></div>
+              <div class="field"><label for="st-interval">Seconds between messages</label><input id="st-interval" type="number" min="3" max="600"></div>
+              <div class="field"><label for="st-daily">Most SMS per day (whole store)</label><input id="st-daily" type="number" min="1"></div>
+            </div>
+            <p class="helper-text">No messages go out in quiet hours (Kiribati time); they wait until the morning. A gap between messages keeps your SIM from being blocked as spam.</p>
+            <p id="st-error" class="form-error" role="alert"></p>
+            <button type="submit" class="btn btn-primary" id="st-save">Save</button>
+          </form>
+
+          <div class="sx-device">
+            <h2>People who opted out</h2>
+            <p class="helper-text">They replied STOP or used the opt-out page. They get no promotions or announcements from you. To undo one, change their consent on the Contacts page.</p>
+            <div id="st-suppressed"></div>
+          </div>
+
+          <div class="sx-device">
+            <h2>Google Sheets add-on</h2>
+            <p class="helper-text">A key lets the Mwakete add-on read and update your contacts and draft campaigns from a Google Sheet. It cannot send or start a campaign. Keep it secret; remove it if a sheet is shared.</p>
+            <div class="sx-actions"><label class="sr-only" for="st-key-name">Key name</label><input id="st-key-name" maxlength="40" placeholder="e.g. Office sheet"><button type="button" class="btn btn-light-purple" id="st-key-new">Make a key</button></div>
+            <div id="st-key-shown" hidden><p class="sx-note is-warn">Copy this key now - it will not be shown again.</p><code class="sx-key" id="st-key-text"></code></div>
+            <div id="st-keys"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Send confirmation -->
+      <dialog class="sx-dialog" id="cp-confirm" aria-labelledby="cp-confirm-title">
+        <form method="dialog" id="cp-confirm-form">
+          <div class="sx-dialog-head"><h2 id="cp-confirm-title">Send this campaign?</h2><button type="button" class="sx-close" data-close aria-label="Close">×</button></div>
+          <div id="cp-confirm-body"></div>
+          <div class="field"><label for="cp-confirm-n">Type the number of people to confirm</label><input id="cp-confirm-n" inputmode="numeric" autocomplete="off"></div>
+          <p id="cp-confirm-error" class="form-error" role="alert"></p>
+          <div class="sx-actions"><button type="submit" class="btn btn-primary" id="cp-confirm-go">Send</button><button type="button" class="btn btn-light-purple" data-close>Not yet</button></div>
+        </form>
+      </dialog>
+
+      <!-- Campaign detail -->
+      <dialog class="sx-dialog is-wide" id="cm-detail" aria-labelledby="cm-detail-title">
+        <div class="sx-dialog-body">
+          <div class="sx-dialog-head"><h2 id="cm-detail-title">Campaign</h2><button type="button" class="sx-close" data-close aria-label="Close">×</button></div>
+          <div id="cm-detail-head"></div>
+          <div class="sx-actions" id="cm-detail-actions"></div>
+          <div class="sx-toolbar"><div class="field"><label for="cm-filter">Show</label>
+            <select id="cm-filter"><option value="">Everyone</option><option value="queued">Waiting</option><option value="submitted">Given to the phone</option><option value="sent">Accepted by the network</option><option value="delivered">Delivered</option><option value="failed">Failed</option><option value="expired">Not sent (expired)</option><option value="cancelled">Cancelled</option></select></div></div>
+          <div class="sx-table-wrap sx-scroll"><table class="sx-table"><thead><tr><th scope="col">Name</th><th scope="col">Number</th><th scope="col">Status</th><th scope="col" class="sx-hide-sm">When</th></tr></thead><tbody id="cm-messages"></tbody></table></div>
+          <p id="cm-detail-error" class="form-error" role="alert"></p>
+        </div>
+      </dialog>
+
+      <!-- Template -->
+      <dialog class="sx-dialog" id="tp-edit" aria-labelledby="tp-edit-title">
+        <form method="dialog" id="tp-form" novalidate>
+          <div class="sx-dialog-head"><h2 id="tp-edit-title">Template</h2><button type="button" class="sx-close" data-close aria-label="Close">×</button></div>
+          <div class="field"><label for="tp-name">Name</label><input id="tp-name" maxlength="60"></div>
+          <div class="field"><label for="tp-kind">Type</label><select id="tp-kind"><option value="promotional">Promotion</option><option value="transactional">Order &amp; delivery update</option><option value="service">Service announcement</option></select></div>
+          <div class="field"><label for="tp-body">Message</label><textarea id="tp-body" class="sx-full" rows="5" maxlength="2000"></textarea><div class="sx-counter" id="tp-counter" aria-live="polite"></div></div>
+          <p id="tp-error" class="form-error" role="alert"></p>
+          <div class="sx-actions"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn btn-danger" id="tp-delete" hidden>Delete</button></div>
+        </form>
+      </dialog>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/sms-core.min.js"></script>
+  <script defer src="../assets/js/owner-sms.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>

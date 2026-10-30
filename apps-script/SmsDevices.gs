@@ -345,11 +345,12 @@ function actionSmsDeviceSync(body) {
       all.forEach(function (m) {
         if (batch.length >= room || m.Status !== 'queued' || m.OwnerId !== d.OwnerId) return;
         var c = campaigns[m.CampaignId];
-        if (!c || c.DeviceId !== d.DeviceId || (c.Status !== 'queued' && c.Status !== 'processing')) return;
+        // 'scheduled' waits for its time (next line), then starts like 'queued'.
+        if (!c || c.DeviceId !== d.DeviceId || ['queued', 'processing', 'scheduled'].indexOf(c.Status) === -1) return;
         if (c.ScheduledAt && String(c.ScheduledAt) > nowIsoStr) return;
         if (!presentSims[c.SimKey]) return;   // the chosen SIM is not in the phone: wait, never switch
         updateRowFromObject(mSheet, m.__row, { Status: 'claimed', ClaimedAt: nowIsoStr, Attempts: (Number(m.Attempts) || 0) + 1, UpdatedAt: nowIsoStr });
-        if (c.Status === 'queued') { updateRowFromObject(smsCampaignsSheet(), c.__row, { Status: 'processing', StartedAt: nowIsoStr, UpdatedAt: nowIsoStr }); c.Status = 'processing'; }
+        if (c.Status === 'queued' || c.Status === 'scheduled') { updateRowFromObject(smsCampaignsSheet(), c.__row, { Status: 'processing', StartedAt: nowIsoStr, UpdatedAt: nowIsoStr }); c.Status = 'processing'; }
         batch.push({ messageId: m.MessageId, campaignId: m.CampaignId, to: m.Phone, body: m.Body, segments: Number(m.Segments) || 1,
           simKey: c.SimKey, subscriptionId: presentSims[c.SimKey].SubscriptionId, intervalSeconds: Math.max(settings.limits.minIntervalSeconds, Number(c.IntervalSeconds) || settings.intervalSeconds) });
       });

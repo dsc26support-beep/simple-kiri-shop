@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contacts — Mwakete</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+  <link rel="stylesheet" href="../assets/css/styles.min.css">
+  <link rel="stylesheet" href="../assets/css/owner.min.css">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#332d63">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mwakete">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon-180.png">
+</head>
+<body class="owner-shell">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="owner-topbar">
+    <div class="container">
+      <strong id="store-name-label">Contacts</strong>
+      <nav class="owner-nav" aria-label="Store owner">
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="#" id="logout-link">Log Out</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+  <main id="main" class="owner-main">
+    <div class="container">
+      <h1>Contacts</h1>
+      <p class="helper-text">Your customers, suppliers and other contacts. Only your store can see them. To send them SMS, go to <a href="sms.html">SMS</a>.</p>
+      <p id="ct-status" class="helper-text" role="status" aria-live="polite"></p>
+
+      <div id="ct-app" hidden>
+        <div class="sx-stats" id="ct-stats"></div>
+
+        <div class="sx-actions">
+          <button type="button" class="btn btn-primary" id="ct-add">Add contact</button>
+          <button type="button" class="btn btn-light-purple" id="ct-import-open">Import</button>
+          <button type="button" class="btn btn-light-purple" id="ct-export">Export CSV</button>
+          <button type="button" class="btn btn-light-purple" id="ct-dupes-open">Find duplicates</button>
+        </div>
+
+        <section aria-labelledby="ct-groups-heading">
+          <h2 id="ct-groups-heading" class="sr-only">Groups</h2>
+          <div class="sx-group-list" id="ct-groups"></div>
+        </section>
+
+        <form class="sx-toolbar" id="ct-filters" role="search">
+          <div class="field sx-grow"><label for="ct-q">Search</label><input id="ct-q" type="search" placeholder="Name, number, village…" autocomplete="off"></div>
+          <div class="field"><label for="ct-f-category">Category</label><select id="ct-f-category"><option value="">All</option></select></div>
+          <div class="field"><label for="ct-f-island">Island</label><select id="ct-f-island"><option value="">All</option></select></div>
+          <div class="field"><label for="ct-f-consent">Promotions</label>
+            <select id="ct-f-consent"><option value="">All</option><option value="yes">Said yes</option><option value="unknown">Not asked</option><option value="no">Said no</option></select></div>
+          <div class="field"><label for="ct-f-phone">Number</label>
+            <select id="ct-f-phone"><option value="">All</option><option value="ok">Mobile OK</option><option value="check">Check (landline?)</option><option value="invalid">Wrong</option><option value="missing">No number</option></select></div>
+        </form>
+
+        <div class="sx-bulk" id="ct-bulk" hidden>
+          <strong id="ct-bulk-count"></strong>
+          <label class="sr-only" for="ct-bulk-group">Group</label>
+          <select id="ct-bulk-group"></select>
+          <button type="button" class="btn btn-small btn-light-purple" id="ct-bulk-add">Add to group</button>
+          <button type="button" class="btn btn-small btn-light-purple" id="ct-bulk-remove" hidden>Remove from this group</button>
+          <button type="button" class="btn btn-small btn-danger" id="ct-bulk-delete">Delete</button>
+        </div>
+
+        <div class="sx-table-wrap">
+          <table class="sx-table" id="ct-table">
+            <thead><tr>
+              <th scope="col" class="sx-check"><input type="checkbox" id="ct-all" aria-label="Select all on this page"></th>
+              <th scope="col">Name</th><th scope="col">Number</th><th scope="col" class="sx-hide-sm">Category</th>
+              <th scope="col" class="sx-hide-sm">Place</th><th scope="col">Promotions</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="sx-pager" id="ct-pager"></div>
+      </div>
+
+      <!-- Add / edit -->
+      <dialog class="sx-dialog" id="ct-edit" aria-labelledby="ct-edit-title">
+        <form method="dialog" id="ct-edit-form" novalidate>
+          <div class="sx-dialog-head"><h2 id="ct-edit-title">Contact</h2><button type="button" class="sx-close" data-close aria-label="Close">×</button></div>
+          <div class="sx-grid">
+            <div class="field"><label for="ce-first">First name</label><input id="ce-first" maxlength="60" autocomplete="off"></div>
+            <div class="field"><label for="ce-last">Last name</label><input id="ce-last" maxlength="60" autocomplete="off"></div>
+            <div class="field"><label for="ce-business">Business</label><input id="ce-business" maxlength="80" autocomplete="off"></div>
+            <div class="field"><label for="ce-phone">Mobile number</label><input id="ce-phone" inputmode="tel" maxlength="40" placeholder="e.g. 7301 2345" autocomplete="off">
+              <p class="helper-text" id="ce-phone-note" aria-live="polite"></p></div>
+            <div class="field"><label for="ce-alt">Other number</label><input id="ce-alt" inputmode="tel" maxlength="40" autocomplete="off"></div>
+            <div class="field"><label for="ce-email">Email</label><input id="ce-email" type="email" maxlength="120" autocomplete="off"></div>
+            <div class="field"><label for="ce-category">Category</label><select id="ce-category"><option value="">-</option></select></div>
+            <div class="field"><label for="ce-island">Island</label><select id="ce-island"><option value="">-</option></select></div>
+            <div class="field"><label for="ce-village">Village</label><input id="ce-village" maxlength="60" list="ce-villages" autocomplete="off"><datalist id="ce-villages"></datalist></div>
+            <div class="field"><label for="ce-tags">Tags</label><input id="ce-tags" maxlength="200" placeholder="comma, separated"></div>
+          </div>
+          <div class="field"><label for="ce-notes">Notes</label><textarea id="ce-notes" rows="2" maxlength="500"></textarea></div>
+
+          <fieldset>
+            <legend>May we send them SMS?</legend>
+            <div class="sx-consent">
+              <div class="field"><label for="ce-c-transactional">Order &amp; delivery updates</label><select id="ce-c-transactional" data-kind="transactional"><option value="unknown">Not asked</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+              <div class="field"><label for="ce-c-promotional">Promotions</label><select id="ce-c-promotional" data-kind="promotional"><option value="unknown">Not asked</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+              <div class="field"><label for="ce-c-service">Service announcements</label><select id="ce-c-service" data-kind="service"><option value="unknown">Not asked</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+            </div>
+            <div class="field" id="ce-source-wrap" hidden><label for="ce-source">How did they agree?</label><input id="ce-source" maxlength="120" placeholder="e.g. signed our in-store list, 30 Oct"></div>
+            <p class="helper-text">Promotions only go to people who said yes. Order updates go unless they said no. Anyone who replies STOP is never sent promotions again.</p>
+            <p><button type="button" class="btn btn-small btn-light-purple" id="ce-history-btn" hidden>Consent history</button></p>
+            <ul class="cs-history" id="ce-history" hidden></ul>
+          </fieldset>
+
+          <p id="ce-error" class="form-error" role="alert"></p>
+          <div class="sx-actions">
+            <button type="submit" class="btn btn-primary" id="ce-save">Save</button>
+            <button type="button" class="btn btn-light-purple" data-close>Cancel</button>
+            <button type="button" class="btn btn-danger" id="ce-delete" hidden>Delete</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- Import -->
+      <dialog class="sx-dialog is-wide" id="ct-import" aria-labelledby="ct-import-title">
+        <div class="sx-dialog-body">
+          <div class="sx-dialog-head"><h2 id="ct-import-title">Import contacts</h2><button type="button" class="sx-close" data-close aria-label="Close">×</button></div>
+          <p class="helper-text">A CSV file with a header row - for example from Excel or Google Sheets (File → Download → CSV). Columns are matched by name: First name, Last name, Business, Phone (or Mobile), Email, Island, Village, Category, Notes.</p>
+          <div class="sx-actions">
+            <label class="btn btn-light-purple" for="ci-file">Choose CSV file</label>
+            <input type="file" id="ci-file" accept=".csv,text/csv" class="sr-only">
+            <button type="button" class="btn btn-light-purple" id="ci-orders">From my Mwakete orders</button>
+          </div>
+          <details><summary>Or paste the CSV</summary>
+            <label class="sr-only" for="ci-paste">CSV text</label>
+            <textarea id="ci-paste" class="sx-full" rows="5" placeholder="First name,Phone&#10;Teraoi,7301 2345"></textarea>
+            <button type="button" class="btn btn-small btn-light-purple" id="ci-paste-go">Check</button>
+          </details>
+          <p id="ci-status" class="helper-text" role="status" aria-live="polite"></p>
+
+          <div id="ci-preview" hidden>
+            <div class="sx-stats" id="ci-counts"></div>
+            <div class="sx-table-wrap sx-scroll">
+              <table class="sx-table"><thead><tr><th scope="col">Line</th><th scope="col">Name</th><th scope="col">Number</th><th scope="col">What happens</th></tr></thead><tbody id="ci-rows"></tbody></table>
+            </div>
+            <div class="sx-grid sx-mt">
+              <div class="field"><label for="ci-group">Put them in a group</label><select id="ci-group"></select></div>
+              <div class="field"><label for="ci-category">Category (if the file has none)</label><select id="ci-category"><option value="">-</option></select></div>
+              <div class="field"><label for="ci-dupes">Numbers you already have</label><select id="ci-dupes"><option value="skip">Leave them as they are</option><option value="update">Fill in blanks from the file</option></select></div>
+            </div>
+            <fieldset>
+              <legend>Consent</legend>
+              <p class="helper-text">Imported contacts start with no consent. Tick only if every person in this file agreed, and say how.</p>
+              <div class="sx-checks">
+                <label><input type="checkbox" id="ci-c-transactional"> Order &amp; delivery updates</label>
+                <label><input type="checkbox" id="ci-c-promotional"> Promotions</label>
+                <label><input type="checkbox" id="ci-c-service"> Service announcements</label>
+              </div>
+              <div class="field" id="ci-source-wrap" hidden><label for="ci-source">How did they agree?</label><input id="ci-source" maxlength="120" placeholder="e.g. customer sign-up sheet, Oct 2026"></div>
+            </fieldset>
+            <p id="ci-error" class="form-error" role="alert"></p>
+            <div class="sx-actions"><button type="button" class="btn btn-primary" id="ci-apply">Import</button></div>
+          </div>
+        </div>
+      </dialog>
+
+      <!-- Duplicates -->
+      <dialog class="sx-dialog is-wide" id="ct-dupes" aria-labelledby="ct-dupes-title">
+        <div class="sx-dialog-body">
+          <div class="sx-dialog-head"><h2 id="ct-dupes-title">Possible duplicates</h2><button type="button" class="sx-close" data-close aria-label="Close">×</button></div>
+          <p class="helper-text">Merging keeps the first contact, fills its blanks from the others and keeps the most careful consent (a "no" always wins). Merged contacts are kept in the history.</p>
+          <p id="cd-status" class="helper-text" role="status" aria-live="polite"></p>
+          <div id="cd-list"></div>
+        </div>
+      </dialog>
+
+      <!-- New group -->
+      <dialog class="sx-dialog" id="ct-group" aria-labelledby="ct-group-title">
+        <form method="dialog" id="ct-group-form" novalidate>
+          <div class="sx-dialog-head"><h2 id="ct-group-title">Group</h2><button type="button" class="sx-close" data-close aria-label="Close">×</button></div>
+          <div class="field"><label for="cg-name">Name</label><input id="cg-name" maxlength="60" required></div>
+          <p id="cg-error" class="form-error" role="alert"></p>
+          <div class="sx-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-danger" id="cg-delete" hidden>Delete group</button>
+          </div>
+        </form>
+      </dialog>
+    </div>
+  </main>
+
+  <script defer src="../assets/js/config.min.js"></script>
+  <script defer src="../assets/js/api.min.js"></script>
+  <script defer src="../assets/js/helpers.min.js"></script>
+  <script defer src="../assets/js/cookie-consent.min.js"></script>
+  <script defer src="../assets/js/auth.min.js"></script>
+  <script defer src="../assets/js/owner-nav.min.js"></script>
+  <script defer src="../assets/js/kiribati-locations.min.js"></script>
+  <script defer src="../assets/js/sms-core.min.js"></script>
+  <script defer src="../assets/js/owner-contacts.min.js"></script>
+  <script defer src="../assets/js/register-sw.min.js"></script>
+</body>
+</html>

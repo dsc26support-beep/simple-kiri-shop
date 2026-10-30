@@ -1,0 +1,584 @@
+// Seller: SMS (owner/sms.html; backend SmsCampaigns.gs, SmsDevices.gs). Nothing
+// is sent from here: an approved campaign is queued, and the store's paired
+// Android phone fetches and sends it. The counter and preview use the same
+// rules as the server (sms-core.min.js, built from apps-script/SmsCore.gs);
+// the server checks everything again.
+document.addEventListener('DOMContentLoaded', smInit);
+
+const sm = { tab: '', settings: null, devices: [], groups: [], templates: [], campaigns: [], editingId: '', estimate: null, detailId: '', pairTimer: 0, editingTemplate: null };
+const $sm = (id) => document.getElementById(id);
+const smCall = (action, body) => Api.post(action, Object.assign({ token: Auth.getToken() }, body || {}));
+const SM_TABS = ['overview', 'compose', 'campaigns', 'phones', 'templates', 'settings'];
+const SM_KIND_HELP = {
+  promotional: 'Only people who said yes to promotions get it. Add "Reply STOP to opt out".',
+  transactional: 'About an order or delivery they asked for. Goes to everyone except people who said no.',
+  service: 'Opening hours, closures, changes. Only people who said yes to announcements get it.'
+};
+const SM_KIND_LABEL = { promotional: 'Promotion', transactional: 'Order update', service: 'Announcement' };
+const SM_SKIP_LABEL = { opted_out: 'opted out (STOP)', no_consent: 'have not said yes', invalid_number: 'wrong number', not_mobile: 'not a mobile number', duplicate_number: 'same number twice', too_long: 'message too long' };
+const SM_MSG_LABEL = { queued: 'Waiting', claimed: 'On the phone', submitted: 'Given to Android', sent: 'Accepted by network', delivered: 'Delivered', failed: 'Failed', cancelled: 'Cancelled', expired: 'Not sent (expired)', suppressed: 'Not sent (opted out)' };
+const SM_SAMPLE = { firstName: 'Teraoi', lastName: 'Kaitu', businessName: 'Kaitu Store', island: 'South Tarawa', village: 'Bairiki' };
+
+async function smInit() {
+  const owner = await Auth.guardOwnerAuth();
+  if (!owner) return;
+  $sm('store-name-label').textContent = shortStoreName(owner.storeName);
+  const stop = startLoadingMessage($sm('sm-status'));
+  const [dev, groups, tpl] = await Promise.all([smCall('smsDevices'), smCall('contactGroups'), smCall('smsTemplates')]);
+  stop();
+  if (!dev.ok) { if (dev.error) $sm('sm-status').textContent = dev.error; else showLoadFailedMessage($sm('sm-status')); return; }
+  $sm('sm-status').textContent = '';
+  sm.devices = dev.devices;
+  sm.settings = dev.settings;
+  sm.groups = groups.ok ? groups.groups : [];
+  sm.templates = tpl.ok ? tpl.templates : [];
+  smSuspended();
+  smWire();
+  $sm('sm-app').hidden = false;
+  const fromHash = location.hash.replace('#', '');
+  smShowTab(SM_TABS.indexOf(fromHash) !== -1 ? fromHash : 'overview');
+}
+
+function smSuspended() {
+  const s = sm.settings || {};
+  $sm('sm-suspended').hidden = !s.suspended;
+  $sm('sm-suspended').textContent = s.suspended ? 'Sending is stopped for your store' + (s.suspendedReason ? ': ' + s.suspendedReason : '') + '. Please contact Mwakete.' : '';
+}
+
+function smWire() {
+  document.querySelectorAll('.sx-tab').forEach((b) => b.addEventListener('click', () => smShowTab(b.dataset.tab)));
+  document.querySelectorAll('.sx-dialog [data-close]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
+  // compose
+  $sm('cp-fields').innerHTML = ['first_name', 'last_name', 'business_name', 'village', 'island'].map((f) => `<button type="button" data-field="${f}">{${f}}</button>`).join('');
+  $sm('cp-fields').querySelectorAll('[data-field]').forEach((b) => b.addEventListener('click', () => smInsert($sm('cp-body'), '{' + b.dataset.field + '}')));
+  $sm('cp-body').addEventListener('input', smComposeChanged);
+  $sm('cp-kind').addEventListener('change', smComposeChanged);
+  $sm('cp-all').addEventListener('change', () => { $sm('cp-groups').querySelectorAll('input').forEach((i) => { i.disabled = $sm('cp-all').checked; }); smClearEstimate(); });
+  $sm('cp-template').addEventListener('change', smUseTemplate);
+  $sm('cp-device').addEventListener('change', smFillSims);
+  $sm('cp-check').addEventListener('click', smCheck);
+  $sm('cp-save').addEventListener('click', () => smSaveDraft(true));
+  $sm('cp-start').addEventListener('click', smReview);
+  $sm('cp-new').addEventListener('click', () => smComposeReset());
+  $sm('cp-form').addEventListener('submit', (e) => e.preventDefault());
+  $sm('cp-confirm-form').addEventListener('submit', smApprove);
+  // campaigns
+  $sm('cm-filter').addEventListener('change', smLoadDetailMessages);
+  // phones
+  $sm('ph-pair').addEventListener('click', smPair);
+  // templates
+  $sm('tp-add').addEventListener('click', () => smOpenTemplate(null));
+  $sm('tp-form').addEventListener('submit', smSaveTemplate);
+  $sm('tp-delete').addEventListener('click', smDeleteTemplate);
+  $sm('tp-body').addEventListener('input', () => smCounter($sm('tp-body').value, $sm('tp-counter')));
+  // settings
+  const hours = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, '0')}:00</option>`).join('');
+  $sm('st-quiet-start').innerHTML = hours;
+  $sm('st-quiet-end').innerHTML = hours;
+  $sm('st-form').addEventListener('submit', smSaveSettings);
+  $sm('st-key-new').addEventListener('click', smNewKey);
+  smComposeReset();
+}
+
+function smShowTab(tab) {
+  sm.tab = tab;
+  document.querySelectorAll('.sx-tab').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
+  SM_TABS.forEach((t) => { $sm('panel-' + t).hidden = t !== tab; });
+  try { history.replaceState(null, '', '#' + tab); } catch (e) { /* file:// */ }
+  if (tab !== 'phones') smStopPair();
+  ({ overview: smLoadOverview, campaigns: smLoadCampaigns, phones: smLoadPhones, templates: smRenderTemplates, settings: smLoadSettings, compose: smFillComposeLists })[tab]();
+}
+
+const smWhen = (iso) => { const t = Date.parse(iso); return isNaN(t) ? '' : new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); };
+function smAgo(iso) {
+  const t = Date.parse(iso);
+  if (isNaN(t)) return 'never';
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 2) return 'just now';
+  if (m < 60) return m + ' min ago';
+  if (m < 48 * 60) return Math.round(m / 60) + ' h ago';
+  return Math.round(m / 1440) + ' days ago';
+}
+function smInsert(area, text) {
+  const s = area.selectionStart, e = area.selectionEnd;
+  area.value = area.value.slice(0, s) + text + area.value.slice(e);
+  area.selectionStart = area.selectionEnd = s + text.length;
+  area.focus();
+  area.dispatchEvent(new Event('input'));
+}
+function smDownload(csv, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+/* ---------- overview ---------- */
+
+async function smLoadOverview() {
+  const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const [d, u] = await Promise.all([smCall('smsDashboard'), smCall('smsUsage', { from })]);
+  if (!d.ok) { $sm('ov-stats').innerHTML = `<p class="sx-note is-bad">${escapeHtml(d.error || 'Could not load.')}</p>`; return; }
+  const stat = (n, label) => `<div class="sx-stat"><strong>${Number(n) || 0}</strong><span>${label}</span></div>`;
+  $sm('ov-stats').innerHTML = stat(d.contacts.total, 'contacts') + stat(d.contacts.promotionalYes, 'said yes to promotions') +
+    stat(d.devices.connected, 'phones connected') + stat(d.campaigns.active, 'campaigns running') + stat(d.messages.queued, 'waiting to send') +
+    stat(d.messages.accepted, 'accepted by the network') + stat(d.messages.delivered, 'delivery confirmed') + stat(d.messages.failed, 'failed');
+  const next = [];
+  if (!d.devices.connected) next.push('<a href="#phones" data-go="phones">Connect your Android phone</a> - messages are sent from it.');
+  if (!d.contacts.total) next.push('<a href="contacts.html">Add or import your contacts.</a>');
+  else if (!d.contacts.promotionalYes) next.push('Nobody has said yes to promotions yet. <a href="contacts.html">Record who agreed</a> before sending one.');
+  $sm('ov-next').innerHTML = next.map((n) => `<p class="sx-note">${n}</p>`).join('');
+  $sm('ov-next').querySelectorAll('[data-go]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); smShowTab(a.dataset.go); }));
+  $sm('ov-usage-note').textContent = u.ok ? u.note : '';
+  const days = u.ok ? u.days.slice().reverse() : [];
+  $sm('ov-days').innerHTML = days.length ? days.map((x) => `<tr><td>${escapeHtml(x.day)}</td><td class="sx-num">${x.messages}</td><td class="sx-num">${x.segments}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="sx-empty">Nothing sent yet.</td></tr>';
+}
+
+/* ---------- compose ---------- */
+
+function smFillComposeLists() {
+  $sm('cp-template').innerHTML = '<option value="">-</option>' + sm.templates.map((t) => `<option value="${escapeAttr(t.templateId)}">${escapeHtml(t.name)}</option>`).join('');
+  const picked = new Set(Array.from($sm('cp-groups').querySelectorAll('input:checked')).map((i) => i.value));
+  $sm('cp-groups').innerHTML = sm.groups.length
+    ? sm.groups.map((g) => `<label><input type="checkbox" value="${escapeAttr(g.groupId)}" ${picked.has(g.groupId) ? 'checked' : ''} ${$sm('cp-all').checked ? 'disabled' : ''}> ${escapeHtml(g.name)} (${g.members})</label>`).join('')
+    : '<span class="helper-text">No groups yet.</span>';
+  $sm('cp-groups').querySelectorAll('input').forEach((i) => i.addEventListener('change', smClearEstimate));
+  const devSel = $sm('cp-device');
+  const keep = devSel.value;
+  const active = sm.devices.filter((d) => d.status === 'active');
+  devSel.innerHTML = active.length ? active.map((d) => `<option value="${escapeAttr(d.deviceId)}">${escapeHtml(d.name)}</option>`).join('') : '<option value="">No phone connected</option>';
+  if (keep && active.some((d) => d.deviceId === keep)) devSel.value = keep;
+  smFillSims();
+  $sm('cp-device-help').innerHTML = active.length ? '' : 'Connect a phone on the <a href="#phones" data-go="phones">Phones &amp; SIMs</a> tab first.';
+  $sm('cp-device-help').querySelectorAll('[data-go]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); smShowTab('phones'); }));
+}
+
+function smFillSims(selectKey) {
+  const d = sm.devices.find((x) => x.deviceId === $sm('cp-device').value);
+  const sims = d ? d.sims : [];
+  const sel = $sm('cp-sim');
+  sel.innerHTML = sims.length ? sims.map((s) => `<option value="${escapeAttr(s.simKey)}" ${s.status !== 'present' ? 'disabled' : ''}>${escapeHtml(smSimLabel(s))}${s.status !== 'present' ? ' (not in the phone)' : ''}</option>`).join('') : '<option value="">-</option>';
+  const def = typeof selectKey === 'string' && sims.some((s) => s.simKey === selectKey) ? selectKey : (sims.find((s) => s.isDefault && s.status === 'present') || sims.find((s) => s.status === 'present') || {}).simKey;
+  if (def) sel.value = def;
+}
+const smSimLabel = (s) => `SIM ${s.slot}${s.name && s.name !== 'SIM ' + s.slot ? ' · ' + s.name : ''}${s.carrier ? ' · ' + s.carrier : ''}${s.numberHint ? ' · …' + s.numberHint : ''}`;
+
+function smCounter(text, el) {
+  if (typeof smsSegmentInfo !== 'function') { el.textContent = ''; return null; }
+  const i = smsSegmentInfo(text);
+  const tooLong = i.segments > 10;
+  el.innerHTML = `<span><strong>${i.units}</strong> characters</span><span class="${tooLong ? 'is-bad' : ''}"><strong>${i.segments}</strong> SMS each${tooLong ? ' - too long (10 at most)' : ''}</span>` +
+    `<span>${i.segments ? i.remaining + ' left in this SMS' : ''}</span>` +
+    (i.encoding === 'ucs2' ? `<span class="is-bad">Special characters (${escapeHtml(i.unicodeChars.slice(0, 6).join(' '))}) make each SMS hold only 70 characters.</span>` : '');
+  return i;
+}
+
+// Any change makes an earlier check out of date: back to the example preview.
+function smComposeChanged() {
+  sm.estimate = null;
+  $sm('cp-estimate').innerHTML = '';
+  $sm('cp-kind-help').textContent = SM_KIND_HELP[$sm('cp-kind').value];
+  const body = $sm('cp-body').value;
+  smCounter(body, $sm('cp-counter'));
+  smPreview([{ name: 'Example', text: typeof smsRender === 'function' ? smsRender(body, SM_SAMPLE).text : body }]);
+}
+
+function smPreview(items) {
+  $sm('cp-preview').innerHTML = items.filter((p) => p.text).map((p) => `<div class="sx-bubble">${escapeHtml(p.text)}<small>${escapeHtml(p.name || '')}${p.segments ? ' · ' + p.segments + ' SMS' : ''}</small></div>`).join('') ||
+    '<p class="helper-text">Your message will show here.</p>';
+}
+
+const smClearEstimate = () => smComposeChanged();
+
+function smSpec() {
+  const when = $sm('cp-when').value;
+  return {
+    campaignId: sm.editingId || undefined,
+    name: $sm('cp-name').value.trim(), kind: $sm('cp-kind').value, body: $sm('cp-body').value,
+    allContacts: $sm('cp-all').checked,
+    groupIds: $sm('cp-all').checked ? [] : Array.from($sm('cp-groups').querySelectorAll('input:checked')).map((i) => i.value),
+    deviceId: $sm('cp-device').value, simKey: $sm('cp-sim').value,
+    intervalSeconds: Number($sm('cp-interval').value) || undefined,
+    scheduledAt: when ? new Date(when).toISOString() : ''
+  };
+}
+
+function smComposeReset(c) {
+  sm.editingId = c ? c.campaignId : '';
+  sm.estimate = null;
+  $sm('cp-name').value = c ? c.name : '';
+  $sm('cp-kind').value = c ? c.kind : 'promotional';
+  $sm('cp-body').value = c ? c.body : '';
+  $sm('cp-all').checked = !!(c && c.allContacts);
+  $sm('cp-interval').min = (sm.settings && sm.settings.limits.minIntervalSeconds) || 3;
+  $sm('cp-interval').value = c && c.intervalSeconds ? c.intervalSeconds : ((sm.settings && sm.settings.intervalSeconds) || 8);
+  $sm('cp-when').value = c && c.scheduledAt ? new Date(Date.parse(c.scheduledAt) - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+  $sm('cp-error').textContent = '';
+  $sm('cp-new').hidden = !c;
+  smFillComposeLists();
+  $sm('cp-groups').querySelectorAll('input').forEach((i) => { i.checked = !!(c && c.groupIds.indexOf(i.value) !== -1); });
+  if (c && c.deviceId) { $sm('cp-device').value = c.deviceId; smFillSims(c.simKey); }
+  smClearEstimate();
+}
+
+function smUseTemplate() {
+  const t = sm.templates.find((x) => x.templateId === $sm('cp-template').value);
+  if (!t) return;
+  if ($sm('cp-body').value.trim() && !confirm('Replace your message with this template?')) { $sm('cp-template').value = ''; return; }
+  $sm('cp-body').value = t.body;
+  $sm('cp-kind').value = t.kind;
+  if (!$sm('cp-name').value.trim()) $sm('cp-name').value = t.name;
+  smClearEstimate();
+}
+
+async function smCheck() {
+  const spec = smSpec();
+  $sm('cp-error').textContent = '';
+  if (!spec.body.trim()) { $sm('cp-error').textContent = 'Write the message.'; return null; }
+  if (!spec.allContacts && !spec.groupIds.length) { $sm('cp-error').textContent = 'Choose who gets it.'; return null; }
+  const done = setButtonBusy($sm('cp-check'), 'Checking');
+  const res = await smCall('smsCampaignEstimate', spec);
+  done();
+  if (!res.ok) { $sm('cp-error').textContent = res.error || 'Could not check.'; return null; }
+  sm.estimate = res;
+  const skipped = Object.keys(res.skipped).filter((k) => res.skipped[k]).map((k) => `<li>${res.skipped[k]} ${SM_SKIP_LABEL[k] || k}</li>`).join('');
+  const missing = Object.keys(res.missingFields).map((f) => `${res.missingFields[f]} have no {${escapeHtml(f)}}`).join(', ');
+  $sm('cp-estimate').innerHTML = `<div class="sx-note${res.recipients ? '' : ' is-warn'}"><strong>${res.recipients} people</strong> · ${res.segments} SMS in total</div>` +
+    (skipped ? `<p>Left out:</p><ul>${skipped}</ul>` : '') +
+    (missing ? `<p class="sx-note is-warn">${missing} - they get the text without it${/\|/.test(spec.body) ? ' (or your fallback)' : ''}.</p>` : '') +
+    (res.tooMany ? `<p class="sx-note is-bad">A campaign can go to at most ${res.maxRecipients} people. Split it into smaller groups.</p>` : '');
+  smPreview(res.previews);
+  return res;
+}
+
+async function smSaveDraft(showDone) {
+  const spec = smSpec();
+  $sm('cp-error').textContent = '';
+  if (!spec.name) { $sm('cp-error').textContent = 'Give the campaign a name (only you see it).'; $sm('cp-name').focus(); return null; }
+  const done = showDone ? setButtonBusy($sm('cp-save'), 'Saving') : () => {};
+  const res = await smCall('smsCampaignSave', spec);
+  done();
+  if (!res.ok) { $sm('cp-error').textContent = res.error || 'Could not save.'; return null; }
+  sm.editingId = res.campaign.campaignId;
+  $sm('cp-new').hidden = false;
+  if (showDone) $sm('cp-error').textContent = '';
+  if (showDone) $sm('cp-estimate').insertAdjacentHTML('afterbegin', '<p class="sx-note">Draft saved. Find it under Campaigns.</p>');
+  return res.campaign;
+}
+
+async function smReview() {
+  if (!$sm('cp-device').value || !$sm('cp-sim').value) { $sm('cp-error').textContent = 'Choose the phone and SIM to send from.'; return; }
+  const est = await smCheck();
+  if (!est) return;
+  if (!est.recipients) { $sm('cp-error').textContent = 'Nobody would get this message.'; return; }
+  if (est.tooMany) return;
+  const c = await smSaveDraft(false);
+  if (!c) return;
+  const d = sm.devices.find((x) => x.deviceId === c.deviceId) || {};
+  const sim = (d.sims || []).find((s) => s.simKey === c.simKey);
+  const minutes = Math.ceil(est.recipients * c.intervalSeconds / 60);
+  $sm('cp-confirm-body').innerHTML = `<ul>
+    <li><strong>${est.recipients} people</strong>, ${est.segments} SMS (${escapeHtml(SM_KIND_LABEL[c.kind])})</li>
+    <li>From <strong>${escapeHtml(d.name || 'your phone')}</strong>, ${escapeHtml(sim ? smSimLabel(sim) : 'SIM')}</li>
+    <li>${c.scheduledAt ? 'Starts ' + escapeHtml(smWhen(c.scheduledAt)) : 'Starts when the phone next checks in'}; about ${minutes} minute${minutes === 1 ? '' : 's'} at one message every ${c.intervalSeconds} seconds, outside quiet hours.</li>
+    <li>Your carrier charges what it normally charges for ${est.segments} SMS (or uses your bundle).</li></ul>`;
+  $sm('cp-confirm-n').value = '';
+  $sm('cp-confirm-error').textContent = '';
+  $sm('cp-confirm').showModal();
+  $sm('cp-confirm-n').focus();
+}
+
+async function smApprove(e) {
+  e.preventDefault();
+  const n = Number($sm('cp-confirm-n').value.trim());
+  if (!sm.estimate || n !== sm.estimate.recipients) { $sm('cp-confirm-error').textContent = `Type ${sm.estimate ? sm.estimate.recipients : 'the number of people'} to confirm.`; return; }
+  const done = setButtonBusy($sm('cp-confirm-go'), 'Starting');
+  const res = await smCall('smsCampaignApprove', { campaignId: sm.editingId, confirmRecipients: n, requestId: 'smsapprove-' + sm.editingId });
+  done();
+  if (!res.ok) { $sm('cp-confirm-error').textContent = res.error || 'Could not start.'; return; }
+  $sm('cp-confirm').close();
+  smComposeReset();
+  smShowTab('campaigns');
+}
+
+/* ---------- campaigns ---------- */
+
+function smProgress(c) {
+  const t = c.totals || {};
+  const done = (t.submitted || 0) + (t.sent || 0) + (t.delivered || 0) + (t.failed || 0) + (t.expired || 0) + (t.cancelled || 0);
+  const total = c.recipients || 0;
+  return { done, total, pct: total ? Math.round(done / total * 100) : 0, failed: (t.failed || 0) + (t.expired || 0) };
+}
+
+async function smLoadCampaigns() {
+  const tbody = $sm('cm-rows');
+  const res = await smCall('smsCampaigns');
+  if (!res.ok) { tbody.innerHTML = `<tr><td colspan="5" class="sx-empty">${escapeHtml(res.error || 'Could not load.')}</td></tr>`; return; }
+  sm.campaigns = res.campaigns;
+  tbody.innerHTML = res.campaigns.length ? res.campaigns.map((c) => {
+    const p = smProgress(c);
+    return `<tr><td><span class="sx-name">${escapeHtml(c.name)}</span><span class="sx-sub">${escapeHtml(SM_KIND_LABEL[c.kind] || c.kind)} · ${escapeHtml(smWhen(c.approvedAt || c.updatedAt))}</span></td>
+      <td><span class="sx-pill is-${escapeAttr(c.status)}">${escapeHtml(c.statusLabel)}</span></td>
+      <td class="sx-num">${c.status === 'draft' ? '-' : c.recipients}</td>
+      <td class="sx-hide-sm">${c.status === 'draft' ? '' : `<div class="sx-progress" title="${p.done} of ${p.total}"><span style="width:${p.pct}%"></span></div><span class="sx-sub">${p.done} of ${p.total}${p.failed ? ' · ' + p.failed + ' not sent' : ''}</span>`}</td>
+      <td>${c.status === 'draft' ? `<button type="button" class="btn btn-small btn-light-purple" data-edit="${escapeAttr(c.campaignId)}">Edit</button> <button type="button" class="btn btn-small btn-danger" data-del="${escapeAttr(c.campaignId)}">Delete</button>`
+        : `<button type="button" class="btn btn-small btn-light-purple" data-open="${escapeAttr(c.campaignId)}">Open</button>`}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="sx-empty">No campaigns yet. Write one under New message.</td></tr>';
+  tbody.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => { smComposeReset(sm.campaigns.find((c) => c.campaignId === b.dataset.edit)); smShowTab('compose'); }));
+  tbody.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Delete this draft?')) return;
+    const r = await smCall('smsCampaignDelete', { campaignId: b.dataset.del });
+    if (!r.ok) alert(r.error || 'Could not delete.');
+    smLoadCampaigns();
+  }));
+  tbody.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => smOpenDetail(b.dataset.open)));
+}
+
+async function smOpenDetail(id) {
+  sm.detailId = id;
+  $sm('cm-filter').value = '';
+  $sm('cm-detail-error').textContent = '';
+  if (!$sm('cm-detail').open) $sm('cm-detail').showModal();
+  await smLoadDetailMessages();
+}
+
+async function smLoadDetailMessages() {
+  const res = await smCall('smsCampaignGet', { campaignId: sm.detailId, status: $sm('cm-filter').value, limit: 300 });
+  if (!res.ok) { $sm('cm-detail-error').textContent = res.error || 'Could not load.'; return; }
+  const c = res.campaign;
+  const p = smProgress(c);
+  const t = c.totals || {};
+  $sm('cm-detail-title').textContent = c.name;
+  $sm('cm-detail-head').innerHTML = `<p><span class="sx-pill is-${escapeAttr(c.status)}">${escapeHtml(c.statusLabel)}</span> ${escapeHtml(SM_KIND_LABEL[c.kind] || '')}${c.scheduledAt ? ' · starts ' + escapeHtml(smWhen(c.scheduledAt)) : ''}${c.cancelReason ? ' · ' + escapeHtml(c.cancelReason) : ''}</p>
+    <div class="sx-stats">${[[c.recipients, 'people'], [c.segments, 'SMS'], [(t.queued || 0) + (t.claimed || 0), 'waiting'], [(t.submitted || 0) + (t.sent || 0) + (t.delivered || 0), 'sent'], [t.delivered || 0, 'delivery confirmed'], [p.failed, 'not sent']]
+      .map((s) => `<div class="sx-stat"><strong>${Number(s[0]) || 0}</strong><span>${s[1]}</span></div>`).join('')}</div>
+    <p class="helper-text">"Delivered" only shows when the network sends a delivery report; many do not, so "sent" is usually as far as it goes.</p>
+    <div class="sx-bubble">${escapeHtml(c.body)}</div>`;
+  const acts = [];
+  if (['queued', 'processing', 'scheduled'].indexOf(c.status) !== -1) acts.push(['pause', 'Pause']);
+  if (c.status === 'paused') acts.push(['resume', 'Resume']);
+  if (p.failed && ['cancelled', 'draft'].indexOf(c.status) === -1) acts.push(['retry', 'Try the failed ones again']);
+  if (['queued', 'processing', 'scheduled', 'paused'].indexOf(c.status) !== -1) acts.push(['cancel', 'Cancel']);
+  acts.push(['export', 'Download results (CSV)']);
+  $sm('cm-detail-actions').innerHTML = acts.map((a) => `<button type="button" class="btn btn-small ${a[0] === 'cancel' ? 'btn-danger' : 'btn-light-purple'}" data-act="${a[0]}">${a[1]}</button>`).join('');
+  $sm('cm-detail-actions').querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => smDetailAction(b.dataset.act, c, b)));
+  $sm('cm-messages').innerHTML = res.messages.length ? res.messages.map((m) => `<tr><td>${escapeHtml(m.name || '-')}</td><td>${escapeHtml(m.phone)}</td>
+    <td><span class="sx-pill is-${escapeAttr(m.status)}">${escapeHtml(SM_MSG_LABEL[m.status] || m.statusLabel)}</span>${m.error ? `<span class="sx-sub">${escapeHtml(m.error)}</span>` : ''}</td>
+    <td class="sx-hide-sm">${escapeHtml(smWhen(m.deliveredAt || m.sentAt || m.submittedAt))}</td></tr>`).join('') + (res.total > res.messages.length ? `<tr><td colspan="4" class="sx-empty">${res.total - res.messages.length} more - download the CSV for all.</td></tr>` : '')
+    : '<tr><td colspan="4" class="sx-empty">None.</td></tr>';
+}
+
+async function smDetailAction(act, c, btn) {
+  $sm('cm-detail-error').textContent = '';
+  if (act === 'export') {
+    const done = setButtonBusy(btn, 'Preparing');
+    const r = await smCall('smsCampaignExport', { campaignId: c.campaignId });
+    done();
+    if (!r.ok) { $sm('cm-detail-error').textContent = r.error || 'Could not export.'; return; }
+    smDownload(r.csv, 'mwakete-sms-' + c.name.replace(/[^\w-]+/g, '-').slice(0, 40) + '.csv');
+    return;
+  }
+  let body = { campaignId: c.campaignId };
+  if (act === 'cancel') {
+    if (!confirm('Cancel this campaign? Messages not yet sent will not go out. Messages already on the phone may still be sent.')) return;
+    body.reason = 'cancelled by the store';
+  }
+  const action = { pause: 'smsCampaignPause', resume: 'smsCampaignResume', cancel: 'smsCampaignCancel', retry: 'smsCampaignRetry' }[act];
+  const done = setButtonBusy(btn, 'Working');
+  const r = await smCall(action, body);
+  done();
+  if (!r.ok) { $sm('cm-detail-error').textContent = r.error || 'Could not do that.'; return; }
+  if (act === 'retry') $sm('cm-detail-error').textContent = `${r.requeued} back in the queue` + (r.skipped ? `, ${r.skipped} cannot be retried (wrong number, opted out, or tried 3 times).` : '.');
+  smLoadDetailMessages();
+  smLoadCampaigns();
+}
+
+/* ---------- phones ---------- */
+
+async function smReloadDevices() {
+  const res = await smCall('smsDevices');
+  if (res.ok) { sm.devices = res.devices; sm.settings = res.settings; smSuspended(); }
+  return res;
+}
+
+async function smLoadPhones() {
+  const [res, usage] = await Promise.all([smReloadDevices(), smCall('smsUsage', {})]);
+  if (!res.ok) { $sm('ph-list').innerHTML = `<p class="sx-note is-bad">${escapeHtml(res.error || 'Could not load.')}</p>`; return; }
+  const used = {};
+  if (usage.ok) usage.sims.forEach((s) => { used[s.simKey] = s; });
+  const list = sm.devices.filter((d) => d.status !== 'revoked').concat(sm.devices.filter((d) => d.status === 'revoked'));
+  $sm('ph-list').innerHTML = list.length ? list.map((d) => `<div class="sx-device" data-device="${escapeAttr(d.deviceId)}">
+    <div class="sx-device-head"><h3>${escapeHtml(d.name)} <span class="sx-pill is-${escapeAttr(d.status)}">${d.status === 'active' ? 'Connected' : 'Removed'}</span></h3>
+      ${d.status === 'active' ? `<span><button type="button" class="btn btn-small btn-light-purple" data-rename>Rename</button> <button type="button" class="btn btn-small btn-danger" data-revoke>Remove</button></span>` : ''}</div>
+    <p class="helper-text">${escapeHtml([d.model, d.androidVersion ? 'Android ' + d.androidVersion : '', d.appVersion ? 'app ' + d.appVersion : ''].filter(Boolean).join(' · '))} · last checked in ${escapeHtml(smAgo(d.lastSeenAt))}</p>
+    ${d.status === 'active' ? (d.sims.length ? d.sims.map((s) => smSimRow(s, used[s.simKey])).join('') : '<p class="helper-text">The phone has not reported its SIMs yet. Open the app on it.</p>') : ''}
+  </div>`).join('') : '<p class="helper-text">No phones yet.</p>';
+  $sm('ph-list').querySelectorAll('[data-device]').forEach((card) => {
+    const d = sm.devices.find((x) => x.deviceId === card.dataset.device);
+    const rn = card.querySelector('[data-rename]');
+    if (rn) rn.addEventListener('click', async () => {
+      const name = prompt('Name for this phone', d.name);
+      if (!name) return;
+      const r = await smCall('smsDeviceRename', { deviceId: d.deviceId, name });
+      if (!r.ok) alert(r.error || 'Could not rename.');
+      smLoadPhones();
+    });
+    const rv = card.querySelector('[data-revoke]');
+    if (rv) rv.addEventListener('click', async () => {
+      if (!confirm(`Remove ${d.name}? It stops sending at once. Messages it was holding are marked "not sent" so you can retry them.`)) return;
+      const r = await smCall('smsDeviceRevoke', { deviceId: d.deviceId });
+      if (!r.ok) alert(r.error || 'Could not remove.');
+      smLoadPhones();
+    });
+    card.querySelectorAll('[data-sim]').forEach((row) => row.querySelector('[data-save]').addEventListener('click', async (e) => {
+      const val = (f) => row.querySelector(`[data-f="${f}"]`).value.trim();
+      const done = setButtonBusy(e.target, 'Saving');
+      const r = await smCall('smsSimUpdate', { simKey: row.dataset.sim, name: val('name'), allowance: val('allowance') === '' ? '' : Number(val('allowance')), resetDay: val('reset') === '' ? '' : Number(val('reset')), isDefault: row.querySelector('[data-f="default"]').checked });
+      done();
+      if (!r.ok) { alert(r.error || 'Could not save.'); return; }
+      smLoadPhones();
+    }));
+  });
+}
+
+function smSimRow(s, u) {
+  const id = 'sim-' + s.simKey.replace(/[^\w-]/g, '');
+  const left = u && u.allowance !== null && u.allowance !== undefined ? `<span class="sx-sub">About ${u.estimatedRemaining} of ${u.allowance} left since ${escapeHtml(u.periodStart)} (our count, not your carrier's)</span>` : '';
+  return `<div class="sx-sim" data-sim="${escapeAttr(s.simKey)}">
+    <div><strong>SIM ${s.slot}</strong> ${escapeHtml(s.carrier)} ${s.numberHint ? '…' + escapeHtml(s.numberHint) : ''} <span class="sx-pill is-${escapeAttr(s.status)}">${s.status === 'present' ? 'In the phone' : 'Not in the phone'}</span>${left}
+      <label class="sx-sub"><input type="checkbox" data-f="default" ${s.isDefault ? 'checked' : ''}> Use first</label></div>
+    <div class="field"><label for="${id}-n">Name</label><input id="${id}-n" data-f="name" maxlength="40" value="${escapeAttr(s.name)}"></div>
+    <div class="field"><label for="${id}-a">SMS bundle</label><input id="${id}-a" data-f="allowance" type="number" min="0" max="100000" value="${s.allowance === null ? '' : s.allowance}" placeholder="e.g. 500"></div>
+    <div class="field"><label for="${id}-r">Renews on day</label><input id="${id}-r" data-f="reset" type="number" min="1" max="31" value="${s.resetDay === null ? '' : s.resetDay}"></div>
+    <button type="button" class="btn btn-small btn-light-purple" data-save>Save</button></div>`;
+}
+
+async function smPair() {
+  $sm('ph-error').textContent = '';
+  const name = prompt('A name for the phone (so you can tell them apart)', 'Shop phone');
+  if (name === null) return;
+  const done = setButtonBusy($sm('ph-pair'), 'Getting');
+  const res = await smCall('smsPairStart', { name });
+  done();
+  if (!res.ok) { $sm('ph-error').textContent = res.error || 'Could not get a code.'; return; }
+  $sm('ph-code-text').textContent = res.code;
+  $sm('ph-code').hidden = false;
+  const before = sm.devices.filter((d) => d.status === 'active').length;
+  const until = Date.parse(res.expiresAt);
+  let polls = 0;
+  smStopPair();
+  sm.pairTimer = setInterval(async () => {
+    const left = Math.max(0, Math.round((until - Date.now()) / 1000));
+    $sm('ph-code-exp').textContent = left ? `Type it into the app within ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}.` : 'This code has expired. Get a new one.';
+    if (!left) { smStopPair(); return; }
+    if (++polls % 5 === 0) {
+      await smReloadDevices();
+      if (sm.devices.filter((d) => d.status === 'active').length > before) {
+        smStopPair();
+        $sm('ph-code').hidden = true;
+        $sm('ph-error').textContent = '';
+        smLoadPhones();
+      }
+    }
+  }, 1000);
+}
+function smStopPair() { clearInterval(sm.pairTimer); sm.pairTimer = 0; }
+
+/* ---------- templates ---------- */
+
+async function smRenderTemplates() {
+  const res = await smCall('smsTemplates');
+  if (res.ok) sm.templates = res.templates;
+  $sm('tp-list').innerHTML = sm.templates.length ? sm.templates.map((t) => `<div class="sx-device">
+    <div class="sx-device-head"><h3>${escapeHtml(t.name)} <span class="sx-pill">${escapeHtml(SM_KIND_LABEL[t.kind] || t.kind)}</span></h3>
+      <button type="button" class="btn btn-small btn-light-purple" data-tpl="${escapeAttr(t.templateId)}">Edit</button></div>
+    <div class="sx-bubble">${escapeHtml(t.body)}<small>${t.info.segments} SMS · ${t.info.units} characters</small></div></div>`).join('')
+    : '<p class="helper-text">No templates yet. Save messages you send often.</p>';
+  $sm('tp-list').querySelectorAll('[data-tpl]').forEach((b) => b.addEventListener('click', () => smOpenTemplate(sm.templates.find((t) => t.templateId === b.dataset.tpl))));
+}
+
+function smOpenTemplate(t) {
+  sm.editingTemplate = t;
+  $sm('tp-edit-title').textContent = t ? 'Template' : 'New template';
+  $sm('tp-name').value = t ? t.name : '';
+  $sm('tp-kind').value = t ? t.kind : 'promotional';
+  $sm('tp-body').value = t ? t.body : '';
+  $sm('tp-error').textContent = '';
+  $sm('tp-delete').hidden = !t;
+  smCounter($sm('tp-body').value, $sm('tp-counter'));
+  $sm('tp-edit').showModal();
+}
+
+async function smSaveTemplate(e) {
+  e.preventDefault();
+  const res = await smCall('smsTemplateSave', { templateId: sm.editingTemplate ? sm.editingTemplate.templateId : undefined, name: $sm('tp-name').value.trim(), kind: $sm('tp-kind').value, body: $sm('tp-body').value });
+  if (!res.ok) { $sm('tp-error').textContent = res.error || 'Could not save.'; return; }
+  $sm('tp-edit').close();
+  smRenderTemplates();
+}
+
+async function smDeleteTemplate() {
+  if (!sm.editingTemplate || !confirm('Delete this template?')) return;
+  const res = await smCall('smsTemplateDelete', { templateId: sm.editingTemplate.templateId });
+  if (!res.ok) { $sm('tp-error').textContent = res.error || 'Could not delete.'; return; }
+  $sm('tp-edit').close();
+  smRenderTemplates();
+}
+
+/* ---------- settings ---------- */
+
+async function smLoadSettings() {
+  const [s, sup, keys] = await Promise.all([smCall('smsSettingsGet'), smCall('smsSuppressionList'), smCall('smsApiKeys')]);
+  if (s.ok) {
+    sm.settings = s.settings;
+    $sm('st-quiet-start').value = s.settings.quietStart;
+    $sm('st-quiet-end').value = s.settings.quietEnd;
+    $sm('st-interval').min = s.settings.limits.minIntervalSeconds;
+    $sm('st-interval').value = s.settings.intervalSeconds;
+    $sm('st-daily').max = s.settings.limits.maxDailyPerStore;
+    $sm('st-daily').value = s.settings.dailyLimit;
+  }
+  const list = sup.ok ? sup.suppressed : [];
+  $sm('st-suppressed').innerHTML = list.length ? `<div class="sx-table-wrap sx-scroll"><table class="sx-table"><thead><tr><th scope="col">Number</th><th scope="col">How</th><th scope="col">When</th></tr></thead><tbody>${
+    list.map((x) => `<tr><td>${escapeHtml(x.phone)}</td><td>${escapeHtml(x.source || '')}</td><td>${escapeHtml(smWhen(x.at))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="helper-text">Nobody yet.</p>';
+  smRenderKeys(keys.ok ? keys.keys : []);
+}
+
+async function smSaveSettings(e) {
+  e.preventDefault();
+  $sm('st-error').textContent = '';
+  const done = setButtonBusy($sm('st-save'), 'Saving');
+  const res = await smCall('smsSettingsSave', { quietStart: Number($sm('st-quiet-start').value), quietEnd: Number($sm('st-quiet-end').value), intervalSeconds: Number($sm('st-interval').value), dailyLimit: Number($sm('st-daily').value) });
+  done();
+  if (!res.ok) { $sm('st-error').textContent = res.error || 'Could not save.'; return; }
+  sm.settings = res.settings;
+  $sm('st-error').textContent = 'Saved.';
+}
+
+function smRenderKeys(keys) {
+  const active = keys.filter((k) => k.status === 'active');
+  $sm('st-keys').innerHTML = active.length ? `<ul>${active.map((k) => `<li>${escapeHtml(k.label)} · made ${escapeHtml(smWhen(k.createdAt))} · last used ${escapeHtml(smAgo(k.lastUsedAt))}
+    <button type="button" class="btn btn-small btn-danger" data-key="${escapeAttr(k.keyId)}">Remove</button></li>`).join('')}</ul>` : '';
+  $sm('st-keys').querySelectorAll('[data-key]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Remove this key? Sheets using it stop working.')) return;
+    const r = await smCall('smsApiKeyRevoke', { keyId: b.dataset.key });
+    if (!r.ok) alert(r.error || 'Could not remove.');
+    $sm('st-key-shown').hidden = true;
+    smLoadSettings();
+  }));
+}
+
+async function smNewKey() {
+  const done = setButtonBusy($sm('st-key-new'), 'Making');
+  const res = await smCall('smsApiKeyCreate', { label: $sm('st-key-name').value.trim() });
+  done();
+  if (!res.ok) { alert(res.error || 'Could not make a key.'); return; }
+  $sm('st-key-text').textContent = res.apiKey;
+  $sm('st-key-shown').hidden = false;
+  $sm('st-key-name').value = '';
+  const keys = await smCall('smsApiKeys');
+  smRenderKeys(keys.ok ? keys.keys : []);
+}
