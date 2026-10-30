@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stop SMS — Mwakete</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/styles.min.css">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <meta name="theme-color" content="#332d63">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container header-top-row">
+      <a class="header-logo-link" href="index.html" aria-label="Mwakete — home">
+        <img src="assets/img/favicon.svg" alt="" class="header-logo-mark"><span class="header-wordmark" aria-hidden="true">wakete</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="page-products">
+    <div class="container unsub-page">
+      <h1>Stop SMS from <span id="stop-store">a store</span></h1>
+      <!-- Public: a store's SMS links here (or the person replies STOP). The
+           server answers the same for any number, so this page cannot be used
+           to find out who is on a store's list. -->
+      <form id="stop-form" novalidate>
+        <p>Type your mobile number. That store will not send you promotions or announcements by SMS again.</p>
+        <p class="helper-text">Messages about an order you placed may still come. You can also reply STOP to any of their messages.</p>
+        <div class="field"><label for="stop-phone">Mobile number</label><input id="stop-phone" inputmode="tel" autocomplete="tel" maxlength="30" placeholder="e.g. 7301 2345"></div>
+        <p><button type="submit" class="btn btn-primary" id="stop-btn">Stop these SMS</button></p>
+      </form>
+      <p id="stop-done" role="status" aria-live="polite" hidden></p>
+      <p id="stop-error" class="form-error" role="alert"></p>
+      <p><a href="index.html">Back to Mwakete</a></p>
+    </div>
+  </main>
+
+  <script defer src="assets/js/config.min.js"></script>
+  <script defer src="assets/js/api.min.js"></script>
+  <script defer src="assets/js/helpers.min.js"></script>
+  <script defer src="assets/js/sms-stop.min.js"></script>
+</body>
+</html>

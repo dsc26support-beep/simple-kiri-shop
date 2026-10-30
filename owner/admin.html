@@ -365,6 +365,24 @@
           </details>
         </section>
 
+        <!-- Contacts & SMS (admin-sms.js; backend SmsDevices.gs). Counts and
+             flags only: a store's contacts open only with a written reason,
+             which goes in the audit log. -->
+        <section class="dash-section" aria-labelledby="asm-heading" id="sms">
+          <h2 id="asm-heading">Contacts &amp; SMS</h2>
+          <p class="helper-text">Per store, last 7 days. No names, numbers or message text here.</p>
+          <p id="asm-status" class="helper-text" role="status" aria-live="polite"></p>
+          <div class="sx-table-wrap"><table class="sx-table" id="asm-stores">
+            <thead><tr><th scope="col">Store</th><th scope="col" class="sx-num">Contacts</th><th scope="col" class="sx-num">Campaigns</th><th scope="col" class="sx-num">Sent</th><th scope="col" class="sx-num">Failed</th><th scope="col" class="sx-num">Opt-outs</th><th scope="col" class="sx-num">Phones</th><th scope="col">Flags</th><th scope="col"></th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <div id="asm-contacts" hidden></div>
+          <details class="sx-mt"><summary>Platform limits</summary>
+            <form id="asm-limits" class="sx-grid sx-mt" novalidate></form>
+            <p><button type="button" class="btn btn-small btn-light-purple" id="asm-limits-save">Save limits</button> <span id="asm-limits-msg" class="helper-text" role="status"></span></p>
+          </details>
+        </section>
+
         <section class="dash-section" aria-labelledby="feature-payments-heading">
           <h2 id="feature-payments-heading">Featuring payments</h2>
           <p class="helper-text">5c per product per day. Unclear receipts wait here: check, then approve or reject. Every few days tick <strong>Seen in bank</strong> for payments in account 906149 — unticked featuring stops after 7 days.</p>
@@ -442,6 +460,7 @@
   <script defer src="../assets/js/admin-overview.min.js"></script>
   <script defer src="../assets/js/admin-deliveries.min.js"></script>
   <script defer src="../assets/js/admin-campaigns.min.js"></script>
+  <script defer src="../assets/js/admin-sms.min.js"></script>
   <script defer src="../assets/js/admin.min.js"></script>
   <script defer src="../assets/js/register-sw.min.js"></script>
 </body>

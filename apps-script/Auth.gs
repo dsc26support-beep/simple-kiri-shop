@@ -139,6 +139,8 @@ function publicOwnerFields(owner) {
     storeType: storeTypeOf(owner),
     // Whether the POS & Integrations pages are switched on (IntegrationHub.gs); the seller menu shows them only then.
     posHub: typeof posHubEnabled === 'function' && posHubEnabled(),
+    // Whether Contacts & SMS is switched on (Script Property CONTACTS_SMS, Contacts.gs); the seller menu shows it only then.
+    contactsSms: typeof contactsSmsEnabled === 'function' && contactsSmsEnabled(),
     wholesaleVerified: String(owner.WholesaleVerified) === 'true',
     // Whether a hint is set (the dashboard asks sellers without one). The hint
     // text itself is only ever sent to the login page after a wrong password.
