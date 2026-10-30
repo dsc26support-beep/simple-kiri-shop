@@ -1,0 +1,42 @@
+{
+  "_about": "One table for SmsCore.gs (server), assets/js/sms-core.js (web) and SmsCore.kt (Android). Each port must give these answers.",
+  "segments": [
+    { "text": "", "encoding": "gsm7", "units": 0, "segments": 0 },
+    { "text": "Mauri! Your order is ready to collect.", "encoding": "gsm7", "units": 38, "segments": 1 },
+    { "repeat": "a", "times": 160, "encoding": "gsm7", "units": 160, "segments": 1 },
+    { "repeat": "a", "times": 161, "encoding": "gsm7", "units": 161, "segments": 2 },
+    { "repeat": "a", "times": 306, "encoding": "gsm7", "units": 306, "segments": 2 },
+    { "repeat": "a", "times": 307, "encoding": "gsm7", "units": 307, "segments": 3 },
+    { "text": "Price: 10€ [bulk] {x}", "encoding": "gsm7", "units": 26, "segments": 1 },
+    { "repeat": "€", "times": 80, "encoding": "gsm7", "units": 160, "segments": 1 },
+    { "repeat": "€", "times": 81, "encoding": "gsm7", "units": 162, "segments": 2 },
+    { "text": "Ko rabwa ’", "encoding": "ucs2", "units": 10, "segments": 1 },
+    { "repeat": "ā", "times": 70, "encoding": "ucs2", "units": 70, "segments": 1 },
+    { "repeat": "ā", "times": 71, "encoding": "ucs2", "units": 71, "segments": 2 },
+    { "repeat": "ā", "times": 134, "encoding": "ucs2", "units": 134, "segments": 2 },
+    { "repeat": "ā", "times": 135, "encoding": "ucs2", "units": 135, "segments": 3 },
+    { "text": "Hi 😀", "encoding": "ucs2", "units": 5, "segments": 1 },
+    { "text": "Café à ü", "encoding": "gsm7", "units": 8, "segments": 1 }
+  ],
+  "phones": [
+    { "in": "73012345", "status": "ok", "e164": "+68673012345" },
+    { "in": "730 123 45", "status": "ok", "e164": "+68673012345" },
+    { "in": "+686 7301 2345", "status": "ok", "e164": "+68673012345" },
+    { "in": "0068673012345", "status": "ok", "e164": "+68673012345" },
+    { "in": "68663012345", "status": "ok", "e164": "+68663012345" },
+    { "in": "75021234", "status": "check", "e164": "+68675021234" },
+    { "in": "7301234", "status": "invalid", "e164": "" },
+    { "in": "730123456", "status": "invalid", "e164": "" },
+    { "in": "+61 412 345 678", "status": "ok", "e164": "+61412345678" },
+    { "in": "+64 21 123 4567", "status": "ok", "e164": "+64211234567" },
+    { "in": "+1 23", "status": "invalid", "e164": "" },
+    { "in": "call me", "status": "invalid", "e164": "" },
+    { "in": "", "status": "missing", "e164": "" }
+  ],
+  "render": [
+    { "template": "Mauri {first_name}!", "contact": { "firstName": "Teraoi" }, "text": "Mauri Teraoi!", "missing": [] },
+    { "template": "Mauri {first_name}!", "contact": {}, "text": "Mauri!", "missing": ["first_name"] },
+    { "template": "Mauri {first_name|friend}, from {island}", "contact": { "island": "Abaiang" }, "text": "Mauri friend, from Abaiang", "missing": [] },
+    { "template": "Hi {nickname}", "contact": {}, "text": "Hi {nickname}", "missing": [], "unknown": ["nickname"] }
+  ]
+}
