@@ -6,6 +6,7 @@
 // fallback is deliberately quiet. The second is live: what a shopper and a
 // seller actually see.
 const fs = require('fs');
+const { openRail } = require('./lib/browse-rail.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -103,6 +104,7 @@ async function open(browser, path) {
   // with the id the backend now knows.
   {
     const { ctx, page, errs, asked } = await open(browser, '/categories.html');
+    await openRail(page);   // the ☰ drawer on a phone
     const chip = page.locator('#category-rail [data-category="handicrafts"]');
     ok('browse rail shows the chip', await chip.count() === 1);
     ok('chip reads its full label', (await chip.first().innerText()).includes('Handicrafts'),

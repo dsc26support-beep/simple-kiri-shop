@@ -32,7 +32,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
   async function check(pageName, url) {
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: 'load' });
-    await page.waitForSelector('.category-rail-item');
+    await page.waitForSelector('.category-rail-item', { state: 'attached' });   // in the ☰ drawer on a phone
 
     const cats = await page.evaluate(() =>
       [...document.querySelectorAll('.category-rail-item')].map((a) => a.textContent.trim()));

@@ -9126,3 +9126,17 @@ form.search-box.is-pinned::before {
 @media (prefers-reduced-motion: reduce) {
   body.browse-locked .category-rail { transition: none; }
 }
+
+/* Sign-in notes ("Please sign in to message the seller.") on the purple
+   sign-in page: that page turns its text colours white, which left white
+   words on this pale box. Fixed colours here, so the note reads the same on
+   any background - dark Mwakete purple on lavender (owner request, Oct 2026).
+   The second selector outranks the page's .auth-card "all text white" rule. */
+.auth-reason-note,
+.auth-page .auth-card .auth-reason-note {
+  background: #e8e5f2;
+  color: #332d63;
+  border-left-color: #332d63;
+  text-shadow: none;
+}
+.auth-page .auth-card .auth-reason-note a { color: #332d63; }

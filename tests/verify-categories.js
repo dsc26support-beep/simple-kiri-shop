@@ -1,6 +1,7 @@
 // Browse-by-category page, the nav swap, and the header cart button.
 const fs = require('fs');
 const { assertCacheBump } = require('./lib/cache-bump.js');
+const { openRail, pickCategory } = require('./lib/browse-rail.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const BASE = 'http://127.0.0.1:8099';
 const REPO = '/home/user/simple-kiri-shop/';
@@ -112,7 +113,9 @@ const railState = (page) => page.evaluate(() => ({
     !s.items.some((id) => ['pantry', 'clothing', 'household', 'rentals', 'general'].includes(id)), s.items.join(','));
   ok('no rail content escapes the rail', s.overflowing.length === 0, s.overflowing.join(' | '));
   ok('rail carries no .placeholder-swatch (the class that broke it)', s.swatches === 0, String(s.swatches));
-  ok('three tiles across on a phone', s.cols === 3, String(s.cols));
+  // Four since the category list became a drawer behind ☰ (Oct 2026) - the
+  // products have the whole width.
+  ok('at least three tiles across on a phone', s.cols >= 3, String(s.cols));
   ok('first category selected by default', s.selected === 'food', String(s.selected));
   ok('exactly one entry is aria-pressed', s.pressed === 1, String(s.pressed));
   ok('only the selected category was fetched', asked.join(',') === 'food', asked.join(','));
@@ -130,7 +133,7 @@ const railState = (page) => page.evaluate(() => ({
     /^product\.html\?store=bong&product=food-0$/.test(tileHref), tileHref);
 
   /* --- switching --- */
-  await page.click('.category-rail-item[data-category="home"]');
+  await pickCategory(page, '.category-rail-item[data-category="home"]');
   await page.waitForTimeout(700);
   s = await railState(page);
   ok('switching selects the new category', s.selected === 'home', String(s.selected));
@@ -140,7 +143,7 @@ const railState = (page) => page.evaluate(() => ({
   ok('a second category was fetched', asked.join(',') === 'food,home', asked.join(','));
 
   // Going back to one already seen must not re-hit the backend.
-  await page.click('.category-rail-item[data-category="food"]');
+  await pickCategory(page, '.category-rail-item[data-category="food"]');
   await page.waitForTimeout(400);
   ok('a revisited category is served from memory', asked.join(',') === 'food,home', asked.join(','));
   ok('revisit still renders its products', (await railState(page)).cards === 3);

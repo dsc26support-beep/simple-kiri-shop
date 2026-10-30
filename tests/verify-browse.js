@@ -7,6 +7,7 @@
 //    land in 'food', or a featured item silently never appears anywhere.
 // 2. Featured placement must be admin-only and LABELLED. An unlabelled placed
 //    item is an advert dressed as a search result.
+const { openRail, pickCategory } = require('./lib/browse-rail.js');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const fs = require('fs');
 const BASE = 'http://127.0.0.1:8099';
@@ -108,7 +109,7 @@ const TIPS = { ok: true, stores: [], products: [
       /categories\.html/.test(pg.url()) && /\?q=/.test(pg.url()), pg.url());
 
     // Back to browse mode for the live-filter assertions below.
-    await pg.click('.category-rail-item[data-category="food"]');
+    await pickCategory(pg, '.category-rail-item[data-category="food"]');
     await pg.waitForTimeout(600);
     await pg.fill('#browse-search-input', 'zzzznothing');
     await pg.waitForTimeout(300);
@@ -157,7 +158,7 @@ const TIPS = { ok: true, stores: [], products: [
     const { ctx, pg } = await open('?category=food');
     let g = await pg.evaluate(state);
     ok('food starts with a featured strip', g.stripHidden === false);
-    await pg.click('.category-rail a[href*="fashion"], .category-rail [data-category="fashion"]')
+    await pickCategory(pg, '.category-rail a[href*="fashion"], .category-rail [data-category="fashion"]')
       .catch(async () => {
         await pg.evaluate(() => {
           const el = [...document.querySelectorAll('.category-rail *')]
