@@ -91,7 +91,8 @@ function addCardItem(product, variant, btn) {
     qty,
     // Wholesale bulk prices / minimum order, when the store has them.
     tiers: variant.tiers,
-    minQty: variant.minQty
+    minQty: variant.minQty,
+    imageUrl: Cart.photoFor(product, variant.variantId)
   });
   if (typeof updateHeaderCartBadge === 'function') updateHeaderCartBadge();
   if (btn) {

@@ -503,12 +503,14 @@ function renderOrderReview() {
     .map(
       (line) => `
       <div class="cart-line">
+        ${Cart.thumbHtml(line, 'cart-thumb--small')}
         <div class="cart-line-info">${line.qty} × ${escapeHtml(line.label)}</div>
         <strong>${formatMoney(Cart.lineTotal(line))}</strong>
       </div>
     `
     )
     .join('');
+  Cart.fillPhotos(currentSlug).then((changed) => { if (changed) renderOrderReview(); });
   document.getElementById('review-subtotal').textContent = formatMoney(Cart.getTotal(currentSlug));
   document.getElementById('delivery-review-row').classList.add('hidden');
   document.getElementById('review-total').textContent = formatMoney(Cart.getTotal(currentSlug));

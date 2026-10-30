@@ -26,6 +26,12 @@
 
   <header class="site-header">
     <div class="container header-top-row">
+      <!-- Phones and tablets: shows and hides the category column (owner
+           request, Oct 2026). Drawn in the HTML so it is there from the first
+           paint; categories.js wires it up. Hidden on a computer by CSS. -->
+      <button type="button" class="browse-menu-btn" id="browse-menu-btn" aria-controls="category-rail" aria-expanded="false" aria-label="Show categories">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+      </button>
       <nav class="site-nav" aria-label="Main">
         <ul>
           <li><a href="index.html">Home</a></li>
@@ -57,6 +63,7 @@
       <h1 id="categories-heading" class="sr-only">Browse by category</h1>
 
       <nav class="category-rail" id="category-rail" aria-label="Categories"></nav>
+      <div class="browse-scrim" id="browse-scrim" hidden></div>
 
       <div class="category-pane">
         <h2 id="category-pane-heading" class="category-pane-heading">Browse</h2>

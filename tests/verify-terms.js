@@ -64,7 +64,9 @@ const ok = (name, cond, detail) => {
     .map((f) => fs.readFileSync(REPO + 'apps-script/' + f, 'utf8')).join('\n');
   ok('it says selling is free - no listing fee, no commission',
     /no listing\s*fee, no\s*commission/i.test(text));
-  ok('and names paid featuring as the only charge', /only charge is optional paid\s*featuring/i.test(text));
+  // Driver delivery fees joined paid featuring (owner-approved, Oct 2026).
+  ok('and names the only charges: optional paid featuring and the agreed delivery fee',
+    /only charges are optional\s*paid\s*featuring, and the delivery\s*fee/i.test(text));
   ok('and no commission or platform fee exists in the backend',
     !/commissionRate|platformFee|serviceFeePercent|takeRate/i.test(gs));
 
@@ -98,7 +100,7 @@ const ok = (name, cond, detail) => {
     /terms\.html/.test(fs.readFileSync(REPO + 'customer-login.html', 'utf8')));
   const ownerLogin = fs.readFileSync(REPO + 'owner/login.html', 'utf8');
   ok('and from the vendor registration form, at the submit button',
-    /By creating a store you agree/.test(ownerLogin) && /\.\.\/terms\.html/.test(ownerLogin));
+    /By (creating|opening) a store you agree/.test(ownerLogin) && /\.\.\/terms\.html/.test(ownerLogin));
   ok('and cross-linked with the privacy policy',
     /terms\.html/.test(fs.readFileSync(REPO + 'privacy.html', 'utf8')));
   ok('precached, so it works offline', /'terms\.html'/.test(fs.readFileSync(REPO + 'sw.js', 'utf8')));

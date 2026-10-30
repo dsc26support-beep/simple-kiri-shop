@@ -183,7 +183,52 @@ function renderRail() {
 
   document.getElementById('category-rail').addEventListener('click', (e) => {
     const btn = e.target.closest('.category-rail-item');
-    if (btn) selectCategory(btn.dataset.category);
+    if (!btn) return;
+    selectCategory(btn.dataset.category);
+    setRailOpen(false);
+  });
+  initRailToggle();
+}
+
+/* Phones and tablets (owner request, Oct 2026): the category column is hidden
+   until the ☰ button at the top left is tapped, then slides in over the
+   products. Picking a category, tapping outside, Escape or ☰ again closes
+   it. On a computer (1024px and up) CSS keeps the column showing and hides
+   the button, so none of this has any effect there. */
+const RAIL_DRAWER_QUERY = '(max-width: 1023px)';
+
+function setRailOpen(open) {
+  const btn = document.getElementById('browse-menu-btn');
+  const scrim = document.getElementById('browse-scrim');
+  if (!btn || !window.matchMedia(RAIL_DRAWER_QUERY).matches) return;
+  const was = document.body.classList.contains('browse-rail-open');
+  if (was === open) return;
+  document.body.classList.toggle('browse-rail-open', open);
+  btn.setAttribute('aria-expanded', String(open));
+  btn.setAttribute('aria-label', open ? 'Hide categories' : 'Show categories');
+  scrim.hidden = !open;
+  if (open) {
+    const sel = document.querySelector('.category-rail-item.is-selected') || document.querySelector('.category-rail-item');
+    if (sel) sel.focus({ preventScroll: true });
+  } else if (document.activeElement && document.activeElement.closest('#category-rail')) {
+    btn.focus({ preventScroll: true });
+  }
+}
+
+function initRailToggle() {
+  const btn = document.getElementById('browse-menu-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => setRailOpen(!document.body.classList.contains('browse-rail-open')));
+  document.getElementById('browse-scrim').addEventListener('click', () => setRailOpen(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setRailOpen(false); });
+  // Growing past tablet width with the drawer open: the column is simply part
+  // of the page again, so forget the open state.
+  window.matchMedia(RAIL_DRAWER_QUERY).addEventListener('change', (e) => {
+    if (!e.matches) {
+      document.body.classList.remove('browse-rail-open');
+      btn.setAttribute('aria-expanded', 'false');
+      document.getElementById('browse-scrim').hidden = true;
+    }
   });
 }
 

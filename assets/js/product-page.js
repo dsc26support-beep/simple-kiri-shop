@@ -344,7 +344,8 @@ function onAddToCart(btn) {
     unitPrice: variant.price,
     qty,
     tiers: variant.tiers,
-    minQty: variant.minQty
+    minQty: variant.minQty,
+    imageUrl: Cart.photoFor(product, variant.variantId)
   });
   showAddingToCartState(btn);
   if (typeof updateBottomNavCartBadge === 'function') updateBottomNavCartBadge();

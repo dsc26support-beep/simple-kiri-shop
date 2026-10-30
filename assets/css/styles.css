@@ -8981,7 +8981,11 @@ form.search-box.is-pinned::before {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
   }
 
-  .bottom-nav-item.is-active { color: var(--color-red); }
+  /* Purple when tapped, and the tab you are on stays purple (owner
+     request, 28 Oct 2026 - it was red). Icon and label only, no fill. */
+  .bottom-nav-item.is-active,
+  .bottom-nav-item:active { color: var(--color-purple); }
+  .bottom-nav-item { -webkit-tap-highlight-color: transparent; }
 
   body.has-bottom-nav { padding-bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + 4px + env(safe-area-inset-bottom)); }
 
@@ -8992,4 +8996,133 @@ form.search-box.is-pinned::before {
   }
 
   body.has-bottom-nav .card-cart-toast { bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + 12px + env(safe-area-inset-bottom)); }
+}
+
+/* Product pictures in carts (owner request, 28 Oct 2026): Your Cart, the
+   checkout summary and Your Carts. Cart.thumbHtml (cart.js) draws them. */
+.cart-thumb {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+}
+
+.cart-thumb--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-purple-soft);
+  color: var(--color-purple);
+  font-weight: 700;
+}
+
+.cart-thumb--small {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 420px) {
+  .cart-thumb:not(.cart-thumb--small) { width: 56px; height: 56px; }
+}
+
+.my-cart-thumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin: 0 0 var(--space-2);
+}
+
+.my-cart-more {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+/* Your Cart on a phone: picture on the left; name and line total on top,
+   quantity and Remove underneath - so the name is not squeezed to a word a
+   line and nothing runs off the edge. */
+@media (max-width: 600px) {
+  #cart-items .cart-line {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "thumb info total" "thumb qty remove" "bulk bulk bulk";
+    align-items: center;
+    column-gap: var(--space-3);
+    row-gap: var(--space-2);
+  }
+  #cart-items .cart-thumb { grid-area: thumb; align-self: start; }
+  #cart-items .cart-line-info { grid-area: info; min-width: 0; }
+  #cart-items .cart-line-total { grid-area: total; align-self: start; }
+  #cart-items .cart-line-qty { grid-area: qty; justify-self: start; }
+  #cart-items [data-action="remove"] { grid-area: remove; }
+  #cart-items .cart-line-bulk { grid-area: bulk; }
+}
+
+/* Browse page (categories.html) on phones and tablets: the category column is
+   a drawer behind the ☰ button at the top left (owner request, Oct 2026).
+   Hidden at first so the products get the whole width; it slides in over
+   them with the products dimmed. Computers keep the column showing. */
+.browse-menu-btn { display: none; }
+
+@media (max-width: 1023px) {
+  .browse-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    margin-left: -10px;
+    margin-right: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+  }
+  .browse-menu-btn:hover,
+  body.browse-rail-open .browse-menu-btn { background: rgba(255, 255, 255, 0.16); }
+  .browse-menu-btn:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
+
+  body.browse-locked .category-browser { grid-template-columns: minmax(0, 1fr); }
+  body.browse-locked .category-pane { grid-column: 1; grid-row: 1; }
+
+  body.browse-locked .category-rail {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1006;
+    width: min(270px, 82vw);
+    padding: var(--space-3) var(--space-2) calc(var(--bottom-nav-h, 56px) + var(--space-4));
+    background: var(--color-bg);
+    border-radius: 0 16px 16px 0;
+    box-shadow: 6px 0 24px rgba(0, 0, 0, 0.22);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 0.22s ease, visibility 0s linear 0.22s;
+  }
+  body.browse-locked.browse-rail-open .category-rail {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.22s ease, visibility 0s;
+  }
+
+  .browse-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1005;
+    background: rgba(0, 0, 0, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.browse-locked .category-rail { transition: none; }
 }
