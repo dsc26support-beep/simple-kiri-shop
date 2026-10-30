@@ -12,6 +12,10 @@ var PUBLIC_POST_ACTIONS = [
   'registerOwner', 'loginOwner', 'createOrder', 'createBookingRequest',
   // Mwakete POS tills (PosStaff.gs): the till's own secret is the credential.
   'posDeviceInfo', 'posStaffLogin',
+  // Mwakete SMS app (SmsDevices.gs): the one-time pairing code, then the
+  // phone's own id + secret, are the credential. smsOptOut is the public
+  // "stop messaging me" page; geoPlaces the public island/village list.
+  'smsPairDevice', 'smsDeviceSync', 'smsDeviceRotate', 'smsOptOut', 'geoPlaces',
   'verifyLoginCode', 'requestPasswordReset', 'resetPasswordWithCode',
   'saveAbandonedCart', 'recordProductViews', 'recordStoreVisit',
   // Chat: these three serve BOTH sides of a conversation (anonymous customer
@@ -153,7 +157,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'pos4-2026-10-28';
+var APP_VERSION = 'sms1-2026-10-30';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -572,6 +576,11 @@ function doPost(e) {
         case 'posPush': return jsonOut(actionPosPush(body));
         case 'posDeviceInfo': return jsonOut(actionPosDeviceInfo(body));
         case 'posStaffLogin': return jsonOut(actionPosStaffLogin(body));
+        case 'smsPairDevice': return jsonOut(actionSmsPairDevice(body));
+        case 'smsDeviceSync': return jsonOut(actionSmsDeviceSync(body));
+        case 'smsDeviceRotate': return jsonOut(actionSmsDeviceRotate(body));
+        case 'smsOptOut': return jsonOut(actionSmsOptOut(body));
+        case 'geoPlaces': return jsonOut(actionGeoPlaces());
         case 'txJobMessage': return jsonOut(actionTxJobMessage(body));
         case 'txProposeFee': return jsonOut(actionTxProposeFee(body));
         case 'txAgreeFee': return jsonOut(actionTxAgreeFee(body));
@@ -585,6 +594,12 @@ function doPost(e) {
     }
 
     if (action === 'logoutOwner') return jsonOut(actionLogoutOwner(body));
+
+    // Contacts & SMS (SmsCampaigns.gs): one gate for the store's sign-in, its
+    // Google Sheets add-on key, and admins - see SMS_ACTIONS for who may call what.
+    if (typeof SMS_ACTIONS !== 'undefined' && Object.prototype.hasOwnProperty.call(SMS_ACTIONS, action)) {
+      return jsonOut(dispatchSmsAction(action, body));
+    }
 
     // Mwakete POS (PosStaff.gs): every POS action goes through one role check,
     // for the owner (owner session) and for staff (a till session + the till's secret).
