@@ -9063,3 +9063,66 @@ form.search-box.is-pinned::before {
   #cart-items [data-action="remove"] { grid-area: remove; }
   #cart-items .cart-line-bulk { grid-area: bulk; }
 }
+
+/* Browse page (categories.html) on phones and tablets: the category column is
+   a drawer behind the ☰ button at the top left (owner request, Oct 2026).
+   Hidden at first so the products get the whole width; it slides in over
+   them with the products dimmed. Computers keep the column showing. */
+.browse-menu-btn { display: none; }
+
+@media (max-width: 1023px) {
+  .browse-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    margin-left: -10px;
+    margin-right: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+  }
+  .browse-menu-btn:hover,
+  body.browse-rail-open .browse-menu-btn { background: rgba(255, 255, 255, 0.16); }
+  .browse-menu-btn:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
+
+  body.browse-locked .category-browser { grid-template-columns: minmax(0, 1fr); }
+  body.browse-locked .category-pane { grid-column: 1; grid-row: 1; }
+
+  body.browse-locked .category-rail {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1006;
+    width: min(270px, 82vw);
+    padding: var(--space-3) var(--space-2) calc(var(--bottom-nav-h, 56px) + var(--space-4));
+    background: var(--color-bg);
+    border-radius: 0 16px 16px 0;
+    box-shadow: 6px 0 24px rgba(0, 0, 0, 0.22);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 0.22s ease, visibility 0s linear 0.22s;
+  }
+  body.browse-locked.browse-rail-open .category-rail {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.22s ease, visibility 0s;
+  }
+
+  .browse-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1005;
+    background: rgba(0, 0, 0, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.browse-locked .category-rail { transition: none; }
+}
