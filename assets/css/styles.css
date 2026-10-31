@@ -3936,6 +3936,11 @@ textarea.meeting-request-input {
   font-size: 1rem;
 }
 
+/* The heading line: ☰ (phones and tablets only) then the heading. */
+.category-pane-head { display: flex; align-items: center; gap: var(--space-1); }
+.category-pane-head .category-pane-heading { margin: 0; min-width: 0; }
+.category-pane-head { margin-bottom: var(--space-1); }
+
 /* ---------------------------------------------------------------------------
    The browse page's two panes scroll past each other.
 
@@ -9065,7 +9070,8 @@ form.search-box.is-pinned::before {
 }
 
 /* Browse page (categories.html) on phones and tablets: the category column is
-   a drawer behind the ☰ button at the top left (owner request, Oct 2026).
+   a drawer behind the ☰ button at the far left of the heading line, beside
+   "Featured" (owner request, Oct 2026; moved down from the red header 31 Oct).
    Hidden at first so the products get the whole width; it slides in over
    them with the products dimmed. Computers keep the column showing. */
 .browse-menu-btn { display: none; }
@@ -9078,18 +9084,17 @@ form.search-box.is-pinned::before {
     flex: none;
     width: 44px;
     height: 44px;
-    margin-left: -10px;
-    margin-right: auto;
+    margin-left: -8px;
     padding: 0;
     border: 0;
     border-radius: 8px;
     background: transparent;
-    color: #fff;
+    color: var(--color-ink);
     cursor: pointer;
   }
   .browse-menu-btn:hover,
-  body.browse-rail-open .browse-menu-btn { background: rgba(255, 255, 255, 0.16); }
-  .browse-menu-btn:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
+  body.browse-rail-open .browse-menu-btn { background: var(--color-purple-soft); color: var(--color-purple); }
+  .browse-menu-btn:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 
   body.browse-locked .category-browser { grid-template-columns: minmax(0, 1fr); }
   body.browse-locked .category-pane { grid-column: 1; grid-row: 1; }
