@@ -9145,3 +9145,112 @@ form.search-box.is-pinned::before {
   text-shadow: none;
 }
 .auth-page .auth-card .auth-reason-note a { color: #332d63; }
+
+/* Store page on phones and tablets: the store as a profile (owner request,
+   Nov 2026) - cover, round logo over its edge, name, status, bio with "More
+   info", one big "Message the seller" button, Products | Photos tabs.
+   Computers keep the header layout, so all of it is hidden there. Heights are
+   fixed so the fetch filling it in does not move the products. */
+.store-profile, .sp-photos { display: none; }
+
+@media (max-width: 1023px) {
+  .page-products .store-profile { display: block; margin: 0 0 var(--space-2); padding: 0; }
+  /* The profile carries the store's name, logo, place and details now. */
+  body.page-store .store-branding,
+  body.page-store #store-logo-img,
+  body.page-store #store-seller-badges { display: none !important; }   /* badges: the tick by the name, and in More info */
+  /* No red/yellow header on a store page here (owner, 1 Nov 2026): the cover
+     is the top of the page. store.js moves the ⋮ menu (and on tablets the
+     cart) onto the cover; phones have Home and Cart in the bottom bar. */
+  body.page-store header.site-header { display: none; }
+
+  .sp-cover {
+    position: relative;
+    height: 170px;
+    background: var(--sp-color, var(--color-purple));
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(0, 0, 0, 0.22) 100%), radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.14) 0 18%, transparent 19%), radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0 24%, transparent 25%);
+  }
+  .sp-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .sp-cover-bar {
+    position: absolute; inset: 0 0 auto 0;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 64px 28px var(--space-3);
+    color: #fff;
+    background: linear-gradient(rgba(0, 0, 0, 0.45), transparent);
+  }
+  /* White icons in the cover's top-right corner, over the photo. */
+  .sp-cover .header-menu, .sp-cover .header-cart, .sp-cover-icon { z-index: 2; }
+  .sp-cover .header-menu-btn, .sp-cover .header-cart, .sp-cover-icon { color: #fff; background: rgba(0, 0, 0, 0.28); }
+  .sp-cover .header-menu-btn:hover, .sp-cover .header-cart:hover, .sp-cover-icon:hover { background: rgba(0, 0, 0, 0.45); }
+  .sp-cover-icon { display: none; position: absolute; top: var(--space-2); width: 40px; height: 40px; border-radius: 50%; align-items: center; justify-content: center; }
+  .sp-cover-icon:focus-visible, .sp-cover .header-menu-btn:focus-visible, .sp-cover .header-cart:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 1px; }
+
+  /* The store's own seller: change the banner and the logo from the page. */
+  .sp-cam { position: absolute; z-index: 2; display: inline-flex; align-items: center; gap: 6px; color: #fff; background: rgba(0, 0, 0, 0.55); cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+  .sp-cam[hidden] { display: none; }
+  .sp-cam:focus-within { outline: 3px solid var(--color-gold); outline-offset: 2px; }
+  .sp-cam-cover { right: var(--space-2); bottom: var(--space-2); padding: 7px 12px; border-radius: 999px; }
+  .sp-cam-logo { right: -2px; bottom: -2px; width: 36px; height: 36px; justify-content: center; border: 3px solid var(--color-bg); border-radius: 50%; background: var(--color-purple); }
+  .sp-upload-status { margin: 4px 0 0; color: var(--color-purple); font-weight: 600; }
+  .sp-upload-status:empty { display: none; }
+  .sp-back { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: -8px; border-radius: 50%; color: #fff; flex: none; }
+  .sp-back:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 1px; }
+  .sp-cover-text { min-width: 0; }
+  .sp-cover-name { margin: 0; font-size: 1.15rem; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+  .sp-cover-stats { margin: 2px 0 0; min-height: 1.2em; font-size: 0.9rem; opacity: 0.95; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+
+  .sp-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; height: 56px; padding: 0 var(--space-3); }
+  .sp-avatar {
+    position: relative; flex: none;
+    width: 104px; height: 104px; margin-top: -52px;
+    border: 4px solid var(--color-bg); border-radius: 50%;
+    background: var(--sp-color, var(--color-purple)); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  }
+  .sp-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #fff; }
+  .sp-dot { position: absolute; right: 4px; bottom: 6px; width: 18px; height: 18px; border: 3px solid var(--color-bg); border-radius: 50%; background: #2fbf59; }
+  .sp-dot.is-closed { background: var(--color-muted-light); }
+  .sp-share { width: 48px; height: 48px; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-bg); color: var(--color-purple); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+
+  .sp-body { padding: var(--space-2) var(--space-3) 0; }
+  .sp-name { display: flex; align-items: center; gap: 6px; margin: 0; min-height: 1.4em; font-size: 1.45rem; line-height: 1.25; overflow-wrap: anywhere; }
+  .sp-verified { display: inline-flex; color: var(--color-purple); flex: none; }
+  .sp-meta { margin: 4px 0 0; min-height: 1.4em; color: var(--color-muted); }
+  .sp-meta .sp-open { color: #1e7a34; font-weight: 600; }
+  .sp-meta .sp-closed { color: var(--color-danger); font-weight: 600; }
+  .sp-bio {
+    margin: var(--space-2) 0 0; min-height: 2.9em; line-height: 1.45;
+    white-space: pre-line; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .sp-bio.is-empty { color: var(--color-muted); }
+  .sp-more { margin: 4px 0 0; padding: 6px 0; border: 0; background: none; color: var(--color-purple); font: inherit; font-weight: 600; cursor: pointer; }
+  .sp-info { padding: var(--space-2) 0 0; color: var(--color-ink); }
+  .sp-info p { margin: 0 0 var(--space-2); }
+  .sp-bio-full { white-space: pre-line; overflow-wrap: anywhere; }
+
+  .sp-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-top: var(--space-3); border-top: 8px solid var(--color-bg-alt); border-bottom: 1px solid var(--color-border); }
+  .sp-tab { padding: 14px 8px; border: 0; border-bottom: 3px solid transparent; background: none; font: inherit; font-weight: 600; text-transform: uppercase; color: var(--color-muted); cursor: pointer; }
+  .sp-tab[aria-selected="true"] { color: var(--color-ink); border-bottom-color: var(--color-ink); }
+
+  .sp-photos:not([hidden]) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+  .sp-photos a { display: block; aspect-ratio: 1; overflow: hidden; background: var(--color-bg-alt); }
+  .sp-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  body.sp-on-photos #products-search-form,
+  body.sp-on-photos #product-list,
+  body.sp-on-photos #store-seller-badges,
+  body.sp-on-photos #store-badge-legend { display: none !important; }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .sp-cover { height: 220px; }
+  .sp-avatar { width: 128px; height: 128px; margin-top: -64px; }
+  .sp-head { height: 72px; }
+  /* Tablets have no bottom bar: Home and the cart join ⋮ on the cover. */
+  .sp-cover-bar { padding-right: 160px; }
+  .sp-cover .sp-home { display: inline-flex; right: calc(var(--space-2) + 88px); }
+  .sp-cover .header-cart { display: inline-flex; right: calc(var(--space-2) + 44px); }
+  .sp-photos:not([hidden]) { grid-template-columns: repeat(4, 1fr); }
+}

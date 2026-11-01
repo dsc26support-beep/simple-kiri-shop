@@ -102,6 +102,24 @@
           <p id="logo-upload-status" class="helper-text"></p>
         </div>
 
+        <!-- Store page on phones and tablets (Nov 2026): the wide photo at the
+             top and the seller's own words under the name. Both optional. -->
+        <h2>Cover Photo (Optional)</h2>
+        <div class="field">
+          <label for="cover-image-input">Cover Photo</label>
+          <img id="cover-preview" class="image-upload-preview cover-upload-preview hidden" alt="Cover photo preview">
+          <input type="file" id="cover-image-input" accept="image/jpeg,image/png,image/webp">
+          <p class="helper-text">The wide picture at the top of your store on phones. A landscape photo works best. Without one, your store colour is shown.</p>
+          <button type="button" id="cover-remove" class="btn btn-small" hidden>Remove cover photo</button>
+          <p id="cover-upload-status" class="helper-text" role="status"></p>
+        </div>
+
+        <div class="field">
+          <label for="store-bio">About your store (Optional)</label>
+          <textarea id="store-bio" rows="3" maxlength="300" placeholder="e.g. Fresh rice, flour and tinned fish. Open every day in Bairiki."></textarea>
+          <p class="helper-text"><span id="store-bio-count">0</span>/300 - shown under your store name.</p>
+        </div>
+
         <h2>ID / License (Optional)</h2>
         <p class="helper-text">Private — never shown to customers.</p>
         <div class="field">

@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
 </head>
-<body class="has-bottom-nav has-header-menu">
+<body class="has-bottom-nav has-header-menu page-store">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
@@ -115,6 +115,70 @@
   </div>
 
   <main id="main" class="page-products">
+    <!-- Phones and tablets: the store as a profile (owner request, Nov 2026) -
+         cover photo, round logo over its edge, name and status, the seller's
+         own words with "More info", then Products | Photos tabs. No red header
+         and no message button there (owner, 1 Nov 2026): the ⋮ menu is on the
+         cover and the round chat button stays. Hidden on a computer by CSS, which keeps the
+         header layout above. Heights are fixed in CSS so filling it in after
+         the fetch does not push the products down. store.js fills it. -->
+    <section id="store-profile" class="store-profile" aria-label="About this store">
+      <div class="sp-cover" id="sp-cover">
+        <img id="sp-cover-img" class="sp-cover-img" alt="" hidden>
+        <!-- Tablets: Home and the cart sit on the cover (the red header is
+             gone there, and phones have them in the bottom bar). store.js
+             also moves the ⋮ menu here. -->
+        <a class="sp-cover-icon sp-home" href="index.html" aria-label="Home">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"></path></svg>
+        </a>
+        <!-- The store's own seller only (store.js checks the sign-in): change
+             the banner from here. Customers never see it. -->
+        <label class="sp-cam sp-cam-cover" id="sp-cam-cover" hidden>
+          <input type="file" id="sp-cover-input" accept="image/jpeg,image/png,image/webp" class="sr-only">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+          <span>Change banner</span>
+        </label>
+        <div class="sp-cover-bar">
+          <a class="sp-back" href="stores.html" id="sp-back" aria-label="Back">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
+          </a>
+          <div class="sp-cover-text">
+            <p class="sp-cover-name" id="sp-cover-name"></p>
+            <p class="sp-cover-stats" id="sp-cover-stats"></p>
+          </div>
+        </div>
+      </div>
+      <div class="sp-head">
+        <div class="sp-avatar" id="sp-avatar"><img id="sp-avatar-img" alt="" hidden><span id="sp-avatar-initials" aria-hidden="true"></span><span class="sp-dot" id="sp-dot" hidden></span>
+          <label class="sp-cam sp-cam-logo" id="sp-cam-logo" hidden aria-label="Change logo">
+            <input type="file" id="sp-logo-input" accept="image/jpeg,image/png,image/webp" class="sr-only">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+          </label></div>
+        <button type="button" class="sp-share" id="sp-share" aria-label="Share this store">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M20 4 11 13"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg>
+        </button>
+      </div>
+      <div class="sp-body">
+        <h2 class="sp-name"><span id="sp-name"></span><span id="sp-verified" class="sp-verified" hidden></span></h2>
+        <p class="sp-meta" id="sp-meta"></p>
+        <p class="sp-upload-status" id="sp-upload-status" role="status" aria-live="polite"></p>
+        <p class="sp-bio" id="sp-bio"></p>
+        <button type="button" class="sp-more" id="sp-more" aria-expanded="false" aria-controls="sp-info">More info</button>
+        <div class="sp-info" id="sp-info" hidden>
+          <p class="sp-bio-full" id="sp-bio-full" hidden></p>
+          <p id="sp-place"></p>
+          <p id="sp-phone" hidden></p>
+          <div id="sp-delivery"></div>
+          <p id="sp-payment" hidden></p>
+          <div id="sp-badges"></div>
+        </div>
+      </div>
+      <div class="sp-tabs" role="tablist" aria-label="Store">
+        <button type="button" role="tab" class="sp-tab" id="sp-tab-products" aria-selected="true" aria-controls="product-list">Products</button>
+        <button type="button" role="tab" class="sp-tab" id="sp-tab-photos" aria-selected="false" aria-controls="store-photos">Photos</button>
+      </div>
+    </section>
+
     <section aria-labelledby="products-heading">
       <div class="container">
         <h1 id="products-heading" class="sr-only">Products</h1>
@@ -141,6 +205,9 @@
              which is where this page's sibling once measured 0.853. -->
         <div id="store-seller-badges" class="store-seller-badges"></div>
         <div id="product-list" class="product-grid"></div>
+        <!-- The Photos tab (phones and tablets): every product picture, three
+             across; a tap opens that product. -->
+        <div id="store-photos" class="sp-photos" hidden></div>
         <!-- Filled by mountBadgeLegend (badges.js) only when a card on this
              page actually carries a badge - a panel explaining eight badges
              none of which appear would be clutter. -->

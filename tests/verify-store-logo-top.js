@@ -40,6 +40,18 @@ const STORE = { ok: true, storeName: 'Teaube', storeIsland: 'Abaiang', storePhon
   await page.goto(BASE + '/store.html?store=teaube', { waitUntil: 'load' });
   await page.waitForFunction(() => !document.getElementById('store-logo-img').classList.contains('hidden'), null, { timeout: 5000 });
   await page.waitForTimeout(300);
+  // Since Nov 2026 the store page on phones and tablets is a profile: the
+  // logo is the round picture over the cover (verify-store-profile.js), so the
+  // header copy steps aside there. Product, cart and checkout keep it.
+  const sp = await page.evaluate(() => {
+    const hdr = getComputedStyle(document.getElementById('store-logo-img')).display;
+    const av = document.getElementById('sp-avatar-img'); const r = av.getBoundingClientRect();
+    return { hdr, avatar: !av.hidden && r.width > 0, src: /app-icon-192/.test(av.src), round: getComputedStyle(av).borderRadius, scrollW: document.documentElement.scrollWidth,
+      header: getComputedStyle(document.querySelector('header.site-header')).display, menuOnCover: !!document.querySelector('#sp-cover .header-menu-btn') };
+  });
+  ok('store page, phone: the logo is the round profile picture, not in the header', sp.hdr === 'none' && sp.avatar && sp.src && sp.round === '50%', JSON.stringify(sp));
+  ok('...no red header there; the ⋮ menu is on the cover (owner, 1 Nov 2026)', sp.header === 'none' && sp.menuOnCover, JSON.stringify(sp));
+  ok('no sideways scroll at 390px', sp.scrollW <= 390, String(sp.scrollW));
   const g = await page.evaluate(() => {
     const box = (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, cy: r.y + r.height / 2 }; };
     const logo = box(document.getElementById('store-logo-img'));
@@ -50,16 +62,10 @@ const STORE = { ok: true, storeName: 'Teaube', storeIsland: 'Abaiang', storePhon
     return { logo, home, menu: menu && box(menu), name, row, round: getComputedStyle(document.getElementById('store-logo-img')).borderRadius,
       scrollW: document.documentElement.scrollWidth };
   });
-  ok('logo is top-left', g.logo.x <= 20 && g.logo.y <= 24, JSON.stringify(g.logo));
-  ok('...same size and round (64px)', g.logo.w === 64 && g.logo.h === 64 && g.round === '50%', JSON.stringify([g.logo, g.round]));
-  ok('...level with Home', Math.abs(g.logo.cy - g.home.cy) <= 4, JSON.stringify([g.logo.cy, g.home.cy]));
-  ok('...and with the menu dots', g.menu && Math.abs(g.menu.cy - g.home.cy) <= 4, JSON.stringify(g.menu));
-  ok('store name sits under the logo', g.name.y >= g.logo.y + g.logo.h, JSON.stringify([g.name, g.logo]));
-  ok('the row was already that tall before the store loaded (no jump)', Math.abs(before - g.row.h) <= 1, JSON.stringify([before, g.row.h]));
-  ok('no sideways scroll at 390px', g.scrollW <= 390, String(g.scrollW));
+  void g; void before;   // header-logo geometry: checked below for product, cart and checkout
 
-  await page.click('header .header-menu-btn');
-  const panel = await page.evaluate(() => { const p = document.querySelector('header .header-menu-panel'); if (!p) return null; const r = p.getBoundingClientRect(); return { shown: getComputedStyle(p).display !== 'none' && !p.hidden && r.height > 0, right: r.right }; });
+  await page.click('.header-menu-btn');
+  const panel = await page.evaluate(() => { const p = document.querySelector('.header-menu-panel'); if (!p) return null; const r = p.getBoundingClientRect(); return { shown: getComputedStyle(p).display !== 'none' && !p.hidden && r.height > 0, right: r.right }; });
   ok('the menu still opens, on screen', panel && panel.shown && panel.right <= 390, JSON.stringify(panel));
 
   for (const pg of ['product.html?store=teaube&product=p1', 'cart.html', 'checkout.html']) {
@@ -75,7 +81,8 @@ const STORE = { ok: true, storeName: 'Teaube', storeIsland: 'Abaiang', storePhon
 
   // Computer screens: Home, Tips, My Account, cart and menu in one row,
   // level with the logo's middle, in that order (owner request, Oct 2026).
-  for (const w of [1366, 1920, 800]) {
+  // 800px (a tablet) shows the store as a profile instead - see verify-store-profile.js.
+  for (const w of [1366, 1920]) {
     const c2 = await browser.newContext({ viewport: { width: w, height: 700 } });
     await c2.route('**/script.google.com/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(STORE) }));
     const p2 = await c2.newPage();

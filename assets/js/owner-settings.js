@@ -38,6 +38,9 @@ async function init() {
   wirePasswordToggle('new-password');
   wirePasswordToggle('hint-current-password');
   document.getElementById('logo-image-input').addEventListener('change', onLogoFileChange);
+  document.getElementById('cover-image-input').addEventListener('change', onCoverFileChange);
+  document.getElementById('cover-remove').addEventListener('click', onCoverRemove);
+  document.getElementById('store-bio').addEventListener('input', updateBioCount);
   document.getElementById('idlicense-image-input').addEventListener('change', onIdLicenseFileChange);
 
   fillForm(owner);
@@ -226,6 +229,9 @@ function fillForm(owner) {
   document.getElementById('settings-island').value = owner.island || '';
   populateVillageSelect(owner.island || '', owner.village || '');
 
+  showCover(owner.coverUrl);
+  document.getElementById('store-bio').value = owner.storeBio || '';
+  updateBioCount();
   const logoPreview = document.getElementById('logo-preview');
   if (owner.logoUrl) {
     logoPreview.src = optimizedImageUrl(owner.logoUrl, IMG_W.logo);
@@ -237,6 +243,55 @@ function fillForm(owner) {
     idLicensePreview.src = owner.idLicenseUrl;
     idLicensePreview.classList.remove('hidden');
   }
+}
+
+function updateBioCount() {
+  document.getElementById('store-bio-count').textContent = document.getElementById('store-bio').value.length;
+}
+
+function showCover(url) {
+  const preview = document.getElementById('cover-preview');
+  if (url) preview.src = optimizedImageUrl(url, 800);
+  preview.classList.toggle('hidden', !url);
+  document.getElementById('cover-remove').hidden = !url;
+}
+
+function rememberCover(url) {
+  const owner = Auth.getOwner();
+  owner.coverUrl = url;
+  Auth.saveSession(Auth.getToken(), owner);
+}
+
+// The cover photo saves on its own, like the logo - no need to press Save.
+async function onCoverFileChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('cover-upload-status');
+  statusEl.innerHTML = loadingMessageHtml('Uploading cover photo');
+  try {
+    const { base64, mimeType } = await compressImage(file, 1600, 0.82);
+    const res = await Api.post('uploadStoreCover', { token: Auth.getToken(), imageBase64: base64, mimeType });
+    if (!res.ok) { statusEl.textContent = res.error || 'Could not upload the cover photo.'; return; }
+    showCover(res.coverUrl);
+    rememberCover(res.coverUrl);
+    statusEl.textContent = 'Cover photo updated.';
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  } catch (err) {
+    statusEl.textContent = 'Could not process that image.';
+  } finally {
+    e.target.value = '';
+  }
+}
+
+async function onCoverRemove() {
+  const statusEl = document.getElementById('cover-upload-status');
+  const done = setButtonBusy(document.getElementById('cover-remove'), 'Removing');
+  const res = await Api.post('uploadStoreCover', { token: Auth.getToken(), remove: true });
+  done();
+  if (!res.ok) { statusEl.textContent = res.error || 'Could not remove it.'; return; }
+  showCover('');
+  rememberCover('');
+  statusEl.textContent = 'Cover photo removed.';
 }
 
 async function onLogoFileChange(e) {
@@ -450,7 +505,8 @@ async function onSaveSettings(e) {
     island: document.getElementById('settings-island').value,
     village: village,
     paymentMethods: Array.from(document.querySelectorAll('input[name="paymentMethod"]:checked')).map((box) => box.value),
-    paymentOther: document.getElementById('payment-other').value.trim()
+    paymentOther: document.getElementById('payment-other').value.trim(),
+    storeBio: document.getElementById('store-bio').value.trim()
   };
 
   DELIVERY_BUTTONS.forEach(({ id, costId, modeName, method }) => {

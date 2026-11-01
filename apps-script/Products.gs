@@ -793,6 +793,11 @@ function actionListProducts(params) {
       // A closed store is still browsable; the UI needs to say so and block
       // ordering rather than pretend it is open.
       storeOpen: isStoreOpenForBusiness(owner),
+      // The phone/tablet profile header (Nov 2026): cover photo, the seller's
+      // own words, and the colour the cover falls back to. All optional.
+      storeCoverUrl: /^https:\/\//.test(String(owner.CoverUrl || '')) ? String(owner.CoverUrl) : '',
+      storeBio: storeBioOf(owner),
+      storeColor: /^#[0-9a-f]{6}$/i.test(String(owner.BrandColor || '')) ? String(owner.BrandColor) : '',
       products: result
     };
     attachSellerBadges(out, sellerBadgeIndex(), owner.OwnerId);
@@ -1179,6 +1184,8 @@ function actionGetOwnerProfile(owner) {
   return ok({ owner: fields });
 }
 
+var STORE_BIO_MAX = 300;
+
 function actionUpdateOwnerProfile(owner, body) {
   var sheet = getSheet('Owners');
   // WhatsApp is new. Created past the last header so no existing column moves
@@ -1224,6 +1231,14 @@ function actionUpdateOwnerProfile(owner, body) {
     var whatsappErr = capLength(body.whatsapp, 30, 'WhatsApp number');
     if (whatsappErr) return whatsappErr;
     update.WhatsApp = body.whatsapp;
+  }
+  if (body.storeBio !== undefined) {
+    // "About your store" on the store page (Nov 2026). Plain text, shown escaped.
+    var bio = String(body.storeBio || '').replace(/\r\n?/g, '\n').trim();
+    var bioErr = capLength(bio, STORE_BIO_MAX, 'About your store');
+    if (bioErr) return bioErr;
+    ensureColumn(sheet, 'StoreBio');
+    update.StoreBio = bio;
   }
   if (body.island !== undefined) {
     var islandErr = capLength(body.island, 100, 'Island');

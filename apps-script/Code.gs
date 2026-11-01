@@ -86,7 +86,7 @@ var PUBLIC_POST_ACTIONS = [
 ];
 var PROTECTED_POST_ACTIONS = [
   'logoutOwner', 'getOwnerProfile', 'updateOwnerProfile', 'listOwnerProducts',
-  'createProduct', 'updateProduct', 'deleteProduct', 'uploadProductImage', 'uploadStoreLogo',
+  'createProduct', 'updateProduct', 'deleteProduct', 'uploadProductImage', 'uploadStoreLogo', 'uploadStoreCover',
   'uploadOwnerIdLicense',
   'listOwnerOrders', 'updateOrderStatus', 'setStoreStatus',
   'listOwnerBookings', 'updateBookingStatus',
@@ -157,7 +157,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'sms2-2026-10-30';
+var APP_VERSION = 'store1-2026-11-01';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -631,6 +631,7 @@ function doPost(e) {
         case 'deleteProduct': return jsonOut(actionDeleteProduct(owner, body));
         case 'uploadProductImage': return jsonOut(actionUploadProductImage(owner, body));
         case 'uploadStoreLogo': return jsonOut(actionUploadStoreLogo(owner, body));
+        case 'uploadStoreCover': return jsonOut(actionUploadStoreCover(owner, body));
         case 'uploadOwnerIdLicense': return jsonOut(actionUploadOwnerIdLicense(owner, body));
         case 'listOwnerOrders': return jsonOut(actionListOwnerOrders(owner, body));
         case 'updateOrderStatus': return jsonOut(actionUpdateOrderStatus(owner, body));

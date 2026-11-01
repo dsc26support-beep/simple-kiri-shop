@@ -156,8 +156,18 @@ const snap = (page) => page.evaluate(() => ({
   }
 
   /* ---------- the storefront ---------- */
+  // Phones and tablets show the store as a profile (Nov 2026): the badges are
+  // the tick by the name and the row inside "More info", not above the grid.
   {
-    const { ctx, page } = await open(browser, '/store.html?store=bong');
+    const { ctx, page } = await open(browser, '/store.html?store=bong', { width: 390 });
+    await page.waitForFunction(() => document.querySelectorAll('#sp-badges .seller-badge').length > 0, null, { timeout: 10000 });
+    const ph = await page.evaluate(() => ({ row: getComputedStyle(document.getElementById('store-seller-badges')).display, inInfo: document.querySelectorAll('#sp-badges .seller-badge').length, tick: !document.getElementById('sp-verified').hidden }));
+    ok('storefront, phone: the badges are under More info (with the verified tick by the name), not a row above the grid', ph.row === 'none' && ph.inInfo >= 4 && ph.tick, JSON.stringify(ph));
+    await ctx.close();
+  }
+  // The computer keeps the row between the search box and the grid.
+  {
+    const { ctx, page } = await open(browser, '/store.html?store=bong', { width: 1280 });
     const r = await snap(page);
     ok('storefront: the seller\'s badges are shown', r.badges >= 4, String(r.badges));
     ok('storefront: NOT in the header branding block, which sits above <main>',

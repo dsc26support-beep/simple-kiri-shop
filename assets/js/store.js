@@ -89,6 +89,8 @@ async function init() {
     recordProductViewsOnce(currentProducts.map((p) => p.productId));
   }
 
+  renderStoreProfile(res);
+
   recordStoreVisitOnce(currentSlug);
   if (typeof recordRecentStore === 'function') recordRecentStore(currentSlug, res);   // Recent Views
   recordMarketingClickFromUrl();
@@ -429,6 +431,212 @@ function animateCartOnAdd(prev, next) {
  * products land together rather than the row arriving first and pushing them
  * down.
  */
+/**
+ * Phones and tablets: the profile at the top of the page (owner request, Nov
+ * 2026; store.html #store-profile, hidden on a computer by CSS). No message
+ * button since 1 Nov - the round chat button does that. Everything
+ * here is the seller's own data, so it is set as text, never as HTML; the
+ * colour was checked as #rrggbb by the server before it reaches a style.
+ */
+function renderStoreProfile(res) {
+  const box = document.getElementById('store-profile');
+  if (!box) return;
+  const $p = (id) => document.getElementById(id);
+  const name = res.storeName || 'Store';
+  const open = res.storeOpen !== false;
+  if (/^#[0-9a-f]{6}$/i.test(res.storeColor || '')) box.style.setProperty('--sp-color', res.storeColor);
+
+  if (res.storeCoverUrl) {
+    const cover = $p('sp-cover-img');
+    cover.src = optimizedImageUrl(res.storeCoverUrl, 1200);
+    cover.hidden = false;
+  }
+  $p('sp-cover-name').textContent = name;
+  const photos = profilePhotos();
+  $p('sp-cover-stats').textContent = `${currentProducts.length} product${currentProducts.length === 1 ? '' : 's'} · ${photos.length} photo${photos.length === 1 ? '' : 's'}`;
+
+  if (res.storeLogoUrl) {
+    const img = $p('sp-avatar-img');
+    img.src = optimizedImageUrl(res.storeLogoUrl, IMG_W.logo);
+    img.alt = name;
+    img.hidden = false;
+    $p('sp-avatar-initials').textContent = '';
+  } else {
+    $p('sp-avatar-initials').textContent = initials(name);
+  }
+  const dot = $p('sp-dot');
+  dot.hidden = false;
+  dot.classList.toggle('is-closed', !open);
+
+  $p('sp-name').textContent = name;
+  if ((res.sellerBadges || []).indexOf('verified') !== -1) {
+    const tick = $p('sp-verified');
+    tick.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l2.4 1.8 3-.2.9 2.9 2.4 1.8-1 2.8 1 2.8-2.4 1.8-.9 2.9-3-.2L12 21.5l-2.4-1.8-3 .2-.9-2.9-2.4-1.8 1-2.8-1-2.8 2.4-1.8.9-2.9 3 .2z"></path><path d="m8.5 12 2.4 2.4 4.6-4.8"></path></svg><span class="sr-only">Verified by Mwakete</span>';
+    tick.hidden = false;
+  }
+  const place = storeLocationLabel(res.storeIsland, res.storeVillage);
+  const meta = $p('sp-meta');
+  meta.textContent = place ? place + ' · ' : '';
+  const status = document.createElement('span');
+  status.className = open ? 'sp-open' : 'sp-closed';
+  status.textContent = open ? 'Open now' : 'Closed - you can still order';
+  meta.appendChild(status);
+
+  const bio = String(res.storeBio || '').trim();
+  const bioEl = $p('sp-bio');
+  bioEl.textContent = bio || (place ? `Shop from ${name} in ${place}.` : `Shop from ${name}.`);
+  bioEl.classList.toggle('is-empty', !bio);
+  const full = $p('sp-bio-full');
+  full.textContent = bio;
+  full.hidden = !bio;
+
+  $p('sp-place').textContent = place ? '📍 ' + place : '';
+  if (res.storePhone) { $p('sp-phone').textContent = '📞 ' + res.storePhone; $p('sp-phone').hidden = false; }
+  $p('sp-delivery').innerHTML = document.getElementById('store-delivery-icons').innerHTML;
+  const pay = document.getElementById('store-payment-line');
+  $p('sp-payment').innerHTML = pay.innerHTML;
+  $p('sp-payment').hidden = !pay.innerHTML;
+  if (typeof renderSellerBadges === 'function') {
+    $p('sp-badges').innerHTML = renderSellerBadges(res.sellerBadges, { size: 'detail' });
+    if (typeof wireSellerBadges === 'function') wireSellerBadges($p('sp-badges'));
+  }
+
+  const more = $p('sp-more');
+  more.addEventListener('click', () => {
+    const show = more.getAttribute('aria-expanded') !== 'true';
+    more.setAttribute('aria-expanded', show ? 'true' : 'false');
+    more.textContent = show ? 'Less info' : 'More info';
+    $p('sp-info').hidden = !show;
+    bioEl.hidden = show && !!bio;   // the full text is inside More info
+  });
+
+  // The store's own seller, signed in on this phone: change the banner and logo here.
+  wireOwnerProfileEdits(res);
+
+  $p('sp-share').addEventListener('click', async () => {
+    const url = `${location.origin}${location.pathname}?store=${encodeURIComponent(currentSlug)}`;
+    try {
+      if (navigator.share) { await navigator.share({ title: name, url }); return; }
+      await navigator.clipboard.writeText(url);
+      showOrderSentPopup('Link copied', 1600);
+    } catch (e) { /* closed the share sheet */ }
+  });
+
+  // Back: to where the shopper came from on this site, else the store list.
+  $p('sp-back').addEventListener('click', (e) => {
+    if (document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1) { e.preventDefault(); history.back(); }
+  });
+
+  const tabP = $p('sp-tab-products');
+  const tabF = $p('sp-tab-photos');
+  tabP.textContent = `${currentProducts.length} Products`;
+  tabF.textContent = `${photos.length} Photos`;
+  const show = (photosTab) => {
+    tabP.setAttribute('aria-selected', photosTab ? 'false' : 'true');
+    tabF.setAttribute('aria-selected', photosTab ? 'true' : 'false');
+    document.body.classList.toggle('sp-on-photos', photosTab);
+    const grid = document.getElementById('store-photos');
+    grid.hidden = !photosTab;
+    if (photosTab && !grid.childElementCount) {
+      grid.innerHTML = photos.length ? photos.map((ph) => `<a href="product.html?store=${encodeURIComponent(currentSlug)}&product=${encodeURIComponent(ph.productId)}"><img src="${escapeAttr(optimizedImageUrl(ph.url, IMG_W.card))}" alt="${escapeAttr(ph.name)}" loading="lazy"></a>`).join('')
+        : '<p class="helper-text">No photos yet.</p>';
+    }
+  };
+  tabP.addEventListener('click', () => show(false));
+  tabF.addEventListener('click', () => show(true));
+}
+
+/**
+ * Phones and tablets have no red header on a store page (owner, 1 Nov 2026):
+ * the ⋮ menu (and on tablets the cart) sit on the cover instead. Both are made
+ * by other scripts at DOMContentLoaded (header-menu.js, header-cart.js, loaded
+ * after this file), so this runs a tick later, and moves them back if the
+ * window grows to computer width.
+ */
+const PROFILE_QUERY = window.matchMedia ? window.matchMedia('(max-width: 1023px)') : null;
+function placeHeaderTools() {
+  const cover = document.getElementById('sp-cover');
+  const home = document.querySelector('header.site-header .header-top-row');
+  if (!cover || !home || !PROFILE_QUERY) return;
+  const tools = [document.getElementById('header-cart-link'), document.querySelector('.header-menu')].filter(Boolean);
+  tools.forEach((el) => (PROFILE_QUERY.matches ? cover : home).appendChild(el));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(placeHeaderTools, 0);
+  if (PROFILE_QUERY) {
+    if (PROFILE_QUERY.addEventListener) PROFILE_QUERY.addEventListener('change', placeHeaderTools);
+    else if (PROFILE_QUERY.addListener) PROFILE_QUERY.addListener(placeHeaderTools);
+  }
+});
+
+/**
+ * The seller of THIS store, signed in on this device (the session owner.html
+ * pages use), gets camera buttons on the banner and the logo. The server
+ * checks the token and only ever changes the token's own store; this only
+ * decides whether to show the buttons.
+ */
+function wireOwnerProfileEdits(res) {
+  let token = '';
+  let profile = null;
+  try {
+    token = localStorage.getItem('skiri_owner_token') || '';
+    profile = JSON.parse(localStorage.getItem('skiri_owner_profile') || 'null');
+  } catch (e) { return; }
+  if (!token || !profile || profile.storeSlug !== currentSlug) return;
+  const $p = (id) => document.getElementById(id);
+  const status = $p('sp-upload-status');
+  $p('sp-cam-cover').hidden = false;
+  $p('sp-cam-logo').hidden = false;
+  $p('sp-dot').hidden = true;   // the camera takes that corner of the logo
+  const remember = (key, url) => {
+    try { profile[key] = url; localStorage.setItem('skiri_owner_profile', JSON.stringify(profile)); } catch (e) { /* private mode */ }
+  };
+  const upload = async (input, action, maxSize, done) => {
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    status.innerHTML = loadingMessageHtml('Uploading');
+    try {
+      const { base64, mimeType } = await compressImage(file, maxSize, 0.85);
+      const r = await Api.post(action, { token, imageBase64: base64, mimeType });
+      if (!r.ok) {
+        status.textContent = r.errorKind === 'auth' || /auth|session|log ?in|sign ?in/i.test(r.error || '') ? 'Please log in to your store again, then try once more.' : (r.error || 'Could not upload that photo.');
+        return;
+      }
+      done(r);
+      status.textContent = 'Saved - customers see it now.';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    } catch (err) {
+      status.textContent = 'Could not use that photo. Try another one.';
+    }
+  };
+  $p('sp-cover-input').addEventListener('change', (e) => upload(e.target, 'uploadStoreCover', 1600, (r) => {
+    const img = $p('sp-cover-img');
+    img.src = optimizedImageUrl(r.coverUrl, 1200);
+    img.hidden = false;
+    remember('coverUrl', r.coverUrl);
+  }));
+  $p('sp-logo-input').addEventListener('change', (e) => upload(e.target, 'uploadStoreLogo', 512, (r) => {
+    const img = $p('sp-avatar-img');
+    img.src = optimizedImageUrl(r.logoUrl, IMG_W.logo);
+    img.alt = res.storeName || '';
+    img.hidden = false;
+    $p('sp-avatar-initials').textContent = '';
+    remember('logoUrl', r.logoUrl);
+  }));
+}
+
+/** Every product photo, cover first per product, each once. */
+function profilePhotos() {
+  const seen = new Set();
+  const out = [];
+  currentProducts.forEach((p) => {
+    const urls = (p.images && p.images.length ? p.images : [p.imageUrl]).filter(Boolean);
+    urls.forEach((u) => { if (!seen.has(u)) { seen.add(u); out.push({ url: u, productId: p.productId, name: p.name }); } });
+  });
+  return out;
+}
+
 function renderStoreBadges(ids) {
   const el = document.getElementById('store-seller-badges');
   if (!el || typeof renderSellerBadges !== 'function') return;

@@ -294,6 +294,43 @@ function actionUploadStoreLogo(owner, body) {
   return ok({ logoUrl: uploaded.imageUrl });
 }
 
+/** The text a seller typed, without the formula guard's leading apostrophe (Sheets drops it; the harness keeps it). */
+function storeBioOf(owner) {
+  return String(owner.StoreBio || '').replace(/^'(?=[=+\-@])/, '');
+}
+
+/**
+ * The wide photo at the top of the store page on phones and tablets (owner
+ * request, Nov 2026). Optional: without one the page shows the store's colour.
+ * body.remove clears it. Same checks and storage as the logo.
+ */
+function actionUploadStoreCover(owner, body) {
+  var ownersSheet = getSheet('Owners');
+  // New columns, appended past the last header: nothing moves, no row is touched.
+  ensureColumn(ownersSheet, 'CoverUrl');
+  ensureColumn(ownersSheet, 'CoverFileId');
+  var ownerRow = findRowById(ownersSheet, 'OwnerId', owner.OwnerId);
+  if (!ownerRow) return fail('Store account not found');
+  var oldFileId = ownerRow.CoverFileId;
+
+  if (body.remove) {
+    updateRowFromObject(ownersSheet, ownerRow.__row, { CoverUrl: '', CoverFileId: '' });
+    if (oldFileId) deleteStoredImage(oldFileId);
+    invalidateCache(storeCacheKeys(owner.StoreSlug));
+    return ok({ coverUrl: '' });
+  }
+
+  // The file's own first bytes decide what it is (as for product photos), not the type the browser claims.
+  var photo = checkedProductPhoto(body);
+  if (photo.error) return fail(photo.error);
+
+  var uploaded = uploadImage(photo.bytes, photo.mimeType, 'cover_' + owner.OwnerId + '_' + Date.now(), getImageFolder);
+  updateRowFromObject(ownersSheet, ownerRow.__row, { CoverUrl: uploaded.imageUrl, CoverFileId: uploaded.imageFileId });
+  if (oldFileId) deleteStoredImage(oldFileId);
+  invalidateCache(storeCacheKeys(owner.StoreSlug));
+  return ok({ coverUrl: uploaded.imageUrl });
+}
+
 /**
  * ID/License documents get their own Drive folder (like chat images do),
  * separate from product/logo photos, so they're easy to find/manage

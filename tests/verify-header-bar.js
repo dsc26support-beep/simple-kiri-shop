@@ -56,6 +56,18 @@ const PAGES = ['index.html', 'store.html?store=bong', 'product.html?store=bong&p
           over: document.documentElement.scrollWidth - innerWidth, parts: parts.map((x) => x[0]) };
       });
       const tag = `${w}px ${path.split('?')[0]}`;
+      // Below computer width a store page has no red header (owner, 1 Nov
+      // 2026): its menu is on the cover, and Tips / My Account are in it.
+      if (w < 1024 && path.startsWith('store.html')) {
+        const c = await p.evaluate(() => ({ header: getComputedStyle(document.querySelector('header.site-header')).display,
+          onCover: !!document.querySelector('#sp-cover .header-menu-btn'),
+          items: Array.from(document.querySelectorAll('#header-menu-panel .header-menu-label')).map((e) => e.textContent.trim()),
+          over: document.documentElement.scrollWidth - innerWidth }));
+        ok(`${tag}: no red header; the menu is on the cover with Tips and My Account in it`, c.header === 'none' && c.onCover && c.items.includes('Tips') && c.items.includes('My Account'), JSON.stringify(c));
+        ok(`${tag}: no sideways scroll`, c.over <= 1, String(c.over));
+        await p.close();
+        continue;
+      }
       ok(`${tag}: Tips and My Account in the header, clickable`, g.links.length === 2 && g.links[0][0] === 'Tips' && g.links[1][0] === 'My Account' && g.links.every((x) => x[1]), JSON.stringify(g.links));
       ok(`${tag}: three-line icon (half bottom line, right), no dots`, g.lines && !g.dots && g.half);
       ok(`${tag}: nothing in the header overlaps`, g.hits.length === 0, g.hits.join(', ') + ' | ' + g.parts.join(','));
