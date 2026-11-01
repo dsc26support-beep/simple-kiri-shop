@@ -433,7 +433,8 @@ function animateCartOnAdd(prev, next) {
  */
 /**
  * Phones and tablets: the profile at the top of the page (owner request, Nov
- * 2026; store.html #store-profile, hidden on a computer by CSS). Everything
+ * 2026; store.html #store-profile, hidden on a computer by CSS). No message
+ * button since 1 Nov - the round chat button does that. Everything
  * here is the seller's own data, so it is set as text, never as HTML; the
  * colour was checked as #rrggbb by the server before it reaches a style.
  */
@@ -509,12 +510,8 @@ function renderStoreProfile(res) {
     bioEl.hidden = show && !!bio;   // the full text is inside More info
   });
 
-  // The big button opens the same chat as the round chat button.
-  $p('sp-message').innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"></path></svg><span>Message the seller</span>';
-  $p('sp-message').addEventListener('click', () => {
-    const fab = document.getElementById('chat-fab');
-    if (fab && fab.getAttribute('aria-expanded') !== 'true') fab.click();
-  });
+  // The store's own seller, signed in on this phone: change the banner and logo here.
+  wireOwnerProfileEdits(res);
 
   $p('sp-share').addEventListener('click', async () => {
     const url = `${location.origin}${location.pathname}?store=${encodeURIComponent(currentSlug)}`;
@@ -547,6 +544,86 @@ function renderStoreProfile(res) {
   };
   tabP.addEventListener('click', () => show(false));
   tabF.addEventListener('click', () => show(true));
+}
+
+/**
+ * Phones and tablets have no red header on a store page (owner, 1 Nov 2026):
+ * the ⋮ menu (and on tablets the cart) sit on the cover instead. Both are made
+ * by other scripts at DOMContentLoaded (header-menu.js, header-cart.js, loaded
+ * after this file), so this runs a tick later, and moves them back if the
+ * window grows to computer width.
+ */
+const PROFILE_QUERY = window.matchMedia ? window.matchMedia('(max-width: 1023px)') : null;
+function placeHeaderTools() {
+  const cover = document.getElementById('sp-cover');
+  const home = document.querySelector('header.site-header .header-top-row');
+  if (!cover || !home || !PROFILE_QUERY) return;
+  const tools = [document.getElementById('header-cart-link'), document.querySelector('.header-menu')].filter(Boolean);
+  tools.forEach((el) => (PROFILE_QUERY.matches ? cover : home).appendChild(el));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(placeHeaderTools, 0);
+  if (PROFILE_QUERY) {
+    if (PROFILE_QUERY.addEventListener) PROFILE_QUERY.addEventListener('change', placeHeaderTools);
+    else if (PROFILE_QUERY.addListener) PROFILE_QUERY.addListener(placeHeaderTools);
+  }
+});
+
+/**
+ * The seller of THIS store, signed in on this device (the session owner.html
+ * pages use), gets camera buttons on the banner and the logo. The server
+ * checks the token and only ever changes the token's own store; this only
+ * decides whether to show the buttons.
+ */
+function wireOwnerProfileEdits(res) {
+  let token = '';
+  let profile = null;
+  try {
+    token = localStorage.getItem('skiri_owner_token') || '';
+    profile = JSON.parse(localStorage.getItem('skiri_owner_profile') || 'null');
+  } catch (e) { return; }
+  if (!token || !profile || profile.storeSlug !== currentSlug) return;
+  const $p = (id) => document.getElementById(id);
+  const status = $p('sp-upload-status');
+  $p('sp-cam-cover').hidden = false;
+  $p('sp-cam-logo').hidden = false;
+  $p('sp-dot').hidden = true;   // the camera takes that corner of the logo
+  const remember = (key, url) => {
+    try { profile[key] = url; localStorage.setItem('skiri_owner_profile', JSON.stringify(profile)); } catch (e) { /* private mode */ }
+  };
+  const upload = async (input, action, maxSize, done) => {
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    status.innerHTML = loadingMessageHtml('Uploading');
+    try {
+      const { base64, mimeType } = await compressImage(file, maxSize, 0.85);
+      const r = await Api.post(action, { token, imageBase64: base64, mimeType });
+      if (!r.ok) {
+        status.textContent = r.errorKind === 'auth' || /auth|session|log ?in|sign ?in/i.test(r.error || '') ? 'Please log in to your store again, then try once more.' : (r.error || 'Could not upload that photo.');
+        return;
+      }
+      done(r);
+      status.textContent = 'Saved - customers see it now.';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    } catch (err) {
+      status.textContent = 'Could not use that photo. Try another one.';
+    }
+  };
+  $p('sp-cover-input').addEventListener('change', (e) => upload(e.target, 'uploadStoreCover', 1600, (r) => {
+    const img = $p('sp-cover-img');
+    img.src = optimizedImageUrl(r.coverUrl, 1200);
+    img.hidden = false;
+    remember('coverUrl', r.coverUrl);
+  }));
+  $p('sp-logo-input').addEventListener('change', (e) => upload(e.target, 'uploadStoreLogo', 512, (r) => {
+    const img = $p('sp-avatar-img');
+    img.src = optimizedImageUrl(r.logoUrl, IMG_W.logo);
+    img.alt = res.storeName || '';
+    img.hidden = false;
+    $p('sp-avatar-initials').textContent = '';
+    remember('logoUrl', r.logoUrl);
+  }));
 }
 
 /** Every product photo, cover first per product, each once. */

@@ -2,9 +2,11 @@
  * Store page as a profile on phones and tablets (owner request, Nov 2026), in
  * the browser on the REAL backend: cover photo (or the store colour), round
  * logo over its edge with the open dot, name with the verified tick, place and
- * status, the seller's bio with More info, the big "Message the seller" button
- * opening the chat, Products | Photos tabs. Computers keep the old header. And
- * Settings: upload / remove the cover photo, write the bio.
+ * status, the seller's bio with More info, Products | Photos tabs. Since 1 Nov:
+ * no red header and no message button there - the ⋮ menu sits on the cover
+ * (and Home and the cart on a tablet), and the store's own seller changes the
+ * banner and logo from the page. Computers keep the old header. And Settings:
+ * upload / remove the cover photo, write the bio.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const { makeBox } = require('./lib/gas-harness.js');
@@ -60,7 +62,11 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   };
   const geo = (p) => p.evaluate(() => {
     const r = (id) => { const e = document.getElementById(id); if (!e) return null; const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, w: b.width, h: b.height, shown: getComputedStyle(e).display !== 'none' && !e.closest('[hidden]') }; };
-    return { profile: r('store-profile'), cover: r('sp-cover'), avatar: r('sp-avatar'), name: r('sp-name'), message: r('sp-message'), tabs: r('sp-tab-products'), list: r('product-list'),
+    const menu = document.querySelector('.header-menu-btn'); const mb = menu && menu.getBoundingClientRect();
+    return { profile: r('store-profile'), cover: r('sp-cover'), avatar: r('sp-avatar'), name: r('sp-name'), tabs: r('sp-tab-products'), list: r('product-list'),
+      header: getComputedStyle(document.querySelector('header.site-header')).display, menuOnCover: !!(menu && menu.closest('#sp-cover')), menu: mb && { top: mb.top, right: mb.right },
+      home: getComputedStyle(document.querySelector('.sp-home')).display, cart: document.getElementById('header-cart-link') ? { on: !!document.getElementById('header-cart-link').closest('#sp-cover'), d: getComputedStyle(document.getElementById('header-cart-link')).display } : null,
+      message: document.getElementById('sp-message'), cams: [getComputedStyle(document.getElementById('sp-cam-cover')).display, getComputedStyle(document.getElementById('sp-cam-logo')).display],
       branding: getComputedStyle(document.querySelector('.store-branding')).display, side: document.documentElement.scrollWidth - innerWidth };
   });
 
@@ -70,7 +76,19 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await p.waitForFunction(() => document.getElementById('sp-name').textContent === 'Bong Store', null, { timeout: 15000 });
   await p.waitForTimeout(400);
   let g = await geo(p);
-  ok('phone: the store opens as a profile, the old header details are hidden', g.profile.shown && g.branding === 'none', g);
+  ok('phone: the store opens as a profile; no red/yellow header at all', g.profile.shown && g.header === 'none', g);
+  ok('...the ⋮ menu is on the cover, top right', g.menuOnCover && g.menu.top < g.cover.bottom && g.menu.right > 340, g);
+  ok('...no Home or cart icons on a phone cover (the bottom bar has them)', g.home === 'none' && (!g.cart || g.cart.d === 'none'), g);
+  ok('...no "Message the seller" button; the round chat button stays', g.message === null && await p.isVisible('#chat-fab'), g);
+  ok('...a customer sees no camera buttons', g.cams.every((d) => d === 'none'), g.cams);
+  await p.click('.header-menu-btn');
+  await p.waitForTimeout(150);
+  ok('...the ⋮ menu opens over the cover and its first item can be tapped', await p.evaluate(() => {
+    const first = Array.from(document.querySelectorAll('#header-menu-panel .header-menu-item')).find((e) => e.getClientRects().length > 0);
+    if (!first) return false; const r = first.getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!(el && first.contains(el)) && r.right <= innerWidth; }));
+  await p.keyboard.press('Escape');
+  await p.click('#sp-name');
   ok('...cover across the top, logo circle over its bottom edge', g.cover.w >= 389 && g.avatar.top < g.cover.bottom && g.avatar.bottom > g.cover.bottom && Math.abs(g.avatar.w - g.avatar.h) < 1, g);
   ok('...the cover is the seller’s photo', await p.evaluate(() => { const i = document.getElementById('sp-cover-img'); return !i.hidden && /cover\.jpg/.test(i.src); }));
   ok('...name and counts over the cover; name with the verified tick under the logo', (await p.textContent('#sp-cover-name')) === 'Bong Store' && /^3 products · 3 photos$/.test(await p.textContent('#sp-cover-stats')) && await p.isVisible('#sp-verified'));
@@ -82,10 +100,10 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-more.png', fullPage: true });
   await p.click('#sp-more');
   g = await geo(p);
-  ok('...one big full-width "Message the seller" button, then the tabs, then the products', g.message.w > 340 && g.message.h >= 50 && g.tabs.top > g.message.bottom && g.list.top > g.tabs.bottom && /Message the seller/i.test(await p.textContent('#sp-message')), g);
-  await p.click('#sp-message');
+  ok('...the tabs come straight after the bio, then the products', g.tabs.top > g.name.bottom && g.list.top > g.tabs.bottom, g);
+  await p.click('#chat-fab');
   await p.waitForFunction(() => document.getElementById('chat-fab').getAttribute('aria-expanded') === 'true', null, { timeout: 8000 });
-  ok('"Message the seller" opens the chat with the store', true);
+  ok('the round chat button still opens the chat with the store', true);
   await p.click('#chat-window-close');
   ok('tabs: Products with the count is chosen first', /3 Products/.test(await p.textContent('#sp-tab-products')) && (await p.getAttribute('#sp-tab-products', 'aria-selected')) === 'true');
   await p.click('#sp-tab-photos');
@@ -114,14 +132,40 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await p.waitForFunction(() => document.getElementById('sp-name').textContent === 'Bong Store', null, { timeout: 15000 });
   await p.waitForTimeout(300);
   g = await geo(p);
-  ok('tablet: the same profile layout, larger cover and logo', g.profile.shown && g.cover.h >= 200 && g.avatar.w >= 120 && g.side <= 1, g);
+  ok('tablet: the same profile layout, larger cover and logo, no red header', g.profile.shown && g.header === 'none' && g.cover.h >= 200 && g.avatar.w >= 120 && g.side <= 1, g);
+  ok('tablet: Home, cart and ⋮ on the cover (no bottom bar at this size)', g.home !== 'none' && g.cart && g.cart.on && g.cart.d !== 'none' && g.menuOnCover, g);
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-tablet.png' });
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.waitForTimeout(250);
+  g = await geo(p);
+  ok('...widened to a computer, the header and its ⋮ menu come back', g.header !== 'none' && !g.menuOnCover && !g.profile.shown, g);
   await ctx.close();
   ({ ctx, p } = await open(1280, 900));
   await p.goto(BASE + '/store.html?store=bong', { waitUntil: 'load' });
   await p.waitForFunction(() => document.getElementById('sp-name').textContent === 'Bong Store', null, { timeout: 15000 });
   g = await geo(p);
-  ok('computer: unchanged - no profile, the header shows the store as before', !g.profile.shown && g.branding !== 'none' && await p.isVisible('#store-name-tagline'), g);
+  ok('computer: unchanged - no profile, the red header shows the store as before, ⋮ in it', !g.profile.shown && g.header !== 'none' && g.branding !== 'none' && !g.menuOnCover && await p.isVisible('#store-name-tagline'), g);
+  await ctx.close();
+
+  /* ---------- the seller on their own store page ---------- */
+  require('fs').writeFileSync('/tmp/claude-0/sp-cover.png', PNG);
+  ({ ctx, p } = await open(390, 844, true));
+  await p.goto(BASE + '/store.html?store=bong', { waitUntil: 'load' });
+  await p.waitForFunction(() => document.getElementById('sp-name').textContent === 'Bong Store', null, { timeout: 15000 });
+  g = await geo(p);
+  ok('the store’s own seller sees "Change banner" and a camera on the logo', g.cams.every((d) => d !== 'none'), g.cams);
+  await p.setInputFiles('#sp-cover-input', '/tmp/claude-0/sp-cover.png');
+  await p.waitForFunction(() => /Saved/.test(document.getElementById('sp-upload-status').textContent), null, { timeout: 15000 });
+  ok('...changing the banner uploads it, saves it and shows it at once', /new-cover/.test(owner('own_s').CoverUrl) && await p.evaluate(() => /new-cover/.test(document.getElementById('sp-cover-img').src)));
+  await p.setInputFiles('#sp-logo-input', '/tmp/claude-0/sp-cover.png');
+  await p.waitForFunction(() => /new-cover\d+\.jpg/.test(document.getElementById('sp-avatar-img').src) && /Saved/.test(document.getElementById('sp-upload-status').textContent), null, { timeout: 15000 });
+  ok('...changing the logo the same way', /new-cover/.test(owner('own_s').LogoUrl));
+  if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-owner.png' });
+  await ctx.close();
+  ({ ctx, p } = await open(390, 844, true));
+  await p.goto(BASE + '/store.html?store=plain', { waitUntil: 'load' });
+  await p.waitForFunction(() => document.getElementById('sp-name').textContent === 'Plain Shop', null, { timeout: 15000 });
+  ok('...but not on someone else’s store', (await geo(p)).cams.every((d) => d === 'none'));
   await ctx.close();
 
   /* ---------- Settings ---------- */
@@ -129,10 +173,9 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await p.goto(BASE + '/owner/settings.html', { waitUntil: 'load' });
   await p.waitForFunction(() => document.getElementById('store-bio').value.length > 0, null, { timeout: 15000 });
   ok('Settings shows the current cover photo and bio, with a counter', await p.isVisible('#cover-preview') && await p.isVisible('#cover-remove') && /\d+/.test(await p.textContent('#store-bio-count')));
-  require('fs').writeFileSync('/tmp/claude-0/sp-cover.png', PNG);
   await p.setInputFiles('#cover-image-input', '/tmp/claude-0/sp-cover.png');
   await p.waitForFunction(() => /Cover photo updated/.test(document.getElementById('cover-upload-status').textContent), null, { timeout: 15000 });
-  ok('a new cover photo uploads and saves at once', /new-cover1/.test(owner('own_s').CoverUrl) && uploads.length === 1);
+  ok('a new cover photo uploads and saves at once', /new-cover3/.test(owner('own_s').CoverUrl) && uploads.length === 3, uploads);
   await p.click('#cover-remove');
   await p.waitForFunction(() => /removed/.test(document.getElementById('cover-upload-status').textContent), null, { timeout: 10000 });
   ok('...and can be removed', owner('own_s').CoverUrl === '' && await p.isHidden('#cover-preview'));
