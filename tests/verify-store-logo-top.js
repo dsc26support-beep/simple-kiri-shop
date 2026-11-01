@@ -47,10 +47,10 @@ const STORE = { ok: true, storeName: 'Teaube', storeIsland: 'Abaiang', storePhon
     const hdr = getComputedStyle(document.getElementById('store-logo-img')).display;
     const av = document.getElementById('sp-avatar-img'); const r = av.getBoundingClientRect();
     return { hdr, avatar: !av.hidden && r.width > 0, src: /app-icon-192/.test(av.src), round: getComputedStyle(av).borderRadius, scrollW: document.documentElement.scrollWidth,
-      menu: document.querySelector('header .header-menu-btn') && document.querySelector('header .header-menu-btn').getBoundingClientRect().y, home: document.querySelector('header .site-nav a').getBoundingClientRect().y };
+      header: getComputedStyle(document.querySelector('header.site-header')).display, menuOnCover: !!document.querySelector('#sp-cover .header-menu-btn') };
   });
   ok('store page, phone: the logo is the round profile picture, not in the header', sp.hdr === 'none' && sp.avatar && sp.src && sp.round === '50%', JSON.stringify(sp));
-  ok('...Home and the menu stay at the top', sp.menu !== null && sp.menu < 60 && sp.home < 60, JSON.stringify(sp));
+  ok('...no red header there; the ⋮ menu is on the cover (owner, 1 Nov 2026)', sp.header === 'none' && sp.menuOnCover, JSON.stringify(sp));
   ok('no sideways scroll at 390px', sp.scrollW <= 390, String(sp.scrollW));
   const g = await page.evaluate(() => {
     const box = (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, cy: r.y + r.height / 2 }; };
@@ -64,8 +64,8 @@ const STORE = { ok: true, storeName: 'Teaube', storeIsland: 'Abaiang', storePhon
   });
   void g; void before;   // header-logo geometry: checked below for product, cart and checkout
 
-  await page.click('header .header-menu-btn');
-  const panel = await page.evaluate(() => { const p = document.querySelector('header .header-menu-panel'); if (!p) return null; const r = p.getBoundingClientRect(); return { shown: getComputedStyle(p).display !== 'none' && !p.hidden && r.height > 0, right: r.right }; });
+  await page.click('.header-menu-btn');
+  const panel = await page.evaluate(() => { const p = document.querySelector('.header-menu-panel'); if (!p) return null; const r = p.getBoundingClientRect(); return { shown: getComputedStyle(p).display !== 'none' && !p.hidden && r.height > 0, right: r.right }; });
   ok('the menu still opens, on screen', panel && panel.shown && panel.right <= 390, JSON.stringify(panel));
 
   for (const pg of ['product.html?store=teaube&product=p1', 'cart.html', 'checkout.html']) {
