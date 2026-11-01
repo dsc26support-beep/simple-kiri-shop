@@ -9159,6 +9159,8 @@ form.search-box.is-pinned::before {
   body.page-store .store-branding,
   body.page-store #store-logo-img,
   body.page-store #store-seller-badges { display: none !important; }   /* badges: the tick by the name, and in More info */
+  /* The ⋮ menu drops down over the cover photo, not under it. */
+  body.page-store header.site-header { z-index: 1001; }
 
   .sp-cover {
     position: relative;

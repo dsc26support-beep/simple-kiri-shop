@@ -15,7 +15,7 @@ const SmsAdmin = (() => {
   async function load() {
     const res = await call('adminSmsOverview');
     const tbody = $('asm-stores').tBodies[0];
-    if (!res.ok) { $('asm-status').textContent = res.error || 'Could not load.'; tbody.innerHTML = ''; return; }
+    if (!res.ok || !Array.isArray(res.stores)) { $('asm-status').textContent = (res && res.error) || 'Could not load.'; tbody.innerHTML = ''; return; }
     $('asm-status').textContent = '';
     stores = res.stores.sort((a, b) => b.sent - a.sent);
     tbody.innerHTML = stores.length ? stores.map((s) => `<tr data-owner="${escapeAttr(s.ownerId)}">
@@ -27,7 +27,7 @@ const SmsAdmin = (() => {
         <button type="button" class="btn btn-small btn-light-purple" data-act="contacts">View contacts</button></td></tr>`).join('')
       : '<tr><td colspan="9" class="sx-empty">No store uses Contacts &amp; SMS yet.</td></tr>';
     LIMITS.forEach((l) => { if (!$('asm-l-' + l[0])) $('asm-limits').insertAdjacentHTML('beforeend', `<div class="field"><label for="asm-l-${l[0]}">${l[1]}</label><input type="number" id="asm-l-${l[0]}" data-limit="${l[0]}"></div>`); });
-    LIMITS.forEach((l) => { $('asm-l-' + l[0]).value = res.limits[l[0]]; });
+    LIMITS.forEach((l) => { $('asm-l-' + l[0]).value = (res.limits || {})[l[0]] == null ? '' : res.limits[l[0]]; });
   }
 
   function askReason(what) {
