@@ -143,7 +143,7 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
           </a>
           <div class="sp-cover-text">
-            <p class="sp-cover-name" id="sp-cover-name"></p>
+            <p class="sp-cover-name"><span id="sp-cover-name"></span><span id="sp-verified" class="sp-verified" hidden></span></p>
             <p class="sp-cover-stats" id="sp-cover-stats"></p>
           </div>
         </div>
@@ -159,10 +159,13 @@
         </button>
       </div>
       <div class="sp-body">
-        <h2 class="sp-name"><span id="sp-name"></span><span id="sp-verified" class="sp-verified" hidden></span></h2>
-        <p class="sp-meta" id="sp-meta"></p>
+        <!-- No name / place / "Open now" lines here (owner, 1 Nov 2026): the
+             name is on the cover and the dot on the logo says open or closed.
+             A closed store still says so in words. -->
+        <h2 class="sr-only" id="sp-name"></h2>
+        <p class="sp-meta" id="sp-meta" hidden></p>
         <p class="sp-upload-status" id="sp-upload-status" role="status" aria-live="polite"></p>
-        <p class="sp-bio" id="sp-bio"></p>
+        <p class="sp-bio" id="sp-bio" hidden></p>
         <button type="button" class="sp-more" id="sp-more" aria-expanded="false" aria-controls="sp-info">More info</button>
         <div class="sp-info" id="sp-info" hidden>
           <p class="sp-bio-full" id="sp-bio-full" hidden></p>

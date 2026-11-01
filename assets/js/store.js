@@ -475,17 +475,16 @@ function renderStoreProfile(res) {
     tick.hidden = false;
   }
   const place = storeLocationLabel(res.storeIsland, res.storeVillage);
+  // Open is the green dot; closed is said in words too (orders still go through).
   const meta = $p('sp-meta');
-  meta.textContent = place ? place + ' · ' : '';
-  const status = document.createElement('span');
-  status.className = open ? 'sp-open' : 'sp-closed';
-  status.textContent = open ? 'Open now' : 'Closed - you can still order';
-  meta.appendChild(status);
+  meta.innerHTML = '<span class="sp-closed">Closed - you can still order</span>';
+  meta.hidden = open;
 
+  // Only what the seller wrote - no made-up line when they have not.
   const bio = String(res.storeBio || '').trim();
   const bioEl = $p('sp-bio');
-  bioEl.textContent = bio || (place ? `Shop from ${name} in ${place}.` : `Shop from ${name}.`);
-  bioEl.classList.toggle('is-empty', !bio);
+  bioEl.textContent = bio;
+  bioEl.hidden = !bio;
   const full = $p('sp-bio-full');
   full.textContent = bio;
   full.hidden = !bio;
@@ -507,7 +506,7 @@ function renderStoreProfile(res) {
     more.setAttribute('aria-expanded', show ? 'true' : 'false');
     more.textContent = show ? 'Less info' : 'More info';
     $p('sp-info').hidden = !show;
-    bioEl.hidden = show && !!bio;   // the full text is inside More info
+    bioEl.hidden = !bio || show;   // the full text is inside More info
   });
 
   // The store's own seller, signed in on this phone: change the banner and logo here.
