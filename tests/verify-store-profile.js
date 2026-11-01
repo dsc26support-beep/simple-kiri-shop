@@ -87,12 +87,22 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     const first = Array.from(document.querySelectorAll('#header-menu-panel .header-menu-item')).find((e) => e.getClientRects().length > 0);
     if (!first) return false; const r = first.getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     return !!(el && first.contains(el)) && r.right <= innerWidth; }));
+  const look = await p.evaluate(() => {
+    const items = Array.from(document.querySelectorAll('#header-menu-panel .header-menu-item')).filter((e) => e.getClientRects().length > 0);
+    const cs = items.map((e) => getComputedStyle(e));
+    const tops = items.map((e) => Math.round(e.getBoundingClientRect().top));
+    return { n: items.length, flex: cs.every((c) => c.display === 'flex'), tall: items.every((e) => e.getBoundingClientRect().height >= 43.5),
+      plain: cs.every((c) => c.textDecorationLine === 'none'), ink: cs.every((c) => c.color === 'rgb(26, 26, 26)'), oneEach: new Set(tops).size === tops.length };
+  });
+  ok('...and looks like the menu everywhere else: one item per line, 44px tall, dark text, no underlines', look.n >= 3 && look.flex && look.tall && look.plain && look.ink && look.oneEach, look);
+  if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-menu.png' });
   await p.keyboard.press('Escape');
-  await p.click('#sp-name');
+  await p.mouse.click(5, 600);
   ok('...cover across the top, logo circle over its bottom edge', g.cover.w >= 389 && g.avatar.top < g.cover.bottom && g.avatar.bottom > g.cover.bottom && Math.abs(g.avatar.w - g.avatar.h) < 1, g);
   ok('...the cover is the seller’s photo', await p.evaluate(() => { const i = document.getElementById('sp-cover-img'); return !i.hidden && /cover\.jpg/.test(i.src); }));
   ok('...name and counts over the cover; name with the verified tick under the logo', (await p.textContent('#sp-cover-name')) === 'Bong Store' && /^3 products · 3 photos$/.test(await p.textContent('#sp-cover-stats')) && await p.isVisible('#sp-verified'));
-  ok('...place and "Open now", with the green dot', /Bairiki · Open now/.test(await p.textContent('#sp-meta')) && await p.evaluate(() => !document.getElementById('sp-dot').classList.contains('is-closed')));
+  ok('...no name / place / "Open now" lines under the logo (owner, 1 Nov): the green dot says open', await p.isHidden('#sp-meta') && await p.evaluate(() => document.getElementById('sp-name').classList.contains('sr-only')) && await p.evaluate(() => !document.getElementById('sp-dot').classList.contains('is-closed')));
+  ok('...the verified tick sits by the name on the cover', await p.evaluate(() => !!document.getElementById('sp-verified').closest('#sp-cover') && !document.getElementById('sp-verified').hidden));
   ok('...the bio shows two lines, More info shows the rest and the details', await p.evaluate(() => { const b = document.getElementById('sp-bio'); return b.scrollHeight > b.clientHeight + 4; }) && await p.isHidden('#sp-info'));
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone.png' });
   await p.click('#sp-more');
@@ -100,7 +110,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-more.png', fullPage: true });
   await p.click('#sp-more');
   g = await geo(p);
-  ok('...the tabs come straight after the bio, then the products', g.tabs.top > g.name.bottom && g.list.top > g.tabs.bottom, g);
+  ok('...the tabs come straight after the bio, then the products', g.tabs.top > g.avatar.bottom && g.tabs.top - g.avatar.bottom < 200 && g.list.top > g.tabs.bottom, g);
   await p.click('#chat-fab');
   await p.waitForFunction(() => document.getElementById('chat-fab').getAttribute('aria-expanded') === 'true', null, { timeout: 8000 });
   ok('the round chat button still opens the chat with the store', true);
@@ -121,8 +131,8 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   ({ ctx, p } = await open(390, 844));
   await p.goto(BASE + '/store.html?store=plain', { waitUntil: 'load' });
   await p.waitForFunction(() => document.getElementById('sp-name').textContent === 'Plain Shop', null, { timeout: 15000 });
-  ok('a store with no cover, logo or bio: store colour banner, initials, a plain line instead of a bio', await p.evaluate(() => document.getElementById('sp-cover-img').hidden &&
-    document.getElementById('sp-avatar-initials').textContent.length > 0 && /Shop from Plain Shop in Abaiang/.test(document.getElementById('sp-bio').textContent) && document.getElementById('sp-verified').hidden));
+  ok('a store with no cover, logo or bio: store colour banner, initials, and no made-up bio line', await p.evaluate(() => document.getElementById('sp-cover-img').hidden &&
+    document.getElementById('sp-avatar-initials').textContent.length > 0 && document.getElementById('sp-bio').hidden && document.getElementById('sp-meta').hidden && document.getElementById('sp-verified').hidden));
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-plain.png' });
   await ctx.close();
 

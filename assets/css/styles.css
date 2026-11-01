@@ -4240,9 +4240,11 @@ body.browse-locked .category-rail {
 }
 
 /* header.site-header a is #fff, which inside a white panel is an invisible
-   menu. Beaten on specificity rather than with !important, so a future rule
+   menu. .sp-cover: on a phone/tablet store page the menu sits on the cover
+   photo instead of the header (store.js), and must look the same there. Beaten on specificity rather than with !important, so a future rule
    can still override it. */
-header.site-header .header-menu-item {
+header.site-header .header-menu-item,
+.sp-cover .header-menu-item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -4256,7 +4258,9 @@ header.site-header .header-menu-item {
 }
 
 header.site-header .header-menu-item:hover,
-header.site-header .header-menu-item:focus-visible {
+header.site-header .header-menu-item:focus-visible,
+.sp-cover .header-menu-item:hover,
+.sp-cover .header-menu-item:focus-visible {
   background: var(--color-bg-alt);
 }
 
@@ -4337,7 +4341,8 @@ header.site-header .header-menu-item:focus-visible {
   font-size: 0.8rem;
 }
 
-header.site-header .header-menu-legal-link {
+header.site-header .header-menu-legal-link,
+.sp-cover .header-menu-legal-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -4348,7 +4353,9 @@ header.site-header .header-menu-legal-link {
 }
 
 header.site-header .header-menu-legal-link:hover,
-header.site-header .header-menu-legal-link:focus-visible {
+header.site-header .header-menu-legal-link:focus-visible,
+.sp-cover .header-menu-legal-link:hover,
+.sp-cover .header-menu-legal-link:focus-visible {
   color: var(--color-ink);
 }
 
@@ -4361,12 +4368,14 @@ header.site-header .header-menu-legal-link:focus-visible {
 /* The page you are already on keeps its entry - the menu reads identically
    everywhere, which is most of why a shopper learns it - and is told apart by
    weight and a left rule, not by colour alone. */
-header.site-header .header-menu-item.is-current {
+header.site-header .header-menu-item.is-current,
+.sp-cover .header-menu-item.is-current {
   font-weight: 700;
   box-shadow: inset 3px 0 0 var(--color-red);
 }
 
-header.site-header .header-menu-item.is-current .header-menu-icon {
+header.site-header .header-menu-item.is-current .header-menu-icon,
+.sp-cover .header-menu-item.is-current .header-menu-icon {
   color: var(--color-red);
 }
 
@@ -9217,11 +9226,13 @@ form.search-box.is-pinned::before {
   .sp-body { padding: var(--space-2) var(--space-3) 0; }
   .sp-name { display: flex; align-items: center; gap: 6px; margin: 0; min-height: 1.4em; font-size: 1.45rem; line-height: 1.25; overflow-wrap: anywhere; }
   .sp-verified { display: inline-flex; color: var(--color-purple); flex: none; }
-  .sp-meta { margin: 4px 0 0; min-height: 1.4em; color: var(--color-muted); }
+  .sp-meta { margin: 4px 0 0; color: var(--color-muted); }
+  .sp-meta[hidden], .sp-bio[hidden] { display: none; }
+  .sp-cover-name .sp-verified { margin-left: 6px; color: #fff; vertical-align: -4px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
   .sp-meta .sp-open { color: #1e7a34; font-weight: 600; }
   .sp-meta .sp-closed { color: var(--color-danger); font-weight: 600; }
   .sp-bio {
-    margin: var(--space-2) 0 0; min-height: 2.9em; line-height: 1.45;
+    margin: var(--space-2) 0 0; line-height: 1.45;
     white-space: pre-line; overflow-wrap: anywhere;
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
