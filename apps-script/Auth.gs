@@ -106,6 +106,9 @@ function publicOwnerFields(owner) {
     // seller gets a working WhatsApp button without touching their settings.
     whatsapp: owner.WhatsApp,
     logoUrl: owner.LogoUrl,
+    // Store page header (Nov 2026), read back into Settings.
+    coverUrl: owner.CoverUrl || '',
+    storeBio: typeof storeBioOf === 'function' ? storeBioOf(owner) : '',
     island: owner.Island,
     village: owner.Village,
     status: owner.Status,

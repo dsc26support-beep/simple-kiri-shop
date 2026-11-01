@@ -123,7 +123,9 @@ const OWNER_KEYS = ['ownerId', 'storeName', 'storeSlug', 'email', 'phone', 'mess
   // POS / Integrations links only when it is. Owner-only, no store data.
   'posHub',
   // Contacts & SMS: whether CONTACTS_SMS is on, for the seller menu. Owner-only, no store data.
-  'contactsSms'];
+  'contactsSms',
+  // Store page header (Nov 2026): the seller's own cover photo and bio, read back into Settings.
+  'coverUrl', 'storeBio'];
 ok('publicOwnerFields key set unchanged',
   JSON.stringify(Object.keys(owner).sort()) === JSON.stringify(OWNER_KEYS.slice().sort()),
   Object.keys(owner).sort().join(','));
@@ -157,7 +159,7 @@ const extra = norm(hereOwnerSrc).filter((l) => norm(mainOwnerSrc).indexOf(l) ===
 // Same for #112's two payment-option lines: allowed only while that branch is
 // open; once it is on main the two are identical again and extra is empty.
 ok('publicOwnerFields matches main (allowing only #112\'s payment option lines before it merges)',
-  extra.every((l) => /^\s+hasPasswordHint: |^\s+posHub: typeof posHubEnabled|^\s+contactsSms: typeof contactsSmsEnabled|^\s+\/\/ Whether Contacts & SMS|^\s+payment(Methods|Other): paymentOptionsOf\(owner\)/.test(l)), extra.join(' | '));
+  extra.every((l) => /^\s+hasPasswordHint: |^\s+posHub: typeof posHubEnabled|^\s+contactsSms: typeof contactsSmsEnabled|^\s+coverUrl: owner\.CoverUrl|^\s+storeBio: typeof storeBioOf|^\s+\/\/ Store page header|^\s+\/\/ Whether Contacts & SMS|^\s+payment(Methods|Other): paymentOptionsOf\(owner\)/.test(l)), extra.join(' | '));
 ok('nothing was removed from publicOwnerFields',
   mainOwnerSrc.split('\n').filter((l) => /^\s+\w+: /.test(l))
     .every((l) => hereOwnerSrc.indexOf(l) !== -1));
