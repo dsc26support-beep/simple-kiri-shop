@@ -8461,21 +8461,23 @@ html.auth-signup .auth-divider {
    page behind the sign-in card, with a short headline above it - no
    separate purple band. */
 @media (max-width: 899px) {
-  .auth-page {
+  /* Not when signing in to order from a store (html.auth-for-store): that
+     screen opens with the store's cover and keeps the plain white form. */
+  :where(html:not(.auth-for-store)) .auth-page {
     background: linear-gradient(160deg, var(--color-purple) 0%, var(--color-purple-light) 100%);
     min-height: 100svh;
   }
-  .auth-page .auth-split {
+  :where(html:not(.auth-for-store)) .auth-page .auth-split {
     padding-bottom: var(--space-5);
   }
-  .auth-page .auth-split-panel {
+  :where(html:not(.auth-for-store)) .auth-page .auth-split-panel {
     background: none;
     border-radius: 0;
     padding: var(--space-1) 0 var(--space-3);
   }
   /* No grey card (owner request, Oct 2026): the form stands on the purple,
      its words in white; boxes and buttons stay white so they read clearly. */
-  .auth-page .auth-card {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card {
     margin-top: 0;
     background: transparent;
     border: 0;
@@ -8483,63 +8485,63 @@ html.auth-signup .auth-divider {
     padding: 0;
     color: #fff;
   }
-  .auth-page .auth-card :is(label, legend, h1, h2, h3, p, li, .helper-text, .form-required-note) {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card :is(label, legend, h1, h2, h3, p, li, .helper-text, .form-required-note) {
     color: #fff;
   }
-  .auth-page .auth-card .helper-text {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .helper-text {
     opacity: 0.88;
   }
-  .auth-page .auth-card a:not(.btn),
-  .auth-page .auth-card .linklike {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card a:not(.btn),
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .linklike {
     color: #fff;
   }
   /* The eye icon sits inside the white password box, so it stays purple. */
-  .auth-page .auth-card .password-field .password-toggle {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .password-field .password-toggle {
     color: var(--color-purple);
   }
-  .auth-page .auth-tab {
+  :where(html:not(.auth-for-store)) .auth-page .auth-tab {
     color: rgba(255, 255, 255, 0.72);
     border-bottom-color: rgba(255, 255, 255, 0.35);
   }
-  .auth-page .auth-tab.is-active,
-  .auth-page .auth-tab[aria-selected="true"] {
+  :where(html:not(.auth-for-store)) .auth-page .auth-tab.is-active,
+  :where(html:not(.auth-for-store)) .auth-page .auth-tab[aria-selected="true"] {
     color: #fff;
     border-bottom-color: #fff;
   }
-  .auth-page .auth-divider {
+  :where(html:not(.auth-for-store)) .auth-page .auth-divider {
     color: rgba(255, 255, 255, 0.8);
   }
-  .auth-page .auth-divider::before,
-  .auth-page .auth-divider::after {
+  :where(html:not(.auth-for-store)) .auth-page .auth-divider::before,
+  :where(html:not(.auth-for-store)) .auth-page .auth-divider::after {
     background: rgba(255, 255, 255, 0.35);
   }
-  .auth-page .auth-card .form-error {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .form-error {
     color: #ffd7d7;
     font-weight: 600;
   }
-  .auth-page .auth-card .form-success {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .form-success {
     color: #c9f5d3;
   }
   /* Note boxes (e.g. seller Register Store's "First, your Mwakete account")
      keep a light grey fill elsewhere; here their words are white, so the box
      becomes a see-through white tint on the purple instead. */
-  .auth-page .auth-card .auth-note {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-note {
     background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.35);
     color: #fff;
   }
   /* Outlined like every button on the site - in white, so it shows on the
      purple. */
-  .auth-page .auth-card .btn:not(.btn-save) {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .btn:not(.btn-save) {
     background: transparent;
     border-color: #fff;
     color: #fff;
   }
-  .auth-page .auth-card .btn:not(.btn-save):hover,
-  .auth-page .auth-card .btn:not(.btn-save):focus-visible {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .btn:not(.btn-save):hover,
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .btn:not(.btn-save):focus-visible {
     background: rgba(255, 255, 255, 0.14);
   }
-  .auth-page .auth-panel-title {
+  :where(html:not(.auth-for-store)) .auth-page .auth-panel-title {
     font-size: 0.77rem;   /* 1.5 times smaller than the band's 1.15rem */
     letter-spacing: 0.02em;
     margin: 0;
@@ -8740,13 +8742,13 @@ html.auth-signup #auth-create-line { display: none; }
 html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(-1 * var(--space-1)); }
 
 @media (max-width: 899px) {
-  .auth-page .auth-card .auth-provider-btn {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-provider-btn {
     border-color: #fff;
     color: #fff;
   }
-  .auth-page .auth-card .auth-provider-btn:hover,
-  .auth-page .auth-card .auth-provider-btn:focus-visible,
-  .auth-page .auth-card .auth-provider:focus-within .auth-provider-btn {
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-provider-btn:hover,
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-provider-btn:focus-visible,
+  :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-provider:focus-within .auth-provider-btn {
     background: rgba(255, 255, 255, 0.14);
   }
 }
@@ -9163,7 +9165,14 @@ form.search-box.is-pinned::before {
 .store-profile, .sp-photos { display: none; }
 
 @media (max-width: 1023px) {
-  .page-products .store-profile { display: block; margin: 0 0 var(--space-2); padding: 0; }
+  body.page-store .store-profile,
+  html.auth-for-store .store-profile { display: block; margin: 0 0 var(--space-2); padding: 0; }
+  /* Cart, checkout, order received and the order sign-in (Nov 2026): the same
+     cover and logo, no buttons; the page's own title comes under the logo. */
+  .sp-flow .sp-head { min-height: 52px; }
+  .sp-flow + section, .sp-flow + .auth-split { padding-top: 0; }
+  html.auth-for-store header.site-header,
+  html.auth-for-store .auth-split-panel { display: none; }   /* the store's cover replaces the Mwakete panel */
   /* The profile carries the store's name, logo, place and details now. */
   body.page-store .store-branding,
   body.page-store #store-logo-img,

@@ -66,6 +66,14 @@ r = post({ action: 'updateOwnerProfile', token: 'tok-1', storeBio: '' });
 clear();
 ok('the bio can be cleared', r.ok && store('bong').storeBio === '');
 
+/* ---------- cart / checkout read the cover too (getStorePublicInfo) ---------- */
+post({ action: 'uploadStoreCover', token: 'tok-1', imageBase64: JPEG, mimeType: 'image/jpeg' });
+const info = (slug) => { clear(); return JSON.parse(box.doGet({ parameter: { action: 'getStorePublicInfo', storeSlug: slug } }).s); };
+let si = info('bong');
+ok('store info for cart/checkout carries the cover photo and the store colour', si.ok && /^https:\/\/img\/cover\d+\.jpg$/.test(si.store.coverUrl) && si.store.color === '#0b3d91', si.store);
+si = info('other');
+ok('...and never a colour that is not #rrggbb, or a cover that is not https', si.ok && si.store.color === '' && si.store.coverUrl === '', si.store);
+
 R.forEach((x) => console.log(x[0] + '  ' + x[1] + (x[0] === 'FAIL' && x[2] ? '  [' + x[2] + ']' : '')));
 const f = R.filter((x) => x[0] === 'FAIL').length;
 console.log(`\n${R.length - f}/${R.length} passed`);

@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Mwakete">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon-180.png">
 </head>
-<body>
+<body class="page-store has-header-menu">
   <!-- No bottom navigation bar on the cart, checkout and order-received
        screens (owner, 2 Nov 2026): they stay on the order. bottom-nav.js is
        deliberately not loaded here. -->
@@ -112,6 +112,28 @@
   </div>
 
   <main id="main">
+    <!-- The store's cover on phones and tablets, like the store page but
+         without its buttons (owner, 2 Nov 2026). Reserved in CSS; filled by
+         store-cover.js. Computers keep the red header and never see it. -->
+    <section id="store-profile" class="store-profile sp-flow" aria-label="Store">
+      <div class="sp-cover" id="sp-cover">
+        <img id="sp-cover-img" class="sp-cover-img" alt="" hidden>
+        <a class="sp-cover-icon sp-home" href="index.html" aria-label="Home">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"></path></svg>
+        </a>
+        <div class="sp-cover-bar">
+          <a class="sp-back" href="stores.html" id="sp-back" aria-label="Back">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
+          </a>
+          <div class="sp-cover-text">
+            <p class="sp-cover-name"><span id="sp-cover-name"></span><span id="sp-verified" class="sp-verified" hidden></span></p>
+          </div>
+        </div>
+      </div>
+      <div class="sp-head">
+        <div class="sp-avatar" id="sp-avatar"><img id="sp-avatar-img" alt="" hidden><span id="sp-avatar-initials" aria-hidden="true"></span><span class="sp-dot" id="sp-dot" hidden></span></div>
+      </div>
+    </section>
     <section id="cart" aria-labelledby="cart-heading">
       <div class="container">
         <h1 id="cart-heading">Your Order</h1>
@@ -149,6 +171,8 @@
   <script defer src="assets/js/cart-page.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>
+  <script defer src="assets/js/header-menu.min.js"></script>
+  <script defer src="assets/js/store-cover.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>
 </body>
 </html>
