@@ -9,7 +9,7 @@
  */
 
 var PUBLIC_POST_ACTIONS = [
-  'registerOwner', 'loginOwner', 'createOrder', 'createBookingRequest',
+  'registerOwner', 'loginOwner', 'ownerFromCustomer', 'createOrder', 'createBookingRequest',
   // Mwakete POS tills (PosStaff.gs): the till's own secret is the credential.
   'posDeviceInfo', 'posStaffLogin',
   // Mwakete SMS app (SmsDevices.gs): the one-time pairing code, then the
@@ -157,7 +157,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'store2-2026-11-02';
+var APP_VERSION = 'oneacct-2026-11-02';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -487,6 +487,7 @@ function doPost(e) {
       switch (action) {
         case 'registerOwner': return jsonOut(actionRegisterOwner(body));
         case 'loginOwner': return jsonOut(actionLoginOwner(body));
+        case 'ownerFromCustomer': return jsonOut(actionOwnerFromCustomer(body));
         case 'createOrder': return jsonOut(actionCreateOrder(body));
         case 'createBookingRequest': return jsonOut(actionCreateBookingRequest(body));
         case 'verifyLoginCode': return jsonOut(actionVerifyLoginCode(body));

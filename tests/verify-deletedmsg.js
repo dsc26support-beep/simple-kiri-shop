@@ -106,8 +106,8 @@ const WANT = 'This store has been deleted. Contact now via the Help and support 
       !/admin@mwakete\.com/.test(auth));
     ok('it still only fires for a closed store, not every failed login',
       /owner\.Status === 'closed'/.test(auth));
-    ok('a wrong password on a live store still says "Invalid username or password"',
-      /'Invalid username or password'/.test(auth));
+    ok('store password sign-in is retired with a clear pointer to the Mwakete account (2 Nov 2026)',
+      /OWNER_PASSWORD_LOGIN_RETIRED/.test(auth) && /Sign in with your Mwakete account/.test(auth));
 
     const code = fs.readFileSync('/home/user/simple-kiri-shop/apps-script/Code.gs', 'utf8');
     const mainCode = require('child_process')

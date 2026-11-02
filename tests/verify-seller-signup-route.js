@@ -1,29 +1,20 @@
 /**
- * Getting a new vendor to the right form.
+ * One sign-in for sellers (owner decision, 2 Nov 2026).
  *
- * Three routes onto owner/login.html, and until now two of them ended in a
- * dead stare at a Log In box:
- *
- *   1. A seller page opened with no session at all - a bookmark, a shared
- *      link, the installed app's icon. guardOwnerAuth redirected silently to
- *      the Log In tab with no message whatsoever.
- *   2. Create Store tapped by somebody already signed in as a SHOPPER. The
- *      form asks for a username and password for an account they believe they
- *      already have, and nothing said the two are separate.
- *   3. A username that is already taken, typed into Register by an owner who
- *      is on the wrong tab.
- *
- * THE SECURITY LINE THIS SUITE EXISTS TO HOLD. The log-in error must stay
- * vague. Auth.gs compares against a dummy hash precisely so this form cannot
- * be walked to learn which usernames exist, and "no account with that name,
- * go and register" would hand that back. So the help offered after a failed
- * log-in must say nothing at all about the account - only that Register is
- * there. Registration is the opposite case and may be plain: it has to refuse
- * a taken username, so it cannot hide that one is taken.
+ * A seller signs in with their Mwakete account (Google or email) and their
+ * store opens - no store username, password or hint anywhere:
+ *   - owner/login.html, signed in: straight on to the dashboard (or ?next=);
+ *   - signed in with no store: the Register tab, which has no username /
+ *     password / hint fields;
+ *   - not signed in: one "Sign in with Google or email" link that comes back;
+ *   - after Log out: a "Continue to my store" tap instead of reopening;
+ *   - a seller page with no store session goes to login.html?next=that page;
+ *   - the store's own page shows the photo buttons to its seller signed in
+ *     with their account only, and asks the backend at most once a day for a
+ *     shopper with no store.
+ * The backend decides which store (ownerFromCustomer); it is mocked here.
  */
-const fs = require('fs');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
-const REPO = '/home/user/simple-kiri-shop/';
 const BASE = process.env.AUDIT_BASE || 'http://127.0.0.1:8099';
 let pass = 0, fail = 0;
 const ok = (name, cond, detail) => {
@@ -32,41 +23,24 @@ const ok = (name, cond, detail) => {
 };
 
 const CUSTOMER = { customerId: 'c1', name: 'Aroita', email: 'aroita@example.com', phone: '73012345' };
+const OWNER = { ownerId: 'o1', storeName: 'Bong', storeSlug: 'bong', email: 'aroita@example.com', status: 'active' };
 
-// Stands in for Google's script, which this sandbox can't reach. It records
-// what the page asked for and draws a button that hands the page's callback a
-// credential, the way Google's own button does after an account is picked.
-const FAKE_GSI = `window.__gsi = { inits: [], renders: [] };
-window.google = { accounts: { id: {
-  initialize: function (o) { __gsi.inits.push(o); __gsi.cb = o.callback; },
-  renderButton: function (host, o) { __gsi.renders.push(o);
-    var b = document.createElement('button'); b.type = 'button'; b.id = 'fake-gsi'; b.textContent = 'Sign in with Google';
-    b.style.height = '40px'; b.onclick = function () { __gsi.cb({ credential: 'jwt-other' }); }; host.appendChild(b); }
-} } };`;
-
-/** opts: { shopper, ownerToken, loginReply, registerReply } */
+/** opts: { shopper, signedOut, fromCustomer (reply), ownerToken } */
 async function open(browser, path, opts) {
   opts = opts || {};
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const seen = [];
-  const gsiLoads = [];
-  await ctx.route('**/accounts.google.com/gsi/client', (r) => { gsiLoads.push(1); r.fulfill({ status: 200, contentType: 'text/javascript', body: FAKE_GSI }); });
+  await ctx.route('**/accounts.google.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
   await ctx.route('**/script.google.com/**', (r) => {
     let body = {}; try { body = r.request().postDataJSON() || {}; } catch (e) {}
     if (body.action) seen.push(body);
     const J = (o) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
-    if (body.action === 'loginOwner') return J(opts.loginReply || { ok: false, error: 'Invalid username or password' });
-    if (body.action === 'registerOwner') return J(opts.registerReply || { ok: false, error: 'That username is already taken' });
-    if (body.action === 'googleSignIn') return J({ ok: true, token: 'ct2', customer: { customerId: 'c2', name: 'Other', email: 'other@example.com' } });
-    if (body.action === 'getOwnerProfile') {
-      return opts.ownerProfile
-        ? J({ ok: true, owner: { ownerId: 'o1', storeName: 'Bong', storeSlug: 'bong', email: 'b@x.com', status: 'active' } })
-        : J({ ok: false, error: 'Not authenticated' });
-    }
-    return J({ ok: true, products: [], orders: [] });
+    if (body.action === 'ownerFromCustomer') return J(opts.fromCustomer || { ok: true, noStore: true });
+    if (body.action === 'getOwnerProfile') return J({ ok: true, owner: OWNER });
+    if (body.action === 'getStorePublicInfo') return J({ ok: true, store: { storeName: 'Bong', storeSlug: 'bong', status: 'active' } });
+    return J({ ok: true, products: [], orders: [], items: [] });
   });
   const page = await ctx.newPage();
-  // Seed storage from the same origin before navigating to the page under test.
   await page.goto(BASE + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate((o) => { try {
     localStorage.setItem('skiri_cookie_consent', 'true');
@@ -74,292 +48,104 @@ async function open(browser, path, opts) {
       localStorage.setItem('skiri_customer_token', 'ct');
       localStorage.setItem('skiri_customer_profile', JSON.stringify(o.customer));
     }
-    if (o.ownerToken) localStorage.setItem('skiri_owner_token', o.ownerToken);
-  } catch (e) {} }, { shopper: !!opts.shopper, ownerToken: opts.ownerToken || '', customer: CUSTOMER });
+    if (o.signedOut) localStorage.setItem('mwk_seller_signed_out', '1');
+    if (o.ownerToken) { localStorage.setItem('skiri_owner_token', o.ownerToken); localStorage.setItem('skiri_owner_profile', JSON.stringify(o.owner)); }
+  } catch (e) {} }, { shopper: !!opts.shopper, signedOut: !!opts.signedOut, ownerToken: opts.ownerToken || '', customer: CUSTOMER, owner: OWNER });
   await page.goto(BASE + path, { waitUntil: 'load' });
-  await page.waitForTimeout(600);
-  return { ctx, page, seen, gsiLoads };
+  await page.waitForTimeout(900);
+  return { ctx, page, seen };
 }
 
-const tabState = (page) => page.evaluate(() => ({
-  loginSelected: document.getElementById('tab-login').getAttribute('aria-selected') === 'true',
-  registerSelected: document.getElementById('tab-register').getAttribute('aria-selected') === 'true',
-  loginShown: !document.getElementById('login-form').classList.contains('hidden'),
-  registerShown: !document.getElementById('register-form').classList.contains('hidden'),
-  message: document.getElementById('session-message').textContent.trim()
-}));
-
 (async () => {
-  // ---------- source: the two halves of the enumeration rule ---------------
-  const auth = fs.readFileSync(REPO + 'apps-script/Auth.gs', 'utf8');
-  ok('the backend still refuses to say whether a username exists',
-    /Invalid username or password/.test(auth) && /dummy hash/i.test(auth));
-  // The frontend matches this string to decide whether to offer the Log In
-  // hand-off. Asserted here so a reworded backend fails a test rather than
-  // silently dropping the route.
-  ok('and it still says "already taken" for a username clash',
-    /That username is already taken/.test(auth));
-  const ownerLogin = fs.readFileSync(REPO + 'assets/js/owner-login.js', 'utf8');
-  ok('the frontend never invents a "no such user" message of its own',
-    !/no account with that|never registered|user not found/i.test(ownerLogin));
-  ok('guardOwnerAuth sends a session-less visitor to the sign-up route',
-    /needStore=1/.test(fs.readFileSync(REPO + 'assets/js/auth.js', 'utf8')));
+  const browser = await chromium.launch();
 
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  // 1. Not signed in: one way in, no store username/password anywhere.
+  let t = await open(browser, '/owner/login.html');
+  let st = await t.page.evaluate(() => ({
+    fields: document.querySelectorAll('#login-username, #login-password, #register-username, #register-password, #register-password-hint').length,
+    forgot: !!document.querySelector('a[href="forgot-password.html"]'),
+    signinShown: !document.getElementById('login-signin').hidden,
+    href: document.getElementById('login-signin-link').getAttribute('href')
+  }));
+  ok('no store username, password or hint field on the page', st.fields === 0 && !st.forgot, JSON.stringify(st));
+  ok('not signed in: "Sign in with Google or email" is shown', st.signinShown);
+  ok('...and it comes back to the seller area afterwards', /customer-login\.html\?next=owner%2Flogin\.html/.test(st.href), st.href);
+  ok('...no backend call is made for nobody', !t.seen.some((b) => b.action === 'ownerFromCustomer'));
+  await t.ctx.close();
 
-  // ---------- 1. a seller page opened with no account at all ---------------
-  {
-    const { ctx, page } = await open(browser, '/owner/dashboard.html');
-    await page.waitForURL('**/owner/login.html*', { timeout: 6000 });
-    ok('a seller page with no session lands on the login page',
-      /owner\/login\.html/.test(page.url()), page.url());
-    ok('carrying the sign-up marker', /needStore=1/.test(page.url()), page.url());
-    await page.waitForTimeout(500);
-    const t = await tabState(page);
-    ok('and it opens on Register, not Log In', t.registerShown && !t.loginShown, JSON.stringify(t));
-    ok('Register is the tab marked selected, for assistive tech too', t.registerSelected && !t.loginSelected);
-    ok('with a message saying what is needed', /store account/i.test(t.message), t.message);
-    // A seller on a new phone lands here too. The line must not tell them they
-    // have no account, and Log In must still be one tap away.
-    ok('the message never claims they have no account',
-      !/no account|not registered|never/i.test(t.message), t.message);
-    ok('and Log In is still one tap away', await page.evaluate(() => {
-      const b = document.getElementById('tab-login');
-      const r = b.getBoundingClientRect();
-      return r.width > 0 && r.height >= 30;
-    }));
-    await page.click('#tab-login');
-    const after = await tabState(page);
-    ok('tapping it really does go back to Log In', after.loginShown && !after.registerShown);
-    await ctx.close();
-  }
+  // 2. Signed in with a store: straight to the dashboard.
+  t = await open(browser, '/owner/login.html', { shopper: true, fromCustomer: { ok: true, token: 'own-tok', owner: OWNER } });
+  await t.page.waitForURL(/dashboard\.html/, { timeout: 5000 }).catch(() => {});
+  ok('signed in with a store: straight to the dashboard', /dashboard\.html/.test(t.page.url()), t.page.url());
+  ok('...the account session was what was sent', t.seen.some((b) => b.action === 'ownerFromCustomer' && b.customerToken === 'ct'));
+  ok('...and the store session is saved', await t.page.evaluate(() => localStorage.getItem('skiri_owner_token')) === 'own-tok');
+  await t.ctx.close();
 
-  // An expired session is a DIFFERENT case: that person had an account.
-  {
-    const { ctx, page } = await open(browser, '/owner/login.html?expired=1');
-    const t = await tabState(page);
-    ok('an expired session still lands on Log In, not Register', t.loginShown && !t.registerShown,
-      JSON.stringify(t));
-    ok('with its own wording', /expired/i.test(t.message), t.message);
-    await ctx.close();
-  }
+  // 3. ?next= is honoured (e.g. from a seller page or an email).
+  t = await open(browser, '/owner/login.html?next=messages.html', { shopper: true, fromCustomer: { ok: true, token: 'own-tok', owner: OWNER } });
+  await t.page.waitForURL(/messages\.html/, { timeout: 5000 }).catch(() => {});
+  ok('...or to the page that sent them (?next=)', /owner\/messages\.html/.test(t.page.url()), t.page.url());
+  await t.ctx.close();
 
-  // ---------- 2. a shopper taps Create Store -------------------------------
-  {
-    const { ctx, page, seen } = await open(browser, '/owner/login.html?tab=register', { shopper: true });
-    const note = await page.evaluate(() => {
-      const n = document.getElementById('shopper-note');
-      return { hidden: n.hidden, text: n.textContent.trim() };
-    });
-    // Owner request (Oct 2026): just this line, highlighted and centred -
-    // "a shopper" dropped later the same month.
-    ok('a signed-in shopper sees exactly "You are signed in (their email)", no full stop',
-      note.hidden === false && note.text === 'You are signed in (' + CUSTOMER.email + ')', note.text);
-    ok('...highlighted and centred', await page.evaluate(() => {
-      const cs = getComputedStyle(document.getElementById('shopper-note'));
-      return cs.textAlign === 'center' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)';
-    }));
-    ok('the register form is the one on screen',
-      (await tabState(page)).registerShown);
-    // Nothing about the shopper session may leave this page.
-    ok('their customer token is never sent anywhere from this page',
-      !seen.some((b) => b.token === 'ct'), JSON.stringify(seen.map((b) => b.action)));
-    ok('in fact no customer call is made at all',
-      !seen.some((b) => /Customer|google/i.test(b.action || '')), JSON.stringify(seen.map((b) => b.action)));
+  // 4. Signed in, no store: the Register tab, ready to fill in.
+  t = await open(browser, '/owner/login.html', { shopper: true, fromCustomer: { ok: true, noStore: true } });
+  st = await t.page.evaluate(() => ({
+    register: document.getElementById('tab-register').getAttribute('aria-selected') === 'true',
+    fields: !document.getElementById('register-fields').hidden,
+    email: document.getElementById('register-email').value,
+    msg: document.getElementById('session-message').textContent
+  }));
+  ok('signed in, no store: the Register tab opens', st.register && st.fields, JSON.stringify(st));
+  ok('...with the account email filled in and a line saying why', st.email === CUSTOMER.email && /no store yet/.test(st.msg), st.msg);
+  await t.page.fill('#register-store-name', 'Aroita Fish');
+  await t.page.fill('#register-phone', '73012345');
+  await t.page.fill('#register-messenger', 'aroita.fish');
+  await t.page.fill('#register-about', 'Fresh fish');
+  await t.page.click('#register-submit-btn');
+  await t.page.waitForTimeout(600);
+  const reg = t.seen.find((b) => b.action === 'registerOwner');
+  ok('opening a store sends no username, password or hint', !!reg && !('username' in reg) && !('password' in reg) && !('passwordHint' in reg), JSON.stringify(reg));
+  await t.ctx.close();
 
-    // Owner request (Oct 2026): a Google button to switch account, under the note.
-    const g = await page.evaluate(() => {
-      const w = document.getElementById('google-signin-wrap');
-      const n = document.getElementById('shopper-note');
-      return { shown: !w.hidden && w.getBoundingClientRect().height > 0,
-        below: w.getBoundingClientRect().top >= n.getBoundingClientRect().bottom,
-        label: w.querySelector('.shopper-switch-label').textContent.trim(),
-        inits: window.__gsi && __gsi.inits.length, autoSelect: window.__gsi && __gsi.inits[0] && __gsi.inits[0].auto_select,
-        shape: window.__gsi && __gsi.renders[0] && __gsi.renders[0].shape };
-    });
-    ok('a Google button shows under the note', g.shown && g.below, JSON.stringify(g));
-    ok('...labelled "Use a different account"', g.label === 'Use a different account', g.label);
-    ok('...set up once, never auto-selecting the last account, pill ends', g.inits === 1 && g.autoSelect === false && g.shape === 'pill', JSON.stringify(g));
-    const pill = await page.evaluate(() => { const h = document.getElementById('google-signin-btn'); const cs = getComputedStyle(h); const r = h.getBoundingClientRect();
-      return { w: Math.round(r.width), h: Math.round(r.height), border: cs.borderTopWidth + ' ' + cs.borderTopColor, clip: cs.overflow, asked: __gsi.renders[0].width }; });
-    ok('...in the same purple 240x40 pill as customer sign-in, Google asked 16px wider', pill.w === 240 && pill.h === 40 && pill.border === '2px rgb(51, 45, 99)' && pill.clip === 'hidden' && pill.asked === 256, JSON.stringify(pill));
+  // 5. After Log out: wait for a tap.
+  t = await open(browser, '/owner/login.html', { shopper: true, signedOut: true, fromCustomer: { ok: true, token: 'own-tok', owner: OWNER } });
+  ok('after Log out the store is not reopened by itself', !t.seen.some((b) => b.action === 'ownerFromCustomer') && /login\.html/.test(t.page.url()));
+  ok('..."Continue to my store" is offered', await t.page.isVisible('#login-continue'));
+  await t.page.click('#login-continue');
+  await t.page.waitForURL(/dashboard\.html/, { timeout: 5000 }).catch(() => {});
+  ok('...and one tap opens it', /dashboard\.html/.test(t.page.url()), t.page.url());
+  ok('...clearing the signed-out mark', await t.page.evaluate(() => localStorage.getItem('mwk_seller_signed_out')) === null);
+  await t.ctx.close();
 
-    // Pretend some of the store form is filled in, then switch account.
-    await page.fill('#register-store-name', 'Half typed');
-    await page.click('#fake-gsi');
-    await page.waitForFunction(() => /other@example\.com/.test(document.getElementById('shopper-note').textContent), null, { timeout: 5000 });
-    const after = await page.evaluate(() => ({ url: location.pathname, store: document.getElementById('register-store-name').value,
-      note: document.getElementById('shopper-note').textContent.trim(), token: localStorage.getItem('skiri_customer_token'),
-      ownerToken: localStorage.getItem('skiri_owner_token') }));
-    ok('switching updates the note to the new account', after.note === 'You are signed in (other@example.com)', after.note);
-    ok('...saves the new shopper session', after.token === 'ct2', String(after.token));
-    ok('...stays on this page with the form as it was', after.url.endsWith('/owner/login.html') && after.store === 'Half typed', JSON.stringify(after));
-    ok('...and never makes a store session', !after.ownerToken, String(after.ownerToken));
-    const gs = seen.filter((b) => b.action === 'googleSignIn');
-    ok('the only customer call is googleSignIn, with Google\'s credential and no old token',
-      gs.length === 1 && gs[0].credential === 'jwt-other' && !gs[0].token, JSON.stringify(gs));
-    await ctx.close();
-  }
-  {
-    const { ctx, page, gsiLoads } = await open(browser, '/owner/login.html?tab=register');
-    ok('somebody who is not signed in as a shopper sees no note',
-      await page.evaluate(() => document.getElementById('shopper-note').hidden === true));
-    ok('...no Google button, and Google\'s script is never loaded',
-      gsiLoads.length === 0 && await page.evaluate(() => document.getElementById('google-signin-wrap').hidden === true), String(gsiLoads.length));
-    await ctx.close();
-  }
+  // 6. A suspended store: told why, not bounced around.
+  t = await open(browser, '/owner/login.html', { shopper: true, fromCustomer: { ok: false, storeBlocked: true, error: 'This store is suspended. Contact Mwakete via the Help and support link below.' } });
+  ok('a suspended store: the reason is shown', /suspended/.test(await t.page.textContent('#login-error')));
+  ok('...and no retry button (it would only fail again)', !(await t.page.isVisible('#login-continue')));
+  await t.ctx.close();
 
-  // ---------- the failed log-in hint: a way out, and no more ---------------
-  {
-    // Signed in as a shopper: since Oct 2026 the Register form is shown only then.
-    const { ctx, page } = await open(browser, '/owner/login.html', { shopper: true });
-    ok('the hint is not there before anything is tried',
-      await page.evaluate(() => document.getElementById('login-register-hint').hidden === true));
+  // 7. A seller page with no store session goes to the login page and back.
+  t = await open(browser, '/owner/orders.html');
+  await t.page.waitForURL(/login\.html/, { timeout: 5000 }).catch(() => {});
+  ok('a seller page with no store session goes to login with ?next=', /owner\/login\.html\?next=orders\.html/.test(t.page.url()), t.page.url());
+  await t.ctx.close();
 
-    await page.fill('#login-username', 'teretia');
-    await page.fill('#login-password', 'wrongpass');
-    await page.click('#login-submit-btn');
-    await page.waitForFunction(() => !document.getElementById('login-register-hint').hidden,
-      null, { timeout: 5000 });
+  // 8. The store's own page: photo buttons for its seller, signed in with the account only.
+  t = await open(browser, '/store.html?store=bong', { shopper: true, fromCustomer: { ok: true, token: 'own-tok', owner: OWNER } });
+  await t.page.waitForTimeout(800);
+  ok('store page: its seller (account only) gets the photo buttons', await t.page.isVisible('#sp-cam-cover'));
+  await t.ctx.close();
 
-    const err = await page.textContent('#login-error');
-    ok('the error stays the vague one', /Invalid username or password/.test(err), err);
-    ok('it does NOT say the account is missing',
-      !/no account|not registered|does not exist|sign up first/i.test(err), err);
-    const hint = await page.textContent('#login-register-hint');
-    ok('but a way out appears', /New here/i.test(hint), hint.trim());
-    ok('and the hint says nothing about the account either',
-      !/no account|not registered|does not exist/i.test(hint), hint.trim());
-    // Nothing moves on its own here: a person who simply mistyped their own
-    // password must stay on the form they are using.
-    ok('it does not switch tabs by itself', (await tabState(page)).loginShown);
-
-    await page.click('#login-go-register');
-    const t = await tabState(page);
-    ok('tapping it opens Register', t.registerShown && !t.loginShown, JSON.stringify(t));
-    ok('carrying the username across so it is not typed twice',
-      (await page.inputValue('#register-username')) === 'teretia',
-      await page.inputValue('#register-username'));
-    ok('and the password is NOT carried across',
-      (await page.inputValue('#register-password')) === '');
-    ok('focus lands on the first field of the new form',
-      await page.evaluate(() => document.activeElement.id === 'register-store-name'),
-      await page.evaluate(() => document.activeElement.id));
-    await ctx.close();
-  }
-
-  // ---------- 3. registering a username that already exists ----------------
-  {
-    const { ctx, page } = await open(browser, '/owner/login.html?tab=register', { shopper: true });
-    await page.fill('#register-store-name', 'Bong Store');
-    await page.fill('#register-username', 'teretia');
-    await page.fill('#register-password', 'longenough1');
-    await page.fill('#register-password-hint', 'my usual one');
-    await page.fill('#register-about', 'Rice and flour');
-    await page.fill('#register-phone', '73012345');
-    await page.fill('#register-messenger', 'bong.store');
-    await page.click('#register-submit-btn');
-
-    await page.waitForFunction(() => /already taken/.test(document.getElementById('register-error').textContent),
-      null, { timeout: 5000 });
-    const err = await page.textContent('#register-error');
-    ok('a taken username says so', /already taken/i.test(err), err);
-    ok('and says where they are being sent', /log in instead/i.test(err), err);
-    ok('it does not move immediately - the sentence has to be readable',
-      (await tabState(page)).registerShown);
-
-    await page.waitForFunction(() => !document.getElementById('login-form').classList.contains('hidden'),
-      null, { timeout: 6000 });
-    const t = await tabState(page);
-    ok('then it opens Log In', t.loginShown && !t.registerShown, JSON.stringify(t));
-    ok('with the username already filled in',
-      (await page.inputValue('#login-username')) === 'teretia',
-      await page.inputValue('#login-username'));
-    ok('and the cursor in the password box', await page.evaluate(() =>
-      document.activeElement.id === 'login-password'), await page.evaluate(() => document.activeElement.id));
-
-    // Everything they typed is still there if they go back - the form is only
-    // hidden, never cleared. Losing a filled registration form to an automatic
-    // tab switch would be a far worse bug than the one this fixes.
-    await page.click('#tab-register');
-    const kept = await page.evaluate(() => ({
-      storeName: document.getElementById('register-store-name').value,
-      email: document.getElementById('register-email').value,
-      phone: document.getElementById('register-phone').value,
-      messenger: document.getElementById('register-messenger').value,
-      password: document.getElementById('register-password').value
-    }));
-    ok('and nothing they typed into Register was lost',
-      kept.storeName === 'Bong Store' && kept.email === CUSTOMER.email
-      && kept.phone === '73012345' && kept.password === 'longenough1', JSON.stringify(kept));
-    await ctx.close();
-  }
-
-  // Someone picking a DIFFERENT name instead must not be dragged away.
-  {
-    const { ctx, page } = await open(browser, '/owner/login.html?tab=register', { shopper: true });
-    await page.fill('#register-store-name', 'Bong Store');
-    await page.fill('#register-username', 'teretia');
-    await page.fill('#register-password', 'longenough1');
-    await page.fill('#register-password-hint', 'my usual one');
-    await page.fill('#register-about', 'Rice and flour');
-    await page.fill('#register-phone', '73012345');
-    await page.fill('#register-messenger', 'bong.store');
-    await page.click('#register-submit-btn');
-    await page.waitForFunction(() => /already taken/.test(document.getElementById('register-error').textContent),
-      null, { timeout: 5000 });
-    await page.fill('#register-username', 'teretia2');   // they are fixing it
-    await page.waitForTimeout(3200);                      // past the switch delay
-    ok('editing the username cancels the move to Log In',
-      (await tabState(page)).registerShown, JSON.stringify(await tabState(page)));
-    ok('and what they typed is untouched',
-      (await page.inputValue('#register-username')) === 'teretia2');
-    await ctx.close();
-  }
-
-  // Any OTHER registration failure must not send them to Log In.
-  {
-    const { ctx, page } = await open(browser, '/owner/login.html?tab=register',
-      { shopper: true, registerReply: { ok: false, error: 'Could not reach the store server' } });
-    await page.fill('#register-store-name', 'Bong Store');
-    await page.fill('#register-username', 'brandnew');
-    await page.fill('#register-password', 'longenough1');
-    await page.fill('#register-password-hint', 'my usual one');
-    await page.fill('#register-about', 'Rice and flour');
-    await page.fill('#register-phone', '73012345');
-    await page.fill('#register-messenger', 'bong.store');
-    await page.click('#register-submit-btn');
-    await page.waitForFunction(() => document.getElementById('register-error').textContent.length > 0,
-      null, { timeout: 5000 });
-    await page.waitForTimeout(3200);
-    ok('an unrelated registration error leaves them on Register',
-      (await tabState(page)).registerShown);
-    ok('and does not tell them to log in',
-      !/log in instead/i.test(await page.textContent('#register-error')));
-    await ctx.close();
-  }
-
-  // ---------- an owner already signed in is not shown any of this ----------
-  {
-    const { ctx, page } = await open(browser, '/owner/login.html?needStore=1',
-      { ownerToken: 'ot', ownerProfile: true });
-    await page.waitForURL('**/owner/dashboard.html', { timeout: 6000 }).catch(() => {});
-    ok('a signed-in owner is sent straight to their dashboard, whatever the query says',
-      /owner\/dashboard\.html/.test(page.url()), page.url());
-    await ctx.close();
-  }
-  // And a token the backend rejects goes round the loop to the EXPIRED wording,
-  // never to the sign-up one - that person plainly had an account.
-  {
-    const { ctx, page } = await open(browser, '/owner/login.html?needStore=1', { ownerToken: 'stale' });
-    await page.waitForURL('**/owner/login.html?expired=1', { timeout: 6000 }).catch(() => {});
-    ok('a stale token ends on the expired message, not the sign-up one',
-      /expired=1/.test(page.url()) && !/needStore/.test(page.url()), page.url());
-    ok('and on the Log In tab', (await tabState(page)).loginShown);
-    await ctx.close();
-  }
+  t = await open(browser, '/store.html?store=bong', { shopper: true, fromCustomer: { ok: true, noStore: true } });
+  await t.page.waitForTimeout(800);
+  ok('a shopper with no store: no photo buttons', !(await t.page.isVisible('#sp-cam-cover')));
+  const calls1 = t.seen.filter((b) => b.action === 'ownerFromCustomer').length;
+  await t.page.reload({ waitUntil: 'load' });
+  await t.page.waitForTimeout(900);
+  const calls2 = t.seen.filter((b) => b.action === 'ownerFromCustomer').length;
+  ok('...asked once, then remembered for the day', calls1 === 1 && calls2 === 1, calls1 + ' then ' + calls2);
+  await t.ctx.close();
 
   await browser.close();
-  console.log('\n' + pass + '/' + (pass + fail) + ' passed');
+  console.log(`\n${pass}/${pass + fail} passed`);
   process.exit(fail ? 1 : 0);
-})().catch((e) => { console.error(e); process.exit(1); });
+})();

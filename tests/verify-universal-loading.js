@@ -111,18 +111,8 @@ const J = (x) => JSON.stringify(x).slice(0, 300);
     ok('..."Please wait" after 3 seconds, then back to "Sign in"', later === 'Please wait' && after.t === 'Sign in' && !after.d, J({ later, after }));
     await ctx.close();
   }
-  // ---- seller Log In (its own helper now uses the shared one) ----
-  {
-    const { ctx, page, release } = await stalled();
-    await page.goto(BASE + '/owner/login.html', { waitUntil: 'load' });
-    await page.fill('#login-username', 'bong'); await page.fill('#login-password', 'secret123');
-    await page.click('#login-submit-btn'); await page.waitForTimeout(300);
-    const busy = await page.$eval('#login-submit-btn', (b) => ({ t: b.textContent.trim(), d: b.disabled }));
-    release(); await page.waitForTimeout(400);
-    const after = await page.$eval('#login-submit-btn', (b) => ({ t: b.textContent.trim(), d: b.disabled }));
-    ok('Seller "Log In": "Logging in" while busy, "Log In" again after a failed attempt', busy.t === 'Logging in' && busy.d && after.t === 'Log In' && !after.d, J({ busy, after }));
-    await ctx.close();
-  }
+  // (Seller Log In button retired with store passwords, 2 Nov 2026 - the seller
+  // signs in with their Mwakete account; see verify-seller-signup-route.)
 
   // ---- nothing plain left behind ----
   const files = fs.readdirSync(path.join(ROOT, 'assets/js')).filter((f) => f.endsWith('.js') && !f.endsWith('.min.js') && f !== 'helpers.js').map((f) => 'assets/js/' + f)

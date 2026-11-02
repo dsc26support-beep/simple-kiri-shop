@@ -35,8 +35,6 @@ async function init() {
   wireDeliveryToggles();
   populateIslandSelect();
   wireLocationFields();
-  wirePasswordToggle('new-password');
-  wirePasswordToggle('hint-current-password');
   document.getElementById('logo-image-input').addEventListener('change', onLogoFileChange);
   document.getElementById('cover-image-input').addEventListener('change', onCoverFileChange);
   document.getElementById('cover-remove').addEventListener('click', onCoverRemove);
@@ -51,24 +49,9 @@ async function init() {
   wireStoreStatus();
 
   document.getElementById('settings-form').addEventListener('submit', onSaveSettings);
-  document.getElementById('password-form').addEventListener('submit', onChangePassword);
-  // Changing only the hint needs the current password (so the server can
-  // check the hint doesn't contain it); with a new password it doesn't.
-  const showHintPassword = () => {
-    document.getElementById('hint-current-password-field').hidden =
-      !(document.getElementById('password-hint').value.trim() && !document.getElementById('new-password').value);
-  };
-  document.getElementById('password-hint').addEventListener('input', showHintPassword);
-  document.getElementById('new-password').addEventListener('input', showHintPassword);
-  const me = Auth.getOwner && Auth.getOwner();
-  if (me && me.hasPasswordHint === false) {
-    document.getElementById('password-hint-help').textContent = 'Not set yet. Shown if you get your password wrong.';
-  }
-
   // After fillForm(owner) above, so the snapshot is what the vendor's store
   // actually has stored rather than an empty form.
   UnsavedGuard.watch(document.getElementById('settings-form'));
-  UnsavedGuard.watch(document.getElementById('password-form'));
 }
 
 /* ---------------------------------------------------------------------------
@@ -79,7 +62,7 @@ async function init() {
  * used to repoint all three with nothing but a session behind it.
  *
  * Two steps now, matching the backend (actionRequestEmailChange /
- * actionConfirmEmailChange in Auth.gs): password plus the new address, then a
+ * actionConfirmEmailChange in Auth.gs): the store's Mwakete account signed in, plus the new address, then a
  * code sent to that new address. The live address does not change until the
  * code comes back, so abandoning halfway leaves a store still receiving its
  * orders. The old address is warned by the backend either way.
@@ -121,7 +104,6 @@ function wireEmailChange() {
   document.getElementById('email-confirm-cancel').addEventListener('click', () => showEmailBlock(null));
   document.getElementById('email-change-send').addEventListener('click', onRequestEmailChange);
   document.getElementById('email-confirm-send').addEventListener('click', onConfirmEmailChange);
-  wirePasswordToggle('email-change-password');
 }
 
 function showEmailBlock(which) {
@@ -131,10 +113,7 @@ function showEmailBlock(which) {
   document.getElementById('email-change-error').textContent = '';
   document.getElementById('email-confirm-error').textContent = '';
   if (which === null) {
-    // Nothing typed here is worth keeping around, and one of the two is a
-    // password.
     document.getElementById('email-change-new').value = '';
-    document.getElementById('email-change-password').value = '';
     document.getElementById('email-confirm-code').value = '';
     emailChangeToken = null;
   }
@@ -144,15 +123,14 @@ async function onRequestEmailChange() {
   const errorEl = document.getElementById('email-change-error');
   const btn = document.getElementById('email-change-send');
   const email = document.getElementById('email-change-new').value.trim();
-  const password = document.getElementById('email-change-password').value;
   errorEl.textContent = '';
   document.getElementById('email-change-success').textContent = '';
 
   if (!email) { errorEl.textContent = 'Enter the new email address.'; return; }
-  if (!password) { errorEl.textContent = 'Enter your password.'; return; }
 
   setEmailButtonBusy(btn, 'Sending');
-  const res = await Api.post('requestEmailChange', { token: Auth.getToken(), email, password });
+  const res = await Api.post('requestEmailChange', { token: Auth.getToken(), email,
+    customerToken: typeof CustomerAuth !== 'undefined' ? CustomerAuth.getToken() : '' });
   setEmailButtonIdle(btn);
   if (!res.ok) { errorEl.textContent = res.error || 'Could not start the change.'; return; }
 
@@ -545,47 +523,6 @@ async function onSaveSettings(e) {
   // findFirstInvalidSettingsField above, so the profile is complete -
   // brief pause to let the confirmation register before moving on.
   setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
-}
-
-async function onChangePassword(e) {
-  e.preventDefault();
-  const errorEl = document.getElementById('password-error');
-  const successEl = document.getElementById('password-success');
-  errorEl.textContent = '';
-  successEl.textContent = '';
-
-  const newPassword = document.getElementById('new-password').value;
-  const passwordHint = document.getElementById('password-hint').value.trim();
-  const currentPassword = document.getElementById('hint-current-password').value;
-  if (!newPassword && !passwordHint) {
-    errorEl.textContent = 'Enter a new password or a new hint first.';
-    return;
-  }
-  if (newPassword && newPassword.length < 8) {
-    errorEl.textContent = 'Password must be at least 8 characters.';
-    return;
-  }
-  if (passwordHint && !newPassword && !currentPassword) {
-    errorEl.textContent = 'Enter your current password to change only the hint.';
-    document.getElementById('hint-current-password').focus();
-    return;
-  }
-
-  const payload = { token: Auth.getToken() };
-  if (newPassword) payload.newPassword = newPassword;
-  if (passwordHint) { payload.passwordHint = passwordHint; if (!newPassword) payload.currentPassword = currentPassword; }
-  const res = await Api.post('updateOwnerProfile', payload);
-  if (!res.ok) {
-    errorEl.textContent = res.error || 'Could not update your password.';
-    return;
-  }
-  if (res.owner) Auth.saveSession(Auth.getToken(), res.owner);
-
-  ['new-password', 'password-hint', 'hint-current-password'].forEach((id) => { document.getElementById(id).value = ''; });
-  document.getElementById('hint-current-password-field').hidden = true;
-  UnsavedGuard.markSaved(document.getElementById('password-form'));
-  successEl.textContent = newPassword && passwordHint ? 'Password and hint updated.' : newPassword ? 'Password updated.' : 'Password hint updated.';
-  setTimeout(() => { successEl.textContent = ''; }, 3000);
 }
 
 /**

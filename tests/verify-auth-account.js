@@ -104,9 +104,6 @@ function mock(ctx, calls, over) {
     await page.waitForSelector('#register-store-name', { state: 'visible' });
     ok('signed in: store email is the account email, read-only', (await page.inputValue('#register-email')) === 'tia@x.com' && (await page.getAttribute('#register-email', 'readonly')) !== null);
     await page.fill('#register-store-name', 'Tia Fish');
-    await page.fill('#register-username', 'tiafish');
-    await page.fill('#register-password', 'storepass1');
-    await page.fill('#register-password-hint', 'the usual one');
     await page.fill('#register-phone', '73001234');
     await page.fill('#register-messenger', 'tia.fish');
     await page.click('#register-submit-btn');
