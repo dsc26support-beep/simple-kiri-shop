@@ -140,9 +140,17 @@ async function measureCLS(browser, path, opts) {
     await ctx.close();
   }
 
-  for (const path of ['/checkout.html', '/cart.html', '/customer-login.html', '/my-carts.html']) {
+  for (const path of ['/customer-login.html', '/my-carts.html']) {
     const { ctx, page } = await open(browser, path);
     ok('no menu on ' + path, !(await page.$('#header-menu-btn')));
+    await ctx.close();
+  }
+  // Cart and checkout open with the store's cover (owner, 2 Nov 2026): no red
+  // header on a phone, so the ⋮ menu is there - on the cover, as on the store page.
+  for (const path of ['/checkout.html', '/cart.html']) {
+    const { ctx, page } = await open(browser, path);
+    await page.waitForTimeout(300);
+    ok('menu on ' + path + ' (on the store cover)', !!(await page.$('#header-menu-btn')));
     await ctx.close();
   }
 
