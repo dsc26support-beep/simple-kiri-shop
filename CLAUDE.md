@@ -57,5 +57,11 @@ agent would help, get it or ask for the one step only the owner can complete
 - Test before claiming something works; report failures honestly.
 - Give redeploy/test links whenever a change needs one.
 
+## Sessions and tasks
+
+- One session per task. Start a new session (or /clear) when the task changes; never carry an unrelated job along.
+- The open task list lives in `.claude/TASKS.md` (one line per task: status, PR number, what "done" still needs). Update it when a task starts, merges or is deployed; read it first in a new session.
+- Done = tests pass, PR merged, backend deployed + `?action=getVersion` confirmed (when apps-script/ changed), owner has seen it live.
+
 This file is the durable record of the above — Claude should follow it on
 every session in this repo without being re-briefed.
