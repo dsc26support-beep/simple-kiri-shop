@@ -1,0 +1,65 @@
+# Builds the Mwakete SMS Android app and runs its shared-logic tests.
+# The APK is attached to each run as an artifact (Actions > this run > Artifacts).
+name: Android app
+
+on:
+  push:
+    paths: ['android/**', 'tests/sms-core-cases.json', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['android/**', 'tests/sms-core-cases.json', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    env:
+      # Optional. Only when the owner adds these repository secrets is a signed
+      # release APK built; otherwise only the debug APK is.
+      KEYSTORE_B64: ${{ secrets.MWAKETE_KEYSTORE_B64 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Shared logic tests (same cases as the backend)
+        run: ./gradlew --no-daemon :sms-core:test
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon :app:assembleDebug
+
+      - name: Build signed release APK
+        if: env.KEYSTORE_B64 != ''
+        env:
+          MWAKETE_KEYSTORE_PASSWORD: ${{ secrets.MWAKETE_KEYSTORE_PASSWORD }}
+          MWAKETE_KEY_ALIAS: ${{ secrets.MWAKETE_KEY_ALIAS }}
+          MWAKETE_KEY_PASSWORD: ${{ secrets.MWAKETE_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          MWAKETE_KEYSTORE="$RUNNER_TEMP/release.jks" ./gradlew --no-daemon :app:assembleRelease
+          rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: mwakete-sms-${{ github.run_number }}
+          path: android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ github.run_number }}
+          path: android/sms-core/build/reports/tests/
