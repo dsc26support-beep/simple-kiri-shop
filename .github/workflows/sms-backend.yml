@@ -1,0 +1,32 @@
+# Contacts & SMS: the backend, the Sheets add-on and the cross-client journey,
+# run against the real Apps Script sources (tests/lib/gas-harness.js - no
+# network, no Google account). The Android app has its own workflow.
+name: SMS backend tests
+
+on:
+  push:
+    paths: ['apps-script/**', 'sheets-addon/**', 'tests/**', 'android/app/src/main/**', 'android/sms-core/**', '.github/workflows/sms-backend.yml']
+  pull_request:
+    paths: ['apps-script/**', 'sheets-addon/**', 'tests/**', 'android/app/src/main/**', 'android/sms-core/**', '.github/workflows/sms-backend.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Backend (contacts, consent, campaigns, devices, queue)
+        run: node tests/test-contacts-sms.js
+      - name: Google Sheets add-on against the backend
+        run: node tests/test-sheets-addon.js
+      - name: Android contract + Sheet -> website -> phone journey
+        run: node tests/test-sms-integration.js
+      - name: Seller sign-in (one account)
+        run: node tests/test-auth.js
