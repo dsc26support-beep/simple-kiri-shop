@@ -1,5 +1,7 @@
 # Builds the Mwakete SMS Android app and runs its shared-logic tests.
-# The APK is attached to each run as an artifact (Actions > this run > Artifacts).
+# Every run attaches the APK as an artifact (Actions > this run > Artifacts).
+# A push to main also publishes it at a fixed public link (no sign-in, no zip):
+#   https://github.com/dsc26support-beep/simple-kiri-shop/releases/download/android-latest/mwakete-sms.apk
 name: Android app
 
 on:
@@ -16,12 +18,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write   # only used by the publish step, which runs on main only
     defaults:
       run:
         working-directory: android
     env:
       # Optional. Only when the owner adds these repository secrets is a signed
-      # release APK built; otherwise only the debug APK is.
+      # release APK built; otherwise the debug APK is what gets published.
       KEYSTORE_B64: ${{ secrets.MWAKETE_KEYSTORE_B64 }}
     steps:
       - uses: actions/checkout@v4
@@ -50,12 +54,44 @@ jobs:
           MWAKETE_KEYSTORE="$RUNNER_TEMP/release.jks" ./gradlew --no-daemon :app:assembleRelease
           rm -f "$RUNNER_TEMP/release.jks"
 
+      - name: Pick the APK to publish
+        run: |
+          apk=app/build/outputs/apk/release/app-release.apk
+          [ -f "$apk" ] || apk=app/build/outputs/apk/debug/app-debug.apk
+          mkdir -p out && cp "$apk" out/mwakete-sms.apk
+          echo "Publishing $apk"
+
+      # What an installer checks: package, versions, min Android, test-only flag, signature.
+      - name: Check the APK will install
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/aapt2" dump badging out/mwakete-sms.apk | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|testOnly|application-debuggable|uses-permission)" || true
+          if "$BT/aapt2" dump xmltree out/mwakete-sms.apk --file AndroidManifest.xml | grep -q testOnly; then
+            echo "::error::APK is marked testOnly - phones will refuse it"; exit 1
+          fi
+          "$BT/apksigner" verify --verbose --min-sdk-version 24 out/mwakete-sms.apk
+          "$BT/apksigner" verify --print-certs out/mwakete-sms.apk | head -3
+          sha256sum out/mwakete-sms.apk
+
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: mwakete-sms-${{ github.run_number }}
-          path: android/app/build/outputs/apk/**/*.apk
+          path: android/out/mwakete-sms.apk
           if-no-files-found: error
+
+      - name: Publish at the fixed download link
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Mwakete SMS for Android, build ${{ github.run_number }} (commit ${GITHUB_SHA::7}). Install on the phone with your store's SIM, then connect it with a code from Mwakete.com > SMS > Phones & SIMs."
+          if gh release view android-latest >/dev/null 2>&1; then
+            gh release edit android-latest --title "Mwakete SMS (Android) - build ${{ github.run_number }}" --notes "$notes"
+          else
+            gh release create android-latest --prerelease --target "$GITHUB_SHA" --title "Mwakete SMS (Android) - build ${{ github.run_number }}" --notes "$notes"
+          fi
+          gh release upload android-latest out/mwakete-sms.apk --clobber
 
       - name: Upload test report
         if: failure()
