@@ -66,6 +66,8 @@ async function init() {
   document.getElementById('checkout-invoice').hidden = !storeInfo.invoicesOffered;
   // publicOwnerFields exposes isOpen; share it with the chat window.
   window.__storeOpen = storeInfo.isOpen !== false;
+  // Phones/tablets: the store's cover on top (store-cover.js); back goes to the cart.
+  if (typeof StoreCover !== 'undefined') StoreCover.fill(storeInfo);
   document.getElementById('store-name-tagline').textContent = `Checkout — ${shortStoreName(storeInfo.storeName)}`;
 
   if (storeInfo.logoUrl) {
@@ -659,7 +661,14 @@ Ko rabwa!
 `;
 }
 
+// Order received: the cover's back arrow goes to the store (keep shopping),
+// not to a cart that has just been sent.
+function pointBackToStore() {
+  if (typeof StoreCover !== 'undefined') StoreCover.setBack(`store.html?store=${encodeURIComponent(currentSlug)}`);
+}
+
 function showConfirmation(orderResult, payload) {
+  pointBackToStore();
   document.getElementById('checkout-section').classList.add('hidden');
   const confirmSection = document.getElementById('confirmation-section');
   confirmSection.classList.remove('hidden');
@@ -758,6 +767,7 @@ function showFallbackConfirmation(payload, cart) {
   // No auto-redirect here - there's no server-confirmed order yet, so the
   // customer should review and send it themselves rather than being pushed
   // into an email prematurely.
+  pointBackToStore();
   document.getElementById('checkout-section').classList.add('hidden');
   document.getElementById('confirmation-section').classList.remove('hidden');
   document.getElementById('confirmation-intro').textContent = `We couldn't reach the store's order system, but you can still send your order directly, ${payload.customerName}.`;

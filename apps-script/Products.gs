@@ -725,6 +725,10 @@ function actionGetStorePublicInfo(params) {
     var info = attachSellerBadges(publicStoreFields(owner), sellerBadgeIndex(), owner.OwnerId);
     // Checkout offers "I need an invoice" only for a store that sends them (Invoices.gs).
     info.invoicesOffered = typeof invSettings === 'function' && invSettings(owner).enabled;
+    // Cart, checkout and order received open with the store's cover on phones
+    // and tablets (Nov 2026), like the store page; same checks as listProducts.
+    info.coverUrl = /^https:\/\//.test(String(owner.CoverUrl || '')) ? String(owner.CoverUrl) : '';
+    info.color = /^#[0-9a-f]{6}$/i.test(String(owner.BrandColor || '')) ? String(owner.BrandColor) : '';
     return info;
   });
   if (!store) return fail('Store not found');

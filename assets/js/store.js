@@ -444,36 +444,11 @@ function renderStoreProfile(res) {
   const $p = (id) => document.getElementById(id);
   const name = res.storeName || 'Store';
   const open = res.storeOpen !== false;
-  if (/^#[0-9a-f]{6}$/i.test(res.storeColor || '')) box.style.setProperty('--sp-color', res.storeColor);
-
-  if (res.storeCoverUrl) {
-    const cover = $p('sp-cover-img');
-    cover.src = optimizedImageUrl(res.storeCoverUrl, 1200);
-    cover.hidden = false;
-  }
-  $p('sp-cover-name').textContent = name;
+  // Cover, logo, open dot, verified tick: shared with cart and checkout (store-cover.js).
+  StoreCover.fill({ storeName: name, logoUrl: res.storeLogoUrl, coverUrl: res.storeCoverUrl, color: res.storeColor, isOpen: open, sellerBadges: res.sellerBadges });
   const photos = profilePhotos();
-  $p('sp-cover-stats').textContent = `${currentProducts.length} product${currentProducts.length === 1 ? '' : 's'} · ${photos.length} photo${photos.length === 1 ? '' : 's'}`;
-
-  if (res.storeLogoUrl) {
-    const img = $p('sp-avatar-img');
-    img.src = optimizedImageUrl(res.storeLogoUrl, IMG_W.logo);
-    img.alt = name;
-    img.hidden = false;
-    $p('sp-avatar-initials').textContent = '';
-  } else {
-    $p('sp-avatar-initials').textContent = initials(name);
-  }
-  const dot = $p('sp-dot');
-  dot.hidden = false;
-  dot.classList.toggle('is-closed', !open);
 
   $p('sp-name').textContent = name;
-  if ((res.sellerBadges || []).indexOf('verified') !== -1) {
-    const tick = $p('sp-verified');
-    tick.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5l2.4 1.8 3-.2.9 2.9 2.4 1.8-1 2.8 1 2.8-2.4 1.8-.9 2.9-3-.2L12 21.5l-2.4-1.8-3 .2-.9-2.9-2.4-1.8 1-2.8-1-2.8 2.4-1.8.9-2.9 3 .2z"></path><path d="m8.5 12 2.4 2.4 4.6-4.8"></path></svg><span class="sr-only">Verified by Mwakete</span>';
-    tick.hidden = false;
-  }
   const place = storeLocationLabel(res.storeIsland, res.storeVillage);
   // Open is the green dot; closed is said in words too (orders still go through).
   const meta = $p('sp-meta');
@@ -500,14 +475,15 @@ function renderStoreProfile(res) {
     if (typeof wireSellerBadges === 'function') wireSellerBadges($p('sp-badges'));
   }
 
-  const more = $p('sp-more');
-  more.addEventListener('click', () => {
-    const show = more.getAttribute('aria-expanded') !== 'true';
-    more.setAttribute('aria-expanded', show ? 'true' : 'false');
-    more.textContent = show ? 'Less info' : 'More info';
-    $p('sp-info').hidden = !show;
-    bioEl.hidden = !bio || show;   // the full text is inside More info
-  });
+  // Info: the details panel slides up from the bottom (owner, 2 Nov 2026).
+  $p('sp-sheet-title').textContent = name;
+  const sheet = $p('sp-sheet');
+  const openSheet = () => { if (typeof sheet.showModal === 'function') sheet.showModal(); else sheet.setAttribute('open', ''); };
+  const closeSheet = () => { if (typeof sheet.close === 'function') sheet.close(); else sheet.removeAttribute('open'); };
+  $p('sp-more').addEventListener('click', openSheet);
+  bioEl.addEventListener('click', openSheet);   // the two-line bio leads to the whole of it
+  $p('sp-sheet-close').addEventListener('click', closeSheet);
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });   // the dimmed area outside the panel
 
   // The store's own seller, signed in on this phone: change the banner and logo here.
   wireOwnerProfileEdits(res);
@@ -528,11 +504,12 @@ function renderStoreProfile(res) {
 
   const tabP = $p('sp-tab-products');
   const tabF = $p('sp-tab-photos');
-  tabP.textContent = `${currentProducts.length} Products`;
-  tabF.textContent = `${photos.length} Photos`;
+  // The count on its own line above the word, so "120 Products" fits a small phone.
+  $p('sp-count-products').innerHTML = `<span class="sp-act-num">${currentProducts.length}</span> Product${currentProducts.length === 1 ? '' : 's'}`;
+  $p('sp-count-photos').innerHTML = `<span class="sp-act-num">${photos.length}</span> Photo${photos.length === 1 ? '' : 's'}`;
   const show = (photosTab) => {
-    tabP.setAttribute('aria-selected', photosTab ? 'false' : 'true');
-    tabF.setAttribute('aria-selected', photosTab ? 'true' : 'false');
+    tabP.setAttribute('aria-pressed', photosTab ? 'false' : 'true');
+    tabF.setAttribute('aria-pressed', photosTab ? 'true' : 'false');
     document.body.classList.toggle('sp-on-photos', photosTab);
     const grid = document.getElementById('store-photos');
     grid.hidden = !photosTab;
@@ -544,29 +521,6 @@ function renderStoreProfile(res) {
   tabP.addEventListener('click', () => show(false));
   tabF.addEventListener('click', () => show(true));
 }
-
-/**
- * Phones and tablets have no red header on a store page (owner, 1 Nov 2026):
- * the ⋮ menu (and on tablets the cart) sit on the cover instead. Both are made
- * by other scripts at DOMContentLoaded (header-menu.js, header-cart.js, loaded
- * after this file), so this runs a tick later, and moves them back if the
- * window grows to computer width.
- */
-const PROFILE_QUERY = window.matchMedia ? window.matchMedia('(max-width: 1023px)') : null;
-function placeHeaderTools() {
-  const cover = document.getElementById('sp-cover');
-  const home = document.querySelector('header.site-header .header-top-row');
-  if (!cover || !home || !PROFILE_QUERY) return;
-  const tools = [document.getElementById('header-cart-link'), document.querySelector('.header-menu')].filter(Boolean);
-  tools.forEach((el) => (PROFILE_QUERY.matches ? cover : home).appendChild(el));
-}
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(placeHeaderTools, 0);
-  if (PROFILE_QUERY) {
-    if (PROFILE_QUERY.addEventListener) PROFILE_QUERY.addEventListener('change', placeHeaderTools);
-    else if (PROFILE_QUERY.addListener) PROFILE_QUERY.addListener(placeHeaderTools);
-  }
-});
 
 /**
  * The seller of THIS store, signed in on this device (the session owner.html

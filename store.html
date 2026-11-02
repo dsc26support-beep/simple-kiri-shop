@@ -144,7 +144,6 @@
           </a>
           <div class="sp-cover-text">
             <p class="sp-cover-name"><span id="sp-cover-name"></span><span id="sp-verified" class="sp-verified" hidden></span></p>
-            <p class="sp-cover-stats" id="sp-cover-stats"></p>
           </div>
         </div>
       </div>
@@ -154,9 +153,28 @@
             <input type="file" id="sp-logo-input" accept="image/jpeg,image/png,image/webp" class="sr-only">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
           </label></div>
-        <button type="button" class="sp-share" id="sp-share" aria-label="Share this store">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M20 4 11 13"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg>
-        </button>
+        <!-- Products, Photos, Info and Share as round buttons beside the logo
+             (owner, 2 Nov 2026) - they replace the tab bar and the "More info"
+             link. Products / Photos switch the view below (aria-pressed shows
+             which); Info opens the details panel from the bottom. -->
+        <div class="sp-actions" role="group" aria-label="Store">
+          <button type="button" class="sp-act" id="sp-tab-products" aria-pressed="true" aria-controls="product-list">
+            <span class="sp-act-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7 12 3 4 7v10l8 4 8-4z"></path><path d="m4 7 8 4 8-4M12 11v10"></path></svg></span>
+            <span class="sp-act-label" id="sp-count-products">Products</span>
+          </button>
+          <button type="button" class="sp-act" id="sp-tab-photos" aria-pressed="false" aria-controls="store-photos">
+            <span class="sp-act-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 16-5-5-8 9"></path></svg></span>
+            <span class="sp-act-label" id="sp-count-photos">Photos</span>
+          </button>
+          <button type="button" class="sp-act" id="sp-more" aria-haspopup="dialog" aria-controls="sp-sheet">
+            <span class="sp-act-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6"></path><path d="M12 7.5v.01"></path></svg></span>
+            <span class="sp-act-label">Info</span>
+          </button>
+          <button type="button" class="sp-act" id="sp-share" aria-label="Share this store">
+            <span class="sp-act-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M20 4 11 13"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></span>
+            <span class="sp-act-label" aria-hidden="true">Share</span>
+          </button>
+        </div>
       </div>
       <div class="sp-body">
         <!-- No name / place / "Open now" lines here (owner, 1 Nov 2026): the
@@ -166,8 +184,11 @@
         <p class="sp-meta" id="sp-meta" hidden></p>
         <p class="sp-upload-status" id="sp-upload-status" role="status" aria-live="polite"></p>
         <p class="sp-bio" id="sp-bio" hidden></p>
-        <button type="button" class="sp-more" id="sp-more" aria-expanded="false" aria-controls="sp-info">More info</button>
-        <div class="sp-info" id="sp-info" hidden>
+      </div>
+      <!-- More info: slides up from the bottom; tap outside or ✕ to close. -->
+      <dialog class="sp-sheet" id="sp-sheet" aria-labelledby="sp-sheet-title">
+        <div class="sp-sheet-head"><h2 id="sp-sheet-title">About this store</h2><button type="button" class="sp-sheet-close" id="sp-sheet-close" aria-label="Close">×</button></div>
+        <div class="sp-info" id="sp-info">
           <p class="sp-bio-full" id="sp-bio-full" hidden></p>
           <p id="sp-place"></p>
           <p id="sp-phone" hidden></p>
@@ -175,11 +196,7 @@
           <p id="sp-payment" hidden></p>
           <div id="sp-badges"></div>
         </div>
-      </div>
-      <div class="sp-tabs" role="tablist" aria-label="Store">
-        <button type="button" role="tab" class="sp-tab" id="sp-tab-products" aria-selected="true" aria-controls="product-list">Products</button>
-        <button type="button" role="tab" class="sp-tab" id="sp-tab-photos" aria-selected="false" aria-controls="store-photos">Photos</button>
-      </div>
+      </dialog>
     </section>
 
     <section aria-labelledby="products-heading">
@@ -239,6 +256,7 @@
   <script defer src="assets/js/card-cart.min.js"></script>
   <script defer src="assets/js/product-card.min.js"></script>
   <script defer src="assets/js/recent-views.min.js"></script>
+  <script defer src="assets/js/store-cover.min.js"></script>
   <script defer src="assets/js/store.min.js"></script>
   <script defer src="assets/js/customer-auth.min.js"></script>
   <script defer src="assets/js/header-cart.min.js"></script>

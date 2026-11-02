@@ -33,12 +33,21 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
 
   // A page with no matching tab must simply have none highlighted, not crash
   // or mark the wrong one.
+  // Cart, checkout and order received have no bottom bar at all (owner,
+  // 2 Nov 2026); Your Carts keeps it, with the Cart tab lit.
+  for (const pg of ['cart.html', 'checkout.html']) {
+    const p0 = await ctx.newPage();
+    await p0.goto(BASE + '/' + pg, { waitUntil: 'load' });
+    await p0.waitForTimeout(800);
+    ok(pg + ' has no bottom navigation bar', await p0.evaluate(() => !document.querySelector('.bottom-nav') && !document.body.classList.contains('has-bottom-nav')));
+    await p0.close();
+  }
   const cartPage = await ctx.newPage();
-  await cartPage.goto(BASE + '/cart.html', { waitUntil: 'load' });
+  await cartPage.goto(BASE + '/my-carts.html', { waitUntil: 'load' });
   await cartPage.waitForFunction(() => !!document.querySelector('.bottom-nav'));
   const cartActive = await cartPage.evaluate(() =>
     document.querySelectorAll('.bottom-nav-item.is-active').length);
-  ok('cart.html highlights the Cart tab again', cartActive === 1, String(cartActive));
+  ok('my-carts.html highlights the Cart tab', cartActive === 1, String(cartActive));
   const cartLabel = await cartPage.evaluate(() => {
     const el = document.querySelector('.bottom-nav-item.is-active .bottom-nav-label');
     return el ? el.textContent.trim() : null;

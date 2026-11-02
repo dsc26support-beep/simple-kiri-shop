@@ -22,6 +22,8 @@ async function init() {
   }
 
   document.getElementById('back-to-store-link').href = `store.html?store=${encodeURIComponent(currentSlug)}`;
+  // Phones/tablets: the cover's back arrow goes one step back - to the store.
+  if (typeof StoreCover !== 'undefined') StoreCover.setBack(`store.html?store=${encodeURIComponent(currentSlug)}`);
 
   const hideOverlay = showLoadingOverlay();
   const request = Api.get('getStorePublicInfo', { storeSlug: currentSlug });
@@ -40,6 +42,7 @@ async function init() {
     // all published it, cart-page.js didn't. Only an explicit false closes, so
     // an older backend still reads as open.
     window.__storeOpen = res.store.isOpen !== false;
+    if (typeof StoreCover !== 'undefined') StoreCover.fill(res.store);
 
     document.getElementById('store-name-tagline').textContent = `Your cart — ${shortStoreName(res.store.storeName)}`;
     if (res.store.logoUrl) {

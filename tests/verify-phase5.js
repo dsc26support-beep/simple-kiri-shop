@@ -15,9 +15,12 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
       try {
         if (s.customer) localStorage.setItem('skiri_customer_token', 'ct');
         if (s.cart) localStorage.setItem('skiri_cart_bong', JSON.stringify([{ variantId: 'v1', productId: 'p1', label: 'x', unitPrice: 1, qty: 2 }, { variantId: 'v2', productId: 'p2', label: 'y', unitPrice: 1, qty: 1 }]));
+        // A second store's cart, so Your Carts lists them instead of going straight to the one cart.
+        if (s.cart) localStorage.setItem('skiri_cart_tabon', JSON.stringify([{ variantId: 'v3', productId: 'p3', label: 'z', unitPrice: 1, qty: 1 }]));
       } catch (e) {}
     }, seed || {});
-    await page.goto(BASE + '/cart.html', { waitUntil: 'load' });
+    // my-carts.html: cart.html has no bottom bar since 2 Nov 2026.
+    await page.goto(BASE + '/my-carts.html', { waitUntil: 'load' });
     await page.waitForFunction(() => !!document.querySelector('.bottom-nav'));
     const st = await page.evaluate(() => {
       const nav = document.querySelector('.bottom-nav');
