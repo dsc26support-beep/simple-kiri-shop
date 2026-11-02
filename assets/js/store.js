@@ -523,19 +523,51 @@ function renderStoreProfile(res) {
 }
 
 /**
+ * One sign-in (2 Nov 2026): a seller signed in with their Mwakete account but
+ * with no store session on this device yet gets one here, so the edit tools
+ * appear without another sign-in. Asked at most once a day per account on this
+ * device when the account has no store (or another one), so shoppers do not pay
+ * for a backend call on every store page. Not after the seller pressed Log out.
+ * Answers { token, profile } for THIS store, or null.
+ */
+async function storeSessionFromAccount() {
+  if (typeof CustomerAuth === 'undefined' || !CustomerAuth.getToken()) return null;
+  const customer = CustomerAuth.getCustomer() || {};
+  const memoKey = 'mwk_store_of:' + (customer.customerId || '');
+  try {
+    if (localStorage.getItem('mwk_seller_signed_out') === '1') return null;
+    const memo = JSON.parse(localStorage.getItem(memoKey) || 'null');
+    if (memo && Date.now() - memo.at < 86400000 && memo.slug !== currentSlug) return null;
+  } catch (e) { return null; }
+  const r = await Api.post('ownerFromCustomer', { customerToken: CustomerAuth.getToken() });
+  const slug = r.ok && r.owner ? r.owner.storeSlug : '';
+  try { localStorage.setItem(memoKey, JSON.stringify({ slug, at: Date.now() })); } catch (e) { /* private mode */ }
+  if (!r.ok || !r.token || slug !== currentSlug) return null;
+  try {
+    localStorage.setItem('skiri_owner_token', r.token);
+    localStorage.setItem('skiri_owner_profile', JSON.stringify(r.owner));
+  } catch (e) { return null; }
+  return { token: r.token, profile: r.owner };
+}
+
+/**
  * The seller of THIS store, signed in on this device (the session owner.html
  * pages use), gets camera buttons on the banner and the logo. The server
  * checks the token and only ever changes the token's own store; this only
  * decides whether to show the buttons.
  */
-function wireOwnerProfileEdits(res) {
+async function wireOwnerProfileEdits(res) {
   let token = '';
   let profile = null;
   try {
     token = localStorage.getItem('skiri_owner_token') || '';
     profile = JSON.parse(localStorage.getItem('skiri_owner_profile') || 'null');
   } catch (e) { return; }
-  if (!token || !profile || profile.storeSlug !== currentSlug) return;
+  if (!token || !profile || profile.storeSlug !== currentSlug) {
+    const opened = await storeSessionFromAccount();
+    if (!opened) return;
+    ({ token, profile } = opened);
+  }
   const $p = (id) => document.getElementById(id);
   const status = $p('sp-upload-status');
   $p('sp-cam-cover').hidden = false;

@@ -194,7 +194,16 @@ ok('...a second store for the same account is refused', /already have a store/.t
 ok('...it is visible to shoppers', box.isStoreBrowsable(box.__sheets.Owners.objects()[0]));
 ok('the shopper sees their store on My Account', box.actionGetSellerApplication({ token: tia4 }).application.status === 'approved');
 clearCache();
-ok('the seller logs in with the store password', box.actionLoginOwner({ username: 'tiastore', password: 'storepass1' }).ok);
+r = box.actionOwnerFromCustomer({ customerToken: tia4 });
+ok('one sign-in: the Mwakete account opens its store, no store password', r.ok && !!r.token && r.owner.storeSlug === 'tia-store', J(r));
+ok('...and the store session works', (() => { try { return box.requireAuth(r.token).OwnerId === box.__sheets.Owners.objects()[0].OwnerId; } catch (e) { return false; } })());
+r = box.actionLoginOwner({ username: box.__sheets.Owners.objects()[0].Username, password: 'storepass1' });
+ok('store username + password sign-in is retired, with a clear message', !r.ok && r.errorKind === 'password_login_retired' && /Mwakete account/.test(r.error), J(r));
+ok('a new store gets an internal username from its name (nobody types one)', box.__sheets.Owners.objects()[0].Username === 'tia-store', box.__sheets.Owners.objects()[0].Username);
+r = box.actionOwnerFromCustomer({ customerToken: 'not-a-session' });
+ok('no account session, no store', !r.ok && r.errorKind === 'customer_auth', J(r));
+
+
 ok('a store that applied while approval was needed ("pending") now counts as open', box.ownerApprovalStatus({ ApprovalStatus: 'pending' }) === 'approved');
 
 const tiaOwner = Object.assign({}, box.__sheets.Owners.objects()[0], { __row: 2 });
@@ -215,8 +224,8 @@ ok('admin suspends with a reason; the seller is emailed it', r.ok && /fake goods
 ok('...the seller is signed out at once', (() => { try { box.requireAuth(sellerSession); return false; } catch (e) { return true; } })());
 ok('...and the store is hidden', !box.isStoreBrowsable(box.__sheets.Owners.objects()[0]));
 clearCache();
-r = box.actionLoginOwner({ username: 'tiastore', password: 'storepass1' });
-ok('...and cannot log in, told why', !r.ok && /suspended/.test(r.error), J(r));
+r = box.actionOwnerFromCustomer({ customerToken: tia4 });
+ok('...and cannot sign in to it, told why', !r.ok && r.storeBlocked === true && /suspended/.test(r.error), J(r));
 r = box.actionAdminReviewSellerApplication(admin, { ownerId: admin.OwnerId, decision: 'suspend', note: 'oops' });
 ok('an admin store can never be suspended here', !r.ok, J(r));
 r = box.actionAdminReviewSellerApplication(admin, { ownerId: tiaOwner.OwnerId, decision: 'reinstate' });
@@ -226,6 +235,23 @@ ok('every decision is in AuthEvents, with no secrets', (() => {
   return ['seller-opened', 'seller-suspended', 'seller-reinstated'].every((e) => ev.some((x) => x.Event === e)) &&
     !JSON.stringify(ev).match(/breadfruit|coconut|storepass|pbkdf2|h1:/);
 })());
+
+// Stores from before accounts: matched once by the confirmed email, then linked.
+const oldReg = box.actionRegisterCustomer({ name: 'Old Seller', email: 'legacy@x.test', password: 'oldpass99' });
+const oldTok = box.actionVerifyCustomerEmail({ token: oldReg.pendingToken, code: codeIn(lastMailTo('legacy@x.test')) }).token;
+ok('(setup) the older seller has a confirmed account', !!oldTok);
+box.appendRowFromObject(box.getSheet('Owners'), { OwnerId: 'own_old1', StoreName: 'Old Shop', StoreSlug: 'old-shop', Username: 'oldshop', Email: 'Legacy@X.test', Status: 'active', CustomerId: '' });
+box.appendRowFromObject(box.getSheet('Owners'), { OwnerId: 'own_taken', StoreName: 'Taken', StoreSlug: 'taken', Username: 'taken', Email: 'linkedelse@x.test', Status: 'active', CustomerId: 'cust_someone_else' });
+clearCache();
+r = box.actionOwnerFromCustomer({ customerToken: oldTok });
+ok('an older store opens for the account with the same confirmed email', r.ok && r.owner && r.owner.storeSlug === 'old-shop', J(r));
+ok('...and is linked to that account from now on', box.__sheets.Owners.objects().find((o) => o.OwnerId === 'own_old1').CustomerId === cust('legacy@x.test').CustomerId);
+ok('...logged as a link', box.__sheets.AuthEvents.objects().some((e) => e.Event === 'seller-linked' && e.SubjectId === 'own_old1'));
+const otherReg = box.actionRegisterCustomer({ name: 'Other', email: 'linkedelse@x.test', password: 'otherpass9' });
+const otherTok = box.actionVerifyCustomerEmail({ token: otherReg.pendingToken, code: codeIn(lastMailTo('linkedelse@x.test')) }).token;
+clearCache();
+r = box.actionOwnerFromCustomer({ customerToken: otherTok });
+ok('a store already linked to another account is never matched by email', r.ok && r.noStore === true, J(r));
 
 /* ---------- "Emails from Mwakete" starts on for new accounts (owner request, Oct 2026) ---------- */
 const optedIn = (id) => box.isOptedIn(box.findMarketingPreference(id));

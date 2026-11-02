@@ -33,9 +33,27 @@ const Auth = (function () {
     } catch (e) { /* private mode */ }
   }
 
+  // Set by Log out so the login page waits for a tap instead of reopening the
+  // store straight from the Mwakete account still signed in on this device.
+  const SIGNED_OUT_KEY = 'mwk_seller_signed_out';
+  function sellerSignedOut() { try { return localStorage.getItem(SIGNED_OUT_KEY) === '1'; } catch (e) { return false; } }
+  function setSellerSignedOut(on) { try { if (on) localStorage.setItem(SIGNED_OUT_KEY, '1'); else localStorage.removeItem(SIGNED_OUT_KEY); } catch (e) { /* private mode */ } }
+
+  /**
+   * One sign-in (2 Nov 2026): the store of the Mwakete account signed in on
+   * this device. Saves the store session and answers the backend's reply:
+   * { ok, token, owner } | { ok, noStore } | { ok, twoFactorRequired, pendingToken } | { ok:false, error }.
+   */
+  async function fromCustomerAccount(customerToken) {
+    const res = await Api.post('ownerFromCustomer', { customerToken });
+    if (res.ok && res.token) { saveSession(res.token, res.owner); setSellerSignedOut(false); }
+    return res;
+  }
+
   async function logout() {
     const token = getToken();
     clearSession();
+    setSellerSignedOut(true);
     if (token) {
       try {
         await Api.post('logoutOwner', { token });
@@ -67,9 +85,9 @@ const Auth = (function () {
       // so it is a returning seller and belongs on Log In.
       // Opened from one of our emails (?from=email, e.g. "Open Messages"):
       // this is a seller, so Log In - and back to this page afterwards.
-      window.location.href = /[?&]from=email\b/.test(location.search)
-        ? 'login.html?next=' + encodeURIComponent(returnPage())
-        : 'login.html?needStore=1';
+      // One sign-in (2 Nov 2026): the login page opens the store from the
+      // Mwakete account on this device, then comes back here.
+      window.location.href = 'login.html?next=' + encodeURIComponent(returnPage());
       return null;
     }
     const res = await Api.post('getOwnerProfile', { token });
@@ -98,5 +116,6 @@ const Auth = (function () {
     host.insertBefore(note, host.firstChild);
   }
 
-  return { saveSession, getToken, getOwner, clearSession, logout, guardOwnerAuth, showWholesalePendingNotice };
+  return { saveSession, getToken, getOwner, clearSession, logout, guardOwnerAuth, showWholesalePendingNotice,
+    fromCustomerAccount, sellerSignedOut, setSellerSignedOut };
 })();

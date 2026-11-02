@@ -309,6 +309,17 @@ function validateOwnerEmail(email, excludeOwnerId, ownersList) {
  * Stores from before this change have no ApprovalStatus and
  * count as approved (ownerApprovalStatus).
  */
+/** An internal, unique Owners.Username from the store name (nobody types it any more). */
+function uniqueOwnerUsername(storeName, owners) {
+  var base = String(slugify(storeName) || 'store').replace(/[^a-z0-9_.-]/g, '').slice(0, 32);
+  if (base.length < 3) base = 'store';
+  var taken = {};
+  owners.forEach(function (o) { taken[String(o.Username || '').toLowerCase()] = true; });
+  var name = base, n = 1;
+  while (taken[name]) { n++; name = base + '-' + n; }
+  return name;
+}
+
 function actionRegisterOwner(body) {
   var customer = null;
   try { customer = requireCustomerAuth(body.customerToken); } catch (e) { customer = null; }
@@ -318,8 +329,11 @@ function actionRegisterOwner(body) {
   }
 
   var storeName = String(body.storeName || '').trim();
-  var username = String(body.username || '').trim().toLowerCase();
-  var password = String(body.password || '');
+  // No store username / password any more (2 Nov 2026): the seller signs in
+  // with this account. The Username column keeps a unique internal name, and
+  // the password is a random one nobody knows (sign-in by password is retired).
+  var username = '';
+  var password = generateToken();
   var email = normalizeEmail(customer.Email);
   var phone = String(body.phone || '').trim();
   var messenger = String(body.messenger || '').trim();
@@ -328,15 +342,10 @@ function actionRegisterOwner(body) {
   // default, and what every store that registered before this choice existed is.
   var storeType = storeTypeOf({ StoreType: body.storeType });
 
-  if (!storeName || !username || !password || !phone) {
-    return fail('Store name, username, password and contact phone are required');
+  if (!storeName || !phone) {
+    return fail('Store name and contact phone are required');
   }
-  var pwErr = passwordPolicyError(password);
-  if (pwErr) return fail(pwErr);
-  var passwordHint = String(body.passwordHint || '').trim();
-  var hintErr = passwordHintError(passwordHint, password);
-  if (hintErr) return fail(hintErr);
-  if (!/^[a-z0-9_.-]{3,40}$/.test(username)) return fail('Username must be 3-40 characters: letters, numbers, . _ -');
+  var passwordHint = '';
   var storeNameErr = storeNameTooLong(storeName);
   if (storeNameErr) return storeNameErr;
   var phoneErr = capLength(phone, 30, 'Phone number');
@@ -374,8 +383,8 @@ function actionRegisterOwner(body) {
     }
     var exceptId = previous ? previous.OwnerId : null;
 
-    var usernameTaken = owners.some(function (o) { return o.OwnerId !== exceptId && String(o.Username).toLowerCase() === username; });
-    if (usernameTaken) return fail('That username is already taken');
+    // A reapplying store keeps its old username; a new one gets one from its name.
+    username = previous && previous.Username ? String(previous.Username).toLowerCase() : uniqueOwnerUsername(storeName, owners);
 
     var emailErr = validateOwnerEmail(email, exceptId, owners);
     if (emailErr) return emailErr;
@@ -442,66 +451,70 @@ function actionRegisterOwner(body) {
   return ok({ token: token, owner: publicOwnerFields(owner), application: sellerApplicationView(owner) });
 }
 
+/**
+ * Username + password sign-in is retired (owner decision, 2 Nov 2026): a
+ * seller signs in with their Mwakete account (Google or email) and
+ * actionOwnerFromCustomer opens their store. Kept as an action only so an
+ * old page gets a clear answer instead of "unknown action".
+ */
+var OWNER_PASSWORD_LOGIN_RETIRED = 'Store usernames and passwords are no longer used. Sign in with your Mwakete account (Google or email) - your store opens straight away.';
 function actionLoginOwner(body) {
-  var username = String(body.username || '').trim().toLowerCase();
-  var password = String(body.password || '');
-  if (!username || !password) return fail('Username and password are required');
+  return Object.assign(fail(OWNER_PASSWORD_LOGIN_RETIRED), { errorKind: 'password_login_retired' });
+}
 
-  var owner = sheetToObjects(getSheet('Owners')).filter(function (o) {
-    return constantTimeEquals(String(o.Username).toLowerCase(), username);
-  })[0];
+/**
+ * The store that belongs to a signed-in Mwakete account (owner decision,
+ * 2 Nov 2026: one sign-in for shopping and selling).
+ *
+ * body: customerToken. The store is found by
+ *   1. Owners.CustomerId - every store opened from an account since Oct 2026;
+ *   2. else Owners.Email equal to the account's CONFIRMED email, only for a
+ *      store not yet linked to any account (stores from before accounts).
+ *      That store is then linked, so later sign-ins use (1).
+ * Answers { token, owner }, or { twoFactorRequired, pendingToken } when the
+ * store has 2FA on, or { noStore: true } when the account has no store.
+ */
+function actionOwnerFromCustomer(body) {
+  var customer;
+  try { customer = requireCustomerAuth(body && body.customerToken); }
+  catch (e) { return Object.assign(fail(String(e.message || 'Please sign in again.')), { errorKind: 'customer_auth' }); }
+  if (rateLimitHit('ownerfromcustomer:' + customer.CustomerId, 60, 3600)) return fail('Too many attempts - please wait a few minutes.');
 
-  // Do the same work even on a missing user (a dummy hash, burnPasswordCheck)
-  // so response timing doesn't reveal whether the username exists. verifyPassword reads both the PBKDF2
-  // hashes (Passwords.gs) and the original single SHA-256 ones.
-  if (password.length > PASSWORD_MAX_LENGTH) return fail('Invalid username or password');
-  var passwordOk = owner ? verifyPassword(password, owner.PasswordHash, owner.PasswordSalt) : burnPasswordCheck(password);
-  var loginSucceeded = ownerCanLogIn(owner) && passwordOk;
+  var sheet = getSheet('Owners');
+  var owners = sheetToObjects(sheet);
+  var linked = owners.filter(function (o) { return String(o.CustomerId || '') === String(customer.CustomerId); });
+  var owner = linked.filter(ownerCanLogIn)[0] || linked[0] || null;
+  var matchedByEmail = false;
+  if (!owner && customerEmailVerified(customer)) {
+    var email = normalizeEmail(customer.Email);
+    var byEmail = owners.filter(function (o) { return !String(o.CustomerId || '') && normalizeEmail(o.Email) === email; });
+    owner = byEmail.filter(ownerCanLogIn)[0] || byEmail[0] || null;
+    matchedByEmail = !!owner;
+  }
+  if (!owner) return ok({ noStore: true });
 
-  // Runs AFTER the (constant-cost) hash comparison above and BEFORE
-  // branching on its result, so a locked-out username's response isn't
-  // detectably faster than a normal wrong-password one. A nonexistent
-  // username locks out identically to a real one (this is keyed purely on
-  // the submitted string), so this doesn't reopen the enumeration issue the
-  // dummy-hash comparison above already closes.
-  var lockout = checkAndRecordLoginAttempt(username, loginSucceeded);
-  if (lockout.locked) {
-    return fail('Too many failed login attempts. Please try again in ' + lockout.retryAfterMinutes + ' minute(s).');
+  if (!ownerCanLogIn(owner)) {
+    if (owner.Status === 'closed') return Object.assign(fail('This store has been deleted. Contact now via the Help and support link below if this is a mistake.'), { storeBlocked: true });
+    var approval = ownerApprovalStatus(owner);
+    if (approval === 'rejected') return Object.assign(fail('Your seller application was not approved. You can see why, and apply again, from your Mwakete account page.'), { storeBlocked: true });
+    if (approval === 'suspended') return Object.assign(fail('This store is suspended. Contact Mwakete via the Help and support link below.'), { storeBlocked: true });
+    return Object.assign(fail('This store cannot be opened right now. Contact Mwakete via the Help and support link below.'), { storeBlocked: true });
   }
 
-  if (!loginSucceeded) {
-    if (owner && owner.Status === 'closed') return fail('This store has been deleted. Contact now via the Help and support link below if this is a mistake.');
-    // The right password for a store that is not approved: say why (the
-    // person has proven the password, so this reveals nothing new).
-    if (owner && passwordOk) {
-      var approval = ownerApprovalStatus(owner);
-      if (approval === 'rejected') return fail('Your seller application was not approved. You can see why, and apply again, from your Mwakete account page.');
-      if (approval === 'suspended') return fail('This store is suspended. Contact Mwakete via the Help and support link below.');
-    }
-    // The seller's own hint, after a wrong password for a real store (owner
-    // decision, Oct 2026). It does tell the person typing that this username
-    // exists; the attempt lockout above still limits guessing.
-    var hint = owner && ownerCanLogIn(owner) ? String(owner.PasswordHint || '').trim() : '';
-    return hint ? Object.assign(fail('Invalid username or password'), { passwordHint: hint }) : fail('Invalid username or password');
+  if (matchedByEmail) {
+    ensureColumn(sheet, 'CustomerId');
+    var row = findRowById(sheet, 'OwnerId', owner.OwnerId);
+    if (row && !String(row.CustomerId || '')) updateRowFromObject(sheet, row.__row, { CustomerId: customer.CustomerId });
+    logAuthEvent('seller-linked', owner.OwnerId, 'customer ' + customer.CustomerId + ' by email');
   }
 
-  // Upgrade an old single-SHA-256 hash (or a PBKDF2 one with fewer rounds
-  // than now configured) while the password is in hand. Best effort.
-  if (passwordNeedsRehash(owner.PasswordHash)) {
-    try { updateRowFromObject(getSheet('Owners'), owner.__row, { PasswordHash: hashPasswordV2(password), PasswordSalt: '' }); } catch (e) { /* next time */ }
-  }
-
-  if (String(owner.TwoFAEnabled) === 'true') {
-    if (!owner.Email) {
-      // Shouldn't happen - email is required to enable 2FA - but fail safe.
-      return fail('Two-factor authentication is enabled but no contact email is on file. Please contact support.');
-    }
+  if (String(owner.TwoFAEnabled) === 'true' && owner.Email) {
     var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'login', owner);
     return ok({ twoFactorRequired: true, pendingToken: pending.token });
   }
 
-  var token = issueSession(owner.OwnerId);
-  return ok({ token: token, owner: publicOwnerFields(owner) });
+  logAuthEvent('seller-signin', owner.OwnerId, 'customer ' + customer.CustomerId);
+  return ok({ token: issueSession(owner.OwnerId), owner: publicOwnerFields(owner) });
 }
 
 function actionVerifyLoginCode(body) {
@@ -724,8 +737,10 @@ function actionResetPasswordWithCode(body) {
  *
  * Three separate things are now required, each closing a different hole:
  *
- *   the password       - the only one that PREVENTS a takeover. A stolen
- *                        session token is not enough any more.
+ *   the Mwakete account - the one that PREVENTS a takeover: the account the
+ *     signed in too      store belongs to (Owners.CustomerId) must be signed in.
+ *                        A stolen store session token is not enough. (Was the
+ *                        store password until those were retired, 2 Nov 2026.)
  *   a code to the NEW  - proves the address exists and is readable, so a typo
  *     address            cannot silently swallow the store's orders.
  *   a warning to the   - the only one the real owner ever sees if the other
@@ -737,9 +752,7 @@ function actionResetPasswordWithCode(body) {
  * ------------------------------------------------------------------------- */
 
 function actionRequestEmailChange(owner, body) {
-  var password = String(body.password || '');
   var newEmail = String(body.email || '').trim();
-  if (!password) return fail('Enter your password to change the contact email');
 
   var emailErr = validateOwnerEmail(newEmail, owner.OwnerId);
   if (emailErr) return emailErr;
@@ -747,15 +760,14 @@ function actionRequestEmailChange(owner, body) {
     return fail('That is already your contact email');
   }
 
-  // Same check and the same lockout as the login form. An attacker holding a
-  // session would otherwise have an unlimited, unthrottled password oracle
-  // here, which is precisely what the login form refuses to be.
-  var passwordOk = verifyPassword(password, owner.PasswordHash, owner.PasswordSalt);
-  var lockout = checkAndRecordLoginAttempt(String(owner.Username).toLowerCase(), passwordOk);
-  if (lockout.locked) {
-    return fail('Too many incorrect passwords. Please try again in ' + lockout.retryAfterMinutes + ' minute(s).');
+  // Store passwords are retired (2 Nov 2026). In their place: the Mwakete
+  // account this store belongs to must be signed in too, so a store session
+  // token alone is still not enough to move the store's email.
+  var customer = null;
+  try { customer = requireCustomerAuth(body.customerToken); } catch (e) { customer = null; }
+  if (!customer || !owner.CustomerId || String(customer.CustomerId) !== String(owner.CustomerId)) {
+    return fail('Sign in again with your Mwakete account, then try once more.');
   }
-  if (!passwordOk) return fail('That password is not right');
 
   var sheet = getSheet('Owners');
   // Older sheets predate this column, and updateRowFromObject silently drops a
@@ -775,10 +787,9 @@ function actionRequestEmailChange(owner, body) {
       'A request was made to change your store contact email to ' + newEmail + '.\n\n' +
       'Your store is still using this address. The change only happens if the ' +
       'code we sent to the new address is entered in Settings.\n\n' +
-      'IF THIS WAS NOT YOU, someone may be signed in to your store account. ' +
-      'Change your password now from Settings, or use "Forgot your password?" ' +
-      'on the login page, then tell us through the Help and support link at the bottom ' +
-      'of any Mwakete page.');
+      'IF THIS WAS NOT YOU, someone may be signed in to your Mwakete account. ' +
+      'Sign in and change your account password (or secure your Google account), ' +
+      'then tell us through the Help and support link at the bottom of any Mwakete page.');
   // The address itself is deliberately not written here. It lives in the
   // Help and support link in the page footers, and verify-deletedmsg asserts no script
   // file pastes it into a message - one place to change it, one place to get

@@ -1,8 +1,7 @@
 /**
  * Owner request, Oct 2026, on the REAL backend sources (gas-harness):
- *  - sellers set a required password hint when registering; it is shown after
- *    a wrong password, never contains the password, and can be changed in
- *    Settings (with the current password when changing only the hint);
+ *  - (password hints retired with store passwords, 2 Nov 2026: a seller
+ *    signs in with their Mwakete account - see test-auth.js);
  *  - a seller's new-message email links to Messages with ?from=email;
  *  - a customer who is signed in while chatting is linked to the chat, gets an
  *    email when the seller replies (at most one per 10 minutes per chat), and
@@ -28,51 +27,13 @@ const owners = () => box.__sheets.Owners.objects();
 const reg = (o) => box.actionRegisterOwner(Object.assign({ storeName: 'Bong Store', username: 'bong', password: 'coconut99', email: 'bong@x.test', phone: '73001234',
   messenger: 'bong.store', storeType: 'retailer', customerToken: 'c-bong', about: 'Rice and flour' }, o));
 
-/* ---------- registration needs a hint ---------- */
-let res = reg({ passwordHint: '' });
-ok('register without a hint is refused', !res.ok && /password hint/i.test(res.error), J(res));
-res = reg({ passwordHint: 'it is Coconut99 lol' });
-ok('a hint containing the password is refused (any case)', !res.ok && /must not contain the password/.test(res.error), J(res));
-res = reg({ passwordHint: 'coco nut 99' });
-ok('...even with spaces in between', !res.ok && /must not contain the password/.test(res.error), J(res));
-res = reg({ passwordHint: 'x'.repeat(101) });
-ok('a hint over 100 characters is refused', !res.ok && /100 characters/.test(res.error), J(res));
-res = reg({ passwordHint: 'favourite fruit + 99' });
-ok('register with a good hint works', res.ok && owners()[0].PasswordHint === 'favourite fruit + 99', J(res));
-// New stores are pre-approved (owner decision, 23 Oct 2026): open at once.
-ok('...and the store opens straight away', res.application && res.application.status === 'approved' && !!res.token, J(res));
-res = box.actionLoginOwner({ username: 'bong', password: 'coconut99' });
-ok('the session profile says a hint is set, without the hint text', res.owner.hasPasswordHint === true && !('passwordHint' in res.owner), J(res.owner));
+/* ---------- registration: no store username, password or hint (one sign-in, 2 Nov 2026) ---------- */
+let res = reg({ username: '', password: '', passwordHint: '' });
+ok('a store opens with no username, password or hint typed', res.ok && res.application && res.application.status === 'approved' && !!res.token, J(res));
+ok('...it gets an internal username from its name and a password nobody knows', owners()[0].Username === 'bong-store' && /^pbkdf2\$/.test(owners()[0].PasswordHash), owners()[0].Username);
+res = box.actionOwnerFromCustomer({ customerToken: 'c-bong' });
+ok('the seller signs in with their Mwakete account', res.ok && !!res.token && res.owner.storeSlug === 'bong-store', J(res));
 const ownerToken = res.token;
-
-/* ---------- login ---------- */
-res = box.actionLoginOwner({ username: 'bong', password: 'wrong-pass' });
-ok('wrong password: fails and shows the hint', !res.ok && res.passwordHint === 'favourite fruit + 99' && /Invalid username or password/.test(res.error), J(res));
-res = box.actionLoginOwner({ username: 'nobody', password: 'wrong-pass' });
-ok('unknown username: fails with no hint', !res.ok && !res.passwordHint, J(res));
-res = box.actionLoginOwner({ username: 'bong', password: 'coconut99' });
-ok('right password logs in (no hint needed)', res.ok && !!res.token, J(res));
-
-/* ---------- settings ---------- */
-const me = () => box.__sheets.Owners.objects()[0];
-const ownerRow = () => Object.assign({}, me(), { __row: 2 });
-res = box.actionUpdateOwnerProfile(ownerRow(), { passwordHint: 'new hint' });
-ok('changing only the hint needs the current password', !res.ok && /current password/i.test(res.error), J(res));
-res = box.actionUpdateOwnerProfile(ownerRow(), { passwordHint: 'new hint', currentPassword: 'nope' });
-ok('...the right one', !res.ok && /not right/i.test(res.error), J(res));
-res = box.actionUpdateOwnerProfile(ownerRow(), { passwordHint: 'coconut99!', currentPassword: 'coconut99' });
-ok('...and the new hint still must not contain it', !res.ok && /must not contain/.test(res.error), J(res));
-res = box.actionUpdateOwnerProfile(ownerRow(), { passwordHint: 'my first boat', currentPassword: 'coconut99' });
-ok('hint changed with the current password', res.ok && me().PasswordHint === 'my first boat', J(res));
-box.__sheets.Owners.grid[1][box.__sheets.Owners.grid[0].indexOf('PasswordHint')] = 'boat2024';
-res = box.actionUpdateOwnerProfile(ownerRow(), { newPassword: 'boat2024' });
-ok('a new password that the current hint gives away is refused', !res.ok && /hint gives this password away/.test(res.error), J(res));
-res = box.actionUpdateOwnerProfile(ownerRow(), { newPassword: 'lagoon2026', passwordHint: 'the blue water' });
-ok('new password + new hint together, no current password needed', res.ok && me().PasswordHint === 'the blue water'
-  && box.actionLoginOwner({ username: 'bong', password: 'lagoon2026' }).ok, J(res));
-const old = Object.assign({}, me()); box.__sheets.Owners.grid[1][box.__sheets.Owners.grid[0].indexOf('PasswordHint')] = '';
-ok('an older store without a hint is flagged for the dashboard reminder', box.publicOwnerFields(me()).hasPasswordHint === false);
-box.__sheets.Owners.grid[1][box.__sheets.Owners.grid[0].indexOf('PasswordHint')] = old.PasswordHint;
 
 /* ---------- chat emails ---------- */
 const mail = box.__mail;

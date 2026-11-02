@@ -13,9 +13,10 @@
  * Three separate guarantees, each closing a different hole, and each asserted
  * here:
  *
- *   the password        PREVENTS the takeover - a stolen session is no longer
- *                       enough, and guessing is throttled by the same lockout
- *                       the login form uses.
+ *   the store's own     PREVENTS the takeover - a stolen store session is not
+ *     Mwakete account   enough; the account the store belongs to must be signed
+ *     signed in         in too. (The store password did this until store
+ *                       passwords were retired, 2 Nov 2026.)
  *   a code to the NEW   proves the address is real and readable, so a typo
  *     address           cannot silently swallow a store's orders.
  *   a warning to the    is the only thing the real owner ever sees if the other
@@ -101,6 +102,8 @@ function makeSandbox(opts) {
         : { ok: true, ownerId: ownerId };
     },
     sendAppEmail: (to, subject, body) => { sent.push({ to, subject, body }); return true; },
+    // The store's Mwakete account (Owners.CustomerId 'c1'): 'cust-ok' is it, 'cust-other' is someone else.
+    requireCustomerAuth: (t) => { if (t === 'cust-ok') return { CustomerId: 'c1' }; if (t === 'cust-other') return { CustomerId: 'c9' }; throw new Error('Not signed in'); },
     LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
     EMAIL_FORMAT_RE: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   };
@@ -116,32 +119,24 @@ function makeSandbox(opts) {
   return { sandbox, OWNERS, sent, codes, attempts, writes, headers };
 }
 
-const OWNER = () => ({ OwnerId: 'o1', Username: 'bong', StoreName: 'Bong Store',
+const OWNER = () => ({ OwnerId: 'o1', Username: 'bong', StoreName: 'Bong Store', CustomerId: 'c1',
   Email: 'old@example.com', PasswordSalt: 'salt1', PasswordHash: 'salt1::rightpass' });
 
-/* ---------- the password is required, and guessing is throttled ---------- */
+/* ---------- the store's own Mwakete account must be signed in (was: the store password) ---------- */
 {
-  const { sandbox, OWNERS, sent, codes, attempts } = makeSandbox();
-  const res = sandbox.actionRequestEmailChange(OWNER(), { email: 'new@example.com', password: 'wrongpass' });
-  ok('a wrong password is refused', res.ok === false, res.error);
+  const { sandbox, OWNERS, sent, codes } = makeSandbox();
+  const res = sandbox.actionRequestEmailChange(OWNER(), { email: 'new@example.com', customerToken: '' });
+  ok('a store session alone is refused (no account signed in)', res.ok === false, res.error);
+  ok('and it says why', /Mwakete account/.test(res.error), res.error);
   ok('and the live email is untouched', OWNERS[0].Email === 'old@example.com');
   ok('nothing is left pending', !OWNERS[0].PendingEmail, String(OWNERS[0].PendingEmail));
   ok('no code is sent anywhere', codes.length === 0);
-  ok('and the old address is not spammed by a failed guess', sent.length === 0);
-  ok('the failed attempt is recorded against the lockout', attempts.length === 1
-    && attempts[0].succeeded === false && attempts[0].username === 'bong', JSON.stringify(attempts));
-}
-{
-  const { sandbox } = makeSandbox({ locked: true });
-  const res = sandbox.actionRequestEmailChange(OWNER(), { email: 'new@example.com', password: 'rightpass' });
-  ok('a locked-out account is refused even with the right password', res.ok === false, res.error);
-  ok('and is told how long to wait', /7 minute/.test(res.error), res.error);
+  ok('and the old address is not emailed', sent.length === 0);
 }
 {
   const { sandbox, codes } = makeSandbox();
-  const res = sandbox.actionRequestEmailChange(OWNER(), { email: 'new@example.com', password: '' });
-  ok('no password at all is refused', res.ok === false, res.error);
-  ok('and it says why', /password/i.test(res.error), res.error);
+  const res = sandbox.actionRequestEmailChange(OWNER(), { email: 'new@example.com', customerToken: 'cust-other' });
+  ok('another signed-in account is refused', res.ok === false, res.error);
   ok('with no code issued', codes.length === 0);
 }
 
@@ -149,21 +144,21 @@ const OWNER = () => ({ OwnerId: 'o1', Username: 'bong', StoreName: 'Bong Store',
 {
   const { sandbox } = makeSandbox();
   ok('a malformed address is refused',
-    sandbox.actionRequestEmailChange(OWNER(), { email: 'not-an-email', password: 'rightpass' }).ok === false);
+    sandbox.actionRequestEmailChange(OWNER(), { email: 'not-an-email', customerToken: 'cust-ok' }).ok === false);
   ok('a blank address is refused',
-    sandbox.actionRequestEmailChange(OWNER(), { email: '', password: 'rightpass' }).ok === false);
-  const taken = sandbox.actionRequestEmailChange(OWNER(), { email: 'taken@example.com', password: 'rightpass' });
+    sandbox.actionRequestEmailChange(OWNER(), { email: '', customerToken: 'cust-ok' }).ok === false);
+  const taken = sandbox.actionRequestEmailChange(OWNER(), { email: 'taken@example.com', customerToken: 'cust-ok' });
   ok('an address another store already uses is refused', taken.ok === false, taken.error);
   ok('and says so plainly', /already registered/i.test(taken.error), taken.error);
-  const same = sandbox.actionRequestEmailChange(OWNER(), { email: 'OLD@example.com', password: 'rightpass' });
+  const same = sandbox.actionRequestEmailChange(OWNER(), { email: 'OLD@example.com', customerToken: 'cust-ok' });
   ok('their own current address is refused, whatever the capitals', same.ok === false, same.error);
 }
 
 /* ---------- the happy path: nothing moves yet ---------------------------- */
 {
   const { sandbox, OWNERS, sent, codes } = makeSandbox();
-  const res = sandbox.actionRequestEmailChange(OWNER(), { email: ' New@Example.com ', password: 'rightpass' });
-  ok('a correct password starts the change', res.ok === true, res.error);
+  const res = sandbox.actionRequestEmailChange(OWNER(), { email: ' New@Example.com ', customerToken: 'cust-ok' });
+  ok('the store\'s own account starts the change', res.ok === true, res.error);
   ok('and hands back a token to confirm with', res.verifyToken === 'verify-token-1', res.verifyToken);
   ok('it says where the code went', res.sentTo === 'New@Example.com', res.sentTo);
 
@@ -183,7 +178,7 @@ const OWNER = () => ({ OwnerId: 'o1', Username: 'bong', StoreName: 'Bong Store',
   ok('the warning names the address being switched to', warning && /New@Example\.com/.test(warning.body),
     warning && warning.body);
   ok('and tells them what to do if it was not them',
-    warning && /was not you/i.test(warning.body) && /password/i.test(warning.body));
+    warning && /was not you/i.test(warning.body) && /password|Google/i.test(warning.body));
   ok('it also says nothing has changed yet, so a real owner is not panicked',
     warning && /still using this address/i.test(warning.body), warning && warning.body);
 }
@@ -228,7 +223,7 @@ const OWNER = () => ({ OwnerId: 'o1', Username: 'bong', StoreName: 'Bong Store',
 /* ---------- an older sheet with no PendingEmail column -------------------- */
 {
   const { sandbox, OWNERS, headers } = makeSandbox({ noPendingColumn: true });
-  const res = sandbox.actionRequestEmailChange(OWNER(), { email: 'new@example.com', password: 'rightpass' });
+  const res = sandbox.actionRequestEmailChange(OWNER(), { email: 'new@example.com', customerToken: 'cust-ok' });
   ok('a sheet predating the column still works', res.ok === true, res.error);
   ok('because the column is created first', headers.Owners.indexOf('PendingEmail') !== -1,
     headers.Owners.join(','));

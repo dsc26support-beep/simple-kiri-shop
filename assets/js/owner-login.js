@@ -15,40 +15,78 @@ function init() {
   attachStoreNameCounter(document.getElementById('register-store-name'));
 
   if (getQueryParam('expired')) {
-    document.getElementById('session-message').textContent = 'Your session expired — please log in again.';
+    document.getElementById('session-message').textContent = 'Your session expired — please sign in again.';
   } else if (getQueryParam('deleted')) {
-    // Same words as the backend's login error (Auth.gs). A seller can reach this
-    // page two ways and should not meet two different messages.
+    // Same words as the backend (Auth.gs). A seller can reach this page two
+    // ways and should not meet two different messages.
     document.getElementById('session-message').textContent = 'This store has been deleted. Contact now via the Help and support link below if this is a mistake.';
   }
 
   document.getElementById('tab-login').addEventListener('click', () => switchTab('login'));
   document.getElementById('tab-register').addEventListener('click', () => switchTab('register'));
-
-  document.getElementById('login-form').addEventListener('submit', onLogin);
   document.getElementById('register-form').addEventListener('submit', onRegister);
   document.querySelectorAll('input[name="storeType"]').forEach((r) => r.addEventListener('change', onStoreTypeChange));
   document.getElementById('twofa-form').addEventListener('submit', onVerifyTwoFA);
-  document.getElementById('login-go-register').addEventListener('click', goRegisterFromLogin);
+  document.getElementById('login-continue').addEventListener('click', () => openStoreFromAccount());
+  // Back here after signing in, then on to the page that sent them.
+  document.getElementById('login-signin-link').href = '../customer-login.html?next=' +
+    encodeURIComponent('owner/login.html' + (getQueryParam('next') ? '?next=' + encodeURIComponent(getQueryParam('next')) : ''));
 
-  wirePasswordToggle('login-password');
-  wirePasswordToggle('register-password');
-
-  // Sent here by guardOwnerAuth with no session at all - see auth.js. Most
-  // likely somebody who has not opened a store yet, so Register is the tab
-  // they need. The wording does not claim they have no account: a seller on a
-  // new phone lands here too, and Log In is the tab beside it.
-  if (getQueryParam('needStore')) {
-    document.getElementById('session-message').textContent =
-      'The seller area needs a store account. Create one below \u2014 or use Log In if you already have a store.';
-  }
-
-  if (getQueryParam('tab') === 'register' || getQueryParam('needStore')) {
-    switchTab('register');
-  }
+  if (getQueryParam('tab') === 'register') switchTab('register');
 
   showShopperNote();
   prepareRegisterForm();
+
+  const signedIn = typeof CustomerAuth !== 'undefined' && !!CustomerAuth.getToken();
+  if (!signedIn) {
+    document.getElementById('login-signin').hidden = false;
+  } else if (Auth.sellerSignedOut()) {
+    // They pressed Log out: wait for a tap rather than reopening the store.
+    document.getElementById('login-continue').hidden = false;
+  } else {
+    openStoreFromAccount();
+  }
+}
+
+/**
+ * One sign-in (owner decision, 2 Nov 2026): the Mwakete account signed in on
+ * this device opens its store - no store username or password. No store yet:
+ * the Register tab. The server decides which store (Auth.gs
+ * actionOwnerFromCustomer); nothing here is trusted.
+ */
+async function openStoreFromAccount() {
+  const status = document.getElementById('login-status');
+  const errorEl = document.getElementById('login-error');
+  const cont = document.getElementById('login-continue');
+  errorEl.textContent = '';
+  cont.hidden = true;
+  status.innerHTML = loadingMessageHtml('Opening your store');
+  const res = await Auth.fromCustomerAccount(CustomerAuth.getToken());
+  status.textContent = '';
+  if (res.ok && res.token) {
+    window.location.href = ownerNextPage();
+    return;
+  }
+  if (res.ok && res.twoFactorRequired) {
+    document.getElementById('twofa-pending-token').value = res.pendingToken;
+    document.getElementById('login-panel').classList.add('hidden');
+    document.getElementById('twofa-form').classList.remove('hidden');
+    document.getElementById('twofa-code').focus();
+    return;
+  }
+  if (res.ok && res.noStore) {
+    document.getElementById('session-message').textContent =
+      'This account has no store yet. Open one below - it takes a few minutes.';
+    switchTab('register');
+    return;
+  }
+  if (res.errorKind === 'customer_auth') {
+    // The account session is gone or unconfirmed: sign in again.
+    document.getElementById('login-signin').hidden = false;
+  } else if (!res.storeBlocked) {
+    cont.hidden = false;   // a network hiccup: let them try again
+  }
+  errorEl.textContent = res.error || 'Could not open your store. Please try again.';
 }
 
 /**
@@ -88,33 +126,21 @@ function switchTab(which) {
   const isLogin = which === 'login';
   document.getElementById('tab-login').setAttribute('aria-selected', String(isLogin));
   document.getElementById('tab-register').setAttribute('aria-selected', String(!isLogin));
-  // Only hidden, never cleared: somebody sent from one form to the other gets
-  // everything they typed back when they switch again.
-  document.getElementById('login-form').classList.toggle('hidden', !isLogin);
+  // Only hidden, never cleared: what they typed comes back when they switch again.
+  document.getElementById('login-panel').classList.toggle('hidden', !isLogin);
+  document.getElementById('twofa-form').classList.add('hidden');
   document.getElementById('register-form').classList.toggle('hidden', isLogin);
 }
 
 /**
- * A shopper account and a store account are two different things, and nothing
- * on this form said so. Someone who tapped Create Store while signed in as a
- * shopper meets a username-and-password form for an account they think they
- * already have.
- *
- * Read from this device only. No request is made, and nothing here is a
- * credential - the shopper's session token is never sent anywhere from this
- * page.
+ * Who is signed in, and a Google button to switch account (owner request,
+ * Oct 2026). Only for a signed-in account - nobody else loads Google's script
+ * from here; the sign-in link covers them.
  */
 function showShopperNote() {
-  const note = document.getElementById('shopper-note');
-  if (!note) return;
   if (typeof CustomerAuth === 'undefined' || !CustomerAuth.getToken()) return;
-
   setShopperNote(CustomerAuth.getCustomer());
-  // Owner request (Oct 2026): a Google button under the note, so a shopper on
-  // the wrong account can switch. Only for a signed-in shopper - everybody
-  // else gets no Google script at all. Stays on this page afterwards: the
-  // register form may already be half filled in.
-  window.onCustomerSignedIn = (c) => { setShopperNote(c); prepareRegisterForm(); };
+  window.onCustomerSignedIn = (c) => { setShopperNote(c); prepareRegisterForm(); Auth.setSellerSignedOut(false); openStoreFromAccount(); };
   if (typeof initGoogleSignIn === 'function') initGoogleSignIn();
 }
 
@@ -130,63 +156,6 @@ function setShopperNote(customer) {
 // waits for showShopperNote, which knows whether anybody is signed in.
 window.GOOGLE_SIGNIN_DEFER = true;
 
-/**
- * "New here? Register your store", under a failed log-in.
- *
- * The error itself stays vague - the backend compares against a dummy hash so
- * this form cannot be walked to learn which usernames exist - so this offers
- * the route without saying anything about the account. The username comes
- * across so it does not have to be typed twice.
- */
-function goRegisterFromLogin() {
-  const typed = document.getElementById('login-username').value.trim();
-  const target = document.getElementById('register-username');
-  if (typed && !target.value) target.value = typed;
-  switchTab('register');
-  document.getElementById('register-store-name').focus();
-}
-
-// The backend's exact words for a username clash (Auth.gs: 'That username is
-// already taken'). Matched on the text because this is a frontend-only change
-// and adding an error code would mean a redeploy - so verify-seller-signup-route
-// asserts that string still exists in Auth.gs, and a reworded backend fails a
-// test instead of quietly dropping this route.
-const TAKEN_USERNAME_RE = /already taken/i;
-const TAKEN_USERNAME_SWITCH_MS = 2200;
-let takenUsernameTimer = null;
-
-/**
- * A username that already exists nearly always means this person already has a
- * store and is on the wrong tab. Say so, then move them.
- *
- * After a pause, so the sentence can be read - and cancelled the moment they
- * start editing the username, because somebody who is simply picking a
- * different name must not be yanked off the form mid-thought.
- *
- * Nothing they typed is lost either way: switchTab only hides a form.
- *
- * It reveals nothing new. Registration has to say a username is taken, or it
- * could not refuse it - which is why this side can be plain where the log-in
- * side stays vague.
- */
-function offerLoginForTakenUsername() {
-  const errorEl = document.getElementById('register-error');
-  const usernameEl = document.getElementById('register-username');
-  errorEl.textContent += ' If that store is yours, log in instead \u2014 taking you there now.';
-
-  clearTimeout(takenUsernameTimer);
-  const cancel = () => { clearTimeout(takenUsernameTimer); takenUsernameTimer = null; };
-  usernameEl.addEventListener('input', cancel, { once: true });
-
-  takenUsernameTimer = setTimeout(() => {
-    usernameEl.removeEventListener('input', cancel);
-    const loginUsername = document.getElementById('login-username');
-    if (!loginUsername.value) loginUsername.value = usernameEl.value.trim();
-    switchTab('login');
-    document.getElementById('login-password').focus();
-  }, TAKEN_USERNAME_SWITCH_MS);
-}
-
 // The shared busy button (helpers.js setButtonBusy); done() puts the label back.
 function setLoginButtonBusy(btn, label) {
   btn.busyDone = setButtonBusy(btn, label);
@@ -195,46 +164,6 @@ function setLoginButtonBusy(btn, label) {
 function setButtonIdle(btn) {
   if (btn.busyDone) btn.busyDone();
   btn.busyDone = null;
-}
-
-async function onLogin(e) {
-  e.preventDefault();
-  const errorEl = document.getElementById('login-error');
-  errorEl.textContent = '';
-
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
-
-  const submitBtn = document.getElementById('login-submit-btn');
-  setLoginButtonBusy(submitBtn, 'Logging in');
-
-  const res = await Api.post('loginOwner', { username, password });
-
-  const hintEl = document.getElementById('login-password-hint');
-  if (!res.ok) {
-    setButtonIdle(submitBtn);
-    // An older backend still says "the Enquiry link"; the link is now called Help and support.
-    errorEl.textContent = (res.error || 'Could not log in.').replace('the Enquiry link', 'the Help and support link');
-    // The seller's own password hint, after a wrong password (Oct 2026).
-    if (hintEl) {
-      hintEl.textContent = res.passwordHint ? 'Your password hint: ' + res.passwordHint : '';
-      hintEl.hidden = !res.passwordHint;
-    }
-    document.getElementById('login-register-hint').hidden = false;
-    return;
-  }
-
-  if (res.twoFactorRequired) {
-    setButtonIdle(submitBtn);
-    document.getElementById('twofa-pending-token').value = res.pendingToken;
-    document.getElementById('login-form').classList.add('hidden');
-    document.getElementById('twofa-form').classList.remove('hidden');
-    document.getElementById('twofa-code').focus();
-    return;
-  }
-
-  Auth.saveSession(res.token, res.owner);
-  window.location.href = ownerNextPage();
 }
 
 async function onVerifyTwoFA(e) {
@@ -252,6 +181,7 @@ async function onVerifyTwoFA(e) {
   }
 
   Auth.saveSession(res.token, res.owner);
+  Auth.setSellerSignedOut(false);
   window.location.href = ownerNextPage();
 }
 
@@ -261,9 +191,6 @@ async function onRegister(e) {
   errorEl.textContent = '';
 
   const storeName = document.getElementById('register-store-name').value.trim();
-  const username = document.getElementById('register-username').value.trim();
-  const password = document.getElementById('register-password').value;
-  const passwordHint = document.getElementById('register-password-hint').value.trim();
   const phone = document.getElementById('register-phone').value.trim();
   const about = document.getElementById('register-about').value.trim();
   const storeTypeEl = document.querySelector('input[name="storeType"]:checked');
@@ -277,16 +204,6 @@ async function onRegister(e) {
 
   if (Array.from(storeName).length > STORE_NAME_MAX) {
     errorEl.textContent = `Store name must be ${STORE_NAME_MAX} characters or fewer.`;
-    return;
-  }
-  if (passwordHint.length < 3) {
-    errorEl.textContent = 'Add a password hint - it reminds you if you forget your password.';
-    document.getElementById('register-password-hint').focus();
-    return;
-  }
-  if (password && passwordHint.toLowerCase().replace(/\s+/g, '').indexOf(password.toLowerCase().replace(/\s+/g, '')) !== -1) {
-    errorEl.textContent = 'Your password hint must not contain the password itself.';
-    document.getElementById('register-password-hint').focus();
     return;
   }
   if (!phone) {
@@ -314,7 +231,7 @@ async function onRegister(e) {
     return;
   }
 
-  const res = await Api.post('registerOwner', { storeName, username, password, passwordHint, phone, messenger, storeType, about,
+  const res = await Api.post('registerOwner', { storeName, phone, messenger, storeType, about,
     customerToken: typeof CustomerAuth !== 'undefined' ? CustomerAuth.getToken() : '' });
 
   if (!res.ok) {
@@ -324,7 +241,6 @@ async function onRegister(e) {
       document.getElementById('register-account-gate').hidden = false;
       document.getElementById('register-fields').hidden = true;
     }
-    if (TAKEN_USERNAME_RE.test(res.error || '')) offerLoginForTakenUsername();
     return;
   }
 
@@ -336,6 +252,7 @@ async function onRegister(e) {
     return;
   }
   Auth.saveSession(res.token, res.owner);
+  Auth.setSellerSignedOut(false);
   // Straight to Settings, not the dashboard - a fresh account has no logo,
   // delivery methods, or location set yet, and settings.html's own
   // required-field validation walks the new owner through finishing that
