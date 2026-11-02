@@ -2,7 +2,8 @@
  * Store page as a profile on phones and tablets (owner request, Nov 2026), in
  * the browser on the REAL backend: cover photo (or the store colour), round
  * logo over its edge with the open dot, name with the verified tick, place and
- * status, the seller's bio with More info, Products | Photos tabs. Since 1 Nov:
+ * status, the seller's bio; since 2 Nov Products / Photos / Info / Share are round
+ * buttons beside the logo (Info opens a panel from the bottom). Since 1 Nov:
  * no red header and no message button there - the ⋮ menu sits on the cover
  * (and Home and the cart on a tablet), and the store's own seller changes the
  * banner and logo from the page. Computers keep the old header. And Settings:
@@ -63,7 +64,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   const geo = (p) => p.evaluate(() => {
     const r = (id) => { const e = document.getElementById(id); if (!e) return null; const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, w: b.width, h: b.height, shown: getComputedStyle(e).display !== 'none' && !e.closest('[hidden]') }; };
     const menu = document.querySelector('.header-menu-btn'); const mb = menu && menu.getBoundingClientRect();
-    return { profile: r('store-profile'), cover: r('sp-cover'), avatar: r('sp-avatar'), name: r('sp-name'), tabs: r('sp-tab-products'), list: r('product-list'),
+    return { profile: r('store-profile'), cover: r('sp-cover'), avatar: r('sp-avatar'), name: r('sp-name'), list: r('product-list'),
       header: getComputedStyle(document.querySelector('header.site-header')).display, menuOnCover: !!(menu && menu.closest('#sp-cover')), menu: mb && { top: mb.top, right: mb.right },
       home: getComputedStyle(document.querySelector('.sp-home')).display, cart: document.getElementById('header-cart-link') ? { on: !!document.getElementById('header-cart-link').closest('#sp-cover'), d: getComputedStyle(document.getElementById('header-cart-link')).display } : null,
       message: document.getElementById('sp-message'), cams: [getComputedStyle(document.getElementById('sp-cam-cover')).display, getComputedStyle(document.getElementById('sp-cam-logo')).display],
@@ -100,27 +101,46 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await p.mouse.click(5, 600);
   ok('...cover across the top, logo circle over its bottom edge', g.cover.w >= 389 && g.avatar.top < g.cover.bottom && g.avatar.bottom > g.cover.bottom && Math.abs(g.avatar.w - g.avatar.h) < 1, g);
   ok('...the cover is the seller’s photo', await p.evaluate(() => { const i = document.getElementById('sp-cover-img'); return !i.hidden && /cover\.jpg/.test(i.src); }));
-  ok('...name and counts over the cover; name with the verified tick under the logo', (await p.textContent('#sp-cover-name')) === 'Bong Store' && /^3 products · 3 photos$/.test(await p.textContent('#sp-cover-stats')) && await p.isVisible('#sp-verified'));
+  ok('...the name over the cover, with the verified tick; no counts there any more (they are on the buttons)', (await p.textContent('#sp-cover-name')) === 'Bong Store' && !(await p.$('#sp-cover-stats')) && await p.isVisible('#sp-verified'));
+  const acts = await p.evaluate(() => {
+    const av = document.getElementById('sp-avatar').getBoundingClientRect();
+    return Array.from(document.querySelectorAll('.sp-actions .sp-act')).map((b) => { const r = b.getBoundingClientRect(); const i = b.querySelector('.sp-act-icon').getBoundingClientRect();
+      return { id: b.id, label: b.querySelector('.sp-act-label').textContent.trim(), left: r.left, right: r.right, top: r.top, bottom: r.bottom, round: getComputedStyle(b.querySelector('.sp-act-icon')).borderRadius, iw: i.width, ih: i.height, besideLogo: r.left > av.right - 1 && r.top < av.bottom + 4 }; });
+  });
+  ok('...Products, Photos, Info and Share as round buttons with a word under each, in a row beside the logo', acts.map((a) => a.id).join() === 'sp-tab-products,sp-tab-photos,sp-more,sp-share'
+    && acts.every((a) => a.round === '50%' && a.iw >= 44 && Math.abs(a.iw - a.ih) < 1 && a.besideLogo && a.right <= 390) && acts.every((a, i) => i === 0 || (a.left >= acts[i - 1].right - 1 && Math.abs(a.top - acts[0].top) < 2)), acts);
+  ok('...Products and Photos carry their counts', acts[0].label.replace(/\s+/g, ' ') === '3 Products' && acts[1].label.replace(/\s+/g, ' ') === '3 Photos' && acts[2].label === 'Info' && acts[3].label === 'Share', acts.map((a) => a.label));
+  ok('...the old tab bar and "More info" link are gone', !(await p.$('.sp-tabs')) && !(await p.$('button.sp-more')));
   ok('...no name / place / "Open now" lines under the logo (owner, 1 Nov): the green dot says open', await p.isHidden('#sp-meta') && await p.evaluate(() => document.getElementById('sp-name').classList.contains('sr-only')) && await p.evaluate(() => !document.getElementById('sp-dot').classList.contains('is-closed')));
   ok('...the verified tick sits by the name on the cover', await p.evaluate(() => !!document.getElementById('sp-verified').closest('#sp-cover') && !document.getElementById('sp-verified').hidden));
-  ok('...the bio shows two lines, More info shows the rest and the details', await p.evaluate(() => { const b = document.getElementById('sp-bio'); return b.scrollHeight > b.clientHeight + 4; }) && await p.isHidden('#sp-info'));
+  ok('...the bio shows two lines; the details wait in the Info panel', await p.evaluate(() => { const b = document.getElementById('sp-bio'); return b.scrollHeight > b.clientHeight + 4; }) && await p.isHidden('#sp-info'));
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone.png' });
   await p.click('#sp-more');
-  ok('...tapping More info opens the whole bio, phone, delivery and payment', await p.isVisible('#sp-info') && /deliver to your door/.test(await p.textContent('#sp-bio-full')) && /73001111/.test(await p.textContent('#sp-info')) && (await p.textContent('#sp-more')) === 'Less info');
-  if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-more.png', fullPage: true });
-  await p.click('#sp-more');
+  await p.waitForTimeout(350);
+  const sh = await p.evaluate(() => { const d = document.getElementById('sp-sheet'); const r = d.getBoundingClientRect(); return { open: d.open, modal: d.matches(':modal'), bottom: Math.round(r.bottom), top: r.top, vh: innerHeight, w: r.width }; });
+  ok('Info: a panel slides up from the bottom with the whole bio, phone, delivery and payment', sh.open && sh.modal && Math.abs(sh.bottom - sh.vh) <= 1 && sh.top > 100 && /deliver to your door/.test(await p.textContent('#sp-bio-full')) && /73001111/.test(await p.textContent('#sp-info')) && /Bong Store/.test(await p.textContent('#sp-sheet-title')), sh);
+  if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-more.png' });
+  await p.click('#sp-sheet-close');
+  ok('...✕ closes it', await p.evaluate(() => !document.getElementById('sp-sheet').open));
+  await p.click('#sp-bio');
+  await p.waitForTimeout(300);
+  ok('...tapping the bio opens it too', await p.evaluate(() => document.getElementById('sp-sheet').open));
+  await p.mouse.click(195, 40);
+  await p.waitForTimeout(200);
+  ok('...and tapping outside the panel closes it', await p.evaluate(() => !document.getElementById('sp-sheet').open));
   g = await geo(p);
-  ok('...the tabs come straight after the bio, then the products', g.tabs.top > g.avatar.bottom && g.tabs.top - g.avatar.bottom < 200 && g.list.top > g.tabs.bottom, g);
+  ok('...the products come straight after the profile', g.list.top > g.avatar.bottom && g.list.top - g.avatar.bottom < 260, g);
   await p.click('#chat-fab');
   await p.waitForFunction(() => document.getElementById('chat-fab').getAttribute('aria-expanded') === 'true', null, { timeout: 8000 });
   ok('the round chat button still opens the chat with the store', true);
   await p.click('#chat-window-close');
-  ok('tabs: Products with the count is chosen first', /3 Products/.test(await p.textContent('#sp-tab-products')) && (await p.getAttribute('#sp-tab-products', 'aria-selected')) === 'true');
+  ok('Products is chosen first (highlighted)', (await p.getAttribute('#sp-tab-products', 'aria-pressed')) === 'true' && (await p.getAttribute('#sp-tab-photos', 'aria-pressed')) === 'false'
+    && await p.evaluate(() => getComputedStyle(document.querySelector('#sp-tab-products .sp-act-icon')).backgroundColor !== getComputedStyle(document.querySelector('#sp-tab-photos .sp-act-icon')).backgroundColor));
   await p.click('#sp-tab-photos');
   await p.waitForSelector('#store-photos:not([hidden]) a', { timeout: 5000 });
   const ph = await p.evaluate(() => ({ n: document.querySelectorAll('#store-photos a').length, cols: getComputedStyle(document.getElementById('store-photos')).gridTemplateColumns.split(' ').length,
     listHidden: getComputedStyle(document.getElementById('product-list')).display === 'none', href: document.querySelector('#store-photos a').getAttribute('href') }));
-  ok('Photos: every product picture, three across; the product list steps aside', ph.n === 3 && ph.cols === 3 && ph.listHidden && /product\.html\?store=bong&product=p1/.test(ph.href), ph);
+  ok('Photos: every product picture, three across; the product list steps aside; Photos is highlighted', (await p.getAttribute('#sp-tab-photos', 'aria-pressed')) === 'true' && ph.n === 3 && ph.cols === 3 && ph.listHidden && /product\.html\?store=bong&product=p1/.test(ph.href), ph);
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-photos.png' });
   await p.click('#sp-tab-products');
   ok('...and back to Products', await p.evaluate(() => getComputedStyle(document.getElementById('product-list')).display !== 'none' && document.getElementById('store-photos').hidden));

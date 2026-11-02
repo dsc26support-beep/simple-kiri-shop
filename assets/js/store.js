@@ -453,7 +453,6 @@ function renderStoreProfile(res) {
   }
   $p('sp-cover-name').textContent = name;
   const photos = profilePhotos();
-  $p('sp-cover-stats').textContent = `${currentProducts.length} product${currentProducts.length === 1 ? '' : 's'} · ${photos.length} photo${photos.length === 1 ? '' : 's'}`;
 
   if (res.storeLogoUrl) {
     const img = $p('sp-avatar-img');
@@ -500,14 +499,15 @@ function renderStoreProfile(res) {
     if (typeof wireSellerBadges === 'function') wireSellerBadges($p('sp-badges'));
   }
 
-  const more = $p('sp-more');
-  more.addEventListener('click', () => {
-    const show = more.getAttribute('aria-expanded') !== 'true';
-    more.setAttribute('aria-expanded', show ? 'true' : 'false');
-    more.textContent = show ? 'Less info' : 'More info';
-    $p('sp-info').hidden = !show;
-    bioEl.hidden = !bio || show;   // the full text is inside More info
-  });
+  // Info: the details panel slides up from the bottom (owner, 2 Nov 2026).
+  $p('sp-sheet-title').textContent = name;
+  const sheet = $p('sp-sheet');
+  const openSheet = () => { if (typeof sheet.showModal === 'function') sheet.showModal(); else sheet.setAttribute('open', ''); };
+  const closeSheet = () => { if (typeof sheet.close === 'function') sheet.close(); else sheet.removeAttribute('open'); };
+  $p('sp-more').addEventListener('click', openSheet);
+  bioEl.addEventListener('click', openSheet);   // the two-line bio leads to the whole of it
+  $p('sp-sheet-close').addEventListener('click', closeSheet);
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });   // the dimmed area outside the panel
 
   // The store's own seller, signed in on this phone: change the banner and logo here.
   wireOwnerProfileEdits(res);
@@ -528,11 +528,12 @@ function renderStoreProfile(res) {
 
   const tabP = $p('sp-tab-products');
   const tabF = $p('sp-tab-photos');
-  tabP.textContent = `${currentProducts.length} Products`;
-  tabF.textContent = `${photos.length} Photos`;
+  // The count on its own line above the word, so "120 Products" fits a small phone.
+  $p('sp-count-products').innerHTML = `<span class="sp-act-num">${currentProducts.length}</span> Product${currentProducts.length === 1 ? '' : 's'}`;
+  $p('sp-count-photos').innerHTML = `<span class="sp-act-num">${photos.length}</span> Photo${photos.length === 1 ? '' : 's'}`;
   const show = (photosTab) => {
-    tabP.setAttribute('aria-selected', photosTab ? 'false' : 'true');
-    tabF.setAttribute('aria-selected', photosTab ? 'true' : 'false');
+    tabP.setAttribute('aria-pressed', photosTab ? 'false' : 'true');
+    tabF.setAttribute('aria-pressed', photosTab ? 'true' : 'false');
     document.body.classList.toggle('sp-on-photos', photosTab);
     const grid = document.getElementById('store-photos');
     grid.hidden = !photosTab;

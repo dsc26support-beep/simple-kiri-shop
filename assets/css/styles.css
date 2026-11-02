@@ -9206,9 +9206,8 @@ form.search-box.is-pinned::before {
   .sp-back:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 1px; }
   .sp-cover-text { min-width: 0; }
   .sp-cover-name { margin: 0; font-size: 1.15rem; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
-  .sp-cover-stats { margin: 2px 0 0; min-height: 1.2em; font-size: 0.9rem; opacity: 0.95; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
 
-  .sp-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; height: 56px; padding: 0 var(--space-3); }
+  .sp-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-2); min-height: 62px; padding: 6px var(--space-3) 0; }
   .sp-avatar {
     position: relative; flex: none;
     width: 104px; height: 104px; margin-top: -52px;
@@ -9221,9 +9220,19 @@ form.search-box.is-pinned::before {
   .sp-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #fff; }
   .sp-dot { position: absolute; right: 4px; bottom: 6px; width: 18px; height: 18px; border: 3px solid var(--color-bg); border-radius: 50%; background: #2fbf59; }
   .sp-dot.is-closed { background: var(--color-muted-light); }
-  .sp-share { width: 48px; height: 48px; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-bg); color: var(--color-purple); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  /* Products, Photos, Info, Share: round icons with a word under each (owner, 2 Nov 2026). */
+  .sp-actions { display: flex; align-items: flex-start; justify-content: flex-end; gap: 4px; min-width: 0; }
+  .sp-act { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 52px; padding: 0 2px; border: 0; background: none; color: var(--color-ink); font: inherit; cursor: pointer; }
+  .sp-act-icon { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-bg); color: var(--color-purple); transition: background 0.15s ease, color 0.15s ease; }
+  .sp-act-label { font-size: 0.72rem; font-weight: 600; line-height: 1.15; white-space: nowrap; color: var(--color-muted); }
+  .sp-act-num { display: block; font-size: 0.8rem; font-weight: 700; color: var(--color-ink); }
+  .sp-act[aria-pressed="true"] .sp-act-icon { background: var(--color-purple); border-color: var(--color-purple); color: #fff; }
+  .sp-act[aria-pressed="true"] .sp-act-label { color: var(--color-ink); }
+  .sp-act:hover .sp-act-icon { border-color: var(--color-purple-pale); }
+  .sp-act:focus-visible { outline: none; }
+  .sp-act:focus-visible .sp-act-icon { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 
-  .sp-body { padding: var(--space-2) var(--space-3) 0; }
+  .sp-body { padding: var(--space-2) var(--space-3) var(--space-3); border-bottom: 8px solid var(--color-bg-alt); margin-bottom: var(--space-2); }
   .sp-name { display: flex; align-items: center; gap: 6px; margin: 0; min-height: 1.4em; font-size: 1.45rem; line-height: 1.25; overflow-wrap: anywhere; }
   .sp-verified { display: inline-flex; color: var(--color-purple); flex: none; }
   .sp-meta { margin: 4px 0 0; color: var(--color-muted); }
@@ -9237,14 +9246,27 @@ form.search-box.is-pinned::before {
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
   .sp-bio.is-empty { color: var(--color-muted); }
-  .sp-more { margin: 4px 0 0; padding: 6px 0; border: 0; background: none; color: var(--color-purple); font: inherit; font-weight: 600; cursor: pointer; }
-  .sp-info { padding: var(--space-2) 0 0; color: var(--color-ink); }
+  .sp-bio { cursor: pointer; }
+
+  /* Info: a panel that slides up from the bottom. */
+  .sp-sheet {
+    position: fixed; inset: auto 0 0 0; margin: 0 auto;
+    width: 100%; max-width: 640px; max-height: 80vh; overflow-y: auto;
+    padding: var(--space-3) var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    border: 0; border-radius: 18px 18px 0 0;
+    background: var(--color-bg); color: var(--color-ink);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
+  }
+  .sp-sheet[open] { animation: sp-sheet-up 0.22s ease-out; }
+  .sp-sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
+  @keyframes sp-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+  .sp-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
+  .sp-sheet-head h2 { margin: 0; font-size: 1.2rem; }
+  .sp-sheet-close { width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--color-bg-alt); font-size: 1.5rem; line-height: 1; cursor: pointer; color: var(--color-ink); }
+  .sp-info { color: var(--color-ink); }
   .sp-info p { margin: 0 0 var(--space-2); }
   .sp-bio-full { white-space: pre-line; overflow-wrap: anywhere; }
 
-  .sp-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-top: var(--space-3); border-top: 8px solid var(--color-bg-alt); border-bottom: 1px solid var(--color-border); }
-  .sp-tab { padding: 14px 8px; border: 0; border-bottom: 3px solid transparent; background: none; font: inherit; font-weight: 600; text-transform: uppercase; color: var(--color-muted); cursor: pointer; }
-  .sp-tab[aria-selected="true"] { color: var(--color-ink); border-bottom-color: var(--color-ink); }
 
   .sp-photos:not([hidden]) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
   .sp-photos a { display: block; aspect-ratio: 1; overflow: hidden; background: var(--color-bg-alt); }
@@ -9255,10 +9277,18 @@ form.search-box.is-pinned::before {
   body.sp-on-photos #store-badge-legend { display: none !important; }
 }
 
+/* Very small phones: a slightly smaller logo so the four buttons fit beside it. */
+@media (max-width: 359px) {
+  .sp-avatar { width: 88px; height: 88px; margin-top: -44px; }
+  .sp-act { min-width: 46px; }
+  .sp-act-icon { width: 42px; height: 42px; }
+}
+
 @media (min-width: 640px) and (max-width: 1023px) {
   .sp-cover { height: 220px; }
   .sp-avatar { width: 128px; height: 128px; margin-top: -64px; }
-  .sp-head { height: 72px; }
+  .sp-head { min-height: 72px; }
+  .sp-actions { gap: 14px; }
   /* Tablets have no bottom bar: Home and the cart join ⋮ on the cover. */
   .sp-cover-bar { padding-right: 160px; }
   .sp-cover .sp-home { display: inline-flex; right: calc(var(--space-2) + 88px); }
