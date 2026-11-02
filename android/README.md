@@ -10,9 +10,11 @@ Until someone runs it on a real phone with a SIM, treat sending, delivery report
 
 ## Install (sideload, not Google Play)
 
-1. GitHub → **Actions** → **Android app** → the latest green run → **Artifacts** →
-   download `mwakete-sms-N` and unzip it. Use `app-release.apk` if it is there,
-   otherwise `app-debug.apk`.
+1. On the phone, download https://github.com/dsc26support-beep/simple-kiri-shop/releases/download/android-latest/mwakete-sms.apk
+   (the newest build from main). Or: GitHub → **Actions** → **Android app** → a green run → **Artifacts** →
+   download `mwakete-sms-N` and unzip it to get `mwakete-sms.apk`.
+   If the phone says **App not installed**, uninstall any older Mwakete SMS first
+   (builds signed with different keys cannot replace each other).
 2. Copy the APK to the phone and open it. Android will ask to allow installs
    from that source (Files / Chrome) — allow it once.
 3. Open **Mwakete SMS**, allow SMS, phone and notification access.
