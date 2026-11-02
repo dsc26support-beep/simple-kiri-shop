@@ -36,7 +36,7 @@ code: what exists, what is reused, what is new, the risks and the plan.
 | Devices, SIMs, pairing, rotation, revocation, queue claim, result reports, usage | `SmsDevices.gs` + `SmsDevices`, `SmsPairCodes`, `SmsSims` |
 | Segment counting (GSM-7 / UCS-2) | `SmsCore.gs`, copied to the browser and mirrored in Kotlin; one test table checks all three agree |
 | Web dashboard | `owner/contacts.html`, `owner/sms.html` (+ admin view) |
-| Android app | `android/` (Kotlin, Room, WorkManager, SmsManager) |
+| Android app | `android/` (Kotlin, WorkManager, SmsManager; a small SharedPreferences store instead of Room - fewer dependencies) |
 | Sheets add-on | `sheets-addon/` (Apps Script) |
 
 ## 4. Owner decisions (30 Oct 2026)
@@ -65,3 +65,7 @@ code: what exists, what is reused, what is new, the risks and the plan.
 5. Integration tests, manuals, deploy steps, test report.
 
 All of it stays behind `CONTACTS_SMS`, so nothing changes for stores until it is switched on.
+
+## 7. Built (2 Nov 2026)
+
+Stages 1–6 are merged. Guide for stores and admins: [contacts-sms-guide.md](contacts-sms-guide.md). Deploy and go-live: [contacts-sms-deploy.md](contacts-sms-deploy.md). Test report (including what still needs a real phone): [contacts-sms-test-report.md](contacts-sms-test-report.md).
