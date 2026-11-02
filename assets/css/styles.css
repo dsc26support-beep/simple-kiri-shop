@@ -9156,6 +9156,10 @@ form.search-box.is-pinned::before {
   text-shadow: none;
 }
 .auth-page .auth-card .auth-reason-note a { color: #332d63; }
+/* Seller sign-up, wholesaler choice: the verification-call note is a pale
+   yellow box, so on the purple phone screen its text is dark purple, not the
+   white the rest of the form uses (owner request, 2 Nov 2026). */
+.auth-page .auth-card .wholesaler-note { color: #332d63; }
 
 /* Store page on phones and tablets: the store as a profile (owner request,
    Nov 2026) - cover, round logo over its edge, name, status, bio with "More
