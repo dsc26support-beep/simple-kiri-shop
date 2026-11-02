@@ -1,0 +1,213 @@
+<!doctype html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    body { font: 13px/1.45 Arial, sans-serif; color: #222; margin: 0; padding: 12px; }
+    h2 { font-size: 14px; color: #332d63; margin: 18px 0 6px; }
+    h2:first-of-type { margin-top: 4px; }
+    label { display: block; font-weight: bold; margin: 8px 0 3px; }
+    input[type=text], input[type=password], select, textarea { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #bbb; border-radius: 4px; font: inherit; }
+    textarea { min-height: 90px; }
+    button { background: #5b3fa0; color: #fff; border: 0; border-radius: 4px; padding: 8px 12px; font: inherit; font-weight: bold; cursor: pointer; margin: 8px 6px 0 0; }
+    button.secondary { background: #fff; color: #5b3fa0; border: 1px solid #5b3fa0; }
+    button:disabled { opacity: .5; cursor: default; }
+    .note { color: #555; font-size: 12px; }
+    .ok { color: #1b6e33; }
+    .err { color: #b00020; }
+    .box { background: #f5f2fb; border-radius: 6px; padding: 8px; margin-top: 8px; }
+    .check label { display: inline; font-weight: normal; }
+    hr { border: 0; border-top: 1px solid #ddd; margin: 16px 0; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="loading" class="note">Loading…</div>
+
+  <!-- Not connected -->
+  <div id="connect" hidden>
+    <h2>Connect your store</h2>
+    <p class="note">On Mwakete.com open <b>SMS › Settings › Google Sheets add-on</b>, press <b>Make a key</b> and paste it here. The key stays with your Google account, not in this sheet.</p>
+    <label for="key">Add-on key</label>
+    <input id="key" type="password" autocomplete="off">
+    <button id="connect-btn">Connect</button>
+    <p id="connect-msg" class="err" role="alert"></p>
+  </div>
+
+  <!-- Connected -->
+  <div id="main" hidden>
+    <p class="note"><span class="ok">Connected</span> · <span id="contact-count">0</span> contact(s) · <a href="#" id="disconnect">Disconnect</a></p>
+
+    <h2>Contacts</h2>
+    <button id="pull-btn">Get my contacts</button>
+    <p class="note">Puts them in the “Mwakete contacts” sheet (replaced each time).</p>
+
+    <label>Add the rows of the sheet you are on</label>
+    <p class="note">Row 1 must be headers such as First name, Last name, Phone, Island, Village, Email, Category.</p>
+    <div class="check"><input type="checkbox" id="imp-update"> <label for="imp-update">Fill in missing details of people already in my contacts</label></div>
+    <button id="preview-btn" class="secondary">Check rows</button>
+    <div id="preview" class="box" hidden></div>
+    <div id="apply-opts" hidden>
+      <label for="imp-group">Also add them to a group (optional)</label>
+      <select id="imp-group"></select>
+      <div class="check" style="margin-top:8px"><input type="checkbox" id="imp-consent"> <label for="imp-consent">These people agreed to receive promotions</label></div>
+      <div id="consent-src-wrap" hidden>
+        <label for="imp-consent-src">How did they agree?</label>
+        <input id="imp-consent-src" type="text" maxlength="120" placeholder="e.g. sign-up sheet at the shop, Oct 2026">
+      </div>
+      <button id="apply-btn">Add these contacts</button>
+    </div>
+    <p id="contacts-msg" role="status"></p>
+
+    <hr>
+    <h2>Draft a campaign</h2>
+    <p class="note">Saved as a draft. You check it and press <b>Start</b> on Mwakete.com - the add-on can never send.</p>
+    <label for="c-name">Name</label>
+    <input id="c-name" type="text" maxlength="80" placeholder="e.g. Christmas rice offer">
+    <label for="c-kind">Type</label>
+    <select id="c-kind"></select>
+    <label for="c-template">Start from a template (optional)</label>
+    <select id="c-template"></select>
+    <label for="c-body">Message</label>
+    <textarea id="c-body" maxlength="2000"></textarea>
+    <p class="note">You can use {first_name}, {last_name}, {business_name}, {island}, {village} - and a fallback like {first_name|friend}.</p>
+    <label for="c-to">Send to</label>
+    <select id="c-to"></select>
+    <button id="estimate-btn" class="secondary">Check</button>
+    <button id="save-btn" disabled>Save draft</button>
+    <div id="estimate" class="box" hidden></div>
+    <p id="campaign-msg" role="status"></p>
+
+    <hr>
+    <h2>Campaign results</h2>
+    <select id="results-campaign"></select>
+    <button id="results-btn" class="secondary">Put results in a sheet</button>
+    <p id="results-msg" role="status"></p>
+  </div>
+
+<script>
+var state = {};
+var $ = function (id) { return document.getElementById(id); };
+function say(id, text, bad) { var el = $(id); el.textContent = text || ''; el.className = bad ? 'err' : 'ok'; }
+function busy(btn, on) { btn.disabled = on; }
+function run(fn, args, done, failId, btn) {
+  if (btn) busy(btn, true);
+  var r = google.script.run
+    .withSuccessHandler(function (res) { if (btn) busy(btn, false); done(res); })
+    .withFailureHandler(function (err) {
+      if (btn) busy(btn, false);
+      var msg = (err && err.message) || String(err);
+      if (failId) say(failId, msg, true);
+      if (fn === 'mwkStatus') { $('loading').hidden = true; $('connect').hidden = false; $('main').hidden = true; return; }
+      if (/Connect first|key is not valid/.test(msg)) load();
+    });
+  r[fn].apply(r, args || []);
+}
+function option(value, text) { var o = document.createElement('option'); o.value = value; o.textContent = text; return o; }
+
+function load() {
+  $('loading').hidden = false;
+  run('mwkStatus', [], function (s) {
+    state = s;
+    $('loading').hidden = true;
+    $('connect').hidden = s.connected;
+    $('main').hidden = !s.connected;
+    if (s.connected) fill(s);
+  }, 'connect-msg');
+}
+
+function fill(s) {
+  $('contact-count').textContent = s.contacts;
+  var g = $('imp-group'); g.innerHTML = ''; g.appendChild(option('', 'No group'));
+  s.groups.forEach(function (x) { g.appendChild(option(x.groupId, x.name + ' (' + x.members + ')')); });
+  var k = $('c-kind'); k.innerHTML = '';
+  s.kinds.forEach(function (x) { k.appendChild(option(x.id, x.label)); });
+  var t = $('c-template'); t.innerHTML = ''; t.appendChild(option('', '-'));
+  s.templates.forEach(function (x, i) { t.appendChild(option(String(i), x.name)); });
+  var to = $('c-to'); to.innerHTML = '';
+  s.groups.forEach(function (x) { to.appendChild(option('group:' + x.groupId, 'Group: ' + x.name + ' (' + x.members + ')')); });
+  to.appendChild(option('all', 'All my contacts'));
+  to.appendChild(option('selected', 'Rows I selected in “Mwakete contacts”'));
+  var rc = $('results-campaign'); rc.innerHTML = '';
+  s.campaigns.forEach(function (x) { rc.appendChild(option(x.campaignId, x.name + ' - ' + x.statusLabel)); });
+  if (!s.campaigns.length) rc.appendChild(option('', 'No campaigns yet'));
+}
+
+function spec() {
+  var to = $('c-to').value;
+  return { name: $('c-name').value, kind: $('c-kind').value, body: $('c-body').value,
+    to: to.indexOf('group:') === 0 ? 'group' : to, groupId: to.indexOf('group:') === 0 ? to.slice(6) : '' };
+}
+
+$('connect-btn').onclick = function () {
+  say('connect-msg', '');
+  run('mwkConnect', [$('key').value], function () { $('key').value = ''; load(); }, 'connect-msg', $('connect-btn'));
+};
+$('disconnect').onclick = function (e) { e.preventDefault(); run('mwkDisconnect', [], load); };
+
+$('pull-btn').onclick = function () {
+  say('contacts-msg', 'Getting your contacts…');
+  run('mwkPullContacts', [], function (r) { say('contacts-msg', r.count + ' contact(s) are in the “Mwakete contacts” sheet.'); }, 'contacts-msg', $('pull-btn'));
+};
+
+var LABELS = { 'new': 'new', update: 'to update', duplicate: 'already in your contacts (skipped)', repeat: 'repeated in this sheet (skipped)', invalid: 'with no usable phone number (skipped)' };
+$('preview-btn').onclick = function () {
+  say('contacts-msg', '');
+  $('apply-opts').hidden = true;
+  run('mwkPreviewImport', [{ onDuplicate: $('imp-update').checked ? 'update' : 'skip' }], function (p) {
+    var box = $('preview'); box.hidden = false; box.textContent = '';
+    var head = document.createElement('p'); head.textContent = '“' + p.sheetName + '”: ' + p.total + ' row(s).'; box.appendChild(head);
+    Object.keys(p.counts).forEach(function (k) { var li = document.createElement('div'); li.textContent = p.counts[k] + ' ' + (LABELS[k] || k); box.appendChild(li); });
+    p.problems.forEach(function (x) { var d = document.createElement('div'); d.className = 'note'; d.textContent = 'Row ' + x.line + ': ' + (x.note || x.action); box.appendChild(d); });
+    $('apply-opts').hidden = !((p.counts['new'] || 0) + (p.counts.update || 0));
+  }, 'contacts-msg', $('preview-btn'));
+};
+$('imp-consent').onchange = function () { $('consent-src-wrap').hidden = !this.checked; };
+$('apply-btn').onclick = function () {
+  if ($('imp-consent').checked && $('imp-consent-src').value.trim().length < 3) { say('contacts-msg', 'Say how these people agreed to promotions.', true); return; }
+  run('mwkApplyImport', [{ onDuplicate: $('imp-update').checked ? 'update' : 'skip', groupId: $('imp-group').value,
+    consentPromotional: $('imp-consent').checked, consentSource: $('imp-consent-src').value }], function (r) {
+    say('contacts-msg', r.added + ' added, ' + r.updated + ' updated, ' + (r.skipped + r.invalid) + ' skipped.' + (r.full ? ' Your contact list is full.' : ''));
+    $('apply-opts').hidden = true; $('preview').hidden = true;
+    load();
+  }, 'contacts-msg', $('apply-btn'));
+};
+
+$('c-template').onchange = function () {
+  var t = state.templates[Number(this.value)];
+  if (t) { $('c-body').value = t.body; if (t.kind) $('c-kind').value = t.kind; }
+};
+['c-name', 'c-kind', 'c-body', 'c-to'].forEach(function (id) { $(id).addEventListener('input', function () { $('save-btn').disabled = true; }); });
+$('estimate-btn').onclick = function () {
+  say('campaign-msg', '');
+  run('mwkEstimate', [spec()], function (e) {
+    var box = $('estimate'); box.hidden = false; box.textContent = '';
+    var p = document.createElement('p'); p.textContent = e.recipients + ' people · about ' + e.segments + ' SMS from your SIM.'; box.appendChild(p);
+    var skipped = Object.keys(e.skipped).filter(function (k) { return e.skipped[k]; }).map(function (k) { return e.skipped[k] + ' ' + k.replace(/_/g, ' '); });
+    if (skipped.length) { var s = document.createElement('div'); s.className = 'note'; s.textContent = 'Not sent to: ' + skipped.join(', '); box.appendChild(s); }
+    if (e.previews[0]) { var pv = document.createElement('div'); pv.className = 'note'; pv.textContent = 'e.g. to ' + e.previews[0].name + ': “' + e.previews[0].text + '”'; box.appendChild(pv); }
+    if (e.tooMany) { var w = document.createElement('div'); w.className = 'err'; w.textContent = 'Too many people for one campaign (at most ' + e.maxRecipients + ').'; box.appendChild(w); }
+    $('save-btn').disabled = !e.recipients || e.tooMany;
+  }, 'campaign-msg', $('estimate-btn'));
+};
+$('save-btn').onclick = function () {
+  run('mwkSaveDraft', [spec()], function (r) {
+    var el = $('campaign-msg'); el.className = 'ok'; el.textContent = 'Draft “' + r.name + '” saved. ';
+    var a = document.createElement('a'); a.href = r.approveUrl; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Check and start it on Mwakete.com';
+    el.appendChild(a);
+    $('save-btn').disabled = true;
+    load();
+  }, 'campaign-msg', $('save-btn'));
+};
+
+$('results-btn').onclick = function () {
+  var id = $('results-campaign').value;
+  if (!id) return;
+  run('mwkCampaignResults', [id], function (r) { say('results-msg', r.count + ' row(s) in the “' + r.sheetName + '” sheet.'); }, 'results-msg', $('results-btn'));
+};
+
+load();
+</script>
+</body>
+</html>
