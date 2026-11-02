@@ -92,8 +92,9 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     const { ctx, p } = await open(390, page);
     const c = await p.evaluate(() => { const card = document.querySelector('.auth-card'), lab = card.querySelector('label'), inp = card.querySelector('input:not([type=hidden])');
       const tab = card.querySelector('.auth-tab.is-active, .auth-tab[aria-selected="true"]');
-      return { bg: getComputedStyle(card).backgroundColor, border: getComputedStyle(card).borderTopWidth, label: getComputedStyle(lab).color,
-        tab: tab ? getComputedStyle(tab).color : 'rgb(255, 255, 255)', input: getComputedStyle(inp).backgroundColor }; });
+      // A page with no fields (the retired store-password reset page) only has the card to check.
+      return { bg: getComputedStyle(card).backgroundColor, border: getComputedStyle(card).borderTopWidth, label: lab ? getComputedStyle(lab).color : 'rgb(255, 255, 255)',
+        tab: tab ? getComputedStyle(tab).color : 'rgb(255, 255, 255)', input: inp ? getComputedStyle(inp).backgroundColor : 'rgb(255, 255, 255)' }; });
     ok(`${page} 390px: no grey card - the form stands on the purple, labels and tab in white, boxes white`,
       c.bg === 'rgba(0, 0, 0, 0)' && c.border === '0px' && c.label === 'rgb(255, 255, 255)' && c.tab === 'rgb(255, 255, 255)' && c.input === 'rgb(255, 255, 255)', J(c));
     await ctx.close();
@@ -150,8 +151,8 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
   }
   {
     const { ctx, p } = await open(1366, 'owner/login.html');
-    const v = await p.evaluate(() => ({ user: !!document.querySelector('input[type="password"]'), focusable: !!document.querySelector('form button[type="submit"]') }));
-    ok('Seller page: username/password form still there', v.user && v.focusable, J(v));
+    const v = await p.evaluate(() => ({ password: !!document.querySelector('input[type="password"]'), signin: !!document.getElementById('login-signin-link') && !document.getElementById('login-signin').hidden }));
+    ok('Seller page: one Mwakete-account sign-in beside the panel, no store password field (2 Nov 2026)', !v.password && v.signin, J(v));
     await ctx.close();
   }
 

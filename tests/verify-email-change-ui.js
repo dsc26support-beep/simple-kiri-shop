@@ -53,7 +53,7 @@ const OWNER = {
     const page = await ctx.newPage();
     await page.addInitScript(() => {
       if (window.__s) return; window.__s = 1;
-      try { localStorage.setItem('skiri_owner_token', 'tok'); } catch (e) {}
+      try { localStorage.setItem('skiri_owner_token', 'tok'); localStorage.setItem('skiri_customer_token', 'ct'); } catch (e) {}
     });
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
@@ -100,30 +100,25 @@ const OWNER = {
     const { ctx, page, posted } = await open();
     await page.click('#email-change-btn');
     ok('step one opens', await page.locator('#email-change-block').isVisible());
-    ok('and asks for a password', await page.evaluate(() =>
-      document.getElementById('email-change-password').type === 'password'));
+    ok('and asks for no store password (retired 2 Nov 2026)', await page.evaluate(() =>
+      !document.getElementById('email-change-password')));
 
     // Neither field may be skipped, and neither check may cost a round trip.
     await page.click('#email-change-send');
     await page.waitForTimeout(200);
     ok('an empty address is caught in the page', /Enter the new email/i.test(
       await page.textContent('#email-change-error')));
-    await page.fill('#email-change-new', 'new@example.com');
-    await page.click('#email-change-send');
-    await page.waitForTimeout(200);
-    ok('a missing password is caught too', /Enter your password/i.test(
-      await page.textContent('#email-change-error')));
-    ok('and neither reached the backend',
+    ok('and it did not reach the backend',
       !posted.some((b) => b.action === 'requestEmailChange'));
 
-    await page.fill('#email-change-password', 'hunter2hunter2');
+    await page.fill('#email-change-new', 'new@example.com');
     await page.click('#email-change-send');
     await page.waitForSelector('#email-confirm-block:not([hidden])', { timeout: 5000 });
 
     const req = posted.filter((b) => b.action === 'requestEmailChange')[0];
-    ok('the request carries the new address and the password',
-      req && req.email === 'new@example.com' && req.password === 'hunter2hunter2',
-      req && JSON.stringify({ email: req.email, hasPassword: !!req.password }));
+    ok('the request carries the new address and the Mwakete account session',
+      req && req.email === 'new@example.com' && req.customerToken === 'ct' && !('password' in req),
+      req && JSON.stringify({ email: req.email, customerToken: req.customerToken }));
     ok('step one closes when step two opens',
       await page.evaluate(() => document.getElementById('email-change-block').hidden === true));
     const hint = await page.textContent('#email-confirm-hint');
@@ -161,14 +156,13 @@ const OWNER = {
 
   // ---- the backend refusing is shown, and changes nothing -----------------
   {
-    const { ctx, page } = await open({ requestReply: { ok: false, error: 'That password is not right' } });
+    const { ctx, page } = await open({ requestReply: { ok: false, error: 'Sign in again with your Mwakete account, then try once more.' } });
     await page.click('#email-change-btn');
     await page.fill('#email-change-new', 'new@example.com');
-    await page.fill('#email-change-password', 'wrong');
     await page.click('#email-change-send');
     await page.waitForTimeout(600);
-    ok('a refused password is shown to the seller',
-      /not right/.test(await page.textContent('#email-change-error')),
+    ok('a refusal is shown to the seller',
+      /Mwakete account/.test(await page.textContent('#email-change-error')),
       await page.textContent('#email-change-error'));
     ok('and step two never opens',
       await page.evaluate(() => document.getElementById('email-confirm-block').hidden === true));
@@ -180,7 +174,6 @@ const OWNER = {
     const { ctx, page } = await open({ confirmReply: { ok: false, error: 'That code is not right' } });
     await page.click('#email-change-btn');
     await page.fill('#email-change-new', 'new@example.com');
-    await page.fill('#email-change-password', 'hunter2hunter2');
     await page.click('#email-change-send');
     await page.waitForSelector('#email-confirm-block:not([hidden])', { timeout: 5000 });
     await page.fill('#email-confirm-code', '000000');
@@ -199,15 +192,13 @@ const OWNER = {
     const { ctx, page } = await open();
     await page.click('#email-change-btn');
     await page.fill('#email-change-new', 'new@example.com');
-    await page.fill('#email-change-password', 'hunter2hunter2');
     await page.click('#email-change-cancel');
     ok('cancel closes the block', await page.evaluate(() =>
       document.getElementById('email-change-block').hidden === true));
     ok('the change button comes back', await page.locator('#email-change-btn').isVisible());
     await page.click('#email-change-btn');
-    ok('and the password is not left sitting in the form', await page.evaluate(() =>
-      document.getElementById('email-change-password').value === ''
-      && document.getElementById('email-change-new').value === ''));
+    ok('and the address is not left sitting in the form', await page.evaluate(() =>
+      document.getElementById('email-change-new').value === ''));
     await ctx.close();
   }
 

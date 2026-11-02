@@ -1,11 +1,10 @@
 /**
  * Owner request, Oct 2026, in the browser against the REAL backend
  * (gas-harness behind every API call):
- *  - Register Store asks for a required password hint; the login page shows
- *    it after a wrong password; Settings changes it; the Dashboard reminds
- *    older stores that have none;
- *  - a seller opening Messages from an email while logged out logs in and
- *    lands back on Messages (not the Dashboard);
+ *  - one sign-in (2 Nov 2026): Register Store asks for no store username,
+ *    password or hint; Settings and the Dashboard no longer mention them;
+ *  - a seller opening Messages from an email with no store session goes via
+ *    their Mwakete account and lands back on Messages (not the Dashboard);
  *  - a customer opening Messages from an email signs in first, and then sees
  *    their account's chats on this phone.
  */
@@ -53,71 +52,36 @@ const call = (b) => { try { return box.doPost({ postData: { contents: b } }).s; 
     return { ctx, p };
   };
 
-  /* ---------- Register Store: hint required ---------- */
-  // A store is an application from a signed-in shopper account (Oct 2026).
+  /* ---------- Register Store: no username, password or hint (one sign-in, 2 Nov 2026) ---------- */
+  // A store is opened from a signed-in Mwakete account (Oct 2026).
   let { ctx, p } = await ctxFor({ skiri_customer_token: 'c-bong', skiri_customer_profile: JSON.stringify({ customerId: 'cus_b', name: 'Bong', email: 'bong@x.test', emailVerified: true }) });
   await p.goto(BASE + '/owner/login.html?tab=register', { waitUntil: 'load' });
+  await p.waitForTimeout(800);
+  ok('Register Store asks for no store username, password or hint', await p.evaluate(() => !document.querySelector('#register-username, #register-password, #register-password-hint')));
   await p.click('#tab-register');
-  ok('Register Store has a required "Password hint" field', await p.evaluate(() => { const i = document.getElementById('register-password-hint'); return !!i && i.required && /Password hint/.test(document.querySelector('label[for="register-password-hint"]').textContent); }));
-  const fill = async (hint) => {
-    await p.fill('#register-store-name', 'Bong Store'); await p.fill('#register-username', 'bong'); await p.fill('#register-password', 'coconut99');
-    await p.fill('#register-password-hint', hint); await p.fill('#register-about', 'Rice and flour'); await p.fill('#register-phone', '73001234');
-    await p.fill('#register-messenger', 'bong.store');
-    await p.evaluate(() => { const f = document.getElementById('register-form'); f.noValidate = true; });
-    await p.click('#register-submit-btn');
-    await p.waitForTimeout(500);
-  };
-  await fill('my coconut99');
-  ok('a hint that contains the password is stopped before sending', /must not contain the password/.test(await p.textContent('#register-error')), await p.textContent('#register-error'));
-  await fill('favourite fruit');
-  await p.waitForSelector('#register-sent:not([hidden])', { timeout: 8000 }).catch(() => {});
-  ok('a good hint registers the store', box.__sheets.Owners.objects()[0] && box.__sheets.Owners.objects()[0].PasswordHint === 'favourite fruit', p.url());
-  // An admin approves it (SellerApplications.gs) before the seller can log in.
-  { const g = box.__sheets.Owners.grid; g[1][g[0].indexOf('ApprovalStatus')] = 'approved'; }
+  await p.fill('#register-store-name', 'Bong Store'); await p.fill('#register-about', 'Rice and flour'); await p.fill('#register-phone', '73001234');
+  await p.fill('#register-messenger', 'bong.store');
+  await p.click('#register-submit-btn');
+  await p.waitForURL(/settings\.html/, { timeout: 8000 }).catch(() => {});
+  ok('the store opens and the seller goes on to Settings', !!box.__sheets.Owners.objects()[0] && /owner\/settings\.html/.test(p.url()), p.url());
+  ok('...with no password form in Settings', await p.evaluate(() => !document.getElementById('password-form') && !document.querySelector('input[type="password"]')));
   await ctx.close();
 
-  /* ---------- Login: hint after a wrong password ---------- */
-  ({ ctx, p } = await ctxFor());
-  await p.goto(BASE + '/owner/login.html', { waitUntil: 'load' });
-  ok('no hint shown before trying', await p.locator('#login-password-hint').isHidden());
-  await p.fill('#login-username', 'bong'); await p.fill('#login-password', 'wrong-one');
-  await p.click('#login-submit-btn');
-  await p.waitForSelector('#login-password-hint:not([hidden])', { timeout: 6000 }).catch(() => {});
-  ok('after a wrong password the seller sees their hint', (await p.textContent('#login-password-hint')).trim() === 'Your password hint: favourite fruit', await p.textContent('#login-password-hint'));
-  await ctx.close();
-
-  /* ---------- Seller email link: log in, back to Messages ---------- */
-  ({ ctx, p } = await ctxFor());
+  /* ---------- Seller email link: signed in to the account, back to Messages ---------- */
+  ({ ctx, p } = await ctxFor({ skiri_customer_token: 'c-bong', skiri_customer_profile: JSON.stringify({ customerId: 'cus_b', name: 'Bong', email: 'bong@x.test', emailVerified: true }) }));
   await p.goto(BASE + '/owner/messages.html?from=email', { waitUntil: 'load' });
-  await p.waitForURL(/login\.html/, { timeout: 8000 });
-  ok('logged out, the email link goes to Log In (not Register), remembering Messages', /login\.html\?next=messages\.html$/.test(p.url()) && await p.locator('#login-form').isVisible(), p.url());
-  await p.fill('#login-username', 'bong'); await p.fill('#login-password', 'coconut99');
-  await p.click('#login-submit-btn');
-  await p.waitForURL(/\/owner\/messages\.html/, { timeout: 8000 }).catch(() => {});
-  ok('after logging in the seller lands on Messages', /\/owner\/messages\.html$/.test(p.url()), p.url());
+  await p.waitForURL(/\/owner\/messages\.html$/, { timeout: 10000 }).catch(() => {});
+  ok('no store session on this phone: the email link goes via the account and lands on Messages', /\/owner\/messages\.html$/.test(p.url()), p.url());
   const sellerToken = await p.evaluate(() => localStorage.getItem('skiri_owner_token'));
+  ok('...holding a real store session', !!sellerToken && !!box.__sheets.Sessions.objects().find((x) => x.Token === sellerToken));
   await p.goto(BASE + '/owner/messages.html?from=email', { waitUntil: 'load' });
   await p.waitForTimeout(800);
-  ok('already logged in, the email link opens Messages directly', /\/owner\/messages\.html\?from=email$/.test(p.url()), p.url());
+  ok('already in, the email link opens Messages directly', /\/owner\/messages\.html\?from=email$/.test(p.url()), p.url());
 
-  /* ---------- Dashboard reminder + Settings ---------- */
+  /* ---------- Dashboard: no password-hint reminder any more ---------- */
   await p.goto(BASE + '/owner/dashboard.html', { waitUntil: 'load' });
   await p.waitForTimeout(1500);
-  ok('a store with a hint gets no reminder', !/Add a password hint/.test(await p.textContent('#dash-alerts')));
-  const grid = box.__sheets.Owners.grid; grid[1][grid[0].indexOf('PasswordHint')] = '';
-  await p.goto(BASE + '/owner/dashboard.html', { waitUntil: 'load' });
-  await p.waitForFunction(() => /Add a password hint/.test(document.getElementById('dash-alerts').textContent), null, { timeout: 8000 }).catch(() => {});
-  ok('an older store without a hint is reminded on the Dashboard', /Add a password hint/.test(await p.textContent('#dash-alerts')),
-    JSON.stringify(await p.evaluate(() => [Auth.getOwner() && Auth.getOwner().hasPasswordHint, document.getElementById('dash-alerts').textContent.slice(0, 120)])));
-  ok('...linking to the password part of Settings', await p.evaluate(() => !!document.querySelector('#dash-alerts a[href="settings.html#password-form"]')));
-  await p.goto(BASE + '/owner/settings.html', { waitUntil: 'load' });
-  await p.waitForSelector('#password-hint', { timeout: 8000 });
-  await p.fill('#password-hint', 'my first boat');
-  ok('typing only a hint asks for the current password', await p.locator('#hint-current-password').isVisible());
-  await p.fill('#hint-current-password', 'coconut99');
-  await p.click('#password-form button[type="submit"]');
-  await p.waitForTimeout(800);
-  ok('the hint is saved', box.__sheets.Owners.objects()[0].PasswordHint === 'my first boat' && /hint updated/i.test(await p.textContent('#password-success')), await p.textContent('#password-error'));
+  ok('the Dashboard never asks for a password hint', !/password hint/i.test(await p.textContent('#dash-alerts')));
   await ctx.close();
 
   /* ---------- Customer email link ---------- */

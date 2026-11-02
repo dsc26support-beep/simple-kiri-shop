@@ -61,9 +61,6 @@ const backToList = async (pg) => { if (await pg.locator('#cancel-product-btn').i
     ok('switching back hides it again', await pg.locator('#wholesaler-note').isHidden());
     await pg.check('input[name="storeType"][value="wholesaler"]');
     await pg.fill('#register-store-name', 'Bulk Foods');
-    await pg.fill('#register-username', 'bulkfoods');
-    await pg.fill('#register-password', 'longpassword1');
-    await pg.fill('#register-password-hint', 'my usual one');
     await pg.fill('#register-about', 'Rice in bulk');
     await pg.fill('#register-phone', '73012345');
     await pg.fill('#register-messenger', 'bulk.foods');
