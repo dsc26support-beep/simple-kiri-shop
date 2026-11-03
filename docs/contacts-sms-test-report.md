@@ -9,7 +9,7 @@ Date: 2 Nov 2026. All counts below are from runs on that day. **Simulated** mean
 | `tests/test-contacts-sms.js` | Backend through `doPost`, on the real `.gs` code. Includes: the feature switch; contacts and validation; isolation between stores; import; duplicates and merge; templates; pairing; SIMs; estimate, draft, approve; a simulated phone taking and reporting messages; pause and cancel; SIM removed; quiet hours and limits; scheduled start; opt-outs; usage; add-on key permissions; export; revoke; admin. | 106/106 |
 | `tests/test-sheets-addon.js` | The **add-on's own code** against an in-memory spreadsheet, with every request going into the real backend. Covers connecting, preview and import, consent needing a source, formula-safe cells, drafts only, results, and a revoked key being forgotten. | 38/38 |
 | `tests/test-sms-integration.js` | **Android contract**: the Kotlin source is read, and every action, field, status, error word and STOP word must match the backend. **Journey**: Sheet → Mwakete.com → simulated phone → STOP → retry → results in the Sheet, then isolation and a revoked phone. | 36/36 |
-| `tests/verify-contacts-sms-ui.js` | Mwakete.com Contacts and SMS pages in Chromium (Playwright), against the real backend code. | 47/47 |
+| `tests/verify-contacts-sms-ui.js` | Mwakete.com Contacts and SMS pages and the admin section (campaigns and cancel, phones, places) in Chromium (Playwright), against the real backend code. | 54/54 (3 Nov) |
 | `android/sms-core` JUnit (CI) | The shared rules in Kotlin: segments, phone numbers, templates, STOP words, quiet hours, batch size, per-part results. Checked against the same `tests/sms-core-cases.json` as the backend and website. | Green: Actions → Android app, runs 1–6 |
 | Same rules, run with the local Kotlin compiler | As above, run in this sandbox. | 38/38 cases, 17/17 rules |
 | Android build (CI) | `:app:assembleDebug`; the APK is checked with `aapt2` and `apksigner`: min SDK 24, not test-only, v2 signature verifies. | Green; published as build 6 |
@@ -50,4 +50,3 @@ These also fail on `main` without any of this work:
 - **Sheet scale.** One Google Sheet holds every store's contacts and messages. That is fine for thousands of rows; sustained tens of thousands of messages a day would need a real database.
 - **No push to phones.** A pause or cancel reaches a phone at its next check-in. Phones take small batches (default 50) to limit what an offline phone can still send.
 - **Debug signing.** Each new app build means uninstall, reinstall and reconnect, until a release key is set.
-- **Three admin actions have no button yet**: cancel one campaign, list all phones, edit places. They exist in the backend. Suspending a store is the emergency stop until then.

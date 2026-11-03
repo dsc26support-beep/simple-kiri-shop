@@ -258,10 +258,52 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await p.click('#asm-stores [data-act="contacts"]');
   await p.waitForSelector('#asm-contacts:not([hidden])', { timeout: 10000 });
   ok('...with a reason it shows them, and the view is audited with the reason', /Teraoi/.test(await p.textContent('#asm-contacts')) && rows('Audit_Log').some((a) => a.Action === 'SMS_ADMIN_VIEWED_CONTACTS' && /complaint/.test(a.Reason)));
+  // Campaigns still sending, each with an emergency Cancel (reason audited).
+  await p.click('#asm-stores [data-act="campaigns"]');
+  await p.waitForSelector('#asm-campaigns [data-cancel]', { timeout: 10000 });
+  ok('admin: a store\'s campaigns still sending - names and counts, no message text',
+    /Week sale/.test(await p.textContent('#asm-campaigns')) && /Queued/.test(await p.textContent('#asm-campaigns')) && !/Mauri|Reply STOP/i.test(await p.textContent('#asm-campaigns')), await p.textContent('#asm-campaigns'));
+  prompts.push('short');
+  await p.click('#asm-campaigns [data-cancel]');
+  await sleep(400);
+  ok('...cancelling one needs a real reason', rows('SmsCampaigns')[0].Status === 'queued');
+  prompts.push('Customer reports unwanted promotions, case 77');
+  await p.click('#asm-campaigns [data-cancel]');
+  await p.waitForFunction(() => /Nothing is sending/.test(document.getElementById('asm-campaigns').textContent), null, { timeout: 10000 });
+  ok('...with a reason it is cancelled, audited, and leaves the list', rows('SmsCampaigns')[0].Status === 'cancelled' &&
+    rows('Audit_Log').some((a) => a.Action === 'SMS_ADMIN_CANCELLED_CAMPAIGN' && /case 77/.test(a.Reason)));
+  // Phones, loaded when the section opens.
+  await p.click('#asm-phones-box summary');
+  await p.waitForFunction(() => /Shop Samsung/.test(document.getElementById('asm-phones').textContent), null, { timeout: 10000 });
+  ok('admin: every phone with its store, model and versions', /Bong Store/.test(await p.textContent('#asm-phones')) && /Samsung A15/.test(await p.textContent('#asm-phones')) && /14/.test(await p.textContent('#asm-phones')));
+  // Places.
+  await p.click('#asm-places-box summary');
+  await p.waitForFunction(() => /None added yet/.test(document.getElementById('asm-places').textContent), null, { timeout: 10000 });
+  await p.fill('#asm-p-island', 'Banaba');
+  await p.fill('#asm-p-village', 'Tabiang');
+  await p.click('#asm-place-form button[type="submit"]');
+  await p.waitForFunction(() => /Tabiang, Banaba/.test(document.getElementById('asm-places').textContent), null, { timeout: 10000 });
+  ok('admin: a place is added', rows('GeoPlaces').some((g) => g.Village === 'Tabiang' && g.Status === 'active'));
+  await p.fill('#asm-p-island', 'Kanton');
+  await p.fill('#asm-p-village', 'Kanton Village');
+  await p.click('#asm-place-form button[type="submit"]');
+  await p.waitForFunction(() => /Kanton Village/.test(document.getElementById('asm-places').textContent), null, { timeout: 10000 });
+  await p.click('#asm-places li:last-child [data-remove]');
+  await p.waitForFunction(() => !/Kanton Village/.test(document.getElementById('asm-places').textContent), null, { timeout: 10000 });
+  ok('...and one can be removed (kept on the sheet as deleted)', rows('GeoPlaces').some((g) => g.Village === 'Kanton Village' && g.Status === 'deleted'));
   prompts.push('Spam complaints from customers this week');
   await p.click('#asm-stores [data-act="suspend"]');
   await p.waitForFunction(() => /Suspended/.test(document.getElementById('asm-stores').textContent), null, { timeout: 10000 });
   ok('...an admin can suspend a store’s sending', box.smsStoreSettings('own_s').suspended === true);
+  await ctx.close();
+
+  /* ======================= admin places reach the stores ======================= */
+  ({ ctx, p } = await open(1280, 'seller'));
+  await p.goto(BASE + '/owner/contacts.html', { waitUntil: 'load' });
+  await p.waitForSelector('#ct-app:not([hidden])', { timeout: 15000 });
+  ok('a place an admin added shows in the store\'s island list; a removed one does not',
+    await p.evaluate(() => (KIRIBATI_ISLANDS.Banaba || []).includes('Tabiang') && !(KIRIBATI_ISLANDS.Kanton || []).includes('Kanton Village')
+      && Array.from(document.getElementById('ce-island').options).some((o) => o.value === 'Banaba')));
   await ctx.close();
 
   /* ======================= switched off ======================= */

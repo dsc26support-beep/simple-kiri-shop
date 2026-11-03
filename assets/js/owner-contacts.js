@@ -17,7 +17,8 @@ async function ctInit() {
   if (!owner) return;
   $ct('store-name-label').textContent = shortStoreName(owner.storeName);
   const stop = startLoadingMessage($ct('ct-status'));
-  const [cats, groups] = await Promise.all([ctCall('contactCategories'), ctCall('contactGroups')]);
+  const [cats, groups, places] = await Promise.all([ctCall('contactCategories'), ctCall('contactGroups'), Api.post('geoPlaces', {})]);
+  ctAddPlaces(places && places.ok ? places.places : []);
   stop();
   if (!cats.ok) { if (cats.error) $ct('ct-status').textContent = cats.error; else showLoadFailedMessage($ct('ct-status')); return; }
   $ct('ct-status').textContent = '';
@@ -34,6 +35,16 @@ async function ctInit() {
 function ctOptions(sel, list, keepFirst) {
   const first = keepFirst ? sel.options[0].outerHTML : '';
   sel.innerHTML = first + list.map((o) => `<option value="${escapeAttr(o[0])}">${escapeHtml(o[1])}</option>`).join('');
+}
+
+/** Islands and villages Mwakete admins added (Admin > Contacts & SMS > Places) join the built-in list. */
+function ctAddPlaces(places) {
+  if (typeof KIRIBATI_ISLANDS === 'undefined' || !Array.isArray(places)) return;
+  places.forEach((p) => {
+    if (!p || !p.island) return;
+    const list = KIRIBATI_ISLANDS[p.island] || (KIRIBATI_ISLANDS[p.island] = []);
+    if (p.village && list.indexOf(p.village) === -1) list.push(p.village);
+  });
 }
 
 function ctFillSelects() {

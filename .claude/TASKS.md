@@ -8,4 +8,4 @@ Kept in .claude/ so GitHub Pages never publishes it.
 - [owner] Seller one-account sign-in - check mwakete.com/owner/login.html opens the store (PR #157 merged, backend oneacct-2026-11-02 deployed)
 - [owner, optional] Release signing key for the app - 4 GitHub secrets (docs/contacts-sms-deploy.md section 4)
 - [owner, optional] Sheets add-on first live install (sheets-addon/README.md)
-- [todo] Admin page buttons for adminSmsCancelCampaign, adminSmsDevices, adminGeoSave (backend exists, no UI)
+- [in PR] Admin SMS buttons: campaigns + cancel, phones, places - needs backend deploy (smsadmin-2026-11-03) + merge + owner check on owner/admin.html#sms

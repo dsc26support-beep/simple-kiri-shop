@@ -377,6 +377,26 @@
             <tbody></tbody>
           </table></div>
           <div id="asm-contacts" hidden></div>
+          <div id="asm-campaigns" hidden></div>
+          <details class="sx-mt" id="asm-phones-box"><summary>Phones</summary>
+            <p class="helper-text">Every connected phone: model, versions, last check-in. Nothing it sent.</p>
+            <p id="asm-phones-status" class="helper-text" role="status" aria-live="polite"></p>
+            <div class="sx-table-wrap sx-scroll"><table class="sx-table" id="asm-phones">
+              <thead><tr><th scope="col">Store</th><th scope="col">Phone</th><th scope="col">Model</th><th scope="col">App</th><th scope="col">Android</th><th scope="col">Status</th><th scope="col">Last check-in</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+          </details>
+          <details class="sx-mt" id="asm-places-box"><summary>Places (islands and villages)</summary>
+            <p class="helper-text">Added to the built-in Kiribati list in every store's Contacts.</p>
+            <form id="asm-place-form" class="sx-grid sx-mt" novalidate>
+              <div class="field"><label for="asm-p-island">Island</label><input id="asm-p-island" maxlength="60" required></div>
+              <div class="field"><label for="asm-p-village">Village</label><input id="asm-p-village" maxlength="60"></div>
+              <div class="field"><label for="asm-p-atoll">Atoll</label><input id="asm-p-atoll" maxlength="60"></div>
+              <div class="field"><button type="submit" class="btn btn-small btn-light-purple">Add place</button></div>
+            </form>
+            <p id="asm-places-msg" class="helper-text" role="status" aria-live="polite"></p>
+            <ul id="asm-places"></ul>
+          </details>
           <details class="sx-mt"><summary>Platform limits</summary>
             <form id="asm-limits" class="sx-grid sx-mt" novalidate></form>
             <p><button type="button" class="btn btn-small btn-light-purple" id="asm-limits-save">Save limits</button> <span id="asm-limits-msg" class="helper-text" role="status"></span></p>
