@@ -58,26 +58,9 @@ const BASE = 'http://127.0.0.1:8099';
   const backPost = posted.filter(p => p.action === 'setStoreStatus').slice(-1)[0];
   ok('§20 toggle back sends active', backPost && backPost.status === 'active', JSON.stringify(backPost));
 
-  // §22 pageshow guard: a disabled quick-link becomes enabled on pageshow
-  const guard = await page.evaluate(() => {
-    const btn = document.querySelector('.dashboard-quick-links .btn');
-    btn.disabled = true;
-    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
-    return btn.disabled;
-  });
-  ok('§22 pageshow re-enables a stuck button', guard === false);
-
-  // §22 clicking a quick-link applies NO fake loading state (checked synchronously,
-  // before navigation) then navigates.
-  const clickState = await page.evaluate(() => {
-    const btn = document.querySelector('.dashboard-quick-links .btn'); // Products
-    btn.click(); // sets window.location.href synchronously; DOM not mutated by handler
-    return { disabled: btn.disabled, hasDots: !!btn.querySelector('.btn-saving-dots') };
-  });
-  ok('§22 click adds no disabled state', clickState.disabled === false, JSON.stringify(clickState));
-  ok('§22 click adds no spinner dots', clickState.hasDots === false);
-  await page.waitForURL('**/owner/products.html', { timeout: 5000 }).catch(() => {});
-  ok('§22 quick-link navigates to target', /products\.html$/.test(page.url()), page.url());
+  // The Quick actions box was removed (owner request, Nov 2026): every page is
+  // in the store menu, and its red counts moved there (verify-badges).
+  ok('no Quick actions box on the dashboard', await page.evaluate(() => !document.querySelector('.dashboard-quick-links') && !document.getElementById('quick-heading')));
 
   await browser.close();
   let failed = 0;

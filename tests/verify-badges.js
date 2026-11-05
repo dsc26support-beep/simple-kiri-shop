@@ -36,42 +36,52 @@ const booking = (s) => ({ bookingId: 'b', status: s });
     const page = await ctx.newPage();
     await page.addInitScript(() => { try { localStorage.setItem('skiri_owner_token', 't'); } catch (e) {} });
     await page.goto(BASE + '/owner/dashboard.html', { waitUntil: 'load' });
-    await page.waitForSelector('.dashboard-quick-links .btn');
+    await page.waitForSelector('.seller-tabbar, .seller-sidebar');
     // give the async count fetches a beat
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(600);
     return { ctx, page };
   }
 
-  async function badge(page, id) {
-    return page.evaluate((bid) => {
-      const b = document.getElementById(bid);
+  // The red counts now sit on the store menu: the bottom bar on phones and
+  // tablets, the sidebar on a computer (the Quick actions box was removed).
+  async function badge(page, where, name) {
+    return page.evaluate(([w, n]) => {
+      const b = document.querySelector(w + ' [data-seller-badge="' + n + '"]');
       if (!b) return null;
-      const btn = b.closest('.btn');
       const cs = getComputedStyle(b);
-      const bb = b.getBoundingClientRect();
-      const rb = btn.getBoundingClientRect();
-      return {
-        hidden: b.classList.contains('hidden') || cs.display === 'none',
-        text: b.textContent.trim(),
-        red: cs.backgroundColor,
-        pos: cs.position,
-        // badge center should be in the button's top-right quadrant
-        topRight: (bb.left + bb.width / 2) > (rb.left + rb.width / 2) && (bb.top + bb.height / 2) < (rb.top + rb.height / 2),
-      };
-    }, id);
+      return { hidden: b.hidden || cs.display === 'none', text: b.textContent.trim(), red: cs.backgroundColor, label: b.getAttribute('aria-label') };
+    }, [where, name]);
   }
 
   // Counts present: orders 3 pending (+1 paid), bookings 2 pending (+1 confirmed), 5 unread
   {
-    const { ctx, page } = await loadDash({ width: 900, height: 800 }, {
+    const { ctx, page } = await loadDash({ width: 390, height: 800 }, {
       orders: [order('Pending Payment'), order('Pending Payment'), order('Pending Payment'), order('Paid')],
       bookings: [booking('Pending'), booking('Pending'), booking('Confirmed')],
       unread: 5,
     });
-    for (const [id, want] of [['nav-orders-badge', '3'], ['nav-bookings-badge', '2'], ['nav-messages-badge', '5']]) {
-      const b = await badge(page, id);
-      ok(`pc: ${id} shows ${want}`, b && !b.hidden && b.text === want, JSON.stringify(b));
-      ok(`pc: ${id} red + corner`, b && /rgb\(/.test(b.red) && b.pos === 'absolute' && b.topRight, JSON.stringify(b));
+    ok('phone: no Quick actions box', !(await page.$('.dashboard-quick-links')) && !(await page.$('#quick-heading')));
+    for (const [n, want] of [['orders', '3'], ['messages', '5']]) {
+      const b = await badge(page, '.seller-tabbar', n);
+      ok('phone: bottom bar ' + n + ' shows ' + want, b && !b.hidden && b.text === want && /rgb\(/.test(b.red), JSON.stringify(b));
+    }
+    const bk = await badge(page, '.seller-sidebar', 'bookings');
+    ok('phone: bookings count in the menu (More / menu)', bk && !bk.hidden && bk.text === '2' && /need attention/.test(bk.label), JSON.stringify(bk));
+    // Another seller page in the same tab shows them without asking again.
+    await page.goto(BASE + '/owner/products.html', { waitUntil: 'load' });
+    await page.waitForSelector('.seller-tabbar');
+    const o2 = await badge(page, '.seller-tabbar', 'orders');
+    ok('phone: the orders count stays on other seller pages', o2 && !o2.hidden && o2.text === '3', JSON.stringify(o2));
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await loadDash({ width: 1280, height: 800 }, {
+      orders: [order('Pending Payment')], bookings: [booking('Pending')], unread: 2,
+    });
+    ok('computer: no Quick actions box', !(await page.$('.dashboard-quick-links')));
+    for (const [n, want] of [['orders', '1'], ['bookings', '1'], ['messages', '2']]) {
+      const b = await badge(page, '.seller-sidebar', n);
+      ok('computer: sidebar ' + n + ' shows ' + want, b && !b.hidden && b.text === want, JSON.stringify(b));
     }
     await ctx.close();
   }
@@ -83,9 +93,9 @@ const booking = (s) => ({ bookingId: 'b', status: s });
       bookings: [booking('Confirmed')],
       unread: 0,
     });
-    for (const id of ['nav-orders-badge', 'nav-bookings-badge', 'nav-messages-badge']) {
-      const b = await badge(page, id);
-      ok(`mobile: ${id} hidden at zero`, b && b.hidden, JSON.stringify(b));
+    for (const n of ['orders', 'bookings', 'messages']) {
+      const b = await badge(page, '.seller-sidebar', n);
+      ok('mobile: ' + n + ' hidden at zero', b && b.hidden, JSON.stringify(b));
     }
     await ctx.close();
   }
@@ -93,8 +103,8 @@ const booking = (s) => ({ bookingId: 'b', status: s });
   // 99+ cap
   {
     const many = Array.from({ length: 150 }, () => order('Pending Payment'));
-    const { ctx, page } = await loadDash({ width: 900, height: 800 }, { orders: many, bookings: [], unread: 0 });
-    const b = await badge(page, 'nav-orders-badge');
+    const { ctx, page } = await loadDash({ width: 390, height: 800 }, { orders: many, bookings: [], unread: 0 });
+    const b = await badge(page, '.seller-tabbar', 'orders');
     ok('cap: orders badge shows 99+', b && b.text === '99+', JSON.stringify(b));
     await ctx.close();
   }

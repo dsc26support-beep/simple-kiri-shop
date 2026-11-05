@@ -1,29 +1,5 @@
 document.addEventListener('DOMContentLoaded', init);
 
-// Products/Orders/Bookings/Messages quick links: plain navigations to other
-// owner pages. Deliberately NO loading animation - these are page loads with
-// nothing real to wait on, and the old fake spinner had no stop condition:
-// it set btn.disabled + an infinite dots animation and never cleared it, so a
-// bfcache Back restored the frozen, still-"loading" button (the reported
-// "spinner never stops" bug). Navigate straight away instead.
-function wireQuickLinks() {
-  document.querySelectorAll('.dashboard-quick-links .btn').forEach((btn) => {
-    const href = btn.dataset.href;
-    if (!href) return;
-    btn.addEventListener('click', () => {
-      window.location.href = href;
-    });
-  });
-}
-
-// Safety net for bfcache restores (Back button): if a quick-link button was
-// ever left disabled, re-enable it so it can't come back stuck.
-window.addEventListener('pageshow', () => {
-  document.querySelectorAll('.dashboard-quick-links .btn[disabled]').forEach((btn) => {
-    btn.disabled = false;
-  });
-});
-
 const STORE_TYPE_LABEL = { wholesaler: 'Wholesaler / Distributor', distributor: 'Wholesaler / Distributor', retailer: 'Retailer' };
 
 async function init() {
@@ -36,7 +12,6 @@ async function init() {
   document.getElementById('dash-greeting').textContent = greeting();
   document.getElementById('storefront-link').href = `../store.html?store=${encodeURIComponent(owner.storeSlug)}`;
 
-  wireQuickLinks();
 
   renderStoreToggle(owner.status);
   document.getElementById('store-status-toggle').addEventListener('click', onToggleStoreStatus);
@@ -121,8 +96,10 @@ function renderKpis(k, period) {
     .filter(Boolean).join(' · ') || 'All caught up';
   actionSub.classList.toggle('is-warning', k.needsAction > 0);
 
-  setNavBadge('nav-orders-badge', k.pendingPayment + k.openProblems);
-  setNavBadge('nav-bookings-badge', k.bookingsPending);
+  // Red counts on the store menu / bottom bar (the Quick actions box that
+  // carried them was removed, owner request Nov 2026).
+  setShellCount('orders', k.pendingPayment + k.openProblems);
+  setShellCount('bookings', k.bookingsPending);
   document.getElementById('sales-total').textContent = `${formatMoney(k.periodSales)} confirmed from ${k.periodOrders} order(s) in the last ${period} days. Orders count as sales once you confirm payment.`;
 }
 
@@ -238,16 +215,9 @@ async function onToggleStoreStatus() {
   renderStoreToggle(next);
 }
 
-// Shows a red count in a quick-link button's corner when there's something
-// needing attention; hides it at zero. Caps the display at 99+ so a big backlog
-// never blows out the pill.
-function setNavBadge(id, count) {
-  const badge = document.getElementById(id);
-  if (!badge) return;
-  if (count > 0) {
-    badge.textContent = count > 99 ? '99+' : String(count);
-    badge.classList.remove('hidden');
-  } else {
-    badge.classList.add('hidden');
-  }
+// A red count on the store menu and bottom bar (owner-nav.js), remembered for
+// this tab so the other seller pages show it too without another request.
+function setShellCount(name, count) {
+  try { sessionStorage.setItem('skiri_seller_count_' + name, String(count || 0)); } catch (e) { /* private mode */ }
+  if (typeof SellerShell !== 'undefined') SellerShell.setBadge(name, count);
 }

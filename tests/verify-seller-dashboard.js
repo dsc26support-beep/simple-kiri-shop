@@ -56,8 +56,8 @@ box.ContentService = { createTextOutput: (s) => ({ s, setMimeType() { return thi
   await p.waitForTimeout(350);
   ok('the sidebar collapses to icons and remembers it', await p.evaluate(() => document.querySelector('.seller-sidebar').getBoundingClientRect().width === 76 && localStorage.getItem('skiri_seller_sidebar_collapsed') === '1'));
   await p.click('.seller-sidebar-collapse');
-  ok('kept for older code and tests: store toggle, quick links, badges, admin link', !!(await p.$('#store-status-toggle')) && (await p.$$('.dashboard-quick-links .btn')).length === 7
-    && !!(await p.$('#nav-orders-badge')) && !!(await p.$('#admin-link-wrap')));
+  ok('kept: store toggle and admin link; the Quick actions box is gone (Nov 2026)', !!(await p.$('#store-status-toggle')) && (await p.$$('.dashboard-quick-links .btn')).length === 0
+    && !(await p.$('#nav-orders-badge')) && !!(await p.$('#admin-link-wrap')));
   await p.selectOption('#dash-period', '30');
   await p.waitForFunction(() => document.querySelectorAll('#sales-table tbody tr').length === 30, null, { timeout: 8000 });
   ok('switching to 30 days reloads real figures', true);

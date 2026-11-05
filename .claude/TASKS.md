@@ -9,3 +9,4 @@ Kept in .claude/ so GitHub Pages never publishes it.
 - [owner, optional] Release signing key for the app - 4 GitHub secrets (docs/contacts-sms-deploy.md section 4)
 - [owner, optional] Sheets add-on first live install (sheets-addon/README.md)
 - [merged #160] Admin SMS buttons: campaigns + cancel, phones, places - needs backend deploy (getVersion = smsadmin-2026-11-03) + owner check on owner/admin.html#sms
+- [in PR] Remove dashboard Quick actions (all screens); red counts for orders/bookings/messages moved to bottom bar + menu - needs merge + owner check on owner/dashboard.html
