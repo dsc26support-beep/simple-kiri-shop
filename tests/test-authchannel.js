@@ -174,8 +174,9 @@ ok('issueTwoFACode takes an optional owner row',
   /function issueTwoFACode\(ownerId, email, storeName, purpose, ownerRow\)/.test(auth));
 ok('a call with no row still works - no bare ownerRow.Phone dereference',
   issue.indexOf('ownerRow ? ownerRow.Phone') !== -1);
-ok('all three call sites now pass the row',
-  (auth.match(/issueTwoFACode\(owner\.OwnerId, owner\.Email, owner\.StoreName, '\w+', owner\)/g) || []).length === 3,
+ok('every call site passes the row (sign-in 2FA x2, email change; store password reset retired)',
+  (auth.match(/issueTwoFACode\(owner\.OwnerId, owner\.Email, owner\.StoreName, '\w+', owner\)/g) || []).length >= 2 &&
+    !/issueTwoFACode\([^)]*'reset'/.test(auth),
   String((auth.match(/issueTwoFACode\(owner\.OwnerId[^)]*owner\)/g) || []).length));
 
 // ---------------- the sheet column ----------------

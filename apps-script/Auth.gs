@@ -431,11 +431,11 @@ function actionRegisterOwner(body) {
 
 /**
  * Username + password sign-in is retired (owner decision, 2 Nov 2026): a
- * seller signs in with their Mwakete account (Google or email) and
+ * seller signs in with their Mwakete account (any of its sign-in methods) and
  * actionOwnerFromCustomer opens their store. Kept as an action only so an
  * old page gets a clear answer instead of "unknown action".
  */
-var OWNER_PASSWORD_LOGIN_RETIRED = 'Store usernames and passwords are no longer used. Sign in with your Mwakete account (Google or email) - your store opens straight away.';
+var OWNER_PASSWORD_LOGIN_RETIRED = 'Store usernames and passwords are no longer used. Sign in with your Mwakete account - your store opens straight away.';
 function actionLoginOwner(body) {
   return Object.assign(fail(OWNER_PASSWORD_LOGIN_RETIRED), { errorKind: 'password_login_retired' });
 }
@@ -723,7 +723,7 @@ function actionRequestEmailChange(owner, body) {
       'Your store is still using this address. The change only happens if the ' +
       'code we sent to the new address is entered in Settings.\n\n' +
       'IF THIS WAS NOT YOU, someone may be signed in to your Mwakete account. ' +
-      'Sign in and change your account password (or secure your Google account), ' +
+      'Change the password of the account you sign in to Mwakete with, ' +
       'then tell us through the Help and support link at the bottom of any Mwakete page.');
   // The address itself is deliberately not written here. It lives in the
   // Help and support link in the page footers, and verify-deletedmsg asserts no script

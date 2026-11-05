@@ -160,7 +160,7 @@ ok('publicOwnerFields matches main (allowing only #112\'s payment option lines b
 ok('nothing was removed from publicOwnerFields',
   mainOwnerSrc.split('\n').filter((l) => /^\s+\w+: /.test(l))
     // hasPasswordHint left with store passwords (retired 2 Nov 2026).
-    .every((l) => hereOwnerSrc.indexOf(l) !== -1 || /^\s+hasPasswordHint: /.test(l)));
+    .every((l) => hereOwnerSrc.indexOf(l.replace(/,\s*$/, '')) !== -1 || /^\s+hasPasswordHint: /.test(l)));
 ok('the pending-email field is on main, not just in the working tree',
   /pendingEmail: owner\.PendingEmail/.test(mainOwnerSrc), 'still branch-only');
 ok('the auth-channel fields are on main, not just in the working tree',
