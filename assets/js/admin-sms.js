@@ -1,5 +1,6 @@
 // Admin: Contacts & SMS (backend SmsDevices.gs). Counts and flags per store;
-// suspending a store stops its phones at the next check-in. A store's contacts
+// suspending a store stops its phones at the next check-in; one campaign can be
+// cancelled (reason audited); the Phones and Places sections load when opened. A store's contacts
 // are shown only after a written reason, which the server records in the audit
 // log. Every call is checked again on the server (admin session, reason length).
 const SmsAdmin = (() => {
@@ -24,7 +25,8 @@ const SmsAdmin = (() => {
       <td class="sx-num">${s.optOuts}</td><td class="sx-num">${s.devices}</td>
       <td>${s.flags.map((f) => `<span class="sx-pill is-check">${escapeHtml(f)}</span>`).join(' ')}</td>
       <td><button type="button" class="btn btn-small btn-light-purple" data-act="suspend">${s.suspended ? 'Allow sending' : 'Suspend'}</button>
-        <button type="button" class="btn btn-small btn-light-purple" data-act="contacts">View contacts</button></td></tr>`).join('')
+        <button type="button" class="btn btn-small btn-light-purple" data-act="contacts">View contacts</button>
+        <button type="button" class="btn btn-small btn-light-purple" data-act="campaigns">Campaigns</button></td></tr>`).join('')
       : '<tr><td colspan="9" class="sx-empty">No store uses Contacts &amp; SMS yet.</td></tr>';
     LIMITS.forEach((l) => { if (!$('asm-l-' + l[0])) $('asm-limits').insertAdjacentHTML('beforeend', `<div class="field"><label for="asm-l-${l[0]}">${l[1]}</label><input type="number" id="asm-l-${l[0]}" data-limit="${l[0]}"></div>`); });
     LIMITS.forEach((l) => { $('asm-l-' + l[0]).value = (res.limits || {})[l[0]] == null ? '' : res.limits[l[0]]; });
@@ -50,6 +52,7 @@ const SmsAdmin = (() => {
       load();
       return;
     }
+    if (b.dataset.act === 'campaigns') { showCampaigns(s); return; }
     const reason = askReason(`see the contacts of ${s.storeName}`);
     if (!reason) return;
     const r = await call('adminSmsViewContacts', { ownerId: s.ownerId, reason, limit: 200 });
@@ -62,6 +65,78 @@ const SmsAdmin = (() => {
         r.contacts.map((c) => `<tr><td>${escapeHtml([c.firstName, c.lastName].filter(Boolean).join(' ') || c.businessName)}</td><td>${escapeHtml(c.phone || c.phoneRaw)}</td><td>${escapeHtml(c.consent.promotional)}${c.consentSource ? ' · ' + escapeHtml(c.consentSource) : ''}</td><td>${escapeHtml(c.source)}</td></tr>`).join('')}</tbody></table></div>
       <p><button type="button" class="btn btn-small btn-light-purple" id="asm-contacts-close">Hide</button></p>`;
     $('asm-contacts-close').addEventListener('click', () => { box.hidden = true; box.innerHTML = ''; });
+  }
+
+  // A store's campaigns that can still send, each with an emergency Cancel (reason audited).
+  async function showCampaigns(s) {
+    const box = $('asm-campaigns');
+    box.hidden = false;
+    box.innerHTML = '<p class="helper-text">Loading…</p>';
+    const r = await call('adminSmsCampaigns', { ownerId: s.ownerId });
+    if (!r.ok) { box.innerHTML = `<p class="form-error">${escapeHtml(r.error || 'Could not load.')}</p>`; return; }
+    const sent = (t) => (t.sent || 0) + (t.delivered || 0);
+    box.innerHTML = `<h3>${escapeHtml(s.storeName)}: campaigns still sending</h3>
+      ${r.campaigns.length ? `<div class="sx-table-wrap sx-scroll"><table class="sx-table"><thead><tr><th scope="col">Campaign</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col" class="sx-num">People</th><th scope="col" class="sx-num">Sent</th><th scope="col"></th></tr></thead><tbody>${
+        r.campaigns.map((c) => `<tr data-campaign="${escapeAttr(c.campaignId)}"><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.kindLabel)}</td><td>${escapeHtml(c.statusLabel)}</td>
+          <td class="sx-num">${c.recipients}</td><td class="sx-num">${sent(c.totals || {})}</td>
+          <td><button type="button" class="btn btn-small btn-danger" data-cancel>Cancel</button></td></tr>`).join('')}</tbody></table></div>`
+        : '<p class="sx-empty">Nothing is sending for this store.</p>'}
+      <p><button type="button" class="btn btn-small btn-light-purple" data-close>Hide</button></p>`;
+    box.querySelector('[data-close]').addEventListener('click', () => { box.hidden = true; box.innerHTML = ''; });
+    box.querySelectorAll('[data-cancel]').forEach((btn) => btn.addEventListener('click', async () => {
+      const c = r.campaigns.find((x) => x.campaignId === btn.closest('tr').dataset.campaign);
+      const reason = askReason(`cancel "${c.name}" for ${s.storeName}`);
+      if (!reason) return;
+      btn.disabled = true;
+      const res = await call('adminSmsCancelCampaign', { campaignId: c.campaignId, reason });
+      if (!res.ok) { btn.disabled = false; alert(res.error || 'Could not cancel.'); return; }
+      showCampaigns(s);
+      load();
+    }));
+  }
+
+  // Every phone on the platform, loaded when the section is opened.
+  async function loadPhones() {
+    const tbody = $('asm-phones').tBodies[0];
+    $('asm-phones-status').textContent = 'Loading…';
+    const r = await call('adminSmsDevices');
+    if (!r.ok) { $('asm-phones-status').textContent = r.error || 'Could not load.'; return; }
+    $('asm-phones-status').textContent = '';
+    const name = (id) => (stores.find((x) => x.ownerId === id) || {}).storeName || id;
+    const when = (iso) => { const t = Date.parse(iso); return isNaN(t) ? '' : new Date(t).toLocaleString(); };
+    const list = r.devices.slice().sort((a, b) => String(b.lastSeenAt).localeCompare(String(a.lastSeenAt)));
+    tbody.innerHTML = list.length ? list.map((d) => `<tr><td>${escapeHtml(name(d.ownerId))}</td><td>${escapeHtml(d.name)}</td><td>${escapeHtml(d.model)}</td>
+      <td>${escapeHtml(d.appVersion)}</td><td>${escapeHtml(d.androidVersion)}</td><td>${escapeHtml(d.status)}</td><td>${escapeHtml(when(d.lastSeenAt))}</td></tr>`).join('')
+      : '<tr><td colspan="7" class="sx-empty">No phone is connected yet.</td></tr>';
+  }
+
+  // Islands and villages added by admins (on top of the built-in list).
+  let places = [];
+  async function loadPlaces() {
+    const r = await call('geoPlaces');
+    places = r.ok ? r.places : [];
+    $('asm-places').innerHTML = places.length ? places.map((p) => `<li data-place="${escapeAttr(p.placeId)}">${escapeHtml([p.village, p.island].filter(Boolean).join(', '))}${p.atoll ? ' (' + escapeHtml(p.atoll) + ')' : ''}
+      <button type="button" class="btn btn-small btn-light-purple" data-remove>Remove</button></li>`).join('')
+      : '<li class="sx-empty">None added yet - stores see the built-in Kiribati list.</li>';
+  }
+
+  async function addPlace(e) {
+    e.preventDefault();
+    const island = $('asm-p-island').value.trim();
+    if (!island) { $('asm-places-msg').textContent = 'Island is required.'; return; }
+    const r = await call('adminGeoSave', { island, village: $('asm-p-village').value.trim(), atoll: $('asm-p-atoll').value.trim() });
+    $('asm-places-msg').textContent = r.ok ? 'Added.' : (r.error || 'Could not add.');
+    if (r.ok) { $('asm-p-village').value = ''; loadPlaces(); }
+  }
+
+  async function removePlace(e) {
+    const b = e.target.closest('[data-remove]');
+    if (!b) return;
+    const p = places.find((x) => x.placeId === b.closest('li').dataset.place);
+    if (!p || !confirm(`Remove ${[p.village, p.island].filter(Boolean).join(', ')}? Contacts that already use it keep it.`)) return;
+    const r = await call('adminGeoSave', { placeId: p.placeId, island: p.island, remove: true });
+    $('asm-places-msg').textContent = r.ok ? 'Removed.' : (r.error || 'Could not remove.');
+    loadPlaces();
   }
 
   async function saveLimits() {
@@ -77,6 +152,10 @@ const SmsAdmin = (() => {
     $('asm-stores').addEventListener('click', onClick);
     $('asm-limits-save').addEventListener('click', saveLimits);
     $('asm-limits').addEventListener('submit', (e) => e.preventDefault());
+    $('asm-phones-box').addEventListener('toggle', () => { if ($('asm-phones-box').open) loadPhones(); });
+    $('asm-places-box').addEventListener('toggle', () => { if ($('asm-places-box').open) loadPlaces(); });
+    $('asm-place-form').addEventListener('submit', addPlace);
+    $('asm-places').addEventListener('click', removePlace);
     load();
   }
 

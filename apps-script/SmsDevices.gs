@@ -596,6 +596,18 @@ function actionAdminSmsCancelCampaign(owner, body) {
   return res;
 }
 
+/** Admin. body: ownerId. A store's campaigns that can still send - name, type, status and counts, never the message text. */
+function actionAdminSmsCampaigns(owner, body) {
+  if (!isOwnerAdmin(owner)) return fail('Not authorized');
+  var id = String((body && body.ownerId) || '');
+  var live = ['queued', 'processing', 'scheduled', 'paused'];
+  return ok({ campaigns: smsRows('SmsCampaigns').filter(function (c) { return c.OwnerId === id && live.indexOf(c.Status) !== -1; }).map(function (c) {
+    var v = smsCampaignView(c);
+    return { campaignId: v.campaignId, name: v.name, kindLabel: v.kindLabel, status: v.status, statusLabel: v.statusLabel,
+      recipients: v.recipients, totals: v.totals, scheduledAt: v.scheduledAt, createdAt: v.createdAt };
+  }) });
+}
+
 /** Admin. body: limits {key: number}. Only known keys, within sane bounds. */
 function actionAdminSmsLimits(owner, body) {
   if (!isOwnerAdmin(owner)) return fail('Not authorized');

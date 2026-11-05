@@ -133,11 +133,8 @@ The key is stored in your Google account, not in the sheet. If a sheet is shared
 - **View a store's contacts** only with a written reason. Every view is recorded in the audit log.
 - **Limits**: change the sending limits for the whole platform.
 
-Three more admin actions exist in the backend but have **no button on the admin page yet**:
-- emergency **cancel of one campaign**, with a reason (`adminSmsCancelCampaign`);
-- the **list of every phone**: model, versions and last check-in (`adminSmsDevices`);
-- editing the **islands and villages list** (`adminGeoSave`).
-
-Until they get buttons, suspending the store is the emergency stop.
+- **Campaigns** (button on each store's row): the store's campaigns that can still send, with name, type, status and counts but never the message text. **Cancel** stops one in an emergency; it asks for a reason, which goes in the audit log.
+- **Phones** (open the section): every connected phone with its store, model, app and Android version, status and last check-in. Nothing it sent is shown.
+- **Places** (open the section): add islands and villages, or remove ones you added. They join the built-in Kiribati list in every store's Contacts; contacts that already use a removed place keep it.
 
 Every start, pause, cancel, consent change, import, export, phone connection and admin action is written to the audit log.

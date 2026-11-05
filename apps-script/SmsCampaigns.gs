@@ -356,7 +356,7 @@ var SMS_ACTIONS = {
   smsSettingsGet: { fn: 'actionSmsSettingsGet' }, smsSettingsSave: { fn: 'actionSmsSettingsSave' },
   smsApiKeyCreate: { fn: 'actionSmsApiKeyCreate' }, smsApiKeys: { fn: 'actionSmsApiKeys' }, smsApiKeyRevoke: { fn: 'actionSmsApiKeyRevoke' },
   adminSmsOverview: { fn: 'actionAdminSmsOverview', admin: true }, adminSmsSuspend: { fn: 'actionAdminSmsSuspend', admin: true },
-  adminSmsViewContacts: { fn: 'actionAdminSmsViewContacts', admin: true }, adminSmsCancelCampaign: { fn: 'actionAdminSmsCancelCampaign', admin: true },
+  adminSmsViewContacts: { fn: 'actionAdminSmsViewContacts', admin: true }, adminSmsCancelCampaign: { fn: 'actionAdminSmsCancelCampaign', admin: true }, adminSmsCampaigns: { fn: 'actionAdminSmsCampaigns', admin: true },
   adminSmsLimits: { fn: 'actionAdminSmsLimits', admin: true }, adminSmsDevices: { fn: 'actionAdminSmsDevices', admin: true }, adminGeoSave: { fn: 'actionAdminGeoSave', admin: true }
 };
 
