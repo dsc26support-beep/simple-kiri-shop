@@ -25,14 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // itself has the richer, actually-live polling for the active inbox.
   // Fetched only where it always was (the dashboard). The sidebar shows the
   // same count on other pages from this tab's memory - no extra request.
-  const badge = document.getElementById('nav-messages-badge');
   const token = Auth.getToken();
-  if (badge && token) {
+  if (token && /(^|\/)dashboard\.html$/.test(location.pathname)) {
     Api.post('getUnreadCount', { token }).then((res) => {
-      if (res.ok && res.unreadCount > 0) {
-        badge.textContent = res.unreadCount;
-        badge.classList.remove('hidden');
-      }
       if (res.ok) {
         try { sessionStorage.setItem('skiri_seller_unread', String(res.unreadCount || 0)); } catch (e) { /* private mode */ }
         if (typeof SellerShell !== 'undefined') SellerShell.setBadge('messages', res.unreadCount);
@@ -102,7 +97,7 @@ const SellerShell = (() => {
     if (owner.contactsSms) { items.splice(items.findIndex((it) => it[0] === 'messages.html') + 1, 0, ['contacts.html', 'Contacts', 'contacts'], ['sms.html', 'SMS', 'sms']); }
     if (owner.isAdmin) items.push(['admin.html', 'Admin', 'admin']);
     const link = (it, cls) => `<a class="${cls}${it[0] === here ? ' is-active' : ''}" href="${it[0]}"${it[0] === here ? ' aria-current="page"' : ''}>
-      ${svg(it[2])}<span class="${cls}-label">${it[1]}</span>${it[2] === 'messages' ? '<span class="seller-nav-badge" data-seller-badge="messages" hidden></span>' : ''}</a>`;
+      ${svg(it[2])}<span class="${cls}-label">${it[1]}</span>${BADGED.indexOf(it[2]) !== -1 ? `<span class="seller-nav-badge" data-seller-badge="${it[2]}" hidden></span>` : ''}</a>`;
 
     const side = document.createElement('nav');
     side.className = 'seller-sidebar';
@@ -177,11 +172,13 @@ const SellerShell = (() => {
     if (btn) { btn.setAttribute('aria-expanded', on ? 'false' : 'true'); btn.setAttribute('aria-label', on ? 'Expand menu' : 'Collapse menu'); }
   }
 
+  // Red counts: unread messages, orders and bookings needing attention.
+  const BADGED = ['messages', 'orders', 'bookings'];
   function setBadge(name, count) {
     document.querySelectorAll(`[data-seller-badge="${name}"]`).forEach((b) => {
       b.hidden = !(count > 0);
       b.textContent = count > 99 ? '99+' : String(count || '');
-      b.setAttribute('aria-label', `${count} unread`);
+      b.setAttribute('aria-label', name === 'messages' ? `${count} unread` : `${count} need attention`);
     });
   }
 
@@ -190,7 +187,8 @@ const SellerShell = (() => {
 
 document.addEventListener('DOMContentLoaded', () => {
   SellerShell.build();
-  let known = 0;
-  try { known = Number(sessionStorage.getItem('skiri_seller_unread')) || 0; } catch (e) { /* private mode */ }
-  if (known) SellerShell.setBadge('messages', known);
+  // Counts the dashboard last fetched in this tab (no extra request here).
+  const known = (key) => { try { return Number(sessionStorage.getItem(key)) || 0; } catch (e) { return 0; } };
+  if (known('skiri_seller_unread')) SellerShell.setBadge('messages', known('skiri_seller_unread'));
+  ['orders', 'bookings'].forEach((n) => { if (known('skiri_seller_count_' + n)) SellerShell.setBadge(n, known('skiri_seller_count_' + n)); });
 });

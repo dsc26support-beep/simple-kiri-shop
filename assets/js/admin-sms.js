@@ -71,7 +71,7 @@ const SmsAdmin = (() => {
   async function showCampaigns(s) {
     const box = $('asm-campaigns');
     box.hidden = false;
-    box.innerHTML = '<p class="helper-text">Loading…</p>';
+    box.innerHTML = '<p class="helper-text">' + loadingMessageHtml('Loading') + '</p>';
     const r = await call('adminSmsCampaigns', { ownerId: s.ownerId });
     if (!r.ok) { box.innerHTML = `<p class="form-error">${escapeHtml(r.error || 'Could not load.')}</p>`; return; }
     const sent = (t) => (t.sent || 0) + (t.delivered || 0);
@@ -98,7 +98,7 @@ const SmsAdmin = (() => {
   // Every phone on the platform, loaded when the section is opened.
   async function loadPhones() {
     const tbody = $('asm-phones').tBodies[0];
-    $('asm-phones-status').textContent = 'Loading…';
+    $('asm-phones-status').innerHTML = loadingMessageHtml('Loading');
     const r = await call('adminSmsDevices');
     if (!r.ok) { $('asm-phones-status').textContent = r.error || 'Could not load.'; return; }
     $('asm-phones-status').textContent = '';

@@ -193,33 +193,6 @@
   flex-basis: 100%;
 }
 
-.dashboard-quick-links {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-2);
-  max-width: 40rem;
-}
-
-@media (min-width: 600px) {
-  .dashboard-quick-links {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.dashboard-quick-links .btn {
-  position: relative;
-}
-
-/* Pending-notification count sits in the button's top-right corner (Orders,
-   Bookings, Messages). The button is position:relative above; the badge's base
-   red-pill styling comes from .nav-unread-badge. */
-.dashboard-quick-links .nav-unread-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  margin: 0;
-}
-
 .dashboard-card .metric {
   font-size: 1.75rem;
   font-weight: 700;

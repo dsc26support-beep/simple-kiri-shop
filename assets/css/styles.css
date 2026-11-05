@@ -7985,8 +7985,6 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 .dash-facts { display: grid; gap: var(--space-2); margin: 0; }
 .dash-facts dt { font-size: 0.8rem; color: var(--color-muted); }
 .dash-facts dd { margin: 0; font-weight: 600; }
-.dash-panel .dashboard-quick-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: 0; }
-.dash-panel .dashboard-quick-links .btn { width: 100%; min-height: 44px; }
 
 /* Phones: the recent-orders table becomes one card per order. */
 @media (max-width: 640px) {
