@@ -75,23 +75,6 @@ function hashPassword(password, salt) {
   return Utilities.base64Encode(digest);
 }
 
-/**
- * Password hint (owner request, Oct 2026): a seller's own reminder, set when
- * the store is registered (required) and editable in Settings. Shown on the
- * login page after a wrong password for that username - never the password
- * itself, so a hint that contains the password is refused.
- */
-var PASSWORD_HINT_MAX = 100;
-function passwordHintError(hint, password) {
-  var h = String(hint || '').trim();
-  if (h.length < 3) return 'Add a password hint (at least 3 characters) - it reminds you if you forget your password.';
-  if (h.length > PASSWORD_HINT_MAX) return 'Keep the password hint to ' + PASSWORD_HINT_MAX + ' characters.';
-  var p = String(password || '').toLowerCase();
-  if (p && h.toLowerCase().replace(/\s+/g, '').indexOf(p.replace(/\s+/g, '')) !== -1) {
-    return 'Your password hint must not contain the password itself.';
-  }
-  return '';
-}
 
 function publicOwnerFields(owner) {
   return {
@@ -144,10 +127,7 @@ function publicOwnerFields(owner) {
     posHub: typeof posHubEnabled === 'function' && posHubEnabled(),
     // Whether Contacts & SMS is switched on (Script Property CONTACTS_SMS, Contacts.gs); the seller menu shows it only then.
     contactsSms: typeof contactsSmsEnabled === 'function' && contactsSmsEnabled(),
-    wholesaleVerified: String(owner.WholesaleVerified) === 'true',
-    // Whether a hint is set (the dashboard asks sellers without one). The hint
-    // text itself is only ever sent to the login page after a wrong password.
-    hasPasswordHint: !!String(owner.PasswordHint || '').trim()
+    wholesaleVerified: String(owner.WholesaleVerified) === 'true'
   };
 }
 
@@ -345,7 +325,6 @@ function actionRegisterOwner(body) {
   if (!storeName || !phone) {
     return fail('Store name and contact phone are required');
   }
-  var passwordHint = '';
   var storeNameErr = storeNameTooLong(storeName);
   if (storeNameErr) return storeNameErr;
   var phoneErr = capLength(phone, 30, 'Phone number');
@@ -370,7 +349,7 @@ function actionRegisterOwner(body) {
   try {
     var ownersSheet = getSheet('Owners');
     // Additive only: one header cell past the end if missing (see ensureColumn).
-    ['StoreType', 'WholesaleVerified', 'PasswordHint', 'ApprovalStatus', 'CustomerId', 'AppliedAt',
+    ['StoreType', 'WholesaleVerified', 'ApprovalStatus', 'CustomerId', 'AppliedAt',
       'ReviewedAt', 'ReviewedBy', 'ReviewNote', 'ApplicationNote'].forEach(function (c) { ensureColumn(ownersSheet, c); });
     var owners = sheetToObjects(ownersSheet);
 
@@ -404,7 +383,6 @@ function actionRegisterOwner(body) {
       Phone: phone,
       Messenger: messengerLink,
       StoreType: storeType,
-      PasswordHint: passwordHint,
       ApprovalStatus: 'approved',
       CustomerId: customer.CustomerId,
       AppliedAt: nowIso(),
@@ -681,50 +659,7 @@ function consumeTwoFACode(token, code, expectedPurpose, expectedOwnerId) {
 
 /* ---------- Password reset (forgot password) ---------- */
 
-function actionRequestPasswordReset(body) {
-  var username = String(body.username || '').trim().toLowerCase();
-  if (!username) return fail('Enter your username');
 
-  var owner = sheetToObjects(getSheet('Owners')).filter(function (o) {
-    return String(o.Username).toLowerCase() === username;
-  })[0];
-
-  // Always return a token so the response looks the same whether or not the
-  // account exists - this endpoint must not be usable to enumerate usernames.
-  if (ownerCanLogIn(owner) && owner.Email) {
-    var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'reset', owner);
-    return ok({ token: pending.token });
-  }
-  return ok({ token: generateToken() });
-}
-
-function actionResetPasswordWithCode(body) {
-  var newPassword = String(body.newPassword || '');
-  if (newPassword.length < 8) return fail('Password must be at least 8 characters');
-
-  var result = consumeTwoFACode(body.token, body.code, 'reset', null);
-  if (!result.ok) return result;
-
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    var ownersSheet = getSheet('Owners');
-    var owner = findRowById(ownersSheet, 'OwnerId', result.ownerId);
-    if (!owner) return fail('Account not found');
-
-    updateRowFromObject(ownersSheet, owner.__row, {
-      PasswordSalt: '',                        // PBKDF2 carries its own salt (Passwords.gs)
-      PasswordHash: hashPasswordV2(newPassword)
-    });
-
-    // Force re-login everywhere, in case the reset was triggered by a compromised password.
-    revokeAllSessions(owner.OwnerId);
-
-    return ok({});
-  } finally {
-    lock.releaseLock();
-  }
-}
 
 /* ---------------------------------------------------------------------------
  * Changing the contact email

@@ -30,11 +30,11 @@ const rows = () => box.__sheets.FeaturePurchases.objects();
 /* ---------- pure rules ---------- */
 ok('pure: free for 1-3 products when unused', box.featureIsFree([], A, 1) && box.featureIsFree([], A, 3));
 ok('pure: never free for 0 or 4+ products', !box.featureIsFree([], A, 0) && !box.featureIsFree([], A, 4));
-ok('pure: a paid row does not use up the free one', !box.featureFreeUsed([{ OwnerId: 'own_a', Amount: 0.35, CreatedAt: NOW }], A));
-ok('pure: an Amount 0 row does', box.featureFreeUsed([{ OwnerId: 'own_a', Amount: 0, CreatedAt: NOW }], A));
-ok('pure: matched by store slug too (same store, other owner id)', box.featureFreeUsed([{ OwnerId: 'x', StoreSlug: 'a', Amount: 0, CreatedAt: NOW }], A));
-ok('pure: another store\'s free row does not count', !box.featureFreeUsed([{ OwnerId: 'own_b', StoreSlug: 'b', Amount: 0, CreatedAt: NOW }], A));
-ok('pure: a blank Amount is not read as free', !box.featureFreeUsed([{ OwnerId: 'own_a', Amount: '', CreatedAt: NOW }], A));
+ok('pure: a paid row does not use up the free one', !box.featureFreeBlock([{ OwnerId: 'own_a', Amount: 0.35, CreatedAt: NOW }], A) === 'used');
+ok('pure: an Amount 0 row does', box.featureFreeBlock([{ OwnerId: 'own_a', Amount: 0, CreatedAt: NOW }], A) === 'used');
+ok('pure: matched by store slug too (same store, other owner id)', box.featureFreeBlock([{ OwnerId: 'x', StoreSlug: 'a', Amount: 0, CreatedAt: NOW }], A) === 'used');
+ok('pure: another store\'s free row does not count', !box.featureFreeBlock([{ OwnerId: 'own_b', StoreSlug: 'b', Amount: 0, CreatedAt: NOW }], A) === 'used');
+ok('pure: a blank Amount is not read as free', !box.featureFreeBlock([{ OwnerId: 'own_a', Amount: '', CreatedAt: NOW }], A) === 'used');
 
 ok('pure: phones compare without spaces or the +686 code', box.normalizeFeaturePhone('+686 7300 0001') === '73000001' && box.normalizeFeaturePhone('7300 0001') === '73000001');
 ok('pure: another store with the same phone that had it -> used',

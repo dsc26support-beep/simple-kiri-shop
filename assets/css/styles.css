@@ -461,18 +461,6 @@ header.site-header a {
 
 /* Product card: phone number and delivery icons share one line, grouped
    left (icons sit just after the number). */
-.store-phone-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-}
-
-.store-phone-row .store-phone,
-.store-phone-row .delivery-icons {
-  margin: 0;
-}
 
 .delivery-icons {
   display: inline-flex;
@@ -607,7 +595,7 @@ section {
 /* Thin purple rather than the shared --color-border grey, on all four search
    boxes (home, Browse, a storefront, All Stores) so the one control a shopper
    is looking for reads the same everywhere.
-   
+
    Still 1px, from the shared input rule above - only the colour changes, so a
    search field is the same SIZE as every other field and nothing reflows. The
    focus ring is a 3px blue outline, so the resting purple cannot be mistaken
@@ -936,11 +924,6 @@ section {
 
 /* "View all categories" closes the strip. Marked out as an action rather than
    another category so it does not read as one more category. */
-.chip-strip-item--more {
-  border-style: dashed;
-  color: var(--color-purple);
-  font-weight: 600;
-}
 
 /* Smart-search discovery, shown only where "No products found." used to be.
    Nothing new visually: the chips are .chip-strip-item, the heading is
@@ -1081,26 +1064,8 @@ footer.site-footer .copyright {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.floating-action-btn--center {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
 .floating-action-btn--left {
   left: var(--space-3);
-}
-
-.floating-action-btn--small {
-  padding: 0.4em 0.9em;
-  font-size: 0.85rem;
-  background: var(--color-purple-pale);
-  color: var(--color-purple);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-}
-
-.floating-action-btn--small svg {
-  width: 16px;
-  height: 16px;
 }
 
 .floating-action-btn--right {
@@ -1359,11 +1324,6 @@ footer.site-footer .copyright {
 /* "Continue Shopping" button on cart.html: 50% smaller, light purple
    (#5b9bd5), 10%-transparent background. transform-origin keeps it anchored
    to the left/bottom edges as it shrinks. */
-.floating-action-btn--continue-shopping {
-  transform: scale(0.5);
-  transform-origin: left bottom;
-  background: rgba(106, 97, 184, 0.9);
-}
 
 /*
  * Chat floating action button - circular, icon-only, distinct from the
@@ -2226,11 +2186,6 @@ footer.site-footer .copyright {
   color: var(--color-muted);
 }
 
-.meeting-card-error {
-  margin: 0.35em 0 0;
-  color: var(--color-danger);
-}
-
 .meeting-card-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2242,13 +2197,6 @@ footer.site-footer .copyright {
   min-height: 36px;
   padding: 0.4em 0.9em;
   font-size: 0.82rem;
-}
-
-.meeting-trigger-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
 }
 
 .meeting-request-form {
@@ -2319,12 +2267,6 @@ textarea.meeting-request-input {
   margin-top: var(--space-1);
 }
 
-.meeting-request-signin-hint {
-  margin: var(--space-2) 0 0;
-  font-size: 0.82rem;
-  color: var(--color-muted);
-}
-
 @media (prefers-color-scheme: dark) {
   .meeting-panel {
     background: #17181a;
@@ -2356,69 +2298,10 @@ textarea.meeting-request-input {
 /* Search results toolbar: sort + a single Filters button, per the rule that
    one entry point beats a wall of always-visible facets. Sits above the grid
    and stays on one row down to small phones. */
-.results-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 var(--space-3);
-}
-
-.results-sort-field {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-}
-
-.results-sort-field select {
-  width: 100%;
-}
 
 /* Count of active filters, so a collapsed panel never hides the fact that
    results are being narrowed - that is how a customer concludes the shop is
    empty when it is only filtered. */
-.filters-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.4em;
-  height: 1.4em;
-  margin-left: 0.4em;
-  padding: 0 0.35em;
-  border-radius: 999px;
-  background: var(--color-purple);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.filters-panel {
-  margin-bottom: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-bg-alt);
-}
-
-.filters-row {
-  margin-bottom: var(--space-3);
-}
-
-.filters-row .field {
-  margin: 0;
-}
-
-.filters-label {
-  display: block;
-  margin-bottom: var(--space-2);
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.filters-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
 
 /* Chips are labels wrapping a real checkbox: the control stays keyboard
    reachable and screen-reader correct, the label just restyles it. */
@@ -2426,82 +2309,17 @@ textarea.meeting-request-input {
    As buttons these were ~130px each, so three of them could not sit beside a
    label on a 390px phone and had to scroll sideways; a shopper met a chopped
    "/ Ship" at the edge. Plain checkboxes fit on one row with space to spare. */
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: 0.9rem;
-  cursor: pointer;
-  /* Two or three words by definition, so it never wants to wrap - "Boat / Ship"
-     used to break at both spaces and stand three lines tall. */
-  white-space: nowrap;
-}
-
-.filter-chip:focus-within {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
 
 /* Weight alone marks a ticked one now. The box itself already says checked;
    a second fill behind it was the button styling talking. */
-.filter-chip:has(input:checked) {
-  font-weight: 600;
-}
 
 /* The slider gets the full width of the panel. The label and the current value
    share the line above it, so neither eats into the bar - between them they
    were taking ~220px of a 358px row, leaving the bar shorter than the text
    describing it. */
-.price-range {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.price-range input[type="range"] {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 44px;
-}
 
 #filter-price-row {
   display: block;
-}
-
-#filter-price-row .price-range {
-  display: block;
-}
-
-#filter-price-row .price-range input[type="range"] {
-  display: block;
-  width: 100%;
-}
-
-.price-row-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
-}
-
-.price-row-head output {
-  font-size: 0.9rem;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--color-muted);
-}
-
-.price-range output {
-  flex: 0 0 auto;
-  font-size: 0.9rem;
-  font-weight: 600;
-  white-space: nowrap;
 }
 
 /* Phone and tablet only: tighten the results toolbar and the filter panel.
@@ -2520,24 +2338,6 @@ textarea.meeting-request-input {
    that checkbox into the narrow label column and squash it. #filter-store-row
    is left stacked deliberately: its select needs the full width. */
 @media (max-width: 1024px) {
-  .results-toolbar .results-sort-field select {
-    min-height: 36px;
-    height: 36px;
-    padding-top: 0;
-    padding-bottom: 0;
-    font-size: 0.9rem;
-  }
-
-  .filters-panel #filter-delivery-row {
-    display: grid;
-    grid-template-columns: minmax(0, 8em) minmax(0, 1fr);
-    align-items: center;
-    column-gap: var(--space-3);
-  }
-
-  .filters-panel #filter-delivery-row .filters-label {
-    margin-bottom: 0;
-  }
 
   /* These used to scroll sideways, because as fixed-width PILLS three of them
      could not fit beside a label and wrapping put one per line. They are plain
@@ -2548,56 +2348,14 @@ textarea.meeting-request-input {
 
      The label column shrinks with them: "Delivery" is one short word and does
      not need 8em. */
-  .filters-panel #filter-delivery-row {
-    grid-template-columns: minmax(0, 5.5em) minmax(0, 1fr);
-    align-items: start;
-  }
 
-  .filters-panel #filter-delivery-row .filters-label {
-    /* Back on the first line of chips now that the row can be two lines tall. */
-    line-height: 44px;
-  }
-}
-
-.checkbox-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5em;
-  min-height: 44px;
-  cursor: pointer;
-}
-
-.filters-actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: space-between;
 }
 
 /* Load More rather than infinite scroll: predictable, keyboard reachable, and
    it never strands the footer out of reach. */
-.results-more {
-  display: flex;
-  justify-content: center;
-  margin-top: var(--space-3);
-}
 
 /* A button that reads as a link - used inside sentences such as the
    no-results recovery text, where a full button would break the line. */
-.link-button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--color-purple);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-@media (prefers-color-scheme: dark) {
-  .filter-chip:has(input:checked) {
-    background: #22303f;
-  }
-}
 
 /* Checkout delivery states.
  *
@@ -3344,11 +3102,6 @@ textarea.meeting-request-input {
 
 .auth-panel .btn + .btn {
   margin-top: var(--space-2);
-}
-
-.auth-alt {
-  text-align: center;
-  margin-top: var(--space-4);
 }
 
 /* Customer/Seller login chooser (homepage Sign In when the visitor also owns a
@@ -4189,7 +3942,6 @@ body.browse-locked .category-rail {
   text-align: center;
 }
 
-
 /* ---------- Three-dot overflow menu in the header ---------------------- */
 
 /* Out of flow for the same reason .header-cart is: header-menu.js injects this
@@ -4320,7 +4072,6 @@ header.site-header .header-menu-item:focus-visible,
   body.has-header-menu .header-menu-item--in-bar {
     display: none;
   }
-
 
   /* Homepage advert lines stay clear of the two new links on the right. */
   body.has-header-menu .header-ticker-item {
@@ -4533,7 +4284,6 @@ body.has-header-menu header.site-header > .container:first-of-type {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
   }
 
-
 }
 
 /* Static "Continue Shopping" button on cart.html - sits beneath the bigger
@@ -4596,8 +4346,7 @@ input[type="radio"] {
 
 /* The five labels that wrap a checkbox or radio. Each carries the 44px target
    the control itself no longer provides. */
-.checkbox-line,
-.filter-chip,
+
 .review-star-choice,
 .delivery-method-option,
 .delivery-fee-mode-choice {
@@ -4831,10 +4580,6 @@ legend {
 }
 
 /* Three lines rather than two: the price now shares them with the name. */
-.product-name--with-price {
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-}
 
 /* Homepage and search cards: the place name and the delivery icons share one
    line, the icons running straight on from the text.
@@ -5393,13 +5138,6 @@ legend {
   min-height: 220px;
 }
 
-.checkout-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
 .confirmation-cta strong {
   font-size: 1.25em;
   font-weight: 700;
@@ -5494,7 +5232,6 @@ legend {
   height: 1px;
   background: var(--color-border);
 }
-
 
 /* The two no-typing ways in, above the "or" divider. */
 .auth-quick {
@@ -5788,7 +5525,7 @@ button.seller-badge:focus-visible {
 
 /* Open. aria-expanded is the same attribute the screen reader reads, so the
    visual "pressed" state and the announced state cannot disagree.
-   
+
    A ring, not a border: it appears only while the explanation is showing, so
    it is state rather than the resting outline that was taken off above. It has
    to be unmistakable - with several badges in a row, this is the only thing
@@ -6443,29 +6180,11 @@ html.has-remembered-email .login-remembered {
   color: var(--color-ink);
 }
 
-.quick-action-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--color-purple-soft);
-  color: var(--color-purple);
-}
-
-.quick-action-item:hover .quick-action-icon,
-.quick-action-item:focus-visible .quick-action-icon {
-  background: var(--color-purple);
-  color: #fff;
-}
-
 .quick-action-label {
   font-size: 0.75rem;
   white-space: nowrap;
   text-align: center;
 }
-
 
 /* Sign-in page, when chat sent the shopper here to request a meeting - see
    the inline scripts in customer-login.html. */
@@ -7348,7 +7067,6 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
   height: 22px;
   flex: none;
 }
-
 
 /* ==========================================================================
    Desktop home page: everything centred (owner request). Desktop only -
@@ -8234,14 +7952,6 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
 .shopper-switch-label { margin: 0; }
 
 /* Seller login: the seller's own password hint, after a wrong password. */
-.login-hint {
-  margin: var(--space-2) 0 0;
-  padding: var(--space-2) var(--space-3);
-  border-left: 4px solid var(--color-gold);
-  border-radius: 6px;
-  background: var(--color-gold-soft);
-  color: var(--color-ink);
-}
 
 /* Owner request (Oct 2026): every button on the customer sign-in card is the
    size of Google's own sign-in button - 240px wide (narrower on a very small
@@ -8381,7 +8091,6 @@ html.auth-signup .auth-divider {
   line-height: 1.3;
   margin: 0 0 var(--space-1);
 }
-
 
 .auth-panel-video { display: none; }
 
@@ -8590,7 +8299,6 @@ html.auth-signup .auth-divider {
     margin-bottom: var(--space-2);
   }
 
-
   /* The video fills the whole panel. 3:2 keeps "mwakete.com" in the middle
      of the 16:9 video inside the crop. */
   .auth-split-panel.has-video .auth-panel-video {
@@ -8661,7 +8369,6 @@ html.auth-signup .auth-divider {
 .register-sent .btn {
   margin-top: var(--space-2);
 }
-
 
 /* ---- Customer sign-in buttons, Buzzy style (owner request, Oct 2026) ----
    One stack of matching full-width buttons - Google, Facebook, Guest, then
@@ -9249,7 +8956,7 @@ form.search-box.is-pinned::before {
   .sp-meta { margin: 4px 0 0; color: var(--color-muted); }
   .sp-meta[hidden], .sp-bio[hidden] { display: none; }
   .sp-cover-name .sp-verified { margin-left: 6px; color: #fff; vertical-align: -4px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
-  .sp-meta .sp-open { color: #1e7a34; font-weight: 600; }
+
   .sp-meta .sp-closed { color: var(--color-danger); font-weight: 600; }
   .sp-bio {
     margin: var(--space-2) 0 0; line-height: 1.45;
@@ -9277,7 +8984,6 @@ form.search-box.is-pinned::before {
   .sp-info { color: var(--color-ink); }
   .sp-info p { margin: 0 0 var(--space-2); }
   .sp-bio-full { white-space: pre-line; overflow-wrap: anywhere; }
-
 
   .sp-photos:not([hidden]) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
   .sp-photos a { display: block; aspect-ratio: 1; overflow: hidden; background: var(--color-bg-alt); }

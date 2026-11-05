@@ -4,8 +4,7 @@
  * WHY THIS IS A SECURITY TEST, NOT A FEATURE TEST.
  *
  * That one address is three things at once: where customer orders are emailed
- * (Orders.gs), where password-reset codes go (actionRequestPasswordReset) and
- * where login 2FA codes go (actionLoginOwner). Until this change a live session
+ * (Orders.gs) and where login 2FA codes go. Until this change a live session
  * could repoint all three in a single Save with no proof of anything - so
  * anyone who got into a session once could make it permanent and lock the real
  * owner out of their own store.
