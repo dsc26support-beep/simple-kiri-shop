@@ -1,5 +1,25 @@
 document.addEventListener('DOMContentLoaded', init);
 
+// Sign in by an emailed one-tap link (the default, owner request Nov 2026) or
+// by password ("Use a password instead").
+let loginMode = 'link';
+
+/** Switches Sign in between the emailed link and a password. */
+function setLoginMode(mode, focus) {
+  loginMode = mode === 'password' ? 'password' : 'link';
+  const pw = loginMode === 'password';
+  const $ = (id) => document.getElementById(id);
+  $('login-password-field').hidden = !pw;
+  $('login-mode-note').hidden = pw;
+  $('login-use-password').hidden = pw;
+  $('login-use-link').hidden = !pw;
+  $('login-submit').textContent = pw ? 'Sign in' : 'Email me a sign-in link';
+  $('login-error').textContent = '';
+  if (!pw) $('login-password').value = '';
+  refreshReady();
+  if (focus) (pw && emailLooksValid($('login-email').value) ? $('login-password') : $('login-email')).focus();
+}
+
 // The browser's handles on codes the server has emailed (never the code itself).
 const pending = { login: null, signup: null, reset: null };
 // What the login code form is doing: 'login' (Email me a code) or 'verify'
@@ -15,7 +35,7 @@ function init() {
   const link = window.__authLink || {};
   // Already signed in? Skip straight to where they were headed - unless they
   // came from an emailed link, which still has to be used.
-  if (CustomerAuth.isLoggedIn() && !link.verify && !link.reset) {
+  if (CustomerAuth.isLoggedIn() && !link.verify && !link.reset && !link.signin) {
     window.location.href = nextDest();
     return;
   }
@@ -30,8 +50,9 @@ function init() {
     openEmailForm();
     document.getElementById('login-email').focus();
   });
-  document.getElementById('login-form').addEventListener('submit', onPasswordLogin);
-  document.getElementById('login-use-code').addEventListener('click', onLoginRequest);
+  document.getElementById('login-form').addEventListener('submit', (e) => (loginMode === 'password' ? onPasswordLogin(e) : onLoginRequest(e)));
+  document.getElementById('login-use-password').addEventListener('click', () => setLoginMode('password', true));
+  document.getElementById('login-use-link').addEventListener('click', () => setLoginMode('link', true));
   document.getElementById('login-forgot').addEventListener('click', () => showReset(document.getElementById('login-email').value.trim()));
   document.getElementById('login-code-form').addEventListener('submit', onLoginVerify);
   document.getElementById('login-back').addEventListener('click', resetLogin);
@@ -65,6 +86,7 @@ function init() {
 
   if (link.verify) useVerifyLink(link.verify);
   else if (link.reset) useResetLink(link.reset);
+  else if (link.signin) useSigninLink(link.signin);
 }
 
 function emailLooksValid(value) {
@@ -98,7 +120,7 @@ function explainProblem(e) {
  */
 function refreshReady() {
   const $ = (id) => document.getElementById(id);
-  const loginReady = emailLooksValid($('login-email').value) && !!$('login-password').value;
+  const loginReady = emailLooksValid($('login-email').value) && (loginMode === 'link' || !!$('login-password').value);
   const signupReady = !!$('signup-name').value.trim() && emailLooksValid($('signup-email').value)
     && $('signup-password').value.length >= PASSWORD_MIN;
   $('login-form').classList.toggle('is-ready', loginReady);
@@ -262,7 +284,7 @@ async function onPasswordLogin(e) {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   if (!emailLooksValid(email)) { errorEl.textContent = EMAIL_PROBLEM; return; }
-  if (!password) { errorEl.textContent = 'Enter your password - or use "Email me a code instead".'; return; }
+  if (!password) { errorEl.textContent = 'Enter your password - or use "Email me a sign-in link instead".'; return; }
   const btn = e.target.querySelector('button[type="submit"]');
   const busyDone = setButtonBusy(btn, 'Signing in');
   const res = await Api.post('customerPasswordLogin', { email, password, providerLinkToken: providerLinkToken || undefined });
@@ -274,24 +296,29 @@ async function onPasswordLogin(e) {
   signedIn(res);
 }
 
-async function onLoginRequest() {
+async function onLoginRequest(e) {
+  if (e) e.preventDefault();
   const errorEl = document.getElementById('login-error');
   errorEl.textContent = '';
   const email = document.getElementById('login-email').value.trim();
   if (!emailLooksValid(email)) {
-    errorEl.textContent = 'Type your email first, then tap "Email me a code instead".';
+    errorEl.textContent = EMAIL_PROBLEM;
     document.getElementById('login-email').focus();
     return;
   }
-  const btn = document.getElementById('login-use-code');
+  const btn = document.getElementById('login-submit');
   const busyDone = setButtonBusy(btn, 'Sending');
-  const res = await Api.post('loginCustomer', { email });
+  // The emailed link brings them back to where they were headed.
+  const next = getQueryParam('next') || '';
+  const res = await Api.post('loginCustomer', { email, next: next || undefined });
   busyDone();
   if (!res.ok) {
-    errorEl.textContent = res.error || 'Could not send a code. Please try again.';
+    errorEl.textContent = res.error || 'Could not send the link. Please try again.';
     return;
   }
   showLoginCode('login', res.pendingToken, res.sentTo || email, 'sign in', res.resendAfterSeconds);
+  document.getElementById('login-code-hint').textContent = 'We emailed a sign-in link to ' + (res.sentTo || email) +
+    '. Tap it to sign in - or type the 6-digit code from the same email below. Not there after a minute? Check your spam or junk folder.';
 }
 
 function showLoginCode(mode, pendingToken, sentTo, doing, resendAfter) {
@@ -466,6 +493,18 @@ async function useVerifyLink(linkToken) {
   document.getElementById('login-error').textContent = res.error || 'That link did not work. Sign in, or create your account again.';
 }
 
+async function useSigninLink(linkToken) {
+  showTab('signin');
+  openEmailForm();
+  const note = document.getElementById('provider-link-note');
+  note.textContent = 'Signing you in…';
+  note.hidden = false;
+  const res = await Api.post('verifyCustomerLogin', { linkToken });
+  if (res.ok) { signedIn(res); return; }
+  note.hidden = true;
+  document.getElementById('login-error').textContent = res.error || 'That sign-in link did not work. Send a new one below.';
+}
+
 async function useResetLink(linkToken) {
   showReset('');
   const res = await Api.post('checkCustomerLink', { linkToken });
@@ -494,12 +533,12 @@ window.onProviderLinkRequired = function (res) {
   openEmailForm();
   const note = document.getElementById('provider-link-note');
   note.textContent = 'You already have a Mwakete account with ' + res.sentTo + '. ' +
-    (res.hasPassword ? 'Sign in with its password' : 'Tap "Email me a code instead"') +
+    (res.hasPassword ? 'Sign in with its password' : 'Tap "Email me a sign-in link" and type the code from that email here') +
     ' once, and we will link ' + label + ' to it so it works next time.';
   note.hidden = false;
   if (res.email) document.getElementById('login-email').value = res.email;
-  refreshReady();
-  document.getElementById(res.hasPassword ? 'login-password' : 'login-use-code').focus();
+  setLoginMode(res.hasPassword ? 'password' : 'link');
+  document.getElementById(res.hasPassword ? 'login-password' : 'login-submit').focus();
 };
 
 /** A new Facebook account: signed in, but its email still needs confirming. */

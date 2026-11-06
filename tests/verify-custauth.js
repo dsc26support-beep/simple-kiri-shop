@@ -77,6 +77,8 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.waitForFunction(() => typeof CustomerAuth !== 'undefined');
     await openEmail(page);
     await page.fill('#login-email', 'd@x.com');
+    await page.click('#login-use-password');
+    await page.waitForTimeout(400);
     ok('Sign in waits for a password', await page.$eval('#login-form button[type="submit"]', (b) => getComputedStyle(b).visibility === 'hidden'));
     await page.fill('#login-password', 'wrong-pass');
     await page.click('#login-form button[type="submit"]');
@@ -91,9 +93,9 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await openEmail(page);
     await page.fill('#login-email', 'd@x.com');
-    await page.click('#login-use-code');
+    await page.click('#login-submit');
     await page.waitForSelector('#login-code-form:not(.hidden)');
-    ok('"Email me a code instead" calls loginCustomer', posted.some(p => p.action === 'loginCustomer' && p.body.email === 'd@x.com'));
+    ok('"Email me a sign-in link" (the default) calls loginCustomer', posted.some(p => p.action === 'loginCustomer' && p.body.email === 'd@x.com'));
     await page.fill('#login-code', '654321');
     await page.click('#login-code-form button[type="submit"]');
     await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
@@ -105,7 +107,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await openEmail(page);
     await page.fill('#login-email', 'd@x.com');
-    await page.click('#login-forgot');
+    await page.evaluate(() => { const b = document.getElementById('login-use-password'); if (b && !b.hidden) b.click(); }); await page.click('#login-forgot');
     ok('Forgot password opens the reset step with the email filled in', await page.isVisible('#reset-request-form') && (await page.inputValue('#reset-email')) === 'd@x.com');
     await page.click('#reset-request-form button[type="submit"]');
     await page.waitForSelector('#reset-form:not(.hidden)');
@@ -213,6 +215,21 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
   ok('both: Create Store gone, My Account is the dashboard',
     !both.createShown && both.accountHref === 'customer-dashboard.html', JSON.stringify(both));
   ok('both: no chooser - the customer account settles it', both.chooser === false);
+
+  // The emailed sign-in link (Nov 2026): one tap signs in and goes on to ?next=.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 800 } });
+    const posted = [];
+    await mockAuth(ctx, posted);
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/customer-login.html?signin=LINK-TOKEN-1&next=store.html%3Fstore%3Dbong', { waitUntil: 'load' });
+    await page.waitForURL(/store\.html\?store=bong/, { timeout: 6000 }).catch(() => {});
+    const call = posted.find((p) => p.action === 'verifyCustomerLogin');
+    ok('sign-in link: sends the link token (no code, no password)', !!call && call.body.linkToken === 'LINK-TOKEN-1' && !call.body.code, JSON.stringify(call));
+    ok('...signs in and goes on to the page they wanted', /store\.html\?store=bong/.test(page.url())
+      && (await page.evaluate(() => localStorage.getItem('skiri_customer_token'))) === 'sess-2', page.url());
+    await ctx.close();
+  }
 
   await browser.close();
   let failed = 0;
