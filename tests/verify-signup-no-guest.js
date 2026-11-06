@@ -55,6 +55,7 @@ const seen = (page) => page.evaluate(() => {
     >= document.getElementById('login-form').getBoundingClientRect().bottom);
   ok('...below the Sign in form', below);
 
+  await page.click('#login-use-password');
   const eye = await page.evaluate(() => { const b = document.querySelector('.password-toggle[data-for="login-password"]');
     return { text: b.textContent.trim(), svg: !!b.querySelector('svg'), label: b.getAttribute('aria-label') }; });
   ok('password box: an eye icon, not the word "Show"', eye.text === '' && eye.svg && eye.label === 'Show password', JSON.stringify(eye));

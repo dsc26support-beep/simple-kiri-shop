@@ -126,7 +126,11 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     await openEmail(p);
     await p.fill('#login-email', 'aroita@example.com'); await p.waitForTimeout(400);
     const c = await vis();
-    ok('...the Terms line appears once the email looks right', !c.code && c.terms, J(c));
+    ok('...a good email shows "Email me a sign-in link" and the Terms line (no password needed)', c.code && c.terms
+      && /sign-in link/.test(await p.textContent('#login-submit')), J(c));
+    await p.click('#login-use-password'); await p.waitForTimeout(400);
+    const c1 = await vis();
+    ok('..."Use a password instead": Sign in waits for the password', !c1.code && c1.terms, J(c1));
     await p.fill('#login-password', 'secret123'); await p.waitForTimeout(400);
     const c2 = await vis();
     ok('...and "Sign in" once a password is typed', c2.code && c2.terms, J(c2));

@@ -86,6 +86,31 @@ ok('the emailed code signs in', r.ok && !!r.token, J(r));
 r = box.actionVerifyCustomerLogin({ token: rNone.pendingToken, code: '123456' });
 ok('a decoy token never signs in', !r.ok, J(r));
 
+/* ---------- sign-in link (owner request, Nov 2026: one tap, no password) ---------- */
+clearCache(); mail.length = 0;
+r = box.actionLoginCustomer({ email: 'tia@x.test', next: 'store.html?store=bong' });
+m = lastMailTo('tia@x.test');
+const signinLink = (linkIn(m, 'signin') || '').split('&')[0];
+ok('the sign-in email carries a one-tap link and the code', /sign-in link/.test(m[1]) && !!signinLink && !!codeIn(m) && /Tap this link to sign in/.test(m[2]), m && m[2]);
+ok('...the link returns them to where they were headed', /signin=[^&\s]+&next=store\.html%3Fstore%3Dbong/.test(m[2]), m[2]);
+ok('...the link token is stored only as a hash', !JSON.stringify(box.__sheets.CustomerCodes.objects()).includes(decodeURIComponent(signinLink)));
+r = box.actionVerifyCustomerLogin({ linkToken: decodeURIComponent(signinLink) });
+ok('tapping the link signs in', r.ok && !!r.token && r.customer.email === 'tia@x.test', J(r));
+r = box.actionVerifyCustomerLogin({ linkToken: decodeURIComponent(signinLink) });
+ok('...once only', !r.ok && /already been used/.test(r.error), J(r));
+r = box.actionVerifyCustomerLogin({ linkToken: 'made-up-token' });
+ok('a made-up link signs nobody in', !r.ok, J(r));
+clearCache(); mail.length = 0;
+r = box.actionLoginCustomer({ email: 'tia@x.test', next: 'https://evil.example/x.html' });
+ok('an outside page is never put in the link', !/evil/.test(lastMailTo('tia@x.test')[2]) && !/&next=/.test(lastMailTo('tia@x.test')[2]));
+const linkRow = box.__sheets.CustomerCodes.objects().slice(-1)[0];
+r = box.actionVerifyCustomerLogin({ token: r.pendingToken, code: codeIn(lastMailTo('tia@x.test')) });
+ok('the code from the same email still works (another phone or app)', r.ok && !!r.token, J(r));
+ok('...and then the link is spent too', !box.actionVerifyCustomerLogin({ linkToken: decodeURIComponent((linkIn(lastMailTo('tia@x.test'), 'signin') || '').split('&')[0]) }).ok && !!linkRow);
+clearCache(); mail.length = 0;
+r = box.actionLoginCustomer({ email: 'ghost2@x.test' });
+ok('no account: still no link and no code', !linkIn(lastMailTo('ghost2@x.test'), 'signin') && !codeIn(lastMailTo('ghost2@x.test')));
+
 /* ---------- forgot password ---------- */
 clearCache(); mail.length = 0;
 r = box.actionRequestCustomerPasswordReset({ email: 'tia@x.test' });

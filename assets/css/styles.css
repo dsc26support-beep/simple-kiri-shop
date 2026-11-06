@@ -8129,6 +8129,16 @@ html.auth-signup .auth-divider {
   margin: calc(-1 * var(--space-1)) 0 var(--space-2);
   font-size: 0.92rem;
 }
+/* Sign in (Nov 2026): "Forgot password?" sits right under the password box,
+   right-aligned; the link/password switch is centred under the button. */
+.password-field + .auth-alt-links {
+  justify-content: flex-end;
+  margin: var(--space-2) 0 0;
+}
+.auth-alt-links.auth-mode-switch {
+  justify-content: center;
+  margin: var(--space-3) 0 var(--space-2);
+}
 .auth-step-title {
   font-size: 1.1rem;
   margin: 0 0 var(--space-2);

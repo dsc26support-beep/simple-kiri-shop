@@ -175,8 +175,8 @@ async function makeContext(browser, opts) {
     await page.waitForTimeout(600);
     await openEmail(page);
     await page.fill('#login-email', 'a@example.com');
-    // Password first since Oct 2026; the code is "Email me a code instead".
-    await page.click('#login-use-code');
+    // Sign-in link first since Nov 2026; the same email carries the code.
+    await page.click('#login-submit');
     await page.waitForTimeout(700);
     await page.fill('#login-code', '123456');
     await page.click('#login-code-form button[type="submit"]');
@@ -357,13 +357,14 @@ async function makeContext(browser, opts) {
 
     ok('the always-visible helper line is gone from the email step',
       !/We'll email you a 6-digit code/i.test(await page.textContent('#login-form') || ''));
+    ok('the email step says what happens: a link, no password', /email you a link/i.test(await page.textContent('#login-mode-note') || ''));
 
     await openEmail(page);
     await page.fill('#login-email', 'aroita@example.com');
-    await page.click('#login-use-code');
+    await page.click('#login-submit');
     await page.waitForTimeout(300);
     ok('it reappears as a confirmation on the code step instead',
-      /we emailed a 6-digit code to aroita@example\.com/i.test(await page.textContent('#login-code-hint') || ''),
+      /we emailed a sign-in link to aroita@example\.com/i.test(await page.textContent('#login-code-hint') || ''),
       await page.textContent('#login-code-hint'));
     await ctx.close();
   }

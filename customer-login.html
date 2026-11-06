@@ -32,13 +32,13 @@
     // anything else runs. customer-login.js uses it from window.__authLink.
     try {
       var lq = new URLSearchParams(location.search);
-      window.__authLink = { verify: lq.get('verify') || '', reset: lq.get('reset') || '' };
-      if (window.__authLink.verify || window.__authLink.reset) {
+      window.__authLink = { verify: lq.get('verify') || '', reset: lq.get('reset') || '', signin: lq.get('signin') || '' };
+      if (window.__authLink.verify || window.__authLink.reset || window.__authLink.signin) {
         document.documentElement.classList.add('email-open');
-        lq.delete('verify'); lq.delete('reset');
+        lq.delete('verify'); lq.delete('reset'); lq.delete('signin');
         history.replaceState(null, '', location.pathname + (lq.toString() ? '?' + lq.toString() : ''));
       }
-    } catch (e) { window.__authLink = { verify: '', reset: '' }; }
+    } catch (e) { window.__authLink = { verify: '', reset: '', signin: '' }; }
     try {
       if (localStorage.getItem('skiri_last_email')) {
         document.documentElement.classList.add('has-remembered-email');
@@ -185,20 +185,24 @@
                   <button type="button" class="linklike" id="login-not-you">Not you?</button>
                 </p>
               </div>
-              <div class="field">
+              <!-- Sign in (owner request, Nov 2026): an emailed one-tap link by
+                   default; "Use a password instead" shows the password box. -->
+              <div class="field" id="login-password-field" hidden>
                 <label for="login-password">Password</label>
                 <div class="password-field">
                   <input id="login-password" type="password" autocomplete="current-password" maxlength="200">
                   <button type="button" class="password-toggle" data-for="login-password" aria-pressed="false" aria-label="Show password"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
                 </div>
+                <p class="auth-alt-links"><button type="button" class="linklike" id="login-forgot">Forgot password?</button></p>
               </div>
-              <p class="auth-alt-links">
-                <button type="button" class="linklike" id="login-forgot">Forgot password?</button>
-                <button type="button" class="linklike" id="login-use-code">Email me a code instead</button>
-              </p>
+              <p id="login-mode-note" class="helper-text">We'll email you a link - tap it to sign in. No password needed.</p>
               <p id="login-error" class="form-error" role="alert"></p>
-              <!-- Shown once the email and a password are typed (owner request, Oct 2026). -->
-              <div class="auth-reveal"><div><button type="submit" class="btn btn-primary btn-block">Sign in</button></div></div>
+              <!-- Shown once the form is filled in (owner request, Oct 2026). -->
+              <div class="auth-reveal"><div><button type="submit" id="login-submit" class="btn btn-primary btn-block">Email me a sign-in link</button></div></div>
+              <p class="auth-alt-links auth-mode-switch">
+                <button type="button" class="linklike" id="login-use-password">Use a password instead</button>
+                <button type="button" class="linklike" id="login-use-link" hidden>Email me a sign-in link instead</button>
+              </p>
             </form>
 
             <form id="login-code-form" class="hidden" novalidate>
@@ -209,7 +213,7 @@
               </div>
               <p id="login-code-error" class="form-error" role="alert"></p>
               <button type="submit" class="btn btn-primary btn-block">Verify &amp; sign in</button>
-              <button type="button" class="btn btn-block resend-btn" data-for="login" disabled>Send the code again</button>
+              <button type="button" class="btn btn-block resend-btn" data-for="login" disabled>Send the email again</button>
               <button type="button" id="login-back" class="btn btn-block">Use a different email</button>
             </form>
           </div>

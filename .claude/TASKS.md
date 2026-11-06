@@ -9,5 +9,7 @@ Kept in .claude/ so GitHub Pages never publishes it.
 - [owner, optional] Release signing key for the app - 4 GitHub secrets (docs/contacts-sms-deploy.md section 4)
 - [owner, optional] Sheets add-on first live install (sheets-addon/README.md)
 - [merged #160] Admin SMS buttons: campaigns + cancel, phones, places - needs backend deploy (getVersion = smsadmin-2026-11-03) + owner check on owner/admin.html#sms
-- [in PR] Remove dashboard Quick actions (all screens); red counts for orders/bookings/messages moved to bottom bar + menu - needs merge + owner check on owner/dashboard.html
-- [in PR] Code clean-up (store-password leftovers, daily PosChanges trim, unused functions/CSS) - needs merge + backend deploy (getVersion = cleanup1-2026-11-05)
+- [merged #161] Remove dashboard Quick actions (all screens); red counts for orders/bookings/messages moved to bottom bar + menu - needs merge + owner check on owner/dashboard.html
+- [merged #162] Code clean-up (store-password leftovers, daily PosChanges trim, unused functions/CSS) - needs merge + backend deploy (getVersion = cleanup1-2026-11-05)
+- [in PR #163] Keep internal folders off mwakete.com (_config.yml exclude) - needs merge + owner check that the site still loads
+- [in PR] Shopper sign-in by emailed link (Lexigo style), password optional - needs merge + backend deploy (getVersion = signin2-2026-11-06) + owner test on customer-login.html

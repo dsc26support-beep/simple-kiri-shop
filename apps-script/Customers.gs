@@ -109,7 +109,7 @@ function maskEmail(email) {
  * link) for `purpose`: 'signup' | 'login' | 'reset' | 'verify'. Returns the
  * raw pending token - the browser's handle on it - and the raw link token,
  * which goes only into the email. Only hashes are written to the sheet.
- * extra: { name, phone, passwordHash, customerId, expiryMinutes }
+ * extra: { name, phone, passwordHash, customerId, expiryMinutes, next (sign-in link only) }
  */
 function issueCustomerEmailCode(email, purpose, extra) {
   extra = extra || {};
@@ -135,7 +135,7 @@ function issueCustomerEmailCode(email, purpose, extra) {
     LinkHash: hashSecretToken(linkToken),
     CustomerId: extra.customerId || ''
   });
-  sendCustomerCodeEmail(email, purpose, code, linkToken, extra.name, minutes);
+  sendCustomerCodeEmail(email, purpose, code, linkToken, extra.name, minutes, extra.next);
   return { token: token };
 }
 
@@ -144,21 +144,33 @@ function customerLinkUrl(param, linkToken) {
   return base ? base + '/customer-login.html?' + param + '=' + encodeURIComponent(linkToken) : '';
 }
 
-function sendCustomerCodeEmail(email, purpose, code, linkToken, name, minutes) {
+function sendCustomerCodeEmail(email, purpose, code, linkToken, name, minutes, nextPage) {
   var what = {
     signup: { subject: 'Confirm your Mwakete account', doing: 'finish creating your account', param: 'verify' },
     verify: { subject: 'Confirm your email for Mwakete', doing: 'confirm this email address', param: 'verify' },
-    login: { subject: 'Your Mwakete sign-in code', doing: 'sign in', param: '' },
+    login: { subject: 'Your Mwakete sign-in link', doing: 'sign in', param: 'signin' },
     reset: { subject: 'Set your Mwakete password', doing: 'set a new password', param: 'reset' }
   }[purpose];
   var link = what.param ? customerLinkUrl(what.param, linkToken) : '';
+  if (link && purpose === 'login' && nextPage) link += '&next=' + encodeURIComponent(nextPage);
+  // Sign in (Nov 2026, owner request): the link first - one tap, no password -
+  // and the code as the way in on another device or app.
+  if (purpose === 'login' && link) {
+    sendAppEmail(email, what.subject, (name ? 'Hi ' + name + ',\n\n' : 'Hi,\n\n') +
+      'Tap this link to sign in to Mwakete:\n' + link + '\n\n' +
+      'Or type the code on the sign-in page. Your code is: ' + code + '\n\n' +
+      'The link and code expire in ' + minutes + ' minutes and work once.\n\n' +
+      'If this was not you, you can safely ignore this email - nobody can sign in without it.');
+    return;
+  }
   var body = (name ? 'Hi ' + name + ',\n\n' : 'Hi,\n\n') +
     'Your Mwakete code is: ' + code + '\n\n' +
     'Enter it to ' + what.doing + '.' +
     (link ? ' Or open this link on the same phone or computer:\n' + link + '\n\n' : '\n\n') +
     'The code' + (link ? ' and link expire' : ' expires') + ' in ' + minutes + ' minutes and work once.\n\n' +
     'If this was not you, you can safely ignore this email - nothing changes until the code is used.';
-  sendAppEmail(email, what.subject, body);
+  // No site address configured: no link, so the subject must not promise one.
+  sendAppEmail(email, purpose === 'login' ? 'Your Mwakete sign-in code' : what.subject, body);
 }
 
 /**
@@ -550,8 +562,9 @@ function actionCustomerPasswordLogin(body) {
 }
 
 /**
- * "Email me a code instead". Same reply whether or not an account exists; when
- * there is none, the address gets a short note instead of a code.
+ * "Email me a sign-in link": the email carries a one-tap link and a 6-digit
+ * code (Nov 2026). Same reply whether or not an account exists; when there is
+ * none, the address gets a short note instead. body: email, next?
  */
 function actionLoginCustomer(body) {
   var email = normalizeEmail(body.email);
@@ -565,18 +578,23 @@ function actionLoginCustomer(body) {
     if (!customer) sendCustomerNoticeEmail(email, 'none');
     return ok(Object.assign({ pendingToken: decoyPendingToken() }, reply));
   }
-  var issued = issueCustomerEmailCode(email, 'login', { name: customer.Name, customerId: customer.CustomerId });
+  // Where the emailed link lands after signing in: only a page of this site.
+  var next = /^[a-z0-9][a-z0-9\/-]*\.html(\?[A-Za-z0-9=&%._-]*)?$/.test(String(body.next || '')) ? String(body.next) : '';
+  var issued = issueCustomerEmailCode(email, 'login', { name: customer.Name, customerId: customer.CustomerId, next: next });
   coolDownCustomerResend_(issued.token);
   return ok(Object.assign({ pendingToken: issued.token }, reply));
 }
 
+/** The typed code ({token, code}) or the emailed sign-in link ({linkToken}). */
 function actionVerifyCustomerLogin(body) {
-  var result = consumeCustomerEmailCode(body.token, body.code, 'login');
+  var result = body && body.linkToken
+    ? consumeCustomerEmailCode(null, null, 'login', String(body.linkToken))
+    : consumeCustomerEmailCode(body.token, body.code, 'login');
   if (!result.ok) return result;
 
   var customer = findCustomerByEmail(result.data.email);
   if (!customer) return fail('Account not found');
-  return finishCustomerSignIn(customer, body, 'code');
+  return finishCustomerSignIn(customer, body, body && body.linkToken ? 'link' : 'code');
 }
 
 /**

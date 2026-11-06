@@ -1,0 +1,20 @@
+# GitHub Pages builds mwakete.com from this repository with Jekyll. These
+# folders and files are for building, testing and documenting the site - not
+# part of it - so they are not published (they stay on GitHub).
+exclude:
+  - node_modules
+  - tests
+  - docs
+  - android
+  - apps-script
+  - sheets-addon
+  - performance-audit
+  - tools
+  - package.json
+  - package-lock.json
+  - README.md
+  - DEPLOY.md
+  - CLAUDE.md
+  - MWAKETE_V1_PERFORMANCE_AUDIT.md
+  - MWAKETE_V1_PERFORMANCE_DATA.csv
+  - MWAKETE_V2_PERFORMANCE_PLAN.md
