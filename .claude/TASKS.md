@@ -11,3 +11,4 @@ Kept in .claude/ so GitHub Pages never publishes it.
 - [merged #160] Admin SMS buttons: campaigns + cancel, phones, places - needs backend deploy (getVersion = smsadmin-2026-11-03) + owner check on owner/admin.html#sms
 - [in PR] Remove dashboard Quick actions (all screens); red counts for orders/bookings/messages moved to bottom bar + menu - needs merge + owner check on owner/dashboard.html
 - [in PR] Code clean-up (store-password leftovers, daily PosChanges trim, unused functions/CSS) - needs merge + backend deploy (getVersion = cleanup1-2026-11-05)
+- [in PR] Keep internal folders off mwakete.com (_config.yml exclude) - needs merge + owner check that the site still loads
