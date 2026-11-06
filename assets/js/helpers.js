@@ -1288,10 +1288,6 @@ function categoryIdOf(rawCategory) {
   return LEGACY_CATEGORY_MAP[raw] || 'other';
 }
 
-function categoryLabelOf(rawCategory) {
-  const c = categoryById(categoryIdOf(rawCategory));
-  return c ? c.label : 'Other';
-}
 
 /**
  * The listing type of a product row.
@@ -1338,7 +1334,6 @@ function renderCategoryButtons(containerId) {
 // them - but a legacy rental's MAPPED category is now 'other', so this returns
 // false for exactly the listings it used to catch. Use isBookingListing().
 const BOOKING_CATEGORIES = ['rentals', 'services'];
-function isBookingCategory(category) { return BOOKING_CATEGORIES.indexOf(category) !== -1; }
 
 // Phone classification (§16). Local Kiribati customers must use a number
 // starting 730 or 630; overseas customers are unrestricted. Auto-detected by
@@ -1776,35 +1771,6 @@ function wireContactUnavailable() {
 }
 
 
-/**
- * Wraps a password input with a show/hide toggle button. Safe to call once
- * per password field at page init - no-ops if the input isn't found.
- */
-function wirePasswordToggle(inputId) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'password-field';
-  input.parentNode.insertBefore(wrapper, input);
-  wrapper.appendChild(input);
-
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'password-toggle';
-  btn.setAttribute('aria-label', 'Show password');
-  btn.setAttribute('aria-pressed', 'false');
-  btn.innerHTML = EYE_ICON_SVG;
-  wrapper.appendChild(btn);
-
-  btn.addEventListener('click', () => {
-    const showing = input.type === 'text';
-    input.type = showing ? 'password' : 'text';
-    btn.innerHTML = showing ? EYE_ICON_SVG : EYE_OFF_ICON_SVG;
-    btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-    btn.setAttribute('aria-pressed', String(!showing));
-  });
-}
 
 /* ---- The "i" dot and the panel it reveals ----------------------------------
  *
@@ -1932,7 +1898,3 @@ function wireInfoPop(btn, pop) {
 
 let infoPopSeq = 0;
 
-/** Id-based wrapper, for pages whose markup is hand-written rather than generated. */
-function wireInfoDot(btnId, popId) {
-  wireInfoPop(document.getElementById(btnId), document.getElementById(popId));
-}

@@ -533,10 +533,10 @@ const box = (page, sel) => page.evaluate((s) => {
     await page.addInitScript(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(900);
-    ok('customer-login still loads with no JS errors after wireInfoDot moved to helpers',
+    ok('customer-login still loads with no JS errors with the shared info pop in helpers',
       errs.length === 0, errs.join(' | '));
     // Its shared-device info dot was removed with the box (owner request,
-    // Oct 2026); wireInfoDot is still exercised by the seller badges above.
+    // Oct 2026); wireInfoPop is still exercised by the seller badges above.
     await ctx.close();
   }
 
@@ -565,8 +565,8 @@ const box = (page, sel) => page.evaluate((s) => {
   // The component must not have quietly re-introduced the duplicate it replaced.
   const login = fs.readFileSync(REPO + 'assets/js/customer-login.js', 'utf8');
   const helpers = fs.readFileSync(REPO + 'assets/js/helpers.js', 'utf8');
-  ok('wireInfoDot exists in exactly one place',
-    /function wireInfoDot/.test(helpers) && !/function wireInfoDot/.test(login));
+  ok('wireInfoPop exists in exactly one place',
+    /function wireInfoPop/.test(helpers) && !/function wireInfoPop/.test(login));
   ok('and so does closeAllInfoPops',
     /function closeAllInfoPops/.test(helpers) && !/function closeAllInfoPops/.test(login));
 

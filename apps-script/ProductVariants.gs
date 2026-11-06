@@ -254,13 +254,6 @@ function applyVariantSave(owner, productId, plan, variantsSheet, productsSheet) 
 
 /* ==================== What shoppers are sent ==================== */
 
-/** Extra product fields for the public payload (only when the product has them). */
-function publicOptionFields(product, p) {
-  var type = productTypeOfRow(p);
-  if (type) product.productType = type;
-  if (type === 'options') product.options = productOptionsOf(p);
-  return product;
-}
 
 /* ==================== Variant photos ==================== */
 

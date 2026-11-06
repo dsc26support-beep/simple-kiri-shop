@@ -186,10 +186,6 @@ function featureFreeBlock(rows, owner, phoneByOwnerId, nowMs) {
   return '';
 }
 
-/** Pure: has this store (or its phone) had this month's free featuring? */
-function featureFreeUsed(rows, owner, phoneByOwnerId, nowMs) {
-  return featureFreeBlock(rows, owner, phoneByOwnerId, nowMs) === 'used';
-}
 
 /** Pure: is a featuring of productCount products free for this store right now? */
 function featureIsFree(rows, owner, productCount, phoneByOwnerId, nowMs) {

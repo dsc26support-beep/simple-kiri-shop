@@ -78,6 +78,20 @@ function posAppendChanges(ownerId, changes) {
     Logger.log('posAppendChanges failed (tills will resync): ' + e);
   }
   props.setProperty(posSeqKey(ownerId), String(last));
+  posTrimChangesDaily();
+}
+
+/**
+ * Runs trimPosChanges at most once a UTC day, on the first change written
+ * that day - the log only grows when tills are in use, so this needs no
+ * separate scheduled trigger. A failure is logged and retried the next day.
+ */
+function posTrimChangesDaily() {
+  var props = PropertiesService.getScriptProperties();
+  var today = nowIso().slice(0, 10);
+  if (props.getProperty('POS_CHANGES_TRIMMED_ON') === today) return;
+  props.setProperty('POS_CHANGES_TRIMMED_ON', today);
+  try { trimPosChanges(); } catch (e) { Logger.log('trimPosChanges failed: ' + e); }
 }
 
 /** Called by recordStockMovements with the ledger rows it just wrote. */
@@ -202,7 +216,7 @@ function actionPosChanges(owner, body) {
 
 /**
  * Trims change rows older than POS_CHANGES_KEEP_DAYS (default 14). A till
- * that was away longer just reloads. Wire to the daily sweep.
+ * that was away longer just reloads. Run daily by posTrimChangesDaily.
  */
 function trimPosChanges() {
   var sheet = SpreadsheetApp.getActive().getSheetByName('PosChanges');

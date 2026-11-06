@@ -116,9 +116,6 @@ const OWNER_KEYS = ['ownerId', 'storeName', 'storeSlug', 'email', 'phone', 'mess
   // #112: the payment options the seller ticked and typed, read back into
   // their own Settings form.
   'paymentMethods', 'paymentOther',
-  // #106: whether a password hint is set (not the hint itself), for the
-  // dashboard reminder - owner-only.
-  'hasPasswordHint',
   // POS hub: whether the feature flag is on, so the owner dashboard shows the
   // POS / Integrations links only when it is. Owner-only, no store data.
   'posHub',
@@ -162,7 +159,8 @@ ok('publicOwnerFields matches main (allowing only #112\'s payment option lines b
   extra.every((l) => /^\s+hasPasswordHint: |^\s+posHub: typeof posHubEnabled|^\s+contactsSms: typeof contactsSmsEnabled|^\s+coverUrl: owner\.CoverUrl|^\s+storeBio: typeof storeBioOf|^\s+\/\/ Store page header|^\s+\/\/ Whether Contacts & SMS|^\s+payment(Methods|Other): paymentOptionsOf\(owner\)/.test(l)), extra.join(' | '));
 ok('nothing was removed from publicOwnerFields',
   mainOwnerSrc.split('\n').filter((l) => /^\s+\w+: /.test(l))
-    .every((l) => hereOwnerSrc.indexOf(l) !== -1));
+    // hasPasswordHint left with store passwords (retired 2 Nov 2026).
+    .every((l) => hereOwnerSrc.indexOf(l.replace(/,\s*$/, '')) !== -1 || /^\s+hasPasswordHint: /.test(l)));
 ok('the pending-email field is on main, not just in the working tree',
   /pendingEmail: owner\.PendingEmail/.test(mainOwnerSrc), 'still branch-only');
 ok('the auth-channel fields are on main, not just in the working tree',

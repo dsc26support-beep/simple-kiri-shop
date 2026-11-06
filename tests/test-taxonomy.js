@@ -25,7 +25,6 @@ vm.runInContext([
   grab(/function activeCategories[\s\S]*?\n}/),
   grab(/function popularCategories[\s\S]*?\n}/),
   grab(/function categoryIdOf[\s\S]*?\n}/),
-  grab(/function categoryLabelOf[\s\S]*?\n}/),
   grab(/function listingTypeOf[\s\S]*?\n}/),
   grab(/function isBookingListing[\s\S]*?\n}/),
   // `const` bindings do not become properties of a vm context the way function
@@ -138,9 +137,9 @@ for (const old of LEGACY) {
   ok(`  and frontend/backend map it identically`, mapped === be.categoryIdOf(old),
     `${mapped} vs ${be.categoryIdOf(old)}`);
 }
-ok("legacy 'pantry' becomes Food & Groceries", fe.categoryLabelOf('pantry') === 'Food & Groceries');
-ok("legacy 'clothing' becomes Fashion & Beauty", fe.categoryLabelOf('clothing') === 'Fashion & Beauty');
-ok("legacy 'household' becomes Home & Living", fe.categoryLabelOf('household') === 'Home & Living');
+ok("legacy 'pantry' becomes Food & Groceries", fe.categoryById(fe.categoryIdOf('pantry')).label === 'Food & Groceries');
+ok("legacy 'clothing' becomes Fashion & Beauty", fe.categoryById(fe.categoryIdOf('clothing')).label === 'Fashion & Beauty');
+ok("legacy 'household' becomes Home & Living", fe.categoryById(fe.categoryIdOf('household')).label === 'Home & Living');
 ok("legacy 'electronics' keeps its slug", fe.categoryIdOf('electronics') === 'electronics');
 ok("legacy 'services' stays in Services", fe.categoryIdOf('services') === 'services');
 ok("legacy 'rentals' cannot be filed confidently, so it goes to Other",

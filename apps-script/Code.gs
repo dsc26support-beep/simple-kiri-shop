@@ -16,8 +16,7 @@ var PUBLIC_POST_ACTIONS = [
   // phone's own id + secret, are the credential. smsOptOut is the public
   // "stop messaging me" page; geoPlaces the public island/village list.
   'smsPairDevice', 'smsDeviceSync', 'smsDeviceRotate', 'smsOptOut', 'geoPlaces',
-  'verifyLoginCode', 'requestPasswordReset', 'resetPasswordWithCode',
-  'saveAbandonedCart', 'recordProductViews', 'recordStoreVisit',
+  'verifyLoginCode', 'saveAbandonedCart', 'recordProductViews', 'recordStoreVisit',
   // Chat: these three serve BOTH sides of a conversation (anonymous customer
   // or a vendor with a token) from one action each, so they can't sit only
   // in PROTECTED_POST_ACTIONS - they do their own optional auth internally
@@ -157,7 +156,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'smsadmin-2026-11-03';
+var APP_VERSION = 'cleanup1-2026-11-05';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -491,8 +490,6 @@ function doPost(e) {
         case 'createOrder': return jsonOut(actionCreateOrder(body));
         case 'createBookingRequest': return jsonOut(actionCreateBookingRequest(body));
         case 'verifyLoginCode': return jsonOut(actionVerifyLoginCode(body));
-        case 'requestPasswordReset': return jsonOut(actionRequestPasswordReset(body));
-        case 'resetPasswordWithCode': return jsonOut(actionResetPasswordWithCode(body));
         case 'saveAbandonedCart': return jsonOut(actionSaveAbandonedCart(body));
         case 'recordProductViews': return jsonOut(actionRecordProductViews(body));
         case 'recordStoreVisit': return jsonOut(actionRecordStoreVisit(body));

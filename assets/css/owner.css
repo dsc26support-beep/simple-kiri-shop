@@ -109,26 +109,6 @@
   color: var(--color-purple);
 }
 
-.dashboard-cards {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-@media (min-width: 600px) {
-  .dashboard-cards {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.dashboard-card {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-3);
-  text-align: center;
-}
-
 /* Products/Orders/Bookings/Messages moved here from the top nav - one row
    of equal-width buttons on desktop, wrapping to two columns on mobile. */
 /* Open/Closed store toggle (dashboard). OPEN=active (green), CLOSED=standby. */
@@ -191,12 +171,6 @@
 
 #store-status-toggle-hint {
   flex-basis: 100%;
-}
-
-.dashboard-card .metric {
-  font-size: 1.75rem;
-  font-weight: 700;
-  display: block;
 }
 
 .owner-product-list {
@@ -464,25 +438,6 @@ label.is-required::after {
    customer-facing pages (e.g. Add to Cart) can use it too. */
 
 /* Nav "Messages" unread badge, loaded once per page by owner-nav.js. */
-.nav-unread-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  margin-left: 4px;
-  border-radius: 999px;
-  background: var(--color-red);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  vertical-align: middle;
-}
-
-.nav-unread-badge.hidden {
-  display: none;
-}
 
 /*
  * Vendor chat dashboard (owner/messages.html) - a two-pane inbox layout.
@@ -770,7 +725,6 @@ label.is-required::after {
   outline: 3px solid var(--color-focus-soft);
   outline-offset: 2px;
 }
-
 
 /* Fee type for a paid delivery method (Fixed vs To Be Negotiated).
    Making this an explicit choice is the point: a blank cost box used to be
@@ -1899,7 +1853,7 @@ body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 
   body.has-seller-shell { padding-bottom: 0; padding-left: 240px; }
   body.has-seller-shell.seller-collapsed { padding-left: 76px; }
   .seller-collapsed .seller-sidebar { width: 76px; }
-  .seller-collapsed .seller-link-label, .seller-collapsed .seller-sidebar-label, .seller-collapsed .seller-sidebar-store { display: none; }
+   .seller-collapsed .seller-sidebar-label, .seller-collapsed .seller-sidebar-store { display: none; }
   .seller-collapsed .seller-sidebar-brand { flex-direction: column; padding: 0 0 var(--space-2); }
   .seller-collapsed .seller-sidebar-collapse svg { transform: rotate(180deg); }
   .seller-collapsed .seller-link { justify-content: center; padding: 0; }
