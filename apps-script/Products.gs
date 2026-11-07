@@ -401,6 +401,28 @@ function actionListStores(params) {
   return ok({ stores: page, total: filtered.length, hasMore: offset + limit < filtered.length });
 }
 
+/**
+ * The welcome screen's "120 stores · 3,000 products" line (owner request,
+ * Nov 2026). Public, counts only - nothing else about any store. Counted the
+ * same way the site lists them (browsable stores, their active listings) and
+ * cached for an hour, so it costs at most one Sheets read an hour.
+ */
+function actionSiteStats() {
+  return ok(getCached('site_stats_v1', 3600, function () {
+    var owners = {};
+    var stores = 0;
+    sheetToObjects(getSheet('Owners')).forEach(function (o) {
+      if (!isStoreBrowsable(o)) return;
+      owners[o.OwnerId] = o;
+      stores++;
+    });
+    var products = sheetToObjects(getSheet('Products')).filter(function (p) {
+      return p.Status === 'active' && owners[p.OwnerId] && !foodListingHidden(owners[p.OwnerId], p);
+    }).length;
+    return { stores: stores, products: products };
+  }));
+}
+
 /** Top 20 active products by view count, for the home page "trending" carousel. */
 function getTopProductsCached() {
   return getCached(topProductsCacheKey(), 300, function () {

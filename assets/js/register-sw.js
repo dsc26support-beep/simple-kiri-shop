@@ -306,6 +306,7 @@
       dp.prompt();
       dp.userChoice.then(function (choice) {
         if (choice && choice.outcome === 'accepted') hideButton();
+        notify();
       }).catch(function () {});
       return;
     }
@@ -356,6 +357,20 @@
     hideTimer = setTimeout(hideButton, HIDE_MS);
   }
 
+  // The welcome screen's "Add Mwakete to your home screen" (welcome.js, Nov
+  // 2026) shares this one stashed prompt rather than competing for it.
+  var watchers = [];
+  function canInstall() {
+    return !installed && !isStandalone() && isMobileOrTablet() && (!!deferredPrompt || isIos());
+  }
+  function notify() {
+    watchers.forEach(function (f) { try { f(canInstall()); } catch (e) {} });
+  }
+  window.MwaketeInstall = {
+    install: onInstallClick,
+    onChange: function (f) { watchers.push(f); f(canInstall()); }
+  };
+
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault(); // suppress the native infobar - our button replaces it
     deferredPrompt = e;
@@ -365,6 +380,7 @@
     installed = false;
     try { localStorage.removeItem(INSTALLED_KEY); } catch (err) {}
     showButton();
+    notify();
   });
 
   window.addEventListener('appinstalled', function () {
@@ -372,6 +388,7 @@
     deferredPrompt = null;
     try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (err) {}
     hideButton();
+    notify();
   });
 
   // On Chromium the button is shown by the beforeinstallprompt handler above,
@@ -380,5 +397,6 @@
   // can still add-to-home-screen, so show the button there on load instead.
   window.addEventListener('load', function () {
     if (isIos()) showButton();
+    notify();
   });
 })();

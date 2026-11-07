@@ -69,13 +69,20 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
       const { ctx, p, errors, imgs } = await open(390, page);
       await p.waitForTimeout(800);
       const g = await geo(p);
-      ok(`${page} 390px: purple band with the headline above the form, no video`, g.ab <= g.ft + 1 && g.box === 'none' && !g.hasVideo && g.titleShown && g.ah < 220, J(g));
+      if (page === 'customer-login.html') {
+        // Nov 2026: the welcome screen (photo, headline, counts) replaces the band.
+        const w = await p.evaluate(() => ({ hero: document.getElementById('welcome-hero').getBoundingClientRect().height > 100,
+          band: getComputedStyle(document.querySelector('.auth-split-panel')).display }));
+        ok(`${page} 390px: the welcome replaces the purple band; no video`, w.hero && w.band === 'none' && g.box === 'none' && !g.hasVideo, J(w));
+      } else {
+        ok(`${page} 390px: purple band with the headline above the form, no video`, g.ab <= g.ft + 1 && g.box === 'none' && !g.hasVideo && g.titleShown && g.ah < 220, J(g));
+      }
       ok(`${page} 390px: the video and its poster are not downloaded`, imgs.length === 0, J(imgs));
       const ph = await p.evaluate(() => { const m = document.querySelector('main.auth-page'), a = document.querySelector('.auth-split-panel'), t = a.querySelector('.auth-panel-title');
         return { mainBg: m ? getComputedStyle(m).backgroundImage : '', mainH: m ? m.getBoundingClientRect().height : 0, panelBg: getComputedStyle(a).backgroundImage,
           title: t.textContent, size: parseFloat(getComputedStyle(t).fontSize), extra: !!a.querySelector('.auth-panel-text') }; });
       ok(`${page} 390px: the whole page behind the card is purple, no separate band`, /gradient/.test(ph.mainBg) && ph.mainH >= 844 && ph.panelBg === 'none', J(ph));
-      ok(`${page} 390px: one short headline, 1.5 times smaller, no second line`, ph.title.length <= 24 && Math.abs(ph.size - 18.4 / 1.5) < 0.6 && !ph.extra, J(ph));
+      if (page !== 'customer-login.html') ok(`${page} 390px: one short headline, 1.5 times smaller, no second line`, ph.title.length <= 24 && Math.abs(ph.size - 18.4 / 1.5) < 0.6 && !ph.extra, J(ph));
       ok(`${page} 390px: no sideways scroll; no page errors`, !g.over && errors.length === 0, errors.join('; '));
       await ctx.close();
     }
@@ -118,11 +125,13 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
       return { code: v(document.querySelector('#login-form button[type=submit]')), signupCode: v(document.querySelector('#signup-form button[type=submit]')),
         terms: v(document.querySelector('.auth-terms-note')) }; });
     const a = await vis();
-    ok('Shopper Sign In: no "Sign in" or Terms line before an email is typed', !a.code && !a.terms, J(a));
+    // Welcome screen (Nov 2026, like Billdu): "Email me a sign-in link" is there
+    // from the start; the Terms line still waits for a real email.
+    ok('Shopper Sign In: the link button is there from the start; no Terms line yet', a.code && !a.terms, J(a));
     await openEmail(p);
     await p.fill('#login-email', 'aroita@exam'); await p.waitForTimeout(400);
     const b = await vis();
-    ok('...still hidden for an unfinished email', !b.code && !b.terms, J(b));
+    ok('...Terms still waits for an unfinished email', b.code && !b.terms, J(b));
     await openEmail(p);
     await p.fill('#login-email', 'aroita@example.com'); await p.waitForTimeout(400);
     const c = await vis();

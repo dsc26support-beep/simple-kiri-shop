@@ -63,6 +63,19 @@
       // 2026). Set here too, before first paint, so they never flash in.
       if (new URLSearchParams(location.search).get('tab') === 'signup') document.documentElement.classList.add('auth-signup');
     } catch (e) { /* the explanation just does not show */ }
+    // Welcome screen (owner request, Nov 2026, inspired by Billdu): the email
+    // box is open from the start, and a plain visit - not one sent here for a
+    // reason, from an emailed link, to create an account or from a store's
+    // checkout - opens with the welcome (photo, headline, live counts).
+    // ?welcome=1 is a first visit sent here by index.html; it adds a close X.
+    try {
+      var h = document.documentElement.classList;
+      var al = window.__authLink || {};
+      h.add('email-open');
+      if (!h.contains('auth-required') && !h.contains('auth-for-meeting') && !h.contains('auth-signup')
+          && !h.contains('auth-for-store') && !al.verify && !al.reset && !al.signin) h.add('welcome-on');
+      if (h.contains('welcome-on') && new URLSearchParams(location.search).get('welcome') === '1') h.add('welcome-first');
+    } catch (e) { /* the plain sign-in form still works */ }
   </script>
 </head>
 <body>
@@ -137,33 +150,26 @@
             })();
           </script>
 
-          <!-- Owner request (Oct 2026), like Buzzy: one stack of matching
-               buttons - Google, Facebook, Guest - then "or", then "Continue
-               with email", which opens the email form. Each is hidden when it
-               can't be used: Google until google-signin.js has its script and
-               client id, Facebook until FACEBOOK_APP_ID is set. Guest sits
-               OUTSIDE those wrappers on purpose - it is the way in for exactly
-               the person who cannot use them.
-               Google's button is Google's own, drawn invisibly over ours
-               (#google-signin-btn[data-overlay]), so the tap is still Google's
-               sign-in; ours is only the look. -->
-          <div class="auth-quick">
-            <div id="google-signin-wrap" class="auth-social auth-provider" hidden>
-              <span class="auth-provider-btn" aria-hidden="true"><svg class="apb-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Continue with Google</span></span>
-              <div id="google-signin-btn" data-overlay></div>
-              <p id="google-signin-error" class="form-error" role="alert"></p>
+          <!-- Welcome (owner request, Nov 2026, inspired by Billdu's sign-up
+               page). Shown on a plain visit (html.welcome-on, set in the head).
+               welcome.js fills the counts and switches English / Kiribati.
+               The photo is for phones: computers keep the video panel, and
+               get a 1px blank instead (the <source>), so they never load it. -->
+          <div class="welcome-hero" id="welcome-hero" lang="en">
+            <div class="welcome-top">
+              <div class="welcome-lang" role="group" aria-label="Language">
+                <button type="button" data-lang="en" aria-pressed="true">English</button>
+                <button type="button" data-lang="gil" aria-pressed="false" lang="gil">Kiribati</button>
+              </div>
+              <a class="welcome-close" href="index.html" aria-label="Close" data-wl-label="close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"></path></svg></a>
             </div>
-            <div id="facebook-signin-wrap" class="auth-social auth-provider" hidden>
-              <button type="button" id="facebook-signin-btn" class="auth-provider-btn"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M15.12 15.47l.53-3.47h-3.33V9.75c0-.95.47-1.88 1.95-1.88h1.51V4.92s-1.37-.23-2.68-.23c-2.74 0-4.53 1.66-4.53 4.66V12H5.52v3.47h3.05V24a12.1 12.1 0 0 0 3.75 0v-8.53h2.8z"/></svg><span>Continue with Facebook</span></button>
-              <p id="facebook-signin-error" class="form-error" role="alert"></p>
-            </div>
-
-            <div class="auth-guest-row">
-              <a class="auth-provider-btn" id="guest-continue" href="index.html"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Continue as guest</span></a>
-            </div>
-
-            <p class="auth-divider"><span>or</span></p>
-            <button type="button" id="email-continue" class="auth-provider-btn"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Continue with email</span></button>
+            <picture class="welcome-photo">
+              <source media="(min-width: 900px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+              <img src="assets/img/welcome-phone.jpg" alt="" width="760" height="380" loading="lazy" decoding="async">
+            </picture>
+            <h2 class="welcome-title" data-wl="title">Shop Kiribati’s stores</h2>
+            <p class="welcome-sub" data-wl="sub">Order from local stores across Kiribati, all in one place.</p>
+            <p class="welcome-stats" id="welcome-stats"></p>
           </div>
 
           <!-- After Google or Facebook found an existing account with the same
@@ -221,7 +227,37 @@
           <!-- Owner request (Oct 2026): replaces the Create Account tab. Sits
                under "Continue with email", or under Sign in once the email
                form is open. -->
+          <!-- Guests: a plain line, not a big button (Nov 2026). Hidden when
+               sent here to order, book, message or meet, and on Create account. -->
+          <p class="auth-switch auth-guest-line"><span data-wl="guestQ">Just looking?</span> <a id="guest-continue" href="index.html" data-wl="guest">Browse as a guest</a></p>
           <p class="auth-switch" id="auth-create-line">New to Mwakete? <button type="button" class="linklike" id="show-signup">Create an account</button></p>
+
+          <!-- Since Nov 2026 (welcome screen, like Billdu) the email form comes
+               first, then "or" and these: Google, Facebook. ("Continue with
+               email" stays for older code but is always hidden: the email form
+               is open from the start.) Each is hidden when it
+               can't be used: Google until google-signin.js has its script and
+               client id, Facebook until FACEBOOK_APP_ID is set. Guest sits
+               OUTSIDE those wrappers on purpose - it is the way in for exactly
+               the person who cannot use them.
+               Google's button is Google's own, drawn invisibly over ours
+               (#google-signin-btn[data-overlay]), so the tap is still Google's
+               sign-in; ours is only the look. -->
+          <div class="auth-quick">
+            <p class="auth-divider"><span>or</span></p>
+            <div id="google-signin-wrap" class="auth-social auth-provider" hidden>
+              <span class="auth-provider-btn" aria-hidden="true"><svg class="apb-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Continue with Google</span></span>
+              <div id="google-signin-btn" data-overlay></div>
+              <p id="google-signin-error" class="form-error" role="alert"></p>
+            </div>
+            <div id="facebook-signin-wrap" class="auth-social auth-provider" hidden>
+              <button type="button" id="facebook-signin-btn" class="auth-provider-btn"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M15.12 15.47l.53-3.47h-3.33V9.75c0-.95.47-1.88 1.95-1.88h1.51V4.92s-1.37-.23-2.68-.23c-2.74 0-4.53 1.66-4.53 4.66V12H5.52v3.47h3.05V24a12.1 12.1 0 0 0 3.75 0v-8.53h2.8z"/></svg><span>Continue with Facebook</span></button>
+              <p id="facebook-signin-error" class="form-error" role="alert"></p>
+            </div>
+
+            <button type="button" id="email-continue" class="auth-provider-btn"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Continue with email</span></button>
+          </div>
+
 
           <!-- Create account -->
           <div id="panel-signup" class="auth-panel hidden">
@@ -300,6 +336,13 @@
             </form>
           </div>
 
+          <!-- Welcome extras (Nov 2026). The home-screen button shows only
+               where the phone can add it (register-sw.js MwaketeInstall). -->
+          <p class="auth-switch welcome-sell"><span data-wl="sellQ">Own a store?</span> <a href="owner/login.html" data-wl="sell">Sell on Mwakete</a></p>
+          <p class="welcome-install" id="welcome-install" hidden>
+            <button type="button" class="btn btn-block" id="welcome-install-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="2" width="12" height="20" rx="2"></rect><path d="M12 7v7M9 11l3 3 3-3"></path></svg> <span data-wl="install">Add Mwakete to your home screen</span></button>
+          </p>
+
           <!-- The footer (and its Terms | Privacy) is hidden on phones and
                tablets, so the agreement is stated here, where it applies. -->
           <div class="auth-reveal auth-terms-reveal"><div><p class="helper-text auth-terms-note">By continuing you agree to the <a href="terms.html">Terms of Service</a> and the <a href="privacy.html">Privacy Policy</a>.</p></div></div>
@@ -343,6 +386,7 @@
   <script defer src="assets/js/google-signin.min.js"></script>
   <script defer src="assets/js/facebook-signin.min.js"></script>
   <script defer src="assets/js/auth-panel-video.min.js"></script>
+  <script defer src="assets/js/welcome.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>
 </body>
 </html>

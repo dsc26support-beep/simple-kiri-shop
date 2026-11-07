@@ -156,7 +156,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'signin2-2026-11-06';
+var APP_VERSION = 'welcome1-2026-11-07';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -462,6 +462,7 @@ function doGet(e) {
       case 'listProductReviews': return jsonOut(actionListProductReviews(params));
       case 'listCategories': return jsonOut(actionListCategories());
       case 'getHeaderAds': return jsonOut(actionGetHeaderAds());
+      case 'siteStats': return jsonOut(actionSiteStats());
       // Deploy health probe: no auth, no Sheets access, so it answers even on a
       // half-configured project - it can only report the running build or, if
       // absent, prove the deployment is stale.

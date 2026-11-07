@@ -1,7 +1,7 @@
 /**
  * Customer sign-in page (owner requests, Oct 2026): no Sign In / Create
- * Account tabs. The email form stays hidden until "Continue with email";
- * "New to Mwakete? Create an account" sits under that button. Create Account
+ * Account tabs. Since the welcome screen (Nov 2026) the email form is open
+ * from the start, with "New to Mwakete? Create an account" under it. Create Account
  * shows no Guest button and no "or" line, just Google then the form, and
  * "Already have an account? Sign in" goes back. Also when the page is opened
  * straight on Create Account. Password boxes show an eye icon, not "Show".
@@ -40,17 +40,9 @@ const seen = (page) => page.evaluate(() => {
   let s = await seen(page);
   ok('Sign In: Guest and the "or" line are there', s.guest && s.divider, JSON.stringify(s));
   ok('no Sign In / Create Account tabs', !s.tabs, JSON.stringify(s));
-  ok('email box, password and their links hidden until "Continue with email"', s.emailBtn && !s.loginForm, JSON.stringify(s));
-  const under = await page.evaluate(() => {
-    const b = document.getElementById('email-continue').getBoundingClientRect(), l = document.getElementById('auth-create-line').getBoundingClientRect();
-    return { gap: l.top - b.bottom, text: document.getElementById('auth-create-line').textContent.trim() };
-  });
-  ok('"New to Mwakete? Create an account" sits right under "Continue with email"', s.createLine && under.gap >= 0 && under.gap < 40
-    && under.text === 'New to Mwakete? Create an account', JSON.stringify(under));
-
-  await page.click('#email-continue');
-  s = await seen(page);
-  ok('"Continue with email" opens the form; the create link stays, under it', s.loginForm && !s.emailBtn && s.createLine, JSON.stringify(s));
+  ok('the email form is open from the start; no "Continue with email" step (Nov 2026)', !s.emailBtn && s.loginForm, JSON.stringify(s));
+  ok('"New to Mwakete? Create an account" is there', s.createLine
+    && await page.textContent('#auth-create-line').then((t) => t.trim() === 'New to Mwakete? Create an account'), JSON.stringify(s));
   const below = await page.evaluate(() => document.getElementById('auth-create-line').getBoundingClientRect().top
     >= document.getElementById('login-form').getBoundingClientRect().bottom);
   ok('...below the Sign in form', below);
@@ -90,7 +82,7 @@ const seen = (page) => page.evaluate(() => {
   await p2.goto(BASE + '/customer-login.html?tab=signup', { waitUntil: 'commit' });
   await p2.waitForSelector('#guest-continue', { state: 'attached' });
   const early = await p2.evaluate(() => getComputedStyle(document.getElementById('guest-continue')).display === 'none'
-    || getComputedStyle(document.querySelector('.auth-guest-row')).display === 'none');
+    || getComputedStyle(document.querySelector('.auth-guest-line')).display === 'none');
   ok('?tab=signup: Guest hidden from first paint', early);
   await p2.waitForLoadState('load');
   s = await seen(p2);

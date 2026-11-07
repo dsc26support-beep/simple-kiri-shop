@@ -4,6 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mwakete</title>
+  <!-- First visit (owner request, Nov 2026): open the welcome screen once,
+       before anything paints. Only for a brand-new visitor on this phone or
+       computer (nothing stored yet) arriving at the plain homepage - a link
+       with a search or a #section, a signed-in shopper, a returning visitor,
+       search engines and automated browsers all get the homepage as before. -->
+  <script>
+    try {
+      if (!location.search && !location.hash && !navigator.webdriver
+          && !/bot|crawl|spider|slurp|lighthouse|facebookexternalhit|preview/i.test(navigator.userAgent || '')
+          && localStorage.length === 0) {
+        localStorage.setItem('mwk_welcomed', '1');
+        location.replace('customer-login.html?welcome=1');
+      }
+    } catch (e) { /* storage blocked: just the homepage */ }
+  </script>
   <meta name="description" content="Shop from local Kiribati stores online — order online, the store will contact you to arrange payment.">
   <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
   <link rel="stylesheet" href="assets/css/styles.min.css">

@@ -152,7 +152,7 @@ async function openChat(browser, opts) {
     const note = await page.$eval('#auth-reason', (e) => ({ hidden: e.hidden, text: e.textContent }));
     ok('the sign-in page explains why they are there', !note.hidden && /request a meeting/i.test(note.text), JSON.stringify(note));
     ok('...naming the store', /Bong Store/.test(note.text), note.text);
-    ok('the guest route is hidden for this flow - it cannot request a meeting', await page.locator('.auth-guest-row').isHidden());
+    ok('the guest route is hidden for this flow - it cannot request a meeting', await page.locator('.auth-guest-line').isHidden());
     await ctx.close();
   }
 
