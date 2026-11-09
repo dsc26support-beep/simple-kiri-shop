@@ -1,6 +1,6 @@
 // Welcome screen on customer-login.html (owner request, Nov 2026, inspired by
-// Billdu's sign-up page): live store and product counts, an English / Kiribati
-// switch for the welcome text, and "Add Mwakete to your home screen".
+// Billdu's sign-up page): live store and product counts and an English /
+// Kiribati switch for the welcome text.
 //
 // Shown when html.welcome-on is set (decided in the page's <head>): a plain
 // visit to the sign-in page, or a first visit to the homepage (index.html
@@ -20,11 +20,6 @@
       store: 'store',
       products: 'products',
       product: 'product',
-      guestQ: 'Just looking?',
-      guest: 'Browse as a guest',
-      sellQ: 'Own a store?',
-      sell: 'Sell on Mwakete',
-      install: 'Add Mwakete to your home screen',
       close: 'Close'
     },
     gil: {
@@ -34,11 +29,6 @@
       store: 'titoa',
       products: 'bwaai',
       product: 'bwai',
-      guestQ: 'Ko tii tarataraa?',
-      guest: 'Tarataraa n te iruwa',
-      sellQ: 'Iai am titoa?',
-      sell: 'Kaboonako i Mwakete',
-      install: 'Katokaa Mwakete i aon am tareboon',
       close: 'Kaina'
     }
   };
@@ -103,21 +93,12 @@
     }).catch(function () { /* the line just stays empty */ });
   }
 
-  function wireInstall() {
-    var row = $('welcome-install');
-    var btn = $('welcome-install-btn');
-    if (!row || !btn || !window.MwaketeInstall) return;
-    btn.addEventListener('click', function () { window.MwaketeInstall.install(); });
-    window.MwaketeInstall.onChange(function (can) { row.hidden = !can; });
-  }
-
   function init() {
     var on = document.documentElement.classList.contains('welcome-on');
     document.querySelectorAll('.welcome-lang button').forEach(function (b) {
       b.addEventListener('click', function () { setLang(b.getAttribute('data-lang')); });
     });
     setLang(savedLang());
-    wireInstall();
     if (on) loadStats();
   }
 

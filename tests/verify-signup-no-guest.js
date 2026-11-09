@@ -1,7 +1,8 @@
 /**
  * Customer sign-in page (owner requests, Oct 2026): no Sign In / Create
  * Account tabs. Since the welcome screen (Nov 2026) the email form is open
- * from the start, with "New to Mwakete? Create an account" under it. Create Account
+ * from the start; since 9 Nov 2026 Sign in has no guest, "or" or create
+ * line (Create account is reached by ?tab=signup, from the emails). Create Account
  * shows no Guest button and no "or" line, just Google then the form, and
  * "Already have an account? Sign in" goes back. Also when the page is opened
  * straight on Create Account. Password boxes show an eye icon, not "Show".
@@ -38,16 +39,13 @@ const seen = (page) => page.evaluate(() => {
   await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
   await page.waitForTimeout(500);
   let s = await seen(page);
-  ok('Sign In: Guest and the "or" line are there', s.guest && s.divider, JSON.stringify(s));
+  // Owner, 9 Nov 2026: Sign in is the email box, its button and Google only.
+  ok('Sign In: no Guest, no "or" line, no create link', !s.guest && !s.divider && !s.createLine, JSON.stringify(s));
   ok('no Sign In / Create Account tabs', !s.tabs, JSON.stringify(s));
   ok('the email form is open from the start; no "Continue with email" step (Nov 2026)', !s.emailBtn && s.loginForm, JSON.stringify(s));
-  ok('"New to Mwakete? Create an account" is there', s.createLine
-    && await page.textContent('#auth-create-line').then((t) => t.trim() === 'New to Mwakete? Create an account'), JSON.stringify(s));
-  const below = await page.evaluate(() => document.getElementById('auth-create-line').getBoundingClientRect().top
-    >= document.getElementById('login-form').getBoundingClientRect().bottom);
-  ok('...below the Sign in form', below);
 
-  await page.click('#login-use-password');
+  // Password mode now only comes up after Google finds an account with one.
+  await page.evaluate(() => setLoginMode('password'));
   const eye = await page.evaluate(() => { const b = document.querySelector('.password-toggle[data-for="login-password"]');
     return { text: b.textContent.trim(), svg: !!b.querySelector('svg'), label: b.getAttribute('aria-label') }; });
   ok('password box: an eye icon, not the word "Show"', eye.text === '' && eye.svg && eye.label === 'Show password', JSON.stringify(eye));
@@ -58,7 +56,8 @@ const seen = (page) => page.evaluate(() => {
     svg: !!document.querySelector('.password-toggle[data-for="login-password"] svg') }));
   ok('...tapping it shows the password (eye with a line through it)', eye2.type === 'text' && eye2.label === 'Hide password' && eye2.svg, JSON.stringify(eye2));
 
-  await page.click('#show-signup');
+  // Create account is reached by the link in the "no account yet" email (?tab=signup).
+  await page.evaluate(() => { showTab('signup'); document.getElementById('signup-name').focus(); });
   s = await seen(page);
   ok('Create Account: no Guest', !s.guest && s.signup, JSON.stringify(s));
   ok('...no "or" line, no create link, no sign-in form', !s.divider && !s.createLine && !s.loginForm, JSON.stringify(s));
@@ -68,11 +67,10 @@ const seen = (page) => page.evaluate(() => {
     const n = document.querySelector('#panel-signup .auth-news-note');
     return !!n && n.getBoundingClientRect().height > 0 && n.textContent.trim() === 'You\u2019ll get news emails from Mwakete.';
   }));
-  ok('...the name box has focus', await page.evaluate(() => document.activeElement && document.activeElement.id === 'signup-name'));
 
   await page.click('#show-signin');
   s = await seen(page);
-  ok('"Already have an account? Sign in" goes back: Guest, the "or" line and the create link return', s.guest && s.divider && s.createLine && !s.signup, JSON.stringify(s));
+  ok('"Already have an account? Sign in" goes back to the sign-in form', s.loginForm && !s.signup, JSON.stringify(s));
 
   // Opened straight on Create Account: hidden from the first paint.
   const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -80,10 +78,8 @@ const seen = (page) => page.evaluate(() => {
   await ctx2.route('**/script.google.com/**', (r) => r.fulfill({ contentType: 'application/json', body: '{"ok":false,"error":"offline"}' }));
   const p2 = await ctx2.newPage();
   await p2.goto(BASE + '/customer-login.html?tab=signup', { waitUntil: 'commit' });
-  await p2.waitForSelector('#guest-continue', { state: 'attached' });
-  const early = await p2.evaluate(() => getComputedStyle(document.getElementById('guest-continue')).display === 'none'
-    || getComputedStyle(document.querySelector('.auth-guest-line')).display === 'none');
-  ok('?tab=signup: Guest hidden from first paint', early);
+  await p2.waitForSelector('#panel-signup', { state: 'attached' });
+  ok('?tab=signup: no Guest at any point (it is gone from the page)', await p2.evaluate(() => !document.getElementById('guest-continue')));
   await p2.waitForLoadState('load');
   s = await seen(p2);
   ok('?tab=signup: no Guest, no "or" line, even with Google blocked', !s.guest && !s.divider && s.signup, JSON.stringify(s));

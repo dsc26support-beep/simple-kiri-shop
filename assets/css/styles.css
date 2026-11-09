@@ -8478,10 +8478,8 @@ html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(
    photo, headline, one line, live counts, then the email form first.
    welcome.js fills the counts and switches English / Kiribati. */
 .welcome-hero,
-.welcome-sell,
 .welcome-close { display: none; }
 html.welcome-on .welcome-hero { display: block; margin: 0 0 var(--space-3); }
-html.welcome-on .welcome-sell { display: block; }
 html.welcome-first .welcome-close { display: inline-flex; }
 .welcome-top {
   display: flex;
@@ -8543,8 +8541,6 @@ html.welcome-first .welcome-close { display: inline-flex; }
   transition: opacity 0.3s ease;
 }
 .welcome-stats.is-ready { opacity: 1; }
-.auth-card--customer .welcome-sell { margin-top: var(--space-3); }
-.welcome-install { margin: var(--space-2) 0 0; }
 /* Like Billdu, "Email me a sign-in link" is there from the start on the
    welcome screen (an empty or mistyped email gets the usual message). With a
    password, Sign in still waits until one is typed. */
@@ -8553,16 +8549,12 @@ html.welcome-on #login-form:not(.is-password) .auth-reveal {
   visibility: visible;
   transform: none;
 }
-.welcome-install .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); }
 
-/* Guests: one plain line under the email form (was a big button). */
-.auth-card--customer .auth-guest-line { margin: var(--space-3) 0 0; }
-html.auth-for-meeting .auth-guest-line,
-html.auth-required .auth-guest-line,
-html.auth-signup .auth-guest-line { display: none; }
-/* "or" only when Google or Facebook is actually there to follow it. */
-.auth-card--customer .auth-quick:not(:has(.auth-provider:not([hidden]))) .auth-divider { display: none; }
-.auth-card--customer .auth-quick { margin: var(--space-2) 0 0; }
+/* Sign in is the email box, its button, then Google (owner, 9 Nov 2026):
+   nothing in between and nothing below. The Terms line stays on Create
+   account only. */
+.auth-card--customer .auth-quick { margin: var(--space-3) 0 0; }
+html:not(.auth-signup) .auth-card--customer .auth-terms-reveal { display: none; }
 
 @media (max-width: 899px) {
   /* The welcome replaces the slim "Shop Kiribati's stores" band. */

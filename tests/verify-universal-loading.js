@@ -99,7 +99,7 @@ const J = (x) => JSON.stringify(x).slice(0, 300);
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await openEmail(page);
     await page.fill('#login-email', 'a@example.com');
-    await page.click('#login-use-password');
+    await page.evaluate(() => setLoginMode('password'));
     await page.fill('#login-password', 'secret123');
     const btn = '#login-form button[type="submit"]';
     await page.click(btn); await page.waitForTimeout(300);

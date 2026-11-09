@@ -135,15 +135,17 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     await openEmail(p);
     await p.fill('#login-email', 'aroita@example.com'); await p.waitForTimeout(400);
     const c = await vis();
-    ok('...a good email shows "Email me a sign-in link" and the Terms line (no password needed)', c.code && c.terms
+    // Nothing under Google on Sign in since 9 Nov 2026 (owner): no Terms line there.
+    ok('...a good email: "Email me a sign-in link", and still no Terms line on Sign in', c.code && !c.terms
       && /sign-in link/.test(await p.textContent('#login-submit')), J(c));
-    await p.click('#login-use-password'); await p.waitForTimeout(400);
+    // Password mode now only comes up after Google finds an account with one.
+    await p.evaluate(() => setLoginMode('password')); await p.waitForTimeout(400);
     const c1 = await vis();
-    ok('..."Use a password instead": Sign in waits for the password', !c1.code && c1.terms, J(c1));
+    ok('...in password mode, Sign in waits for the password', !c1.code && !c1.terms, J(c1));
     await p.fill('#login-password', 'secret123'); await p.waitForTimeout(400);
     const c2 = await vis();
-    ok('...and "Sign in" once a password is typed', c2.code && c2.terms, J(c2));
-    await p.click('#show-signup'); await p.waitForTimeout(400);
+    ok('...and "Sign in" once a password is typed', c2.code && !c2.terms, J(c2));
+    await p.evaluate(() => showTab('signup')); await p.waitForTimeout(400);
     const d = await vis();
     ok('Create Account: hidden until name, email and password are right', !d.signupCode && !d.terms, J(d));
     await p.fill('#signup-name', 'Aroita'); await p.fill('#signup-email', 'a@example.com'); await p.fill('#signup-password', 'short'); await p.waitForTimeout(400);
@@ -159,7 +161,8 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     const { ctx, p } = await open(1366, 'customer-login.html');
     const v = await p.evaluate(() => ({ google: !!document.querySelector('#google-signin-btn, .google-btn, [id*="google"]'),
       guest: !!Array.from(document.querySelectorAll('a,button')).find((b) => /guest/i.test(b.textContent) && b.offsetParent) }));
-    ok('Shopper page: Google and Guest are still offered beside the panel', v.google && v.guest, J(v));
+    // No guest line on Sign in since 9 Nov 2026 (owner); the header's Home is the way to browse.
+    ok('Shopper page: Google is still offered beside the panel; no guest line', v.google && !v.guest, J(v));
     await ctx.close();
   }
   {

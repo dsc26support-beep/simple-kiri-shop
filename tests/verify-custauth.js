@@ -77,7 +77,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.waitForFunction(() => typeof CustomerAuth !== 'undefined');
     await openEmail(page);
     await page.fill('#login-email', 'd@x.com');
-    await page.click('#login-use-password');
+    await page.evaluate(() => setLoginMode('password'));
     await page.waitForTimeout(400);
     ok('Sign in waits for a password', await page.$eval('#login-form button[type="submit"]', (b) => getComputedStyle(b).visibility === 'hidden'));
     await page.fill('#login-password', 'wrong-pass');
@@ -88,7 +88,9 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.click('#login-form button[type="submit"]');
     await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
     ok('password sign-in saved the session', (await page.evaluate(() => localStorage.getItem('skiri_customer_token'))) === 'sess-3');
-    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+    // Sign out only once the dashboard's profile refresh is back: it saves the
+    // session again (customer-dashboard.js), which would undo an earlier clear.
+    await page.waitForLoadState('networkidle').catch(() => {}); await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
 
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await openEmail(page);
@@ -101,13 +103,13 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
     const tok = await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } });
     ok('login verify saved customer session', tok === 'sess-2', String(tok));
-    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+    await page.waitForLoadState('networkidle').catch(() => {}); await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
 
     // Forgot password by code.
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await openEmail(page);
     await page.fill('#login-email', 'd@x.com');
-    await page.evaluate(() => { const b = document.getElementById('login-use-password'); if (b && !b.hidden) b.click(); }); await page.click('#login-forgot');
+    await page.evaluate(() => setLoginMode('password')); await page.click('#login-forgot');
     ok('Forgot password opens the reset step with the email filled in', await page.isVisible('#reset-request-form') && (await page.inputValue('#reset-email')) === 'd@x.com');
     await page.click('#reset-request-form button[type="submit"]');
     await page.waitForSelector('#reset-form:not(.hidden)');
@@ -116,7 +118,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.click('#reset-form button[type="submit"]');
     await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
     ok('reset by code sends code + new password', posted.some(p => p.action === 'resetCustomerPassword' && p.body.token === 'ptok-reset' && p.body.code === '111222' && p.body.newPassword === 'new-pass12'));
-    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+    await page.waitForLoadState('networkidle').catch(() => {}); await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
 
     // Reset by the emailed link: the token leaves the address bar at once.
     await page.goto(BASE + '/customer-login.html?reset=LINKTOKEN123', { waitUntil: 'load' });
@@ -128,13 +130,13 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.click('#reset-form button[type="submit"]');
     await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
     ok('reset by link sends the link token', posted.some(p => p.action === 'resetCustomerPassword' && p.body.linkToken === 'LINKTOKEN123' && p.body.newPassword === 'new-pass34'));
-    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+    await page.waitForLoadState('networkidle').catch(() => {}); await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
 
     // Confirm-email link.
     await page.goto(BASE + '/customer-login.html?verify=VERIFYTOK9', { waitUntil: 'load' });
     await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
     ok('the confirm link signs in', posted.some(p => p.action === 'verifyCustomerEmail' && p.body.linkToken === 'VERIFYTOK9'));
-    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+    await page.waitForLoadState('networkidle').catch(() => {}); await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
 
     // Google/Facebook found an existing account: prove it, then it links.
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
@@ -144,7 +146,7 @@ const ok = (n, c, e) => results.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.click('#login-form button[type="submit"]');
     await page.waitForURL('**/customer-dashboard.html', { timeout: 4000 }).catch(() => {});
     ok('...and the password sign-in carries the link token', posted.some(p => p.action === 'customerPasswordLogin' && p.body.providerLinkToken === 'PLT'));
-    await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
+    await page.waitForLoadState('networkidle').catch(() => {}); await page.evaluate(() => localStorage.removeItem('skiri_customer_token'));
 
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     ok('no Facebook button while FACEBOOK_APP_ID is empty', await page.$eval('#facebook-signin-wrap', (w) => w.hidden));

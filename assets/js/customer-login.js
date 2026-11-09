@@ -11,9 +11,11 @@ function setLoginMode(mode, focus) {
   const $ = (id) => document.getElementById(id);
   $('login-password-field').hidden = !pw;
   $('login-form').classList.toggle('is-password', pw);
-  $('login-mode-note').hidden = pw;
-  $('login-use-password').hidden = pw;
-  $('login-use-link').hidden = !pw;
+  // The helper line and the link / password switch were removed from the
+  // page (owner, 9 Nov 2026); a password still comes up after Google finds
+  // an account that has one (onProviderLinkRequired).
+  ['login-mode-note', 'login-use-password'].forEach((id) => { if ($(id)) $(id).hidden = pw; });
+  if ($('login-use-link')) $('login-use-link').hidden = !pw;
   $('login-submit').textContent = pw ? 'Sign in' : 'Email me a sign-in link';
   $('login-error').textContent = '';
   if (!pw) $('login-password').value = '';
@@ -41,7 +43,8 @@ function init() {
     return;
   }
 
-  document.getElementById('show-signup').addEventListener('click', () => {
+  const showSignup = document.getElementById('show-signup');
+  if (showSignup) showSignup.addEventListener('click', () => {
     showTab('signup');
     document.getElementById('signup-name').focus();
   });
@@ -52,8 +55,10 @@ function init() {
     document.getElementById('login-email').focus();
   });
   document.getElementById('login-form').addEventListener('submit', (e) => (loginMode === 'password' ? onPasswordLogin(e) : onLoginRequest(e)));
-  document.getElementById('login-use-password').addEventListener('click', () => setLoginMode('password', true));
-  document.getElementById('login-use-link').addEventListener('click', () => setLoginMode('link', true));
+  const usePw = document.getElementById('login-use-password');
+  const useLink = document.getElementById('login-use-link');
+  if (usePw) usePw.addEventListener('click', () => setLoginMode('password', true));
+  if (useLink) useLink.addEventListener('click', () => setLoginMode('link', true));
   document.getElementById('login-forgot').addEventListener('click', () => showReset(document.getElementById('login-email').value.trim()));
   document.getElementById('login-code-form').addEventListener('submit', onLoginVerify);
   document.getElementById('login-back').addEventListener('click', resetLogin);
@@ -220,7 +225,8 @@ function showTab(which) {
   document.getElementById('panel-signin').classList.toggle('hidden', !signin);
   document.getElementById('panel-signup').classList.toggle('hidden', signin);
   document.getElementById('panel-reset').classList.add('hidden');
-  document.getElementById('auth-create-line').hidden = !signin;
+  const createLine = document.getElementById('auth-create-line');
+  if (createLine) createLine.hidden = !signin;
   document.getElementById('auth-title').textContent = signin ? 'Sign in to Mwakete' : 'Create your Mwakete account';
   // Owner request (Oct 2026): Create Account is for making an account, so the
   // Guest button and the "or" line go; Sign In brings them back.
@@ -422,7 +428,8 @@ function showReset(email) {
   document.getElementById('panel-signin').classList.add('hidden');
   document.getElementById('panel-signup').classList.add('hidden');
   document.getElementById('panel-reset').classList.remove('hidden');
-  document.getElementById('auth-create-line').hidden = true;
+  const createLine = document.getElementById('auth-create-line');
+  if (createLine) createLine.hidden = true;
   document.getElementById('reset-request-form').classList.remove('hidden');
   document.getElementById('reset-form').classList.add('hidden');
   document.getElementById('auth-title').textContent = 'Set a new password';
