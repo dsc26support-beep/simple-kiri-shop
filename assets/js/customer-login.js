@@ -10,6 +10,7 @@ function setLoginMode(mode, focus) {
   const pw = loginMode === 'password';
   const $ = (id) => document.getElementById(id);
   $('login-password-field').hidden = !pw;
+  $('login-form').classList.toggle('is-password', pw);
   $('login-mode-note').hidden = pw;
   $('login-use-password').hidden = pw;
   $('login-use-link').hidden = !pw;

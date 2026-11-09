@@ -8473,6 +8473,117 @@ html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(
   padding: 0 48px;
 }
 
+/* ---- Welcome screen (owner request, Nov 2026, inspired by Billdu) --------
+   customer-login.html, html.welcome-on (a plain visit; see its <head>):
+   photo, headline, one line, live counts, then the email form first.
+   welcome.js fills the counts and switches English / Kiribati. */
+.welcome-hero,
+.welcome-sell,
+.welcome-close { display: none; }
+html.welcome-on .welcome-hero { display: block; margin: 0 0 var(--space-3); }
+html.welcome-on .welcome-sell { display: block; }
+html.welcome-first .welcome-close { display: inline-flex; }
+.welcome-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.welcome-lang {
+  display: inline-flex;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.welcome-lang button {
+  min-height: 36px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.welcome-lang button[aria-pressed="true"] {
+  background: var(--color-purple);
+  color: #fff;
+}
+.welcome-close {
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  color: inherit;
+  border-radius: 50%;
+}
+.welcome-photo { display: none; }
+.welcome-title {
+  font-size: 1.9rem;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--color-purple);
+  margin: 0 0 var(--space-1);
+}
+.welcome-sub {
+  font-size: 1.05rem;
+  line-height: 1.45;
+  margin: 0;
+}
+/* Space kept while the counts load, so nothing below moves when they appear. */
+.welcome-stats {
+  min-height: 1.6em;
+  margin: var(--space-1) 0 0;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.welcome-stats.is-ready { opacity: 1; }
+.auth-card--customer .welcome-sell { margin-top: var(--space-3); }
+.welcome-install { margin: var(--space-2) 0 0; }
+/* Like Billdu, "Email me a sign-in link" is there from the start on the
+   welcome screen (an empty or mistyped email gets the usual message). With a
+   password, Sign in still waits until one is typed. */
+html.welcome-on #login-form:not(.is-password) .auth-reveal {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+.welcome-install .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); }
+
+/* Guests: one plain line under the email form (was a big button). */
+.auth-card--customer .auth-guest-line { margin: var(--space-3) 0 0; }
+html.auth-for-meeting .auth-guest-line,
+html.auth-required .auth-guest-line,
+html.auth-signup .auth-guest-line { display: none; }
+/* "or" only when Google or Facebook is actually there to follow it. */
+.auth-card--customer .auth-quick:not(:has(.auth-provider:not([hidden]))) .auth-divider { display: none; }
+.auth-card--customer .auth-quick { margin: var(--space-2) 0 0; }
+
+@media (max-width: 899px) {
+  /* The welcome replaces the slim "Shop Kiribati's stores" band. */
+  html.welcome-on:not(.auth-for-store) .auth-split-panel { display: none; }
+  html.welcome-on .welcome-photo { display: block; margin: 0 0 var(--space-3); }
+  .welcome-photo img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+    object-position: center top;
+    border-radius: 20px;
+  }
+  :where(html:not(.auth-for-store)) .auth-page .welcome-title { color: #fff; }
+  :where(html:not(.auth-for-store)) .auth-page .welcome-lang button[aria-pressed="true"] {
+    background: #fff;
+    color: var(--color-purple);
+  }
+}
+
 /* ---- The search bar stays on screen (sticky-search.js) ----------------
    Owner requests, Oct 2026: computers first, then phones and tablets too.
    Pinned to the top - under the red header on a computer, under the yellow
