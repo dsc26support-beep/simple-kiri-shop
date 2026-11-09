@@ -2,8 +2,9 @@
  * Welcome screen (owner request, Nov 2026, inspired by Billdu's sign-up
  * page): customer-login.html opens with a photo (phones), headline, live
  * store/product counts and the email form first; English / Kiribati switch;
- * "Add Mwakete to your home screen" where the phone can; a first visit to the
- * homepage is sent there once.
+ * a first visit to the homepage is sent there once. Since 9 Nov 2026 (owner)
+ * Sign in is just the email box, its button and Google - nothing between,
+ * nothing below.
  */
 const { chromium } = require('playwright');
 const BASE = process.env.BASE || 'http://127.0.0.1:8099';
@@ -25,7 +26,10 @@ async function makeCtx(browser, opts) {
     }
     return r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
   });
-  await ctx.route(/accounts\.google\.com|gstatic|connect\.facebook/, (r) => r.abort());
+  // A stand-in for Google's script, so its button shows as on the live site.
+  await ctx.route('**/accounts.google.com/gsi/client', (r) => r.fulfill({ contentType: 'text/javascript',
+    body: "window.google={accounts:{id:{initialize:function(){},renderButton:function(h){var b=document.createElement('div');b.style.height='40px';h.appendChild(b);}}}};" }));
+  await ctx.route(/gstatic|connect\.facebook/, (r) => r.abort());
   if (!opts.fresh) await ctx.addInitScript(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
   return { ctx, hits };
 }
@@ -43,12 +47,8 @@ const state = (page) => page.evaluate(() => {
     send: vis(q('#login-submit')),
     sendText: (q('#login-submit') || {}).textContent,
     email: vis(q('#login-email')),
-    guest: vis(q('#guest-continue')),
-    sell: vis(q('.welcome-sell a')),
     band: vis(q('.auth-split-panel')),
-    install: vis(q('#welcome-install')),
-    sideways: document.documentElement.scrollWidth > window.innerWidth + 1,
-    emailAboveGuest: q('#login-email') && q('#guest-continue') ? q('#login-email').getBoundingClientRect().top < q('#guest-continue').getBoundingClientRect().top : null
+    sideways: document.documentElement.scrollWidth > window.innerWidth + 1
   };
 });
 
@@ -67,12 +67,22 @@ const state = (page) => page.evaluate(() => {
     ok('phone: headline', s.title === 'Shop Kiribati’s stores', J(s.title));
     ok('phone: live counts from siteStats', s.stats === '124 stores · 3,180 products' && hits.some((u) => /action=siteStats/.test(u)), J(s.stats));
     ok('phone: the email box and "Email me a sign-in link" are there from the start', s.email && s.send && /sign-in link/.test(s.sendText), J(s));
-    ok('phone: email first, then "Browse as a guest"', s.guest && s.emailAboveGuest, J(s));
-    ok('phone: "Sell on Mwakete" goes to the seller sign-in', s.sell && /owner\/login\.html$/.test(await page.getAttribute('.welcome-sell a', 'href')));
+    const gap = await page.evaluate(() => {
+      const send = document.getElementById('login-submit').getBoundingClientRect();
+      const g = document.querySelector('#google-signin-wrap .auth-provider-btn').getBoundingClientRect();
+      const email = document.getElementById('login-email').getBoundingClientRect();
+      // Every visible text block on the card between the email box and the bottom.
+      const extra = [...document.querySelectorAll('.auth-card--customer p, .auth-card--customer a, .auth-card--customer button')]
+        .filter((el) => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' && el.getBoundingClientRect().top > email.bottom
+          && !el.closest('#google-signin-wrap') && el.id !== 'login-submit' && el.textContent.trim())
+        .map((el) => el.textContent.trim().slice(0, 40));
+      return { sendTop: send.top, googleTop: g.top, emailBottom: email.bottom, extra };
+    });
+    ok('phone: email box, then "Email me a sign-in link", then Google', gap.emailBottom < gap.sendTop && gap.sendTop < gap.googleTop, J(gap));
+    ok('phone: nothing else between the email box and Google, nor below it', gap.extra.length === 0, J(gap.extra));
     ok('phone: the old purple band is replaced', !s.band, J(s));
     ok('phone: no close X on a normal visit (the header has Home)', !s.close, J(s));
     ok('phone: no sideways scroll, no page errors', !s.sideways && errs.length === 0, errs.join(' | '));
-    ok('phone: no home-screen button until the phone offers it', !s.install, J(s));
 
     // Empty email: a message, not a request.
     const before = hits.length;
@@ -80,18 +90,10 @@ const state = (page) => page.evaluate(() => {
     await page.waitForTimeout(300);
     ok('tapping the link button with no email asks for one', /email/i.test(await page.textContent('#login-error')) && !hits.slice(before).some((u) => /loginCustomer/.test(u)));
 
-    // The phone offers to install: the button appears and uses that prompt.
-    await page.evaluate(() => { const e = new Event('beforeinstallprompt'); e.prompt = () => { window.__prompted = 1; }; e.userChoice = Promise.resolve({ outcome: 'dismissed' }); window.dispatchEvent(e); });
-    await page.waitForTimeout(200);
-    ok('home-screen button shows when the phone can add it', (await state(page)).install);
-    await page.click('#welcome-install-btn');
-    ok('...and opens the phone\'s own "Add to home screen"', await page.evaluate(() => window.__prompted === 1));
-
     // English / Kiribati
     await page.click('.welcome-lang button[data-lang="gil"]');
     const k = await state(page);
     ok('Kiribati: the welcome text switches', k.title !== 'Shop Kiribati’s stores' && /titoa/.test(k.stats) && await page.getAttribute('#welcome-hero', 'lang') === 'gil', J(k));
-    ok('Kiribati: the guest and sell lines switch too', !/Browse as a guest/.test(await page.textContent('#guest-continue')) && !/Sell on Mwakete/.test(await page.textContent('.welcome-sell a')));
     ok('Kiribati: the switch says which is on', await page.getAttribute('.welcome-lang button[data-lang="gil"]', 'aria-pressed') === 'true');
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(500);
@@ -131,7 +133,7 @@ const state = (page) => page.evaluate(() => {
     await page.goto(BASE + '/customer-login.html' + q, { waitUntil: 'load' });
     await page.waitForTimeout(400);
     const s = await state(page);
-    ok(why + ': no welcome, no guest line', !s.hero && !s.guest && !s.sell, J(s));
+    ok(why + ': no welcome', !s.hero, J(s));
     await ctx.close();
   }
 

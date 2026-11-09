@@ -107,9 +107,8 @@ async function makeContext(browser, opts) {
     // Since the welcome screen (Nov 2026) the email form comes first and "or"
     // introduces Google / Facebook below it - with neither, it has nothing to
     // introduce, so it goes too.
-    ok('with no Google or Facebook, the "or" goes too', await page.locator('.auth-divider').isHidden());
+    ok('no "or" line any more', !(await page.$('.auth-divider')));
     ok('the email form is open from the start (welcome screen, Nov 2026)', await page.locator('#login-form').isVisible());
-    ok('and the guest route is still offered', await page.locator('#guest-continue').isVisible());
     await ctx.close();
   }
 
@@ -187,10 +186,10 @@ async function makeContext(browser, opts) {
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForSelector('#fake-google-btn', { timeout: 5000 });
     const sel = ['#google-signin-wrap .auth-provider-btn'];
-    const g = await page.evaluate(() => ['#login-email', '.auth-divider', '#google-signin-wrap .auth-provider-btn'].map((q) => {
+    const g = await page.evaluate(() => ['#login-email', '#login-submit', '#google-signin-wrap .auth-provider-btn'].map((q) => {
       const r = document.querySelector(q).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.top)]; }));
     ok(`${w}px: Google's button is 48px tall`, g[2][1] === 48, JSON.stringify(g));
-    ok(`${w}px: the email box first, then "or", then Google`, g[0][2] < g[1][2] && g[1][2] < g[2][2], JSON.stringify(g));
+    ok(`${w}px: the email box, "Email me a sign-in link", then Google (no "or" since 9 Nov 2026)`, g[0][2] < g[1][2] && g[1][2] < g[2][2], JSON.stringify(g));
     ok(`${w}px: Google reads "Continue with Google" with an icon on the left`, await page.evaluate((sel) => sel.every((q) => {
       const b = document.querySelector(q); const i = b.querySelector('.apb-icon');
       return /^Continue (with|as) /.test(b.textContent.trim()) && i && i.getBoundingClientRect().left - b.getBoundingClientRect().left < 30;
@@ -208,22 +207,14 @@ async function makeContext(browser, opts) {
     await ctx.close();
   }
 
-  // ---- guest ----
+  // ---- no guest line on Sign in (owner, 9 Nov 2026) ----
   {
     const { ctx } = await makeContext(browser, { clientId: '' });
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(600);
-    const href = await page.getAttribute('#guest-continue', 'href');
-    ok('the guest button leaves the sign-in page', href === 'index.html', String(href));
-    await page.click('#guest-continue');
-    await page.waitForTimeout(700);
-    ok('and lands on the homepage with no account', /index\.html$/.test(page.url()), page.url());
-    const token = await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } });
-    ok('a guest holds no session token', !token, String(token));
-    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    ok('the guest link says "Browse as a guest"', (await page.textContent('#guest-continue')).trim() === 'Browse as a guest');
-    ok('...with no extra note under it', (await page.$('.auth-guest-note')) === null);
+    ok('no guest line; the header\'s Home still leads to the shop', !(await page.$('#guest-continue'))
+      && /index\.html$/.test(await page.getAttribute('.site-nav a', 'href')));
     ok('every button on the card is an outline (purple, or white on the purple phone page) on a see-through fill', await page.evaluate(() =>
       [...document.querySelectorAll('.auth-card--customer .btn')].every((b) => {
         const cs = getComputedStyle(b);
@@ -232,8 +223,7 @@ async function makeContext(browser, opts) {
       })));
     // Sent here from checkout: guests can't order, so there is no guest route.
     await page.goto(BASE + '/customer-login.html?next=checkout.html&reason=order', { waitUntil: 'load' });
-    ok('sent from checkout: says why, and hides the guest route',
-      /sign in to place your order/i.test(await page.textContent('#auth-reason')) && await page.locator('#guest-continue').isHidden());
+    ok('sent from checkout: says why', /sign in to place your order/i.test(await page.textContent('#auth-reason')));
     await ctx.close();
   }
 
@@ -291,16 +281,13 @@ async function makeContext(browser, opts) {
     const order = await page.$$eval('.auth-quick > *, .auth-tabs, #auth-create-line',
       (els) => els.map((e) => e.id || e.className.split(' ')[0]));
     // Facebook's slot sits after Google's (hidden until FACEBOOK_APP_ID is set).
-    ok(label + ': no tabs; "Create an account", then "or", Google, Facebook (and the always-hidden "Continue with email")',
+    ok(label + ': no tabs; just Google, Facebook (and the always-hidden "Continue with email")',
       JSON.stringify(order) === JSON.stringify(
-        ['auth-create-line', 'auth-divider', 'google-signin-wrap', 'facebook-signin-wrap', 'email-continue']), JSON.stringify(order));
+        ['google-signin-wrap', 'facebook-signin-wrap', 'email-continue']), JSON.stringify(order));
 
     // The one that matters. The guest button is the fallback for exactly the
     // person who cannot use Google, so it must never be hidden along with it.
-    ok(label + ': "Browse as a guest" is visible', await page.locator('#guest-continue').isVisible());
-    ok(label + ': ...as a line under the email form (Nov 2026: not a big button)',
-      await page.evaluate(() => document.getElementById('guest-continue').getBoundingClientRect().top
-        > document.getElementById('login-email').getBoundingClientRect().bottom));
+    ok(label + ': the email form works without Google', await page.locator('#login-email').isVisible() && await page.locator('#login-submit').isVisible());
     await ctx.close();
   }
 
@@ -311,7 +298,6 @@ async function makeContext(browser, opts) {
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(1300);
 
-    ok('Browse as a guest is still there', await page.locator('#guest-continue').isVisible());
     ok('its info dot and popup are gone, not just hidden',
       await page.evaluate(() => !document.getElementById('guest-info-btn') && !document.getElementById('guest-info')));
     await ctx.close();
@@ -344,7 +330,8 @@ async function makeContext(browser, opts) {
 
     ok('the always-visible helper line is gone from the email step',
       !/We'll email you a 6-digit code/i.test(await page.textContent('#login-form') || ''));
-    ok('the email step says what happens: a link, no password', /email you a link/i.test(await page.textContent('#login-mode-note') || ''));
+    ok('no helper line under the email box (owner, 9 Nov 2026); the button says it: a sign-in link',
+      !(await page.$('#login-mode-note')) && /sign-in link/i.test(await page.textContent('#login-submit')));
 
     await openEmail(page);
     await page.fill('#login-email', 'aroita@example.com');
