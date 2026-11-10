@@ -17,3 +17,4 @@ Backend deployed 10 Nov 2026, getVersion = welcome1-2026-11-07 confirmed by the 
 - [merged #163] Internal folders kept off mwakete.com - check the site still loads
 - [deployed #163] Shopper sign-in by emailed link - check the email arrives and the link signs you in (customer-login.html)
 - [deployed #164, #165] Welcome screen: photo, headline, live counts, English/Kiribati; sign-in is email box + button + Google - check on a phone (customer-login.html, and mwakete.com in a private tab for the first-visit version)
+- [in PR] Sign-in pages: video removed (shopper + seller sign-in, one column on a computer); "Continue as guest" under Google on the shopper sign-in - needs merge + owner check (customer-login.html, owner/login.html)

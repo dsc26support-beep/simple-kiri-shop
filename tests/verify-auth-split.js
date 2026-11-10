@@ -1,10 +1,10 @@
 /**
- * Two-panel sign-in (owner request, Oct 2026, Pagedone template as the
- * model): on a wide screen the form sits beside a purple panel filled by the
- * owner's welcome video (silent, looping, still for "reduce motion"); on
- * phones only a small purple band shows above the form and the video is
- * never downloaded. Shopper and seller sign-in and the
- * seller password reset; what each form does is unchanged.
+ * Sign-in layout. Oct 2026: two panels, the form beside the owner's welcome
+ * video. 10 Nov 2026 (owner): the video is gone from every sign-in page, so a
+ * computer shows one centred column; phones keep the purple page (the shopper
+ * page opens with the welcome screen, the seller pages with a short headline
+ * band). Shopper and seller sign-in and the seller password reset; what each
+ * form does is unchanged.
  */
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 // The email form waits behind "Continue with email" (Oct 2026).
@@ -31,37 +31,25 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
   };
   const geo = (p) => p.evaluate(() => {
     const f = document.querySelector('.auth-split-form'), a = document.querySelector('.auth-split-panel');
-    const v = a.querySelector('video'), box = a.querySelector('.auth-panel-video'), t = a.querySelector('.auth-panel-title');
-    const fr = f.getBoundingClientRect(), ar = a.getBoundingClientRect(), vr = v.getBoundingClientRect(), tr = t.getBoundingClientRect();
-    return { fl: fr.left, fr: fr.right, ft: fr.top, al: ar.left, at: ar.top, ab: ar.bottom, ah: ar.height, aw: ar.width,
-      bg: getComputedStyle(a).backgroundImage, box: getComputedStyle(box).display, hasVideo: a.classList.contains('has-video'),
-      fills: Math.abs(vr.width - ar.width) < 2 && Math.abs(vr.height - ar.height) < 2,
-      titleShown: tr.width > 2 && tr.height > 2, title: t.textContent,
-      muted: v.muted, loop: v.loop, inline: v.playsInline, paused: v.paused, time: v.currentTime, poster: v.poster,
-      label: a.getAttribute('aria-label'), hidden: box.getAttribute('aria-hidden'),
+    const card = document.querySelector('.auth-card').getBoundingClientRect();
+    const ar = a ? a.getBoundingClientRect() : { top: 0, bottom: 0, height: 0 };
+    const t = a && a.querySelector('.auth-panel-title');
+    return { ft: f.getBoundingClientRect().top, ab: ar.bottom, ah: ar.height,
+      panel: a ? getComputedStyle(a).display : 'absent', titleShown: !!t && t.getBoundingClientRect().height > 2,
+      videos: document.querySelectorAll('video').length,
+      centred: Math.abs((card.left + card.right) / 2 - window.innerWidth / 2) < 30,
       over: document.documentElement.scrollWidth > window.innerWidth };
   });
 
   for (const page of PAGES) {
-    // wide: side by side, the video fills the panel and plays
+    // wide: one centred column, no video (10 Nov 2026)
     {
       const { ctx, p, errors, imgs } = await open(1366, page);
-      await p.waitForTimeout(1500);
-      const g = await geo(p);
-      ok(`${page} 1366px: form on the left, purple panel on the right`, g.fr <= g.al && /gradient/.test(g.bg), J(g));
-      ok(`${page} 1366px: the video fills the whole panel, no text over it`, g.hasVideo && g.box === 'block' && g.fills && !g.titleShown, J(g));
-      ok(`${page} 1366px: silent, looping, playing`, g.muted && g.loop && g.inline && !g.paused && g.time > 0.3, J(g));
-      ok(`${page} 1366px: video and poster come from the site`, imgs.some((u) => /auth-welcome\.webm$/.test(u)) && /auth-welcome\.jpg$/.test(g.poster), J(imgs));
-      ok(`${page}: panel is labelled, headline kept for screen readers, video hidden from them`, g.label === 'About Mwakete' && g.hidden === 'true' && !!g.title, J(g));
-      ok(`${page} 1366px: no sideways scroll; no page errors`, !g.over && errors.length === 0, errors.join('; '));
-      await ctx.close();
-    }
-    // reduce motion: the first frame, still
-    {
-      const { ctx, p } = await open(1366, page, true);
       await p.waitForTimeout(1200);
       const g = await geo(p);
-      ok(`${page} "reduce motion": the video shows but does not play`, g.hasVideo && g.paused && g.time === 0 && /auth-welcome\.jpg$/.test(g.poster), J(g));
+      ok(`${page} 1366px: one centred column, no side panel`, g.centred && (g.panel === 'none' || g.panel === 'absent'), J(g));
+      ok(`${page} 1366px: no video on the page, none downloaded`, g.videos === 0 && !imgs.some((u) => /\.(webm|mp4)$/.test(u)), J(imgs));
+      ok(`${page} 1366px: no sideways scroll; no page errors`, !g.over && errors.length === 0, errors.join('; '));
       await ctx.close();
     }
     // phone: band on top, no video
@@ -71,16 +59,15 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
       const g = await geo(p);
       if (page === 'customer-login.html') {
         // Nov 2026: the welcome screen (photo, headline, counts) replaces the band.
-        const w = await p.evaluate(() => ({ hero: document.getElementById('welcome-hero').getBoundingClientRect().height > 100,
-          band: getComputedStyle(document.querySelector('.auth-split-panel')).display }));
-        ok(`${page} 390px: the welcome replaces the purple band; no video`, w.hero && w.band === 'none' && g.box === 'none' && !g.hasVideo, J(w));
+        const hero = await p.evaluate(() => document.getElementById('welcome-hero').getBoundingClientRect().height > 100);
+        ok(`${page} 390px: the welcome screen, no band, no video`, hero && g.panel === 'absent' && g.videos === 0, J(g));
       } else {
-        ok(`${page} 390px: purple band with the headline above the form, no video`, g.ab <= g.ft + 1 && g.box === 'none' && !g.hasVideo && g.titleShown && g.ah < 220, J(g));
+        ok(`${page} 390px: purple band with the headline above the form, no video`, g.ab <= g.ft + 1 && g.videos === 0 && g.titleShown && g.ah < 220, J(g));
       }
       ok(`${page} 390px: the video and its poster are not downloaded`, imgs.length === 0, J(imgs));
-      const ph = await p.evaluate(() => { const m = document.querySelector('main.auth-page'), a = document.querySelector('.auth-split-panel'), t = a.querySelector('.auth-panel-title');
-        return { mainBg: m ? getComputedStyle(m).backgroundImage : '', mainH: m ? m.getBoundingClientRect().height : 0, panelBg: getComputedStyle(a).backgroundImage,
-          title: t.textContent, size: parseFloat(getComputedStyle(t).fontSize), extra: !!a.querySelector('.auth-panel-text') }; });
+      const ph = await p.evaluate(() => { const m = document.querySelector('main.auth-page'), a = document.querySelector('.auth-split-panel'), t = a && a.querySelector('.auth-panel-title');
+        return { mainBg: m ? getComputedStyle(m).backgroundImage : '', mainH: m ? m.getBoundingClientRect().height : 0, panelBg: a ? getComputedStyle(a).backgroundImage : 'none',
+          title: t ? t.textContent : '', size: t ? parseFloat(getComputedStyle(t).fontSize) : 0, extra: !!(a && a.querySelector('.auth-panel-text')) }; });
       ok(`${page} 390px: the whole page behind the card is purple, no separate band`, /gradient/.test(ph.mainBg) && ph.mainH >= 844 && ph.panelBg === 'none', J(ph));
       if (page !== 'customer-login.html') ok(`${page} 390px: one short headline, 1.5 times smaller, no second line`, ph.title.length <= 24 && Math.abs(ph.size - 18.4 / 1.5) < 0.6 && !ph.extra, J(ph));
       ok(`${page} 390px: no sideways scroll; no page errors`, !g.over && errors.length === 0, errors.join('; '));
@@ -89,7 +76,7 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     for (const w of [360, 768, 1024, 1920]) {
       const { ctx, p } = await open(w, page);
       const g = await geo(p);
-      ok(`${page} ${w}px: no sideways scroll, layout ${w >= 900 ? 'side by side' : 'stacked'}`, !g.over && (w >= 900 ? g.fr <= g.al : g.ab <= g.ft + 1), J(g));
+      ok(`${page} ${w}px: no sideways scroll, one column`, !g.over && g.videos === 0 && (w >= 900 ? g.centred : g.ab <= g.ft + 1), J(g));
       await ctx.close();
     }
   }
@@ -161,38 +148,19 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
     const { ctx, p } = await open(1366, 'customer-login.html');
     const v = await p.evaluate(() => ({ google: !!document.querySelector('#google-signin-btn, .google-btn, [id*="google"]'),
       guest: !!Array.from(document.querySelectorAll('a,button')).find((b) => /guest/i.test(b.textContent) && b.offsetParent) }));
-    // No guest line on Sign in since 9 Nov 2026 (owner); the header's Home is the way to browse.
-    ok('Shopper page: Google is still offered beside the panel; no guest line', v.google && !v.guest, J(v));
+    // "Continue as guest" is back under Google (owner, 10 Nov 2026).
+    ok('Shopper page: Google and "Continue as guest" are offered', v.google && v.guest, J(v));
     await ctx.close();
   }
   {
     const { ctx, p } = await open(1366, 'owner/login.html');
     const v = await p.evaluate(() => ({ password: !!document.querySelector('input[type="password"]'), signin: !!document.getElementById('login-signin-link') && !document.getElementById('login-signin').hidden }));
-    ok('Seller page: one Mwakete-account sign-in beside the panel, no store password field (2 Nov 2026)', !v.password && v.signin, J(v));
-    await ctx.close();
-  }
-
-  // with the offline cache running: the video still plays and is never cached
-  {
-    const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
-    await ctx.addInitScript(() => { localStorage.setItem('skiri_cookie_consent', 'true'); });
-    const p = await ctx.newPage();
-    await p.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
-    await p.evaluate(() => navigator.serviceWorker.ready);
-    await p.reload({ waitUntil: 'load' });
-    await p.waitForTimeout(1800);
-    const r = await p.evaluate(async () => {
-      const v = document.querySelector('.auth-panel-video video');
-      const keys = [];
-      for (const name of await caches.keys()) for (const q of await (await caches.open(name)).keys()) keys.push(q.url);
-      return { controlled: !!navigator.serviceWorker.controller, playing: !v.paused && v.currentTime > 0.3, cached: keys.filter((u) => /\.(webm|mp4)$/.test(u)) };
-    });
-    ok('Offline cache on: the video plays and is never stored in the cache', r.controlled && r.playing && r.cached.length === 0, J(r));
+    ok('Seller page: one Mwakete-account sign-in, no store password field (2 Nov 2026)', !v.password && v.signin, J(v));
     await ctx.close();
   }
 
   await browser.close();
-  let f = 0; console.log('\n--- two-panel sign-in ---');
+  let f = 0; console.log('\n--- sign-in layout ---');
   for (const [s, n, e] of R) { if (s === 'FAIL') f++; console.log(`${s}  ${n}${e && s === 'FAIL' ? '  [' + e + ']' : ''}`); }
   console.log(`\n${R.length - f}/${R.length} passed`);
   process.exit(f ? 1 : 0);

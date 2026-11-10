@@ -39,8 +39,8 @@ const seen = (page) => page.evaluate(() => {
   await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
   await page.waitForTimeout(500);
   let s = await seen(page);
-  // Owner, 9 Nov 2026: Sign in is the email box, its button and Google only.
-  ok('Sign In: no Guest, no "or" line, no create link', !s.guest && !s.divider && !s.createLine, JSON.stringify(s));
+  // Owner, 9-10 Nov 2026: Sign in is the email box, its button, Google and "Continue as guest".
+  ok('Sign In: Guest is there; no "or" line, no create link', s.guest && !s.divider && !s.createLine, JSON.stringify(s));
   ok('no Sign In / Create Account tabs', !s.tabs, JSON.stringify(s));
   ok('the email form is open from the start; no "Continue with email" step (Nov 2026)', !s.emailBtn && s.loginForm, JSON.stringify(s));
 
@@ -70,7 +70,7 @@ const seen = (page) => page.evaluate(() => {
 
   await page.click('#show-signin');
   s = await seen(page);
-  ok('"Already have an account? Sign in" goes back to the sign-in form', s.loginForm && !s.signup, JSON.stringify(s));
+  ok('"Already have an account? Sign in" goes back to the sign-in form, Guest returns', s.loginForm && s.guest && !s.signup, JSON.stringify(s));
 
   // Opened straight on Create Account: hidden from the first paint.
   const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -79,7 +79,7 @@ const seen = (page) => page.evaluate(() => {
   const p2 = await ctx2.newPage();
   await p2.goto(BASE + '/customer-login.html?tab=signup', { waitUntil: 'commit' });
   await p2.waitForSelector('#panel-signup', { state: 'attached' });
-  ok('?tab=signup: no Guest at any point (it is gone from the page)', await p2.evaluate(() => !document.getElementById('guest-continue')));
+  ok('?tab=signup: Guest hidden from first paint', await p2.evaluate(() => getComputedStyle(document.querySelector('.auth-guest-row')).display === 'none'));
   await p2.waitForLoadState('load');
   s = await seen(p2);
   ok('?tab=signup: no Guest, no "or" line, even with Google blocked', !s.guest && !s.divider && s.signup, JSON.stringify(s));
