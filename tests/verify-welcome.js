@@ -1,7 +1,7 @@
 /**
  * Welcome screen (owner request, Nov 2026, inspired by Billdu's sign-up
  * page): customer-login.html opens with a photo (phones), headline, live
- * store/product counts and the email form first; English / Kiribati switch;
+ * store/product counts and the email form first (English only since 11 Nov);
  * a first visit to the homepage is sent there once. Since 9 Nov 2026 (owner)
  * Sign in is just the email box, its button and Google - nothing between,
  * nothing below.
@@ -94,17 +94,16 @@ const state = (page) => page.evaluate(() => {
     await page.waitForTimeout(300);
     ok('tapping the link button with no email asks for one', /email/i.test(await page.textContent('#login-error')) && !hits.slice(before).some((u) => /loginCustomer/.test(u)));
 
-    // English / Kiribati
-    await page.click('.welcome-lang button[data-lang="gil"]');
-    const k = await state(page);
-    ok('Kiribati: the welcome text switches', k.title !== 'Shop Kiribati’s stores' && /titoa/.test(k.stats) && await page.getAttribute('#welcome-hero', 'lang') === 'gil', J(k));
-    ok('Kiribati: the guest button switches too', (await page.textContent('#guest-continue')).trim() !== 'Continue as guest');
-    ok('Kiribati: the switch says which is on', await page.getAttribute('.welcome-lang button[data-lang="gil"]', 'aria-pressed') === 'true');
+    // English only since 11 Nov 2026 (owner): no language switch.
+    ok('no English / Kiribati switch', !(await page.$('.welcome-lang')) && !(await page.$('[data-lang]')));
+    // Someone who had picked Kiribati before still gets English, and the old choice is tidied away.
+    await page.evaluate(() => localStorage.setItem('mwk_lang', 'gil'));
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(500);
-    ok('Kiribati is remembered on this phone', (await state(page)).title !== 'Shop Kiribati’s stores');
-    await page.click('.welcome-lang button[data-lang="en"]');
-    ok('...and English comes back', (await state(page)).title === 'Shop Kiribati’s stores');
+    const k = await state(page);
+    ok('an old Kiribati choice: still English, and the choice is cleared', k.title === 'Shop Kiribati’s stores' && /stores/.test(k.stats)
+      && (await page.textContent('#guest-continue')).trim() === 'Continue as guest'
+      && await page.evaluate(() => localStorage.getItem('mwk_lang') === null), J(k));
     await ctx.close();
   }
 

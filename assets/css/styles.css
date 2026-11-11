@@ -8456,33 +8456,14 @@ html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(
 .welcome-close { display: none; }
 html.welcome-on .welcome-hero { display: block; margin: 0 0 var(--space-3); }
 html.welcome-first .welcome-close { display: inline-flex; }
-.welcome-top {
+/* The row above the photo holds only the first-visit close X since the
+   English / Kiribati switch was removed (owner, 11 Nov 2026). */
+.welcome-top { display: none; }
+html.welcome-on:not(.welcome-first) .welcome-hero { padding-top: var(--space-2); }
+html.welcome-first .welcome-top {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-.welcome-lang {
-  display: inline-flex;
-  border: 1.5px solid currentColor;
-  border-radius: 999px;
-  overflow: hidden;
-}
-.welcome-lang button {
-  min-height: 36px;
-  padding: 0 var(--space-2);
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.welcome-lang button[aria-pressed="true"] {
-  background: var(--color-purple);
-  color: #fff;
+  justify-content: flex-end;
+  margin-bottom: var(--space-1);
 }
 .welcome-close {
   align-items: center;
@@ -8552,10 +8533,6 @@ html:not(.auth-signup) .auth-card--customer .auth-terms-reveal { display: none; 
 
 @media (max-width: 899px) {
   :where(html:not(.auth-for-store)) .auth-page .welcome-title { color: #fff; }
-  :where(html:not(.auth-for-store)) .auth-page .welcome-lang button[aria-pressed="true"] {
-    background: #fff;
-    color: var(--color-purple);
-  }
 }
 
 /* ---- The search bar stays on screen (sticky-search.js) ----------------
