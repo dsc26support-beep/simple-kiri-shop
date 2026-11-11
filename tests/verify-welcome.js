@@ -74,12 +74,16 @@ const state = (page) => page.evaluate(() => {
       // Every visible text block on the card between the email box and the bottom.
       const extra = [...document.querySelectorAll('.auth-card--customer p, .auth-card--customer a, .auth-card--customer button')]
         .filter((el) => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' && el.getBoundingClientRect().top > email.bottom
-          && !el.closest('#google-signin-wrap') && el.id !== 'login-submit' && el.textContent.trim())
+          && !el.closest('#google-signin-wrap') && !el.closest('.auth-guest-row') && el.id !== 'login-submit' && el.textContent.trim())
         .map((el) => el.textContent.trim().slice(0, 40));
-      return { sendTop: send.top, googleTop: g.top, emailBottom: email.bottom, extra };
+      const guest = document.getElementById('guest-continue').getBoundingClientRect();
+      return { sendTop: send.top, googleTop: g.top, emailBottom: email.bottom, guestTop: guest.top, guestH: guest.height, googleH: g.height, extra };
     });
     ok('phone: email box, then "Email me a sign-in link", then Google', gap.emailBottom < gap.sendTop && gap.sendTop < gap.googleTop, J(gap));
-    ok('phone: nothing else between the email box and Google, nor below it', gap.extra.length === 0, J(gap.extra));
+    // Owner, 10 Nov 2026: "Continue as guest" under Google, the same size.
+    ok('phone: "Continue as guest" under Google, the same size, and it opens the shop', gap.guestTop > gap.googleTop && gap.guestH === gap.googleH
+      && /index\.html$/.test(await page.getAttribute('#guest-continue', 'href')), J(gap));
+    ok('phone: nothing else between the email box and Google, nor below the guest button', gap.extra.length === 0, J(gap.extra));
     ok('phone: the old purple band is replaced', !s.band, J(s));
     ok('phone: no close X on a normal visit (the header has Home)', !s.close, J(s));
     ok('phone: no sideways scroll, no page errors', !s.sideways && errs.length === 0, errs.join(' | '));
@@ -94,6 +98,7 @@ const state = (page) => page.evaluate(() => {
     await page.click('.welcome-lang button[data-lang="gil"]');
     const k = await state(page);
     ok('Kiribati: the welcome text switches', k.title !== 'Shop Kiribati’s stores' && /titoa/.test(k.stats) && await page.getAttribute('#welcome-hero', 'lang') === 'gil', J(k));
+    ok('Kiribati: the guest button switches too', (await page.textContent('#guest-continue')).trim() !== 'Continue as guest');
     ok('Kiribati: the switch says which is on', await page.getAttribute('.welcome-lang button[data-lang="gil"]', 'aria-pressed') === 'true');
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(500);
@@ -137,16 +142,15 @@ const state = (page) => page.evaluate(() => {
     await ctx.close();
   }
 
-  // ---- computer: the video panel stays, the phone photo is never loaded ----
+  // ---- computer: one column with the photo, no video (owner, 10 Nov 2026) ----
   {
     const { ctx } = await makeCtx(browser, { viewport: DESK });
     const page = await ctx.newPage();
-    const imgs = []; page.on('request', (r) => { if (/welcome-phone\.jpg/.test(r.url())) imgs.push(r.url()); });
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(800);
     const s = await state(page);
-    ok('computer: welcome text and counts beside the video panel', s.hero && s.band && s.stats === '124 stores · 3,180 products', J(s));
-    ok('computer: the phone photo is not shown or downloaded', !s.photo && imgs.length === 0, J(imgs));
+    ok('computer: the welcome with its photo and counts, no side panel', s.hero && s.photo && !s.band && s.stats === '124 stores · 3,180 products', J(s));
+    ok('computer: no video on the page', await page.evaluate(() => document.querySelectorAll('video').length === 0));
     ok('computer: no sideways scroll', !s.sideways);
     await ctx.close();
   }

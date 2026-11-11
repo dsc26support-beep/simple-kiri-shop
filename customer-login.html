@@ -117,7 +117,9 @@
         <div class="sp-avatar" id="sp-avatar"><img id="sp-avatar-img" alt="" hidden><span id="sp-avatar-initials" aria-hidden="true"></span><span class="sp-dot" id="sp-dot" hidden></span></div>
       </div>
     </section>
-    <div class="auth-split">
+    <!-- One column on every screen since 10 Nov 2026 (owner: no video here;
+         the seller sign-in keeps its video panel). -->
+    <div class="auth-split auth-split--solo">
       <div class="auth-split-form">
       <section class="container auth-card-wrap">
         <div class="auth-card auth-card--customer">
@@ -153,8 +155,8 @@
           <!-- Welcome (owner request, Nov 2026, inspired by Billdu's sign-up
                page). Shown on a plain visit (html.welcome-on, set in the head).
                welcome.js fills the counts and switches English / Kiribati.
-               The photo is for phones: computers keep the video panel, and
-               get a 1px blank instead (the <source>), so they never load it. -->
+               The photo shows on every screen (10 Nov 2026: the video panel
+               was removed from this page). -->
           <div class="welcome-hero" id="welcome-hero" lang="en">
             <div class="welcome-top">
               <div class="welcome-lang" role="group" aria-label="Language">
@@ -164,7 +166,6 @@
               <a class="welcome-close" href="index.html" aria-label="Close" data-wl-label="close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"></path></svg></a>
             </div>
             <picture class="welcome-photo">
-              <source media="(min-width: 900px)" srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
               <img src="assets/img/welcome-phone.jpg" alt="" width="760" height="380" loading="lazy" decoding="async">
             </picture>
             <h2 class="welcome-title" data-wl="title">Shop Kiribati’s stores</h2>
@@ -241,6 +242,11 @@
               <p id="facebook-signin-error" class="form-error" role="alert"></p>
             </div>
 
+            <!-- Guest (owner, 10 Nov 2026): under Google, same size. Hidden when
+                 sent here to order, book, message or meet, and on Create account. -->
+            <div class="auth-guest-row">
+              <a class="auth-provider-btn" id="guest-continue" href="index.html"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span data-wl="guest">Continue as guest</span></a>
+            </div>
             <button type="button" id="email-continue" class="auth-provider-btn"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Continue with email</span></button>
           </div>
 
@@ -331,23 +337,6 @@
         </div>
       </section>
       </div>
-      <!-- Welcome panel (owner request, Oct 2026: two-panel sign-in). On a
-           computer it sits beside the form with a picture of Mwakete; on a
-           phone it is a slim purple band above the form and the picture is
-           not shown (or downloaded - it is lazy and display:none there). -->
-      <aside class="auth-split-panel" aria-label="About Mwakete">
-        <h2 class="auth-panel-title">Shop Kiribati’s stores</h2>
-        <!-- Owner's welcome video (Oct 2026). Computers only: auth-panel-video.js
-             adds the sources and poster at 900px+, so phones never download it.
-             Silent, looping, paused for "reduce motion". -->
-        <div class="auth-panel-video" aria-hidden="true">
-          <video muted loop playsinline preload="none" disablepictureinpicture tabindex="-1"
-                 width="1280" height="720"
-                 data-poster="assets/img/auth-welcome.jpg"
-                 data-webm="assets/video/auth-welcome.webm"
-                 data-mp4="assets/video/auth-welcome.mp4"></video>
-        </div>
-      </aside>
     </div>
   </main>
 
@@ -367,7 +356,6 @@
   <script defer src="assets/js/store-cover.min.js"></script>
   <script defer src="assets/js/google-signin.min.js"></script>
   <script defer src="assets/js/facebook-signin.min.js"></script>
-  <script defer src="assets/js/auth-panel-video.min.js"></script>
   <script defer src="assets/js/welcome.min.js"></script>
   <script defer src="assets/js/register-sw.min.js"></script>
 </body>

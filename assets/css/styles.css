@@ -8092,7 +8092,6 @@ html.auth-signup .auth-divider {
   margin: 0 0 var(--space-1);
 }
 
-.auth-panel-video { display: none; }
 
 /* Password box with a Show / Hide button inside its right edge. */
 .password-field {
@@ -8309,30 +8308,6 @@ html.auth-signup .auth-divider {
     margin-bottom: var(--space-2);
   }
 
-  /* The video fills the whole panel. 3:2 keeps "mwakete.com" in the middle
-     of the 16:9 video inside the crop. */
-  .auth-split-panel.has-video .auth-panel-video {
-    display: block;
-    position: absolute;
-    inset: 0;
-  }
-
-  .auth-panel-video video {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-  }
-
-  .auth-split-panel.has-video .auth-panel-title {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
 }
 
 /* My Account: confirm-email box and Sign-in & security (customer-security.js). */
@@ -8519,6 +8494,16 @@ html.welcome-first .welcome-close { display: inline-flex; }
   border-radius: 50%;
 }
 .welcome-photo { display: none; }
+html.welcome-on .welcome-photo { display: block; margin: 0 0 var(--space-3); }
+.welcome-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: 20px;
+}
 .welcome-title {
   font-size: 1.9rem;
   line-height: 1.15;
@@ -8555,20 +8540,17 @@ html.welcome-on #login-form:not(.is-password) .auth-reveal {
    account only. */
 .auth-card--customer .auth-quick { margin: var(--space-3) 0 0; }
 html:not(.auth-signup) .auth-card--customer .auth-terms-reveal { display: none; }
+/* "Continue as guest" under Google, the same size (owner, 10 Nov 2026). */
+.auth-card--customer .auth-quick .auth-guest-row { margin: var(--space-2) 0 0; }
+/* No video panel on the shopper sign-in (10 Nov 2026): one centred column
+   on a computer too, like the phone. */
+@media (min-width: 900px) {
+  .auth-split--solo { grid-template-columns: minmax(0, 1fr); }
+  .auth-split--solo .auth-split-panel { display: none; }
+  .auth-split--solo .auth-split-form > .auth-card-wrap { max-width: 30rem; }
+}
 
 @media (max-width: 899px) {
-  /* The welcome replaces the slim "Shop Kiribati's stores" band. */
-  html.welcome-on:not(.auth-for-store) .auth-split-panel { display: none; }
-  html.welcome-on .welcome-photo { display: block; margin: 0 0 var(--space-3); }
-  .welcome-photo img {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 2 / 1;
-    object-fit: cover;
-    object-position: center top;
-    border-radius: 20px;
-  }
   :where(html:not(.auth-for-store)) .auth-page .welcome-title { color: #fff; }
   :where(html:not(.auth-for-store)) .auth-page .welcome-lang button[aria-pressed="true"] {
     background: #fff;

@@ -20,6 +20,7 @@
       store: 'store',
       products: 'products',
       product: 'product',
+      guest: 'Continue as guest',
       close: 'Close'
     },
     gil: {
@@ -29,6 +30,7 @@
       store: 'titoa',
       products: 'bwaai',
       product: 'bwai',
+      guest: 'Nako n te iruwa',
       close: 'Kaina'
     }
   };

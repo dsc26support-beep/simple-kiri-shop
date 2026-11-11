@@ -207,14 +207,20 @@ async function makeContext(browser, opts) {
     await ctx.close();
   }
 
-  // ---- no guest line on Sign in (owner, 9 Nov 2026) ----
+  // ---- "Continue as guest" under Google (owner, 10 Nov 2026) ----
   {
     const { ctx } = await makeContext(browser, { clientId: '' });
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     await page.waitForTimeout(600);
-    ok('no guest line; the header\'s Home still leads to the shop', !(await page.$('#guest-continue'))
-      && /index\.html$/.test(await page.getAttribute('.site-nav a', 'href')));
+    ok('"Continue as guest" is there and opens the shop', await page.locator('#guest-continue').isVisible()
+      && (await page.getAttribute('#guest-continue', 'href')) === 'index.html'
+      && (await page.textContent('#guest-continue')).trim() === 'Continue as guest');
+    await page.click('#guest-continue');
+    await page.waitForTimeout(700);
+    ok('...lands on the homepage with no account', /index\.html$/.test(page.url())
+      && !(await page.evaluate(() => { try { return localStorage.getItem('skiri_customer_token'); } catch (e) { return null; } })), page.url());
+    await page.goto(BASE + '/customer-login.html', { waitUntil: 'load' });
     ok('every button on the card is an outline (purple, or white on the purple phone page) on a see-through fill', await page.evaluate(() =>
       [...document.querySelectorAll('.auth-card--customer .btn')].every((b) => {
         const cs = getComputedStyle(b);
@@ -223,7 +229,8 @@ async function makeContext(browser, opts) {
       })));
     // Sent here from checkout: guests can't order, so there is no guest route.
     await page.goto(BASE + '/customer-login.html?next=checkout.html&reason=order', { waitUntil: 'load' });
-    ok('sent from checkout: says why', /sign in to place your order/i.test(await page.textContent('#auth-reason')));
+    ok('sent from checkout: says why, and hides the guest button',
+      /sign in to place your order/i.test(await page.textContent('#auth-reason')) && await page.locator('#guest-continue').isHidden());
     await ctx.close();
   }
 
@@ -281,9 +288,11 @@ async function makeContext(browser, opts) {
     const order = await page.$$eval('.auth-quick > *, .auth-tabs, #auth-create-line',
       (els) => els.map((e) => e.id || e.className.split(' ')[0]));
     // Facebook's slot sits after Google's (hidden until FACEBOOK_APP_ID is set).
-    ok(label + ': no tabs; just Google, Facebook (and the always-hidden "Continue with email")',
+    ok(label + ': no tabs; Google, Facebook, then guest (and the always-hidden "Continue with email")',
       JSON.stringify(order) === JSON.stringify(
-        ['google-signin-wrap', 'facebook-signin-wrap', 'email-continue']), JSON.stringify(order));
+        ['google-signin-wrap', 'facebook-signin-wrap', 'auth-guest-row', 'email-continue']), JSON.stringify(order));
+    // The guest button is the way in for exactly the person who cannot use Google.
+    ok(label + ': "Continue as guest" is visible', await page.locator('#guest-continue').isVisible());
 
     // The one that matters. The guest button is the fallback for exactly the
     // person who cannot use Google, so it must never be hidden along with it.
