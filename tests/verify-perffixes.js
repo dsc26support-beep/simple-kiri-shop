@@ -47,7 +47,7 @@ async function open(browser, path, opts) {
   await page.addInitScript((seed) => {
     localStorage.setItem('skiri_cookie_consent', 'true');
     localStorage.setItem('skiri_active_store', 'bong');
-    localStorage.setItem('skiri_chat_token_bong', 'tok');
+    localStorage.setItem('skiri_chat_token_bong', 'tok'); localStorage.setItem('skiri_chat_started_bong', '1');
     Object.entries(seed || {}).forEach(([k, v]) => localStorage.setItem(k, v));
   }, o.seed);
   await page.goto(BASE + path, { waitUntil: 'load' });
