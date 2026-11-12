@@ -154,22 +154,18 @@
 
           <!-- Welcome (owner request, Nov 2026, inspired by Billdu's sign-up
                page). Shown on a plain visit (html.welcome-on, set in the head).
-               welcome.js fills the counts and switches English / Kiribati.
+               welcome.js fills the counts (English only since 11 Nov 2026).
                The photo shows on every screen (10 Nov 2026: the video panel
                was removed from this page). -->
-          <div class="welcome-hero" id="welcome-hero" lang="en">
+          <div class="welcome-hero" id="welcome-hero">
             <div class="welcome-top">
-              <div class="welcome-lang" role="group" aria-label="Language">
-                <button type="button" data-lang="en" aria-pressed="true">English</button>
-                <button type="button" data-lang="gil" aria-pressed="false" lang="gil">Kiribati</button>
-              </div>
-              <a class="welcome-close" href="index.html" aria-label="Close" data-wl-label="close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"></path></svg></a>
+              <a class="welcome-close" href="index.html" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"></path></svg></a>
             </div>
             <picture class="welcome-photo">
               <img src="assets/img/welcome-phone.jpg" alt="" width="760" height="380" loading="lazy" decoding="async">
             </picture>
-            <h2 class="welcome-title" data-wl="title">Shop Kiribati’s stores</h2>
-            <p class="welcome-sub" data-wl="sub">Order from local stores across Kiribati, all in one place.</p>
+            <h2 class="welcome-title">Shop Kiribati’s stores</h2>
+            <p class="welcome-sub">Order from local stores across Kiribati, all in one place.</p>
             <p class="welcome-stats" id="welcome-stats"></p>
           </div>
 
@@ -245,7 +241,7 @@
             <!-- Guest (owner, 10 Nov 2026): under Google, same size. Hidden when
                  sent here to order, book, message or meet, and on Create account. -->
             <div class="auth-guest-row">
-              <a class="auth-provider-btn" id="guest-continue" href="index.html"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span data-wl="guest">Continue as guest</span></a>
+              <a class="auth-provider-btn" id="guest-continue" href="index.html"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Continue as guest</span></a>
             </div>
             <button type="button" id="email-continue" class="auth-provider-btn"><svg class="apb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Continue with email</span></button>
           </div>

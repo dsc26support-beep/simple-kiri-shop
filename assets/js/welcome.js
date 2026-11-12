@@ -1,6 +1,6 @@
 // Welcome screen on customer-login.html (owner request, Nov 2026, inspired by
-// Billdu's sign-up page): live store and product counts and an English /
-// Kiribati switch for the welcome text.
+// Billdu's sign-up page): the live store and product counts. English only
+// since 11 Nov 2026 (owner: the English / Kiribati switch was removed).
 //
 // Shown when html.welcome-on is set (decided in the page's <head>): a plain
 // visit to the sign-in page, or a first visit to the homepage (index.html
@@ -8,61 +8,7 @@
 (function () {
   'use strict';
 
-  var LANG_KEY = 'mwk_lang';
-
-  // The Kiribati is a DRAFT (Nov 2026) for a Kiribati speaker to check.
-  // Corrections go here only - every welcome line reads from this table.
-  var TEXT = {
-    en: {
-      title: 'Shop Kiribati’s stores',
-      sub: 'Order from local stores across Kiribati, all in one place.',
-      stores: 'stores',
-      store: 'store',
-      products: 'products',
-      product: 'product',
-      guest: 'Continue as guest',
-      close: 'Close'
-    },
-    gil: {
-      title: 'Kaboo man titoa ni Kiribati',
-      sub: 'Kaboo bwaai man titoa aika iaon Kiribati ni kabane, n te tabo ae teuana.',
-      stores: 'titoa',
-      store: 'titoa',
-      products: 'bwaai',
-      product: 'bwai',
-      guest: 'Nako n te iruwa',
-      close: 'Kaina'
-    }
-  };
-
-  var lang = 'en';
   var stats = null;
-
-  function $(id) { return document.getElementById(id); }
-
-  function savedLang() {
-    try { return localStorage.getItem(LANG_KEY) === 'gil' ? 'gil' : 'en'; } catch (e) { return 'en'; }
-  }
-
-  function setLang(next) {
-    lang = TEXT[next] ? next : 'en';
-    try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* not remembered */ }
-    var t = TEXT[lang];
-    document.querySelectorAll('[data-wl]').forEach(function (el) {
-      var key = el.getAttribute('data-wl');
-      if (t[key] != null) el.textContent = t[key];
-    });
-    document.querySelectorAll('[data-wl-label]').forEach(function (el) {
-      var key = el.getAttribute('data-wl-label');
-      if (t[key] != null) el.setAttribute('aria-label', t[key]);
-    });
-    var hero = $('welcome-hero');
-    if (hero) hero.setAttribute('lang', lang === 'gil' ? 'gil' : 'en');
-    document.querySelectorAll('.welcome-lang button').forEach(function (b) {
-      b.setAttribute('aria-pressed', String(b.getAttribute('data-lang') === lang));
-    });
-    drawStats();
-  }
 
   function count(n, one, many) {
     return Number(n).toLocaleString('en') + ' ' + (Number(n) === 1 ? one : many);
@@ -71,12 +17,11 @@
   // Only real numbers: nothing is shown until the backend answers (or a
   // previous answer kept on this phone), and nothing if it fails.
   function drawStats() {
-    var el = $('welcome-stats');
+    var el = document.getElementById('welcome-stats');
     if (!el) return;
     if (!stats || !(stats.stores > 0)) { el.textContent = ''; el.classList.remove('is-ready'); return; }
-    var t = TEXT[lang];
-    var parts = [count(stats.stores, t.store, t.stores)];
-    if (stats.products > 0) parts.push(count(stats.products, t.product, t.products));
+    var parts = [count(stats.stores, 'store', 'stores')];
+    if (stats.products > 0) parts.push(count(stats.products, 'product', 'products'));
     el.textContent = parts.join(' · ');
     el.classList.add('is-ready');
   }
@@ -96,16 +41,11 @@
   }
 
   function init() {
-    var on = document.documentElement.classList.contains('welcome-on');
-    document.querySelectorAll('.welcome-lang button').forEach(function (b) {
-      b.addEventListener('click', function () { setLang(b.getAttribute('data-lang')); });
-    });
-    setLang(savedLang());
-    if (on) loadStats();
+    // The language choice the switch used to remember is no longer used.
+    try { localStorage.removeItem('mwk_lang'); } catch (e) { /* nothing to tidy */ }
+    if (document.documentElement.classList.contains('welcome-on')) loadStats();
   }
 
-  // After every deferred script (register-sw.js, which offers the
-  // home-screen prompt, loads after this one).
   if (document.readyState === 'complete') init();
   else document.addEventListener('DOMContentLoaded', init);
 })();
