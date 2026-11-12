@@ -26,10 +26,12 @@ async function init() {
   viewStore.href = storeHref;
 
   // Just this product and its store's details (getProduct, Nov 2026), not the
-  // whole store's list. Before the backend has it (the site can go live a few
-  // minutes before a deploy), the whole list as before.
+  // whole store's list. When the answer does not have it - a backend from
+  // before getProduct (the site can go live a few minutes before a deploy),
+  // or a product just removed - the whole list as before, which decides.
+  const has = (r) => r && r.ok && (r.products || []).some((p) => p.productId === productId);
   const request = Api.get('getProduct', { storeSlug: slug, productId })
-    .then((r) => (r && (r.outdated || (r.ok && !Array.isArray(r.products))) ? Api.get('listProducts', { storeSlug: slug }) : r));
+    .then((r) => (has(r) ? r : Api.get('listProducts', { storeSlug: slug })));
   // The request this page paints from; whenIdle() waits for it (helpers.js).
   window.__criticalReady = request;
   // See store.js - lets the chat window skip a duplicate store lookup.
