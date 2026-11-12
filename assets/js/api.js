@@ -62,6 +62,20 @@ const Api = (function () {
     }
   }
 
+  // The page's main request, already on its way (see get below).
+  function takeEarly(action, params) {
+    try {
+      const all = window.__mwkEarly;
+      const key = action + '|' + JSON.stringify(params || {});
+      if (!all || !all[key]) return null;
+      const p = all[key];
+      delete all[key];
+      return p;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function get(action, params) {
     assertConfigured();
     const url = new URL(APP_CONFIG.APPS_SCRIPT_URL);
@@ -72,6 +86,13 @@ const Api = (function () {
     const href = url.toString();
     // Every GET here is a read, so the URL alone identifies the request.
     return share('GET ' + href, async () => {
+      // Started from the page's <head> (tools/build-early.js): use that answer
+      // once, rather than asking the backend the same thing again.
+      const early = takeEarly(action, params);
+      if (early) {
+        const json = await early;
+        if (json) return friendly(json);
+      }
       try {
         const res = await fetch(href, { method: 'GET' });
         return friendly(await res.json());

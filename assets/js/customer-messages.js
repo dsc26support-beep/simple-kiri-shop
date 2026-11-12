@@ -26,9 +26,12 @@ async function claimAccountChats(session) {
   if (!res || !res.ok || !Array.isArray(res.chats)) return;
   res.chats.forEach((c) => {
     try {
-      // Never overwrite this phone's own chat with that store.
-      if (c.storeSlug && c.customerToken && !localStorage.getItem('skiri_chat_token_' + c.storeSlug)) {
+      // Never overwrite a chat this phone has had with that store - but a
+      // token from just browsing the store (no chat yet) gives way to the
+      // account's real conversation.
+      if (c.storeSlug && c.customerToken && (!localStorage.getItem('skiri_chat_token_' + c.storeSlug) || !chatStartedWith(c.storeSlug))) {
         localStorage.setItem('skiri_chat_token_' + c.storeSlug, c.customerToken);
+        markChatStarted(c.storeSlug);
       }
     } catch (e) { /* storage unavailable */ }
   });
@@ -52,7 +55,8 @@ function collectChatStores() {
       if (key && key.indexOf(prefix) === 0) {
         const slug = key.slice(prefix.length);
         const token = localStorage.getItem(key);
-        if (slug && token) {
+        // Only stores this phone has chatted with (see chatStartedWith).
+        if (slug && token && chatStartedWith(slug)) {
           stores.push({ storeSlug: slug, customerToken: token, seenAt: inboxSeenAt(slug) });
         }
       }

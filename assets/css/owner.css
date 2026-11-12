@@ -1834,6 +1834,20 @@ label.is-required::after {
 .seller-menu-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .seller-menu-btn:hover { background: rgba(255, 255, 255, 0.12); }
 .seller-menu-btn:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; }
+/* The ☰ arrives with owner-nav.js after the first paint. Its room is kept
+   from the start (the same 44px height, and its width beside the title), so
+   the top bar no longer grows - and the page no longer jumps down - when it
+   does (measured Nov 2026: CLS 0.02 on every seller page, 0.15-0.18 where the
+   title and links then wrapped). Phones and tablets only, like the button;
+   not the help page, which has no store menu. */
+@media (max-width: 1023px) {
+  body.owner-shell:not(.owner-help-page) .owner-topbar .container > :first-child:not(.seller-topbar-lead) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-left: calc(44px - 10px + var(--space-2));
+  }
+}
 
 .seller-tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1003; display: grid; grid-template-columns: repeat(5, 1fr);
