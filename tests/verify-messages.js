@@ -15,7 +15,7 @@ const R = []; const ok = (n, c, e) => R.push([c ? 'PASS' : 'FAIL', n, e || '']);
     await page.addInitScript((s) => {
       localStorage.setItem('skiri_cookie_consent', 'true');
       // A chat thread must exist on the device or the page short-circuits.
-      localStorage.setItem('skiri_chat_token_bong', 'tok-1');
+      localStorage.setItem('skiri_chat_token_bong', 'tok-1'); localStorage.setItem('skiri_chat_started_bong', '1');
       if (s) localStorage.setItem('skiri_customer_token', 'ct');
     }, signedIn);
     await page.goto(BASE + '/customer-messages.html', { waitUntil: 'load' });

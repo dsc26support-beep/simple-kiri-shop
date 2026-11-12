@@ -89,6 +89,10 @@
           <div class="help-chip-row" role="group" aria-label="Show" id="help-type-filters"></div>
           <div class="help-chip-row" role="group" aria-label="Topic" id="help-topic-filters"></div>
         </div>
+        <!-- Shown at once when JavaScript runs (help.js fills the rows), so the
+             page below does not jump down when they appear (Nov 2026). Without
+             JavaScript they stay hidden: no buttons that do nothing. -->
+        <script>document.getElementById('help-filters').hidden = false;</script>
       </div>
     </div>
 

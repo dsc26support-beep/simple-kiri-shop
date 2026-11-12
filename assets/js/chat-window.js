@@ -177,7 +177,8 @@ function initChatWindow() {
    * cursor - only actually opening the panel counts as "seen".
    */
   async function checkForUnreadMessages() {
-    if (!storeSlug || !customerToken) return;
+    // No chat with this store from this phone yet: nothing can be unread.
+    if (!storeSlug || !customerToken || !chatStartedWith(storeSlug)) return;
     const params = { storeSlug, customerToken };
     const sinceId = getLastSeenMessageId();
     if (sinceId) params.sinceMessageId = sinceId;
@@ -559,6 +560,7 @@ function initChatWindow() {
       if (res.signInRequired) showSignInGate();
       return;
     }
+    markChatStarted(storeSlug);
     lastMessageId = res.message.messageId;
     renderedMessageIds.add(lastMessageId); // already on screen (the optimistic bubble above) - a later poll returning it too must not duplicate it
     setLastSeenMessageId(lastMessageId);
@@ -603,6 +605,7 @@ function initChatWindow() {
       markImageBubbleFailed(bubble, compressed, caption, res.error);
       return;
     }
+    markChatStarted(storeSlug);
     lastMessageId = res.message.messageId;
     renderedMessageIds.add(lastMessageId); // see sendMessage's identical guard
     setLastSeenMessageId(lastMessageId);
