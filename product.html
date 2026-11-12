@@ -14,7 +14,7 @@
         var API = "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec";
         if (window.__mwkRedirecting || !API || API.indexOf('PASTE_YOUR') === 0 || !window.fetch) return;
         var q = new URLSearchParams(location.search), asks = [], early = window.__mwkEarly = {};
-        var s = q.get('store'); if (s && q.get('product')) asks.push(['listProducts', { storeSlug: s }]);
+        var s = q.get('store'), p = q.get('product'); if (s && p) asks.push(['getProduct', { storeSlug: s, productId: p }]);
         asks.forEach(function (a) {
           var u = new URL(API); u.searchParams.set('action', a[0]);
           Object.keys(a[1]).forEach(function (k) { u.searchParams.set(k, a[1][k]); });

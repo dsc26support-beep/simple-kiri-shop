@@ -31,7 +31,7 @@ async function open(browser, url, opts) {
     try { const b = r.request().postDataJSON(); if (b && b.action) action = b.action; } catch (e) {}
     calls.push({ action, method: r.request().method(), at: Date.now() });
     if (failFirst && action === opts.failFirst) { failFirst = false; return r.abort(); }
-    await new Promise((x) => setTimeout(x, 300));
+    await new Promise((x) => setTimeout(x, opts.latency || 300));
     const body = { ok: true, products: PRODUCTS, stores: [], tips: [], storeName: 'Bong Store', storeOpen: true, conversations: [], messages: [], conversation: null };
     return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
@@ -69,7 +69,7 @@ const count = (calls, a) => calls.filter((c) => c.action === a).length;
 
   const browser = await chromium.launch();
   for (const [url, action, ready] of [['/index.html', 'getHomePageData', null], ['/store.html?store=bong', 'listProducts', '.product-card, .store-product, [data-product-id]'],
-    ['/product.html?store=bong&product=p0', 'listProducts', null]]) {
+    ['/product.html?store=bong&product=p0', 'getProduct', null]]) {
     const { ctx, page, calls, errors } = await open(browser, url);
     const nav = await page.evaluate(() => performance.getEntriesByType('navigation')[0].domContentLoadedEventStart);
     const first = calls.find((c) => c.action === action);
@@ -82,6 +82,33 @@ const count = (calls, a) => calls.filter((c) => c.action === a).length;
   {
     const { ctx, page, calls, errors } = await open(browser, '/store.html?store=bong', { failFirst: 'listProducts' });
     ok('early request fails: the page asks again itself and still works', count(calls, 'listProducts') === 2 && errors.length === 0, J(calls.map((c) => c.action)));
+    await ctx.close();
+  }
+
+  // ---- 4. product page: one product, and the copy kept from the last visit ----
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const calls = [];
+    let latency = 300;
+    await ctx.route('**/macros/s/**', async (r) => {
+      const u = new URL(r.request().url());
+      let action = u.searchParams.get('action') || '';
+      try { const b = r.request().postDataJSON(); if (b && b.action) action = b.action; } catch (e) {}
+      calls.push(action);
+      await new Promise((x) => setTimeout(x, action === 'getProduct' ? latency : 50));
+      return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, products: action === 'getProduct' ? [PRODUCTS[0]] : [], storeName: 'Bong Store', storeOpen: true, reviews: [] }) });
+    });
+    await ctx.route(/accounts\.google\.com|gstatic|cloudinary|googleusercontent/, (r) => r.abort());
+    await ctx.addInitScript(() => { try { localStorage.setItem('skiri_cookie_consent', 'true'); } catch (e) {} });
+    const page = await ctx.newPage();
+    await page.goto(BASE + '/product.html?store=bong&product=p0', { waitUntil: 'load' });
+    await page.waitForTimeout(1500);
+    ok('product page asks for one product (getProduct), not the whole store', calls.includes('getProduct') && !calls.includes('listProducts'), J(calls));
+    latency = 4000;
+    await page.goto(BASE + '/product.html?store=bong&product=p0', { waitUntil: 'load' });
+    await page.waitForTimeout(800);
+    ok('second visit: shown at once from the kept copy, before the backend answers',
+      /Product 0/.test(await page.textContent('#product-detail') || ''));
     await ctx.close();
   }
 

@@ -26,7 +26,7 @@ const CHECK = process.argv.includes('--check');
 const PAGES = {
   'index.html': "asks.push(['getHomePageData', {}]);",
   'store.html': "var s = q.get('store'); if (s) asks.push(['listProducts', { storeSlug: s }]);",
-  'product.html': "var s = q.get('store'); if (s && q.get('product')) asks.push(['listProducts', { storeSlug: s }]);"
+  'product.html': "var s = q.get('store'), p = q.get('product'); if (s && p) asks.push(['getProduct', { storeSlug: s, productId: p }]);"
 };
 
 const config = fs.readFileSync(path.join(ROOT, 'assets/js/config.js'), 'utf8');
