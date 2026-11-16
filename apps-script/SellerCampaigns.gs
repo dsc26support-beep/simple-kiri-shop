@@ -639,7 +639,7 @@ function actionSaveCampaignDraft(owner, body) {
     if (start !== undefined) fields.StartDate = start;
     if (days !== undefined) fields.Days = days;
   } catch (e) {
-    return fail(e.message);
+    return fail(publicErrorMessage(e, 'action'));
   }
 
   var lock = LockService.getScriptLock();

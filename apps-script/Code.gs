@@ -156,7 +156,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'speed2-2026-11-12';
+var APP_VERSION = 'secure1-2026-11-16';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -472,7 +472,7 @@ function doGet(e) {
       default: return jsonOut(fail('Unknown action: ' + params.action));
     }
   } catch (err) {
-    return jsonOut(fail(err.message || String(err)));
+    return jsonOut(fail(publicErrorMessage(err, 'GET ' + (e && e.parameter && e.parameter.action))));
   }
 }
 
@@ -606,11 +606,11 @@ function doPost(e) {
     if (typeof POS_ACTION_PERMS !== 'undefined' && action in POS_ACTION_PERMS) {
       if (body.posToken) {
         var posSession;
-        try { posSession = requirePosSession(body.posToken, body.deviceSecret); } catch (posErr) { return jsonOut(posFail(posErr.message || 'Sign in again.', 'auth')); }
+        try { posSession = requirePosSession(body.posToken, body.deviceSecret); } catch (posErr) { return jsonOut(posFail(publicErrorMessage(posErr, 'auth'), 'auth')); }
         return jsonOut(dispatchPosAction(action, posSession.owner, posSession.actor, body));
       }
       var posOwner;
-      try { posOwner = requireAuth(body.token); } catch (ownerErr) { return jsonOut(posFail(ownerErr.message || 'Not authenticated', 'auth')); }
+      try { posOwner = requireAuth(body.token); } catch (ownerErr) { return jsonOut(posFail(publicErrorMessage(ownerErr, 'auth'), 'auth')); }
       return jsonOut(dispatchPosAction(action, posOwner, posOwnerActor(posOwner), body));
     }
 
@@ -619,7 +619,7 @@ function doPost(e) {
       try {
         owner = requireAuth(body.token);
       } catch (authErr) {
-        return jsonOut(fail(authErr.message || 'Not authenticated'));
+        return jsonOut(fail(publicErrorMessage(authErr, 'auth')));
       }
 
       switch (action) {
@@ -776,6 +776,6 @@ function doPost(e) {
 
     return jsonOut(fail('Unknown action: ' + action));
   } catch (err) {
-    return jsonOut(fail(err.message || String(err)));
+    return jsonOut(fail(publicErrorMessage(err, 'POST ' + action)));
   }
 }

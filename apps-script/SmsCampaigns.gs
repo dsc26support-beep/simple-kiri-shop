@@ -372,7 +372,7 @@ function dispatchSmsAction(action, body) {
     if (!def.key) return fail('Do this on Mwakete.com.');
     if (rateLimitHit('smskey:' + owner.OwnerId, 600, 3600)) return fail('Too many requests from the add-on - try again later.');
   } else {
-    try { owner = requireAuth(body.token); } catch (e) { var r = fail(e.message || 'Not authenticated'); r.errorKind = 'auth'; return r; }
+    try { owner = requireAuth(body.token); } catch (e) { var r = fail(publicErrorMessage(e, 'auth')); r.errorKind = 'auth'; return r; }
   }
   if (def.admin && (viaKey || !isOwnerAdmin(owner))) return fail('Not authorized');
   if (String(owner.Status || 'active') !== 'active' && !def.admin) return fail('Your store is not active.');

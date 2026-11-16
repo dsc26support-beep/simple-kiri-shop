@@ -78,7 +78,9 @@ function findRowBySecret(sheet, idField, idValue) {
  */
 function sanitizeForSheetCell(value) {
   if (typeof value !== 'string') return value;
-  if (/^[=+\-@]/.test(value)) return "'" + value;
+  // = + - @ start a formula; a leading tab or carriage return can too (OWASP
+  // CSV-injection list, added Nov 2026).
+  if (/^[=+\-@\t\r]/.test(value)) return "'" + value;
   return value;
 }
 

@@ -25,6 +25,7 @@ function ctx({ reviews, orders, products, owners, customer, noReviewsTab, noOrde
     requireCustomerAuth: (t) => { if (!customer || t !== 'good') throw new Error('Not signed in'); return customer; },
   };
   vm.createContext(sandbox);
+  vm.runInContext(require('./lib/public-error.js'), sandbox);
   vm.runInContext(code, sandbox);
   return sandbox;
 }

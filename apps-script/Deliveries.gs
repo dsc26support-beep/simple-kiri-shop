@@ -135,7 +135,7 @@ function findDriverByCustomer(customerId) {
 /** The signed-in customer as a driver: { customer, driver } or { error }. */
 function resolveDriver(body) {
   var customer;
-  try { customer = requireCustomerAuth(body && body.token); } catch (e) { return { error: e.message || 'Please sign in.', auth: true }; }
+  try { customer = requireCustomerAuth(body && body.token); } catch (e) { return { error: publicErrorMessage(e, 'auth'), auth: true }; }
   return { customer: customer, driver: findDriverByCustomer(customer.CustomerId) };
 }
 

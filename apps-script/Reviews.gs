@@ -152,7 +152,7 @@ function actionSubmitReview(body) {
   try {
     customer = requireCustomerAuth(body.token);
   } catch (err) {
-    return fail(err.message || 'Please sign in to leave a review');
+    return fail(publicErrorMessage(err, 'auth'));
   }
 
   var productId = String(body.productId || '').trim();

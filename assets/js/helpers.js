@@ -406,6 +406,30 @@ function escapeAttr(str) {
   return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/**
+ * A link address that came from data (a seller, driver, admin or the
+ * backend), made safe to put in href (security hardening, Nov 2026).
+ * Escaping alone does not stop "javascript:" - so only web links (https,
+ * http), tel:, mailto: and addresses within the site pass; anything else
+ * becomes '#'. Still escape the result with escapeAttr where it is used.
+ */
+function safeUrl(url) {
+  // Browsers ignore tabs, newlines and other control characters inside a link
+  // ("java<tab>script:" still runs), so they are removed before checking.
+  const s = String(url == null ? '' : url).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+  if (!s) return '#';
+  if (/^(https?:|tel:|mailto:)/i.test(s)) return s;
+  // Within the site: no scheme at all (store.html?x=1, ../invoice.html, #id, /page).
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(s) && !/^\/\//.test(s)) return s;
+  return '#';
+}
+
+/** A data: address for a document preview: only images and PDF, base64. */
+function safeDataUrl(url) {
+  const s = String(url == null ? '' : url);
+  return /^data:(image\/(jpeg|png|webp|gif)|application\/pdf);base64,[A-Za-z0-9+\/=]+$/.test(s) ? s : '';
+}
+
 // Word-level fuzzy matching for "similar products": case differences never
 // count, and a single-character edit (typo) doesn't either, but that's the
 // only slack allowed - "rice" and "ride" match, "rice" and "rise" match,

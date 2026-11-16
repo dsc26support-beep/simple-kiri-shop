@@ -29,7 +29,7 @@ const DeliveriesAdmin = (() => {
     $('dlv-jobs').innerHTML = res.jobs.length ? `<table class="dash-table"><thead><tr><th scope="col">Order</th><th scope="col">Driver</th><th scope="col">Fee</th><th scope="col">Status</th></tr></thead><tbody>${res.jobs.map((j) => `<tr>
       <td data-label="Order"><a href="../order-room.html?order=${encodeURIComponent(j.orderId)}&amp;as=admin">${escapeHtml(j.orderId)}</a><span class="dash-table-sub">${escapeHtml(j.storeName)} → ${escapeHtml(j.dropoff)}</span></td>
       <td data-label="Driver">${j.driverName ? `${escapeHtml(j.driverName)}<span class="dash-table-sub"><a href="tel:${escapeHtml(j.driverPhone)}">${escapeHtml(j.driverPhone)}</a></span>` : '—'}
-        ${j.location ? `<span class="dash-table-sub"><a href="${escapeHtml(j.location.link)}" target="_blank" rel="noopener">Live location</a></span>` : ''}</td>
+        ${j.location ? `<span class="dash-table-sub"><a href="${escapeAttr(safeUrl(j.location.link))}" target="_blank" rel="noopener">Live location</a></span>` : ''}</td>
       <td data-label="Fee">${formatMoney(j.fee)}<span class="dash-table-sub">${j.payStatus ? escapeHtml(j.payLabel) : (j.feePaid ? 'Paid' : 'Not marked paid')}</span>
         ${j.payStatus === 'submitted' || j.payStatus === 'rejected' ? `<span class="dash-table-sub">Reference <strong>${escapeHtml(j.payRef)}</strong> · bank ref ${escapeHtml(j.payBankRef)} · ${j.payAmount == null ? '' : formatMoney(j.payAmount)}</span>` : ''}
         ${j.payNote ? `<span class="dash-table-sub">${escapeHtml(j.payNote)}</span>` : ''}
@@ -122,7 +122,7 @@ const DeliveriesAdmin = (() => {
     const signed = x.contractMethod ? `Agreement ${escapeHtml(x.contractVersion)} signed ${x.contractMethod === 'digital' ? 'in the app' + (x.contractSignedName ? ' as “' + escapeHtml(x.contractSignedName) + '”' : '') : 'on paper'}` : 'No agreement';
     return `<span class="dash-table-sub">${escapeHtml(x.idType)} ${escapeHtml(x.idNumber)} · ${face}</span>
       <span class="dash-table-sub">${signed}</span>
-      <span class="dash-table-sub">${x.messenger ? `<a href="${escapeHtml(x.messenger)}" target="_blank" rel="noopener noreferrer">Message on Messenger</a> · ` : ''}${x.hasDocs ? `<button type="button" class="linklike" data-driver-docs="${escapeHtml(d.driverId)}">View ID &amp; photos</button>` : (x.docsDeletedAt ? 'Documents deleted ' + escapeHtml(String(x.docsDeletedAt).slice(0, 10)) : '')}</span>
+      <span class="dash-table-sub">${x.messenger ? `<a href="${escapeAttr(safeUrl(x.messenger))}" target="_blank" rel="noopener noreferrer">Message on Messenger</a> · ` : ''}${x.hasDocs ? `<button type="button" class="linklike" data-driver-docs="${escapeHtml(d.driverId)}">View ID &amp; photos</button>` : (x.docsDeletedAt ? 'Documents deleted ' + escapeHtml(String(x.docsDeletedAt).slice(0, 10)) : '')}</span>
       <div class="dlv-docs" id="dlv-docs-${escapeHtml(d.driverId)}" hidden></div>`;
   }
 
@@ -133,9 +133,10 @@ const DeliveriesAdmin = (() => {
     const res = await Api.post('adminDriverDocs', { token: Auth.getToken(), driverId: btn.dataset.driverDocs });
     busyDone();
     if (!res.ok) { alert(res.error || 'Could not open the documents.'); return; }
-    const fig = (f) => !f ? '' : f.missing ? `<figure><figcaption>${escapeHtml(f.label)} - file missing</figcaption></figure>`
-      : f.mimeType === 'application/pdf' ? `<figure><a href="${f.dataUrl}" download="signed-page.pdf">${escapeHtml(f.label)} (PDF)</a></figure>`
-      : `<figure><img src="${f.dataUrl}" alt="${escapeHtml(f.label)}"><figcaption>${escapeHtml(f.label)}</figcaption></figure>`;
+    // Only image or PDF data goes into the page (safeDataUrl, helpers.js).
+    const fig = (f) => !f ? '' : (f.missing || !safeDataUrl(f.dataUrl)) ? `<figure><figcaption>${escapeHtml(f.label)} - file missing</figcaption></figure>`
+      : f.mimeType === 'application/pdf' ? `<figure><a href="${escapeAttr(safeDataUrl(f.dataUrl))}" download="signed-page.pdf">${escapeHtml(f.label)} (PDF)</a></figure>`
+      : `<figure><img src="${escapeAttr(safeDataUrl(f.dataUrl))}" alt="${escapeHtml(f.label)}"><figcaption>${escapeHtml(f.label)}</figcaption></figure>`;
     box.innerHTML = `<p class="dash-table-sub">Compare the face photo with the ID before approving. Private - do not share or download.</p>
       <div class="dlv-docs-grid">${fig(res.id)}${fig(res.selfie)}${res.contract.map(fig).join('')}</div>`;
     box.hidden = false;

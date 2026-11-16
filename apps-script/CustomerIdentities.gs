@@ -123,7 +123,7 @@ function resolveProviderSignIn(profile, body) {
     // Rule 3: linking from the account page.
     if (body.customerToken) {
       var me;
-      try { me = requireCustomerAuth(body.customerToken, { allowUnverified: true }); } catch (e) { return fail(e.message || 'Please sign in again.'); }
+      try { me = requireCustomerAuth(body.customerToken, { allowUnverified: true }); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
       if (linkedCustomer && linkedCustomer.CustomerId !== me.CustomerId) {
         return fail('This ' + label + ' account is already linked to a different Mwakete account.');
       }
@@ -231,7 +231,7 @@ function completePendingProviderLink(linkToken, customer) {
 /** Account page: remove a Google / Facebook sign-in, leaving at least one way in. */
 function actionUnlinkProvider(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
   var provider = String(body.provider || '');
   if (!PROVIDER_LABELS[provider]) return fail('Unknown sign-in method');
 

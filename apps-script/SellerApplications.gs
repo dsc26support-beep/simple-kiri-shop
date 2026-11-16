@@ -94,7 +94,7 @@ function storeOfCustomer_(customerId) {
 /** The shopper account page: "Become a Seller" status. body: { token } */
 function actionGetSellerApplication(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
   var owner = storeOfCustomer_(customer.CustomerId);
   return ok({ application: owner ? sellerApplicationView(owner) : null, emailVerified: customerEmailVerified(customer) });
 }

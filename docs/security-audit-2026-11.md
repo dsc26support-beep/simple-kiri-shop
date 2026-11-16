@@ -64,3 +64,14 @@ Extras approved:
 
 - **Admin sign-in code:** an emailed code at each sign-in to the admin pages (admins only).
 - **Cloudflare in front of mwakete.com:** plan and exact steps only - it is a new (free) service and a DNS change, so the owner signs up and approves; the Cloudflare connector also needs authorising in claude.ai connector settings before Claude can help configure it.
+
+## Stage 1 results (16 Nov 2026)
+
+| # | What was found on close inspection | What changed |
+|---|---|---|
+| 2 | `owner-settings.js:335` (label from a constant) and `campaign-studio.js` (already escaped) were safe. Links built from data (`admin-deliveries.js` Messenger and live-location links, `header-ads.js`, `order-room.js`, `owner-orders.js`, `driver.js` map link) were HTML-escaped, but escaping does not stop a `javascript:` address. Driver document previews (`dataUrl`) went into the page unchecked. `customer-dashboard.js` put the record id into attributes unescaped. Not exploitable today (the backend already checks Messenger and advert links and generates the ids), but nothing in the page enforced it. | `safeUrl()` in `helpers.js`: only `https:`/`http:`, `tel:`, `mailto:` and in-site links pass, after removing the control characters browsers ignore (`java<tab>script:`, found by the new test); anything else becomes `#`. Used on every link built from data. `safeDataUrl()`: only base64 JPEG/PNG/WebP/GIF/PDF previews, otherwise shown as "file missing". Ids escaped. |
+| 3 | `doGet`/`doPost` catch blocks, and about 30 sign-in catch blocks, sent `err.message` to the browser. | `publicErrorMessage()` (`Utils.gs`): messages written for people pass unchanged (the pages rely on them); programming errors, Google service exceptions, sheet/setup messages, addresses and very long messages become "Something went wrong on our side... (Ref xxxxxxxx)", with the full error logged under that reference (Apps Script > Executions). |
+| 4 | All four writes named in the audit already went through `sanitizeForSheetCell` (or wrote numbers); the line numbers pointed at the write call. Every other write uses `appendRowFromObject` / `updateRowFromObject`. | Guard also covers a leading tab or carriage return (OWASP list). Stock write-back to a seller's sheet passes through the guard as well. |
+| 5 | face-api from jsDelivr without integrity. | `sha384` Subresource Integrity on the script, hash taken from the npm package and checked against the registry's signed integrity. A changed file is refused and the face check falls back to "unsupported" (manual review). The model weights are fetched by the library itself and cannot carry SRI; self-hosting library + models is the stronger option if wanted later. |
+
+Tests: `tests/test-security-stage1.js` (backend, 22 checks) and `tests/verify-security-stage1.js` (browser, 13 checks incl. hostile data on the admin drivers list and a tampered vs genuine face-api file).

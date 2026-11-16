@@ -262,7 +262,7 @@ function resolveTxActor(body) {
   var side = String(body.side || '');
   if (side === 'buyer') {
     var customer;
-    try { customer = requireCustomerAuth(body.token); } catch (e) { return { error: e.message || 'Please sign in again.', auth: true }; }
+    try { customer = requireCustomerAuth(body.token); } catch (e) { return { error: publicErrorMessage(e, 'auth'), auth: true }; }
     return { actor: { type: 'buyer', id: customer.CustomerId, email: normalizeEmail(customer.Email), customer: customer } };
   }
   if (side === 'seller' || side === 'admin') {

@@ -217,7 +217,7 @@ const OrderRoom = (function () {
   function invoiceHtml(v) {
     if (!v || (!v.requested && !(v.documents || []).length)) return '';
     const docs = v.documents || [];
-    const links = docs.map((d) => `<a class="btn btn-small" href="${esc(d.link || 'invoice.html?d=' + d.token)}" target="_blank" rel="noopener">${d.kind === 'invoice' ? 'Invoice' : 'Receipt'} ${esc(d.number)}</a>`).join(' ');
+    const links = docs.map((d) => `<a class="btn btn-small" href="${esc(safeUrl(d.link || 'invoice.html?d=' + d.token))}" target="_blank" rel="noopener">${d.kind === 'invoice' ? 'Invoice' : 'Receipt'} ${esc(d.number)}</a>`).join(' ');
     const waiting = v.requested && !docs.some((d) => d.kind === 'invoice')
       ? `<p class="helper-text">${side === 'seller' ? 'The buyer asked for an invoice - send it from <a href="owner/orders.html">your Orders</a>.' : 'You asked for an invoice - the seller will send it here and by email.'}</p>` : '';
     return `<div class="tx-docs" role="group" aria-label="Invoice and receipt"><strong>Invoice &amp; receipt</strong>${waiting}${links ? `<p>${links}</p>` : ''}</div>`;
@@ -227,7 +227,7 @@ const OrderRoom = (function () {
   function deliveryHtml(d) {
     if (d && !d.status && d.why) return `<p class="helper-text tx-delivery-note">${esc(d.why)}</p>`;
     if (!d || !d.status) return '';
-    const loc = d.location ? `<a href="${esc(d.location.link)}" target="_blank" rel="noopener">See the driver on the map</a>
+    const loc = d.location ? `<a href="${esc(safeUrl(d.location.link))}" target="_blank" rel="noopener">See the driver on the map</a>
       <span class="helper-text">(shared ${esc(when(d.location.at))}${d.location.accuracy ? ', within about ' + esc(d.location.accuracy) + ' m' : ''})</span>` : '';
     return `<div class="tx-delivery" role="group" aria-label="Mwakete driver">
       <strong>Mwakete driver: ${esc(d.statusLabel)}</strong>

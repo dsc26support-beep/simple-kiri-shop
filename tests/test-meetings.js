@@ -147,6 +147,7 @@ function makeContext() {
     grab(utilsSrc, 'capLength'),
     "function ok(data) { return Object.assign({ ok: true }, data); }",
     "function fail(msg) { return { ok: false, error: msg }; }",
+    require('./lib/public-error.js'),
     grab(productsSrc, 'getOwnerBySlug'),
     grab(authSrc, 'requireAuth'),
     grab(customersSrc, 'requireCustomerAuth'),

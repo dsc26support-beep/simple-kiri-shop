@@ -140,14 +140,14 @@ function setMarketingOptIn(customer, optIn) {
 /** body.token (customer session). The customer's own setting only. */
 function actionGetMarketingPreference(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
   return ok({ optIn: isOptedIn(findMarketingPreference(customer.CustomerId)) });
 }
 
 /** body.token, body.optIn. Never takes a customer id or email from the request. */
 function actionSetMarketingPreference(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -331,7 +331,7 @@ function parseJsonArray(s) {
 
 /** Overview: switches, counts and the campaign list. No recipient data. */
 function actionGetMarketingOverview(owner) {
-  try { requireMarketingAdmin(owner); } catch (e) { return fail(e.message); }
+  try { requireMarketingAdmin(owner); } catch (e) { return fail(publicErrorMessage(e, 'action')); }
   var cfg = marketingConfig();
   var campaigns = sheetToObjects(getSheet('Campaigns'));
   var events = sheetToObjects(getSheet('CampaignEvents'));
@@ -366,7 +366,7 @@ function actionGetMarketingOverview(owner) {
  * claim is the admin's own words.
  */
 function actionCreateMarketingCampaign(owner, body) {
-  try { requireMarketingAdmin(owner); } catch (e) { return fail(e.message); }
+  try { requireMarketingAdmin(owner); } catch (e) { return fail(publicErrorMessage(e, 'action')); }
   var type = String(body.type || '');
   if (MANUAL_CAMPAIGN_TYPES.indexOf(type) === -1) return fail('Choose Seller promotion or Seasonal');
   var name = String(body.name || '').trim();
@@ -437,7 +437,7 @@ var CAMPAIGN_TRANSITIONS = {
 
 /** body.campaignId, body.op: approve | pause | resume | cancel. */
 function actionSetMarketingCampaignStatus(owner, body) {
-  try { requireMarketingAdmin(owner); } catch (e) { return fail(e.message); }
+  try { requireMarketingAdmin(owner); } catch (e) { return fail(publicErrorMessage(e, 'action')); }
   var t = CAMPAIGN_TRANSITIONS[String(body.op || '')];
   if (!t) return fail('Unknown action');
   var lock = LockService.getScriptLock();
@@ -458,7 +458,7 @@ function actionSetMarketingCampaignStatus(owner, body) {
 
 /** The admin page's Pause all / Resume all - the soft switch. MARKETING_ENABLED stays a deploy-time setting. */
 function actionSetMarketingPaused(owner, body) {
-  try { requireMarketingAdmin(owner); } catch (e) { return fail(e.message); }
+  try { requireMarketingAdmin(owner); } catch (e) { return fail(publicErrorMessage(e, 'action')); }
   PropertiesService.getScriptProperties().setProperty('MARKETING_PAUSED', body.paused ? 'true' : 'false');
   return ok({ paused: !!body.paused });
 }
@@ -469,7 +469,7 @@ function actionSetMarketingPaused(owner, body) {
  * recipient called "there". No address leaves the server.
  */
 function actionPreviewMarketingCampaign(owner, body) {
-  try { requireMarketingAdmin(owner); } catch (e) { return fail(e.message); }
+  try { requireMarketingAdmin(owner); } catch (e) { return fail(publicErrorMessage(e, 'action')); }
   var c = findRowById(getSheet('Campaigns'), 'CampaignId', String(body.campaignId || ''));
   if (!c) return fail('Campaign not found');
   var cfg = marketingConfig();
@@ -493,13 +493,13 @@ function actionPreviewMarketingCampaign(owner, body) {
 
 /** Stats per campaign: sent, failed, skipped, clicks and conversions (orders within the attribution window). */
 function actionGetMarketingStats(owner) {
-  try { requireMarketingAdmin(owner); } catch (e) { return fail(e.message); }
+  try { requireMarketingAdmin(owner); } catch (e) { return fail(publicErrorMessage(e, 'action')); }
   return ok({ stats: computeMarketingStats(marketingConfig()) });
 }
 
 /** Runs generation once, now, without sending - for "what would it create?" */
 function actionRunMarketingGeneration(owner) {
-  try { requireMarketingAdmin(owner); } catch (e) { return fail(e.message); }
+  try { requireMarketingAdmin(owner); } catch (e) { return fail(publicErrorMessage(e, 'action')); }
   var cfg = marketingConfig();
   var created = generateMarketingOpportunities(cfg, Date.now());
   return ok({ created: created });
