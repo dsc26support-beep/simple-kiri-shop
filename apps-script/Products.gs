@@ -560,58 +560,154 @@ var VIEW_COOLDOWN_SECONDS = 5 * 60;
 function actionRecordProductViews(body) {
   var productIds = Array.isArray(body.productIds) ? body.productIds : [];
   var wanted = {};
-  productIds.forEach(function (id) { if (id) wanted[id] = true; });
+  // Ids only (the tally sits in the cache until it is written), at most 50.
+  productIds.slice(0, 50).forEach(function (id) { if (/^[A-Za-z0-9_-]{1,64}$/.test(String(id || ''))) wanted[String(id)] = true; });
   if (Object.keys(wanted).length === 0) return ok({});
 
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    var cache = CacheService.getScriptCache();
-    var toIncrement = {};
-    Object.keys(wanted).forEach(function (id) {
-      var cooldownKey = 'viewcooldown:v1:' + id;
-      if (cache.get(cooldownKey)) return; // already counted in the last 5 min - skip silently
-      try { cache.put(cooldownKey, '1', VIEW_COOLDOWN_SECONDS); } catch (e) { /* best effort */ }
-      toIncrement[id] = true;
-    });
-    if (Object.keys(toIncrement).length === 0) return ok({});
+  var cache = CacheService.getScriptCache();
+  var counted = [];
+  Object.keys(wanted).forEach(function (id) {
+    var cooldownKey = 'viewcooldown:v1:' + id;
+    if (cache.get(cooldownKey)) return; // already counted in the last 5 min - skip silently
+    try { cache.put(cooldownKey, '1', VIEW_COOLDOWN_SECONDS); } catch (e) { /* best effort */ }
+    counted.push(id);
+  });
+  addPendingCounts(VIEW_PENDING_KEY, counted);
+  return ok({});
+}
 
-    var sheet = getSheet('Products');
-    sheetToObjects(sheet).forEach(function (p) {
-      if (toIncrement[p.ProductId]) {
-        updateRowFromObject(sheet, p.__row, { Views: (Number(p.Views) || 0) + 1 });
-      }
-    });
-    return ok({});
+/* ---- Counting views and visits without holding up orders (Nov 2026) ----
+ *
+ * Each product view and store visit used to take the script-wide lock and
+ * write its sheet row there and then - so at a busy moment every order, chat
+ * message and stock change queued behind page-view counting (site scan,
+ * 12 Nov 2026). Now a view only adds to a running tally in the cache, under a
+ * short lock of its own (the document lock, not the script lock), and the
+ * tallies are written to Products.Views and Owners.Visits together:
+ *   - every 5 minutes by warmPublicCaches (its time-driven trigger), and
+ *   - if that trigger is not set up, by the next view or visit once
+ *     VIEW_FLUSH_EVERY_MS has passed since the last write.
+ * Counts can therefore lag the sheet by a few minutes. They are best-effort,
+ * as before: a count is dropped rather than ever erroring the shopper, and a
+ * tally the cache evicts before it is written is lost.
+ */
+var VIEW_PENDING_KEY = 'v1:views:pending';     // { productId: n }
+var VISIT_PENDING_KEY = 'v1:visits:pending';   // { storeSlug: n }
+var VIEW_FLUSHED_AT_KEY = 'v1:views:flushedAt';
+var VIEW_PENDING_TTL_SECONDS = 21600;          // the cache's longest
+var VIEW_FLUSH_EVERY_MS = 15 * 60 * 1000;
+
+function viewCountLock() {
+  // Separate from the script lock that orders, chat and stock changes use.
+  var lock = null;
+  try { lock = LockService.getDocumentLock ? LockService.getDocumentLock() : null; } catch (e) { lock = null; }
+  return lock || LockService.getScriptLock();
+}
+
+function addPendingCounts(key, ids) {
+  if (!ids || !ids.length) return;
+  var cache = CacheService.getScriptCache();
+  var lock = viewCountLock();
+  if (!lock.tryLock(3000)) return; // busy: drop these counts rather than wait
+  var due = false;
+  try {
+    var pending = readCachedJson(cache, key) || {};
+    ids.forEach(function (id) { pending[id] = (Number(pending[id]) || 0) + 1; });
+    putCachedJson(cache, key, pending, VIEW_PENDING_TTL_SECONDS);
+    var last = Number(cache.get(VIEW_FLUSHED_AT_KEY)) || 0;
+    if (!last) cache.put(VIEW_FLUSHED_AT_KEY, String(Date.now()), VIEW_PENDING_TTL_SECONDS);
+    else due = Date.now() - last > VIEW_FLUSH_EVERY_MS;
   } finally {
     lock.releaseLock();
   }
+  if (due) {
+    try { flushViewCounts(); } catch (e) { Logger.log('flushViewCounts failed: ' + e); }
+  }
+}
+
+/** Takes a pending tally out of the cache (under the count lock). */
+function takePendingCounts(cache, key) {
+  var pending = readCachedJson(cache, key) || {};
+  cache.remove(key);
+  return pending;
+}
+
+/** Puts counts back when writing them failed, so they are not lost. */
+function returnPendingCounts(cache, key, counts) {
+  if (!counts || !Object.keys(counts).length) return;
+  var lock = viewCountLock();
+  if (!lock.tryLock(3000)) return;
+  try {
+    var pending = readCachedJson(cache, key) || {};
+    Object.keys(counts).forEach(function (id) { pending[id] = (Number(pending[id]) || 0) + counts[id]; });
+    putCachedJson(cache, key, pending, VIEW_PENDING_TTL_SECONDS);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Adds counts to one column of a sheet, matched by an id column. */
+function addCountsToSheet(sheetName, idField, countField, counts) {
+  if (!Object.keys(counts).length) return 0;
+  var sheet = getSheet(sheetName);
+  var n = 0;
+  sheetToObjects(sheet).forEach(function (row) {
+    var add = counts[String(row[idField])];
+    if (!add) return;
+    updateRowFromObject(sheet, row.__row, (function () { var o = {}; o[countField] = (Number(row[countField]) || 0) + add; return o; })());
+    n++;
+  });
+  return n;
+}
+
+/**
+ * Writes the pending view and visit tallies to the sheets. Run by
+ * warmPublicCaches every 5 minutes, or by a view once 15 minutes have passed.
+ * Returns how many rows changed.
+ */
+function flushViewCounts() {
+  var cache = CacheService.getScriptCache();
+  var lock = viewCountLock();
+  if (!lock.tryLock(5000)) return 0;
+  var views, visits;
+  try {
+    views = takePendingCounts(cache, VIEW_PENDING_KEY);
+    visits = takePendingCounts(cache, VISIT_PENDING_KEY);
+    cache.put(VIEW_FLUSHED_AT_KEY, String(Date.now()), VIEW_PENDING_TTL_SECONDS);
+  } finally {
+    lock.releaseLock();
+  }
+  if (!Object.keys(views).length && !Object.keys(visits).length) return 0;
+  var sheetLock = LockService.getScriptLock();
+  if (!sheetLock.tryLock(30000)) {
+    returnPendingCounts(cache, VIEW_PENDING_KEY, views);
+    returnPendingCounts(cache, VISIT_PENDING_KEY, visits);
+    return 0;
+  }
+  var changed = 0;
+  try {
+    try { changed += addCountsToSheet('Products', 'ProductId', 'Views', views); views = {}; } catch (e) { Logger.log('views not written: ' + e); }
+    try { changed += addCountsToSheet('Owners', 'StoreSlug', 'Visits', visits); visits = {}; } catch (e) { Logger.log('visits not written: ' + e); }
+  } finally {
+    sheetLock.releaseLock();
+  }
+  returnPendingCounts(cache, VIEW_PENDING_KEY, views);
+  returnPendingCounts(cache, VISIT_PENDING_KEY, visits);
+  return changed;
 }
 
 var VISIT_COOLDOWN_SECONDS = 5 * 60;
 
 /** Records one visit for a store, deduped client-side (once per visitor per store) before this is called, plus the same global 5-minute per-store cooldown actionRecordProductViews uses - see that function's comment. */
 function actionRecordStoreVisit(body) {
-  var slug = body.storeSlug;
-  if (!slug) return ok({});
-
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    var cache = CacheService.getScriptCache();
-    var cooldownKey = 'visitcooldown:v1:' + slug;
-    if (cache.get(cooldownKey)) return ok({}); // already counted in the last 5 min - skip silently
-
-    var sheet = getSheet('Owners');
-    var owner = findRowById(sheet, 'StoreSlug', slug);
-    if (owner) {
-      try { cache.put(cooldownKey, '1', VISIT_COOLDOWN_SECONDS); } catch (e) { /* best effort */ }
-      updateRowFromObject(sheet, owner.__row, { Visits: (Number(owner.Visits) || 0) + 1 });
-    }
-    return ok({});
-  } finally {
-    lock.releaseLock();
-  }
+  var slug = String(body.storeSlug || '');
+  if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(slug)) return ok({});
+  var cache = CacheService.getScriptCache();
+  var cooldownKey = 'visitcooldown:v1:' + slug;
+  if (cache.get(cooldownKey)) return ok({}); // already counted in the last 5 min - skip silently
+  try { cache.put(cooldownKey, '1', VISIT_COOLDOWN_SECONDS); } catch (e) { /* best effort */ }
+  addPendingCounts(VISIT_PENDING_KEY, [String(slug)]);
+  return ok({});
 }
 
 /**
@@ -839,6 +935,24 @@ function actionListProducts(params) {
 
   if (!response) return fail('Store not found');
   return ok(response);
+}
+
+/**
+ * One product and its store's details, for product.html (Nov 2026). Read from
+ * the same cached store list as listProducts - no extra sheet read - but only
+ * this product goes back over the connection, not every product in the store.
+ * Same shape as listProducts; products is [] when it is not (or no longer)
+ * listed, and the page says so.
+ */
+function actionGetProduct(params) {
+  params = params || {};
+  var productId = String(params.productId || '');
+  if (!productId) return fail('productId is required');
+  var res = actionListProducts({ storeSlug: params.storeSlug });
+  if (!res.ok) return res;
+  return Object.assign({}, res, {
+    products: (res.products || []).filter(function (p) { return p.productId === productId; })
+  });
 }
 
 /**

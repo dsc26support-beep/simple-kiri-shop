@@ -83,7 +83,8 @@ async function load(browser, width, relatedCount) {
       let a = ''; try { a = new URL(r.request().url()).searchParams.get('action') || ''; } catch (e) {}
       try { const j = r.request().postDataJSON(); if (!a && j) a = j.action; } catch (e) {}
       const J = (o) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
-      if (a === 'listProducts') {
+      // getProduct (Nov 2026) is the product page's own request, like listProducts.
+      if (a === 'listProducts' || a === 'getProduct') {
         return J({ ok: true, storeName: 'Bong', storeOpen: true, products: [mk('p1')] });
       }
       await new Promise((x) => setTimeout(x, 2500));   // similar products: slow

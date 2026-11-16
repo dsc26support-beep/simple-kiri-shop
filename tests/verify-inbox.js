@@ -27,8 +27,8 @@ const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
     const page = await ctx.newPage();
     await page.addInitScript(() => {
       try {
-        localStorage.setItem('skiri_chat_token_bong', 'tok-bong');
-        localStorage.setItem('skiri_chat_token_kv', 'tok-kv');
+        localStorage.setItem('skiri_chat_token_bong', 'tok-bong'); localStorage.setItem('skiri_chat_started_bong', '1');
+        localStorage.setItem('skiri_chat_token_kv', 'tok-kv'); localStorage.setItem('skiri_chat_started_kv', '1');
       } catch (e) {}
     });
     await page.goto(BASE + '/customer-messages.html', { waitUntil: 'load' });
@@ -79,7 +79,7 @@ const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
     const page = await ctx.newPage();
     await page.addInitScript((now) => {
       try {
-        localStorage.setItem('skiri_chat_token_kv', 'tok-kv');
+        localStorage.setItem('skiri_chat_token_kv', 'tok-kv'); localStorage.setItem('skiri_chat_started_kv', '1');
         localStorage.setItem('skiri_inbox_seen_kv', new Date(now).toISOString()); // seen just now (>= lastMessageAt)
       } catch (e) {}
     }, NOW);
@@ -107,7 +107,7 @@ const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
       r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(action === 'getCustomerInbox' ? { ok: false, error: 'boom' } : { ok: true }) });
     });
     const page = await ctx.newPage();
-    await page.addInitScript(() => { try { localStorage.setItem('skiri_chat_token_kv', 'tok-kv'); } catch (e) {} });
+    await page.addInitScript(() => { try { localStorage.setItem('skiri_chat_token_kv', 'tok-kv'); localStorage.setItem('skiri_chat_started_kv', '1'); } catch (e) {} });
     await page.goto(BASE + '/customer-messages.html', { waitUntil: 'load' });
     await page.waitForFunction(() => /refresh|Refresh/.test(document.getElementById('messages-status').textContent));
     ok('inbox error shows refresh state', /refresh|Refresh/.test(await page.textContent('#messages-status')));

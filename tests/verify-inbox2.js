@@ -45,8 +45,11 @@ async function open(browser, path, conversations, seed) {
 
 const SEED = {
   'skiri_chat_token_bong': 'tok-a',
+  'skiri_chat_started_bong': '1',
   'skiri_chat_token_teaube': 'tok-b',
+  'skiri_chat_started_teaube': '1',
   'skiri_chat_token_burabonita': 'tok-c',
+  'skiri_chat_started_burabonita': '1',
   'skiri_inbox_seen_bong': '2026-09-01T00:00:00Z'
 };
 

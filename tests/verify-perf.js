@@ -49,9 +49,9 @@ async function open(browser, path, opts = {}) {
     localStorage.setItem('skiri_cookie_consent', 'true');
     localStorage.setItem('skiri_active_store', 'bong');
     localStorage.setItem('skiri_cart_bong', JSON.stringify(cart));
-    if (window.__seedChat) localStorage.setItem('skiri_chat_token_bong', 'tok');
+    if (window.__seedChat) localStorage.setItem('skiri_chat_token_bong', 'tok'); localStorage.setItem('skiri_chat_started_bong', '1');
   }, CART);
-  if (opts.chatted) await page.addInitScript(() => { localStorage.setItem('skiri_chat_token_bong', 'tok'); });
+  if (opts.chatted) await page.addInitScript(() => { localStorage.setItem('skiri_chat_token_bong', 'tok'); localStorage.setItem('skiri_chat_started_bong', '1'); });
   await page.goto(BASE + path, { waitUntil: 'load' });
   await page.waitForTimeout(opts.settle || 2200);
   return { ctx, page, calls };

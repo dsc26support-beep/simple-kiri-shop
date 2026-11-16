@@ -25,28 +25,72 @@ async function init() {
   backLink.href = storeHref;
   viewStore.href = storeHref;
 
-  const stop = startLoadingMessage(statusEl);
-  const request = Api.get('listProducts', { storeSlug: slug });
+  // Just this product and its store's details (getProduct, Nov 2026), not the
+  // whole store's list. When the answer does not have it - a backend from
+  // before getProduct (the site can go live a few minutes before a deploy),
+  // or a product just removed - the whole list as before, which decides.
+  const has = (r) => r && r.ok && (r.products || []).some((p) => p.productId === productId);
+  const request = Api.get('getProduct', { storeSlug: slug, productId })
+    .then((r) => (has(r) ? r : Api.get('listProducts', { storeSlug: slug })));
   // The request this page paints from; whenIdle() waits for it (helpers.js).
   window.__criticalReady = request;
   // See store.js - lets the chat window skip a duplicate store lookup.
   window.__storeInfoPromise = request.then(
     (r) => (r && r.ok ? { storeName: r.storeName, logoUrl: r.storeLogoUrl } : null)
   );
+
+  // Seen on this phone before: shown at once from the copy kept then, and
+  // refreshed when the backend answers (owner, Nov 2026: "pages feel slow").
+  // Prices and stock are checked again by the backend at checkout whatever a
+  // page showed.
+  const keptKey = 'product:' + slug + ':' + productId;
+  const kept = Api.recall(keptKey);
+  if (kept && paintProduct(kept, productId, statusEl, true)) {
+    request.then((fresh) => {
+      if (!fresh || !fresh.ok) return;
+      Api.remember(keptKey, slimProductAnswer(fresh, productId));
+      // Redrawn only when something shown changed, and never under a shopper
+      // who has started choosing (a variety, a quantity, a photo).
+      if (JSON.stringify(slimProductAnswer(fresh, productId)) !== JSON.stringify(kept) && !productTouched) {
+        paintProduct(fresh, productId, statusEl, false);
+      }
+    });
+    return;
+  }
+
+  const stop = startLoadingMessage(statusEl);
   const res = await request;
   stop();
   if (!res.ok) {
     showLoadFailedMessage(statusEl);
     return;
   }
+  if (paintProduct(res, productId, statusEl, true)) Api.remember(keptKey, slimProductAnswer(res, productId));
+}
 
+// Set once the shopper starts choosing on the product, so a fresher answer
+// arriving later does not redraw it under them.
+let productTouched = false;
+
+/** The answer cut down to what this page shows: its product and the store. */
+function slimProductAnswer(res, productId) {
+  return Object.assign({}, res, { products: (res.products || []).filter((p) => p.productId === productId) });
+}
+
+/**
+ * Draws the product and its store from an answer. `first` is the first draw
+ * (from the kept copy or the backend); a later redraw with fresher data skips
+ * the parts that only ever run once (reviews, similar products, recent views).
+ * Returns false when the product is not in the answer.
+ */
+function paintProduct(res, productId, statusEl, first) {
   product = (res.products || []).find((p) => p.productId === productId);
   if (!product) {
     statusEl.textContent = 'Sorry, this product is no longer available.';
     // The store link is the one useful thing left on the page, so show the row
     // even though there is nothing to review.
     showMetaRow();
-    return;
+    return false;
   }
   statusEl.textContent = '';
 
@@ -94,10 +138,14 @@ async function init() {
   showMetaRow();
   renderStoreBadges(res.sellerBadges);
   document.title = `${product.name} — Mwakete`;
-  // Recent Views (recent.html). Guarded: a page without recent-views.js loaded
-  // simply keeps no history.
-  if (typeof recordRecentProduct === 'function') recordRecentProduct(product, slug, res);
-  recordMarketingClickFromUrl();
+  if (first) {
+    // Recent Views (recent.html). Guarded: a page without recent-views.js loaded
+    // simply keeps no history.
+    if (typeof recordRecentProduct === 'function') recordRecentProduct(product, slug, res);
+    recordMarketingClickFromUrl();
+    const detailBox = document.getElementById('product-detail');
+    ['input', 'change', 'click'].forEach((ev) => detailBox.addEventListener(ev, () => { productTouched = true; }, true));
+  }
   wireActions();
   wireGallery();
   wireBulkPrices();
@@ -112,6 +160,7 @@ async function init() {
     note.innerHTML = '<span class="store-closed-pill">Closed</span> This store is closed right now. You can still order — they’ll process it when they reopen.';
     detail.insertBefore(note, detail.firstChild);
   }
+  if (!first) return true;
   // Deliberately not awaited: reviews are supporting information, and a slow
   // (or absent) Reviews tab must never hold up the product itself.
   loadReviews(product.productId);
@@ -127,6 +176,7 @@ async function init() {
   // filling it moves nothing.
   showRelatedSkeleton();
   whenIdle(loadRelated);
+  return true;
 }
 
 /**

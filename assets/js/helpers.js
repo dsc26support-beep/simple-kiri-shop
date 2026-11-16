@@ -451,6 +451,28 @@ function namesShareEquivalentWord(nameA, nameB) {
   return wordsA.some((wa) => wordsB.some((wb) => wordsAreEquivalent(wa, wb)));
 }
 
+/**
+ * Whether this phone has started a chat with a store (owner, 12 Nov 2026).
+ * The chat window makes an anonymous chat token on ANY store visit, so a token
+ * alone says nothing: checking every token for unread messages cost two
+ * backend calls on every store and product page for shoppers who never
+ * chatted. A sent message marks it (skiri_chat_started_<slug>); so does the
+ * name the chat asks for before the first message (phones that chatted before
+ * the marker existed), or a chat brought in from the shopper's account.
+ */
+function chatStartedWith(slug) {
+  if (!slug) return false;
+  try {
+    return !!(localStorage.getItem('skiri_chat_started_' + slug) || localStorage.getItem('skiri_chat_name_' + slug));
+  } catch (e) {
+    return false;
+  }
+}
+
+function markChatStarted(slug) {
+  try { if (slug) localStorage.setItem('skiri_chat_started_' + slug, '1'); } catch (e) { /* private mode */ }
+}
+
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }

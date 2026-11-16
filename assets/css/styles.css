@@ -6365,6 +6365,9 @@ html.auth-required #google-signin-wrap[hidden] ~ .auth-divider {
    buttons above the content. */
 .help-chip-row {
   display: flex;
+  /* One chip's height from the first paint: the rows are filled by help.js,
+     and an empty row growing to 40px pushed the page down (CLS 0.085). */
+  min-height: 40px;
   gap: var(--space-2);
   overflow-x: auto;
   scrollbar-width: none;

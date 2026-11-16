@@ -264,11 +264,16 @@ function putCachedJson(cache, key, value, ttlSeconds) {
 
 /**
  * Keeps what shoppers open first ready in the cache, so they never wait for
- * the sheets to be read: the homepage (trending products and stores) and the
- * first screen of every top-level category. Run by a time-driven trigger
- * every 5 minutes (DEPLOY.md, "Speed: warm cache trigger") - each answer is
- * rebuilt and stored for 6 minutes, so one always overlaps the next run.
- * Read-only: it writes nothing to the sheets. Returns what it warmed.
+ * the sheets to be read: the homepage (trending products and stores), the
+ * first screen of every top-level category, and (Nov 2026) the store
+ * directory, every store's product list (store and product pages) and the
+ * welcome screen's counts. Run by a time-driven trigger every 5 minutes
+ * (DEPLOY.md, "Speed: warm cache trigger") - each answer is rebuilt and
+ * stored for 6 minutes, so one always overlaps the next run. A seller's
+ * change, an order or a stock change still clears its store's entries at
+ * once (storeCacheKeys, Inventory.gs), so nothing waits 6 minutes to show.
+ * It also writes the page-view and visit tallies (flushViewCounts,
+ * Products.gs) - the only sheet writes it makes. Returns what it warmed.
  */
 var WARM_TTL_SECONDS = 360;
 
@@ -294,6 +299,31 @@ function warmPublicCaches() {
       warmed.push(c.id);
     }
   });
+  // The store directory, then each store's products (store + product pages).
+  if (Date.now() - started < 240000) {
+    cache.remove(storeListCacheKey());
+    actionListStores({});
+    var list = readCachedJson(cache, storeListCacheKey());
+    if (list !== null) { putCachedJson(cache, storeListCacheKey(), list, WARM_TTL_SECONDS); warmed.push('stores'); }
+    (list || []).forEach(function (store) {
+      if (Date.now() - started > 240000 || !store || !store.storeSlug) return;
+      var key = storeProductsCacheKey(store.storeSlug);
+      cache.remove(key);
+      actionListProducts({ storeSlug: store.storeSlug });
+      var stored = readCachedJson(cache, key);
+      if (stored !== null) { putCachedJson(cache, key, stored, WARM_TTL_SECONDS); warmed.push('store:' + store.storeSlug); }
+    });
+  }
+  if (Date.now() - started < 240000) {
+    cache.remove('site_stats_v1');
+    if (actionSiteStats().ok) warmed.push('counts');
+  }
+  try {
+    var written = flushViewCounts();
+    if (written) warmed.push('views:' + written);
+  } catch (e) {
+    Logger.log('flushViewCounts failed: ' + e);
+  }
   Logger.log('warmPublicCaches: ' + warmed.join(', ') + ' in ' + (Date.now() - started) + 'ms');
   return warmed;
 }

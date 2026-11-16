@@ -62,6 +62,20 @@ const Api = (function () {
     }
   }
 
+  // The page's main request, already on its way (see get below).
+  function takeEarly(action, params) {
+    try {
+      const all = window.__mwkEarly;
+      const key = action + '|' + JSON.stringify(params || {});
+      if (!all || !all[key]) return null;
+      const p = all[key];
+      delete all[key];
+      return p;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function get(action, params) {
     assertConfigured();
     const url = new URL(APP_CONFIG.APPS_SCRIPT_URL);
@@ -72,6 +86,13 @@ const Api = (function () {
     const href = url.toString();
     // Every GET here is a read, so the URL alone identifies the request.
     return share('GET ' + href, async () => {
+      // Started from the page's <head> (tools/build-early.js): use that answer
+      // once, rather than asking the backend the same thing again.
+      const early = takeEarly(action, params);
+      if (early) {
+        const json = await early;
+        if (json) return friendly(json);
+      }
       try {
         const res = await fetch(href, { method: 'GET' });
         return friendly(await res.json());
@@ -106,13 +127,15 @@ const Api = (function () {
   //
   // Apps Script takes seconds to answer from Kiribati. A page that showed
   // something before can show it again at once from here, then quietly swap
-  // in the fresh answer when it arrives. Only for read-only lists (home,
-  // categories, the seller's own summary); prices and stock are re-checked by
+  // in the fresh answer when it arrives. Only for read-only answers (home,
+  // categories, products seen, the seller's own summary); prices and stock are re-checked by
   // the server at checkout whatever a list showed. Capped at MAX_KEPT
   // answers and MAX_AGE_MS old, and every read/write survives a full or
   // blocked storage (private mode) by doing nothing.
   const KEPT_PREFIX = 'skiri_kept:';
-  const MAX_KEPT = 12;
+  // 30 since product pages keep theirs too (Nov 2026): each is one product,
+  // a few KB, so browsing products does not push out the homepage's copy.
+  const MAX_KEPT = 30;
   const MAX_AGE_MS = 7 * 86400000;
 
   function recall(key) {

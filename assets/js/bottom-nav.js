@@ -91,7 +91,9 @@ async function updateBottomNavMessagesBadge() {
       if (k && k.indexOf(prefix) === 0) {
         const slug = k.slice(prefix.length);
         const token = localStorage.getItem(k);
-        if (slug && token) {
+        // Only stores this phone has chatted with (chatStartedWith, helpers.js):
+        // every store visited has a token, most with no chat behind it.
+        if (slug && token && (typeof chatStartedWith !== 'function' || chatStartedWith(slug))) {
           stores.push({ storeSlug: slug, customerToken: token, seenAt: navInboxSeenAt(slug) });
         }
       }
