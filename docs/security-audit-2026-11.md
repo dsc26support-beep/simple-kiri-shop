@@ -111,3 +111,129 @@ backend via the gas-harness, driven through the real `doPost`/`doGet` router.
 
 Result: 36/36. No access-control hole found. The sweep is the valuable part —
 it fails if a missing `isOwnerAdmin` check ever lands on any admin action.
+
+## Stage 2 — Content Security Policy on every page (16 Nov 2026)
+
+Closes finding 1 ("No CSP on any of 45 pages", High): the safety net if an XSS
+bug ever slips past the escaping, so an injected `<script>` cannot run and
+read the session token out of browser storage.
+
+### What shipped
+
+- A `<meta http-equiv="Content-Security-Policy">` on **all 45 served pages**,
+  injected right after `<meta charset>` (before the first script it governs).
+  GitHub Pages cannot send HTTP headers, so the policy travels in the page.
+- One build step, `tools/build-csp.js`, writes it, in the same marker +
+  `--check` style as the other build tools. It runs **last** in `npm run build`
+  (after `build-early.js`, so it hashes the final bytes of the generated
+  early-fetch block). `npm run build:check` fails CI if any page's tag is stale.
+- The policy is **identical on every page** (the union of all inline-script
+  hashes), so it is easy to audit and caches like any other shell byte.
+- The Sheets add-on sidebar (`sheets-addon/Sidebar.html`) is deliberately left
+  out: it is served inside Google's HtmlService sandbox, not from mwakete.com,
+  and has its own CSP.
+
+### The policy
+
+```
+default-src 'self';
+base-uri 'self';
+object-src 'none';
+script-src 'self' <14 SHA-256 inline hashes>
+           https://accounts.google.com https://connect.facebook.net https://cdn.jsdelivr.net;
+style-src  'self' 'unsafe-inline';
+img-src    'self' data: blob: https://res.cloudinary.com https://*.googleusercontent.com https://drive.google.com;
+font-src   'self' data:;
+connect-src 'self' https://script.google.com https://script.googleusercontent.com
+            https://accounts.google.com https://cdn.jsdelivr.net
+            https://connect.facebook.net https://graph.facebook.com https://www.facebook.com;
+frame-src  https://accounts.google.com https://www.facebook.com https://web.facebook.com https://staticxx.facebook.com;
+worker-src 'self'; manifest-src 'self'; form-action 'self'; upgrade-insecure-requests
+```
+
+Why each third party is allowed, and in which directive (all verified in code):
+
+| Feature | Directive(s) | Host(s) |
+|---|---|---|
+| Google sign-in (GSI, `google-signin.js`) | script, connect, frame | `accounts.google.com` |
+| Facebook sign-in (`facebook-signin.js`) | script, connect, frame | `connect.facebook.net`, `*.facebook.com` |
+| Face check + POS scanner (`driver-face.js`, `pos-camera.js`) | script, connect | `cdn.jsdelivr.net` (face-api SRI-pinned; ZXING; model weights) |
+| Apps Script backend (`config.js` `/exec`) | connect | `script.google.com` **and** `script.googleusercontent.com` (the `/exec` call 302-redirects to the usercontent host — both are required) |
+| Product / logo photos | img | `res.cloudinary.com` |
+| Google avatars & Drive-hosted images | img | `*.googleusercontent.com`, `drive.google.com` |
+| Service worker, manifest, in-site forms | worker, manifest, form-action | `'self'` |
+
+Meet/Maps/`m.me`/`wa.me` links are top-level navigations (anchor targets), which
+CSP does not restrict, so they keep working with no directive.
+
+### script-src is strict — the whole point
+
+No `'unsafe-inline'` and no `'unsafe-eval'` for scripts. Every inline `<script>`
+block on the site (14 of them, including the per-page early-fetch block and the
+first-visit redirect) is allowed by its exact **SHA-256 hash**; anything else —
+an injected `<script>`, an `on*=` attribute, a `javascript:` URL — is refused by
+the browser. Nonces were rejected: static hosting has no server to stamp a fresh
+one per response, so a nonce would have to be constant, which is no better than
+`'unsafe-inline'`.
+
+To keep that strict policy, the only three inline event handlers on the site
+(`driver-contract.html` ×2 `window.print()`, `offline.html` `location.reload()`)
+were moved out of `on*=` attributes into small inline scripts wired with
+`addEventListener` — which are then hashed. `offline.html` stays fully
+self-contained (it is the service-worker offline fallback). The app's own code
+already used `addEventListener` / property assignment everywhere and never puts
+`on*=` handlers into `innerHTML`, so nothing generated at runtime depends on
+inline execution; the face check uses tfjs's WebGL/CPU backend (no WASM/eval), so
+no `wasm-unsafe-eval` is needed.
+
+### Unavoidable relaxations (honest limits)
+
+- **`style-src 'unsafe-inline'`** — kept on purpose. Nine inline `style="..."`
+  attributes (across `cart`, `checkout`, `owner/admin`, `owner/settings`,
+  `pos/index`) and two `<style>` blocks remain. Inline CSS **cannot execute
+  script**, so this is not an XSS vector; hash/nonce for styles would mean
+  refactoring every inline style for no security gain. Removing them is a future
+  tidy-up, not Stage 2. (A fully strict `style-src` is the only part of a
+  "perfect" CSP not achieved here, and it is the low-value part.)
+- **`frame-ancestors` (anti-clickjacking) and HSTS cannot go in a `<meta>` tag.**
+  They are **not faked**. Clickjacking protection and HSTS need response
+  headers, i.e. the Cloudflare proxy (audit "extras", owner signs up). Until
+  then the mitigations already noted stand: no session cookies, tokens in the
+  request body, 2-step verification on the Google account.
+- `upgrade-insecure-requests` is included as a belt-and-braces upgrade of any
+  stray `http://` subresource; every resource is already `https://`.
+
+### Tests
+
+- `tests/verify-csp.js` (**35 checks**, headless Chromium): every served page
+  has one well-formed, identical CSP tag before the first script; `script-src`
+  is strict (no `unsafe-inline`/`unsafe-eval`, has `'self'` + hashes); the key
+  third parties are allowed in the right directive; `frame-ancestors`/HSTS are
+  **not** faked; and — using the real browser CSP engine — each page's own
+  inline scripts run (hashes correct), an injected inline/external script, image
+  and `fetch()` to an unknown origin are blocked, while the backend fetch and a
+  Cloudinary image are not.
+- `npm run build:check` gains a CSP freshness guard (edit a page, forget to
+  rebuild → red).
+- Service-worker cache bumped **v234 → v235** because precached HTML changed
+  (the cache-bump guard in five suites would otherwise fail).
+- Regression: the CSP-sensitive browser suites (sign-in, PWA/SW, POS, face
+  check, early-fetch, welcome, minified-build freshness, Stage-1) were re-run
+  green under the enforced policy. Known pre-existing failures (listed by the
+  owner: `gis is not defined`, logout CLS, meetings-ui double-fetch, more-colors
+  purple count, perf offline nav, `page.accessibility` on badges-ui/home-search,
+  inventory-page timeout) are unchanged by this stage.
+
+### Deploy / verify steps (frontend only — no backend change)
+
+Stage 2 touches no `.gs` file, so **no `APP_VERSION` bump and no Apps Script
+deploy** are needed. On merge to `main`, GitHub Pages serves the new pages.
+Owner check on a phone (ideally a returning visitor, to confirm the SW update):
+
+1. Open mwakete.com; sign in with **Google**, and with **Facebook** if enabled.
+2. Browse a store and a product — **Cloudinary** photos load.
+3. Driver onboarding **face check** runs (`driver.html`); POS **barcode scan**
+   (`owner/pos.html`) opens the scanner.
+4. Place/track an order — chat, meetings and backend calls work.
+5. DevTools console shows **no CSP violation** in normal use. (The audit's
+   mitigations for clickjacking/HSTS still await the Cloudflare proxy.)
