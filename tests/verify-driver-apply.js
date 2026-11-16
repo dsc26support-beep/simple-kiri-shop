@@ -30,6 +30,13 @@ const FAKE_FACEAPI = `
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ['camera'] });
     const posted = [];
     await ctx.addInitScript((c) => { localStorage.setItem('skiri_cookie_consent', 'true'); localStorage.setItem('skiri_customer_token', 't'); localStorage.setItem('skiri_customer_profile', JSON.stringify(c)); }, CUST);
+    // Put the fake face-api in place before the page runs, so driver-face.js's
+    // loadScript() finds window.faceapi already set and returns without adding
+    // the <script>. That keeps this UI test independent of the real library's
+    // Subresource Integrity hash (the genuine load + SRI is covered by
+    // verify-security-stage1.js); serving a fake body as the script would now
+    // be refused by the browser for not matching the pinned hash.
+    await ctx.addInitScript({ content: FAKE_FACEAPI });
     await ctx.route('**/@vladmandic/face-api@*/dist/face-api.js', (r) => r.fulfill({ status: 200, contentType: 'application/javascript', body: FAKE_FACEAPI }));
     await ctx.route('**/macros/s/**', (r) => {
       let b = {}; try { b = r.request().postDataJSON() || {}; } catch (e) {}
