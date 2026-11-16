@@ -455,7 +455,7 @@ function actionLoginOwner(body) {
 function actionOwnerFromCustomer(body) {
   var customer;
   try { customer = requireCustomerAuth(body && body.customerToken); }
-  catch (e) { return Object.assign(fail(String(e.message || 'Please sign in again.')), { errorKind: 'customer_auth' }); }
+  catch (e) { return Object.assign(fail(publicErrorMessage(e, 'auth')), { errorKind: 'customer_auth' }); }
   if (rateLimitHit('ownerfromcustomer:' + customer.CustomerId, 60, 3600)) return fail('Too many attempts - please wait a few minutes.');
 
   var sheet = getSheet('Owners');

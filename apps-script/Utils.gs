@@ -19,6 +19,32 @@ function fail(error) {
   return { ok: false, error: String(error) };
 }
 
+/**
+ * What the browser is told when an action throws (security hardening,
+ * Nov 2026). Messages our own code throws on purpose ("Session expired,
+ * please log in again", "Choose up to 6 products", ...) are meant for the
+ * person and still go through - the pages rely on them. Anything else is
+ * internal detail that must not reach the browser: programming errors
+ * (TypeError, ReferenceError, ...), Google service exceptions (they can name
+ * sheets, files, quotas or addresses) and our own setup messages. Those get a
+ * plain message with a short reference; the full error is in the script's
+ * Executions log under that reference.
+ */
+var INTERNAL_ERROR_PATTERN = /Exception|Service |Spreadsheet|Sheet tab not found|Script Propert|misconfigured|permission|quota|too many times|timed out|https?:\/\/|\.gs\b|line \d|is not defined|is not a function|Cannot read|undefined|null|\d+ parts|ledger row/i;
+
+function publicErrorMessage(err, where) {
+  var name = (err && err.name) || '';
+  var msg = (err && err.message) ? String(err.message) : String(err);
+  var deliberate = err instanceof Error && name === 'Error' && msg && msg.length <= 300 && !INTERNAL_ERROR_PATTERN.test(msg);
+  if (deliberate) return msg;
+  var ref;
+  try { ref = String(Utilities.getUuid()).replace(/-/g, '').slice(0, 8); } catch (e1) { ref = ('0000000' + (Date.now() % 0xffffffff).toString(16)).slice(-8); }
+  try {
+    console.error('[' + ref + '] ' + (where || '') + ': ' + name + ': ' + msg + (err && err.stack ? '\n' + err.stack : ''));
+  } catch (e2) { /* logging is best effort */ }
+  return 'Something went wrong on our side. Please try again in a moment. (Ref ' + ref + ')';
+}
+
 function newId(prefix) {
   return prefix + '_' + Utilities.getUuid().replace(/-/g, '').slice(0, 16);
 }

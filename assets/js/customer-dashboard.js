@@ -531,23 +531,23 @@ function openEditForm(kind, id) {
   const main = row.querySelector('.dash-item-main');
 
   const common = `
-    <label class="sr-only" for="edit-name-${id}">Your name</label>
-    <input id="edit-name-${id}" name="customerName" class="dash-edit-input" placeholder="Your name" value="${escapeHtml(rec.customerName || '')}" required>
-    <label class="sr-only" for="edit-phone-${id}">Phone number</label>
-    <input id="edit-phone-${id}" name="customerPhone" class="dash-edit-input" placeholder="Phone number" inputmode="tel" value="${escapeHtml(rec.customerPhone || '')}" required>`;
+    <label class="sr-only" for="edit-name-${escapeAttr(id)}">Your name</label>
+    <input id="edit-name-${escapeAttr(id)}" name="customerName" class="dash-edit-input" placeholder="Your name" value="${escapeHtml(rec.customerName || '')}" required>
+    <label class="sr-only" for="edit-phone-${escapeAttr(id)}">Phone number</label>
+    <input id="edit-phone-${escapeAttr(id)}" name="customerPhone" class="dash-edit-input" placeholder="Phone number" inputmode="tel" value="${escapeHtml(rec.customerPhone || '')}" required>`;
 
   const specific = isOrder
-    ? `<label class="sr-only" for="edit-island-${id}">Island</label>
-       <input id="edit-island-${id}" name="island" class="dash-edit-input" placeholder="Island" value="${escapeHtml(rec.island || '')}">
-       <label class="sr-only" for="edit-village-${id}">Village</label>
-       <input id="edit-village-${id}" name="village" class="dash-edit-input" placeholder="Village" value="${escapeHtml(rec.village || '')}">`
-    : `<label class="dash-edit-label" for="edit-start-${id}">Pick-up date</label>
-       <input id="edit-start-${id}" name="startDate" class="dash-edit-input" type="date" value="${escapeHtml(rec.startDate || '')}" required>
-       <label class="dash-edit-label" for="edit-end-${id}">Return date</label>
-       <input id="edit-end-${id}" name="endDate" class="dash-edit-input" type="date" value="${escapeHtml(rec.endDate || '')}" required>`;
+    ? `<label class="sr-only" for="edit-island-${escapeAttr(id)}">Island</label>
+       <input id="edit-island-${escapeAttr(id)}" name="island" class="dash-edit-input" placeholder="Island" value="${escapeHtml(rec.island || '')}">
+       <label class="sr-only" for="edit-village-${escapeAttr(id)}">Village</label>
+       <input id="edit-village-${escapeAttr(id)}" name="village" class="dash-edit-input" placeholder="Village" value="${escapeHtml(rec.village || '')}">`
+    : `<label class="dash-edit-label" for="edit-start-${escapeAttr(id)}">Pick-up date</label>
+       <input id="edit-start-${escapeAttr(id)}" name="startDate" class="dash-edit-input" type="date" value="${escapeHtml(rec.startDate || '')}" required>
+       <label class="dash-edit-label" for="edit-end-${escapeAttr(id)}">Return date</label>
+       <input id="edit-end-${escapeAttr(id)}" name="endDate" class="dash-edit-input" type="date" value="${escapeHtml(rec.endDate || '')}" required>`;
 
   main.innerHTML = `
-    <form class="dash-edit-form" data-edit-form data-kind="${kind}" data-id="${escapeHtml(id)}">
+    <form class="dash-edit-form" data-edit-form data-kind="${escapeAttr(kind)}" data-id="${escapeAttr(id)}">
       ${common}
       ${specific}
       <label class="sr-only" for="edit-notes-${id}">Notes</label>

@@ -108,7 +108,7 @@ function render() {
 function docsHtml(o) {
   const docs = o.documents || [];
   const inv = docs.find((d) => d.kind === 'invoice');
-  const link = (d) => `<a class="btn btn-small" href="${escapeHtml(d.link || '../invoice.html?d=' + d.token)}" target="_blank" rel="noopener">${d.kind === 'invoice' ? 'Invoice' : 'Receipt'} ${escapeHtml(d.number)}</a>`;
+  const link = (d) => `<a class="btn btn-small" href="${escapeAttr(safeUrl(d.link || '../invoice.html?d=' + d.token))}" target="_blank" rel="noopener">${d.kind === 'invoice' ? 'Invoice' : 'Receipt'} ${escapeHtml(d.number)}</a>`;
   const parts = [];
   if (o.invoiceRequested && !inv) parts.push('<span class="order-invoice-flag">Buyer asked for an invoice</span>');
   if (o.invoiceRequested && o.status !== 'Cancelled') parts.push(`<button type="button" class="btn btn-small btn-primary" data-send-invoice="${escapeHtml(o.orderId)}">${inv ? 'Send invoice again' : 'Send invoice'}</button>`);

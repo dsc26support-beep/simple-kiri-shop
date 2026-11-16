@@ -30,7 +30,7 @@ const HeaderAds = (() => {
     if (!list.length) return;   // keep the built-in lines
     el.innerHTML = list.map((a, i) => {
       const external = /^https:/i.test(a.link) && a.link.indexOf(location.origin) !== 0;
-      return `<div class="header-ticker-item${i === 0 ? ' is-current' : ''}"><a class="header-ticker-link" href="${escapeHtml(a.link)}"${external ? ' target="_blank" rel="noopener"' : ''}>${escapeHtml(a.text)}<span aria-hidden="true"> ›</span></a></div>`;
+      return `<div class="header-ticker-item${i === 0 ? ' is-current' : ''}"><a class="header-ticker-link" href="${escapeAttr(safeUrl(a.link))}"${external ? ' target="_blank" rel="noopener"' : ''}>${escapeHtml(a.text)}<span aria-hidden="true"> ›</span></a></div>`;
     }).join('');
     // Adverts are links people can use, so the strip is no longer decorative.
     el.removeAttribute('aria-hidden');

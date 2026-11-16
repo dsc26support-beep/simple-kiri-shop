@@ -97,7 +97,9 @@ var INVENTORY_CONNECTORS = {
       var headers = opened.tab.getRange(opened.headerRow, 1, 1, opened.tab.getLastColumn()).getDisplayValues()[0].map(function (h) { return String(h).trim(); });
       var col = headers.indexOf(stockHeader) + 1;
       if (!col) return { error: 'The column "' + stockHeader + '" is no longer in your sheet, so stock could not be written back.' };
-      writes.forEach(function (w) { opened.tab.getRange(w.line, col).setValue(w.value); });
+      // Through the formula guard too (security hardening, Nov 2026); stock is a
+      // number today, so this changes nothing unless that ever stops being true.
+      writes.forEach(function (w) { opened.tab.getRange(w.line, col).setValue(sanitizeForSheetCell(w.value)); });
       return { written: writes.length };
     }
   },

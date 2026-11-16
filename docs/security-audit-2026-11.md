@@ -64,3 +64,50 @@ Extras approved:
 
 - **Admin sign-in code:** an emailed code at each sign-in to the admin pages (admins only).
 - **Cloudflare in front of mwakete.com:** plan and exact steps only - it is a new (free) service and a DNS change, so the owner signs up and approves; the Cloudflare connector also needs authorising in claude.ai connector settings before Claude can help configure it.
+
+## Stage 1 results (16 Nov 2026)
+
+| # | What was found on close inspection | What changed |
+|---|---|---|
+| 2 | `owner-settings.js:335` (label from a constant) and `campaign-studio.js` (already escaped) were safe. Links built from data (`admin-deliveries.js` Messenger and live-location links, `header-ads.js`, `order-room.js`, `owner-orders.js`, `driver.js` map link) were HTML-escaped, but escaping does not stop a `javascript:` address. Driver document previews (`dataUrl`) went into the page unchecked. `customer-dashboard.js` put the record id into attributes unescaped. Not exploitable today (the backend already checks Messenger and advert links and generates the ids), but nothing in the page enforced it. | `safeUrl()` in `helpers.js`: only `https:`/`http:`, `tel:`, `mailto:` and in-site links pass, after removing the control characters browsers ignore (`java<tab>script:`, found by the new test); anything else becomes `#`. Used on every link built from data. `safeDataUrl()`: only base64 JPEG/PNG/WebP/GIF/PDF previews, otherwise shown as "file missing". Ids escaped. |
+| 3 | `doGet`/`doPost` catch blocks, and about 30 sign-in catch blocks, sent `err.message` to the browser. | `publicErrorMessage()` (`Utils.gs`): messages written for people pass unchanged (the pages rely on them); programming errors, Google service exceptions, sheet/setup messages, addresses and very long messages become "Something went wrong on our side... (Ref xxxxxxxx)", with the full error logged under that reference (Apps Script > Executions). |
+| 4 | All four writes named in the audit already went through `sanitizeForSheetCell` (or wrote numbers); the line numbers pointed at the write call. Every other write uses `appendRowFromObject` / `updateRowFromObject`. | Guard also covers a leading tab or carriage return (OWASP list). Stock write-back to a seller's sheet passes through the guard as well. |
+| 5 | face-api from jsDelivr without integrity. | `sha384` Subresource Integrity on the script, hash taken from the npm package and checked against the registry's signed integrity. A changed file is refused and the face check falls back to "unsupported" (manual review). The model weights are fetched by the library itself and cannot carry SRI; self-hosting library + models is the stronger option if wanted later. |
+
+Tests: `tests/test-security-stage1.js` (backend, 22 checks) and `tests/verify-security-stage1.js` (browser, 13 checks incl. hostile data on the admin drivers list and a tampered vs genuine face-api file).
+
+## Stage 3 — access-control test suite (16 Nov 2026)
+
+Owner asked for a penetration test "through Strix". Strix is an *active* agent
+(it fires live exploit payloads and needs Docker + a paid LLM key); it can't run
+from the build sandbox (no Docker, no outbound network to mwakete.com) and
+pointing it at the live Google backend would mean destructive tests on
+production data. Owner chose the planned safe alternative instead: the Stage-3
+access-control suite, which covers the same classes (BOLA/IDOR, privilege
+escalation, brute force, replay, injection, error leakage) against the real
+backend via the gas-harness, driven through the real `doPost`/`doGet` router.
+
+`tests/test-security-stage3.js` (36 checks), covering:
+
+- **Vertical escalation:** all **53** admin-gated actions (every `admin*` plus
+  the non-prefixed admin-only ones — featuring review, badge config,
+  wholesale/store trust, review cases, the marketing engine) refuse a real
+  non-admin seller token **and** an anonymous caller; a customer token is
+  refused by seller and admin actions; control: the real admin is allowed in.
+- **Horizontal / IDOR / BOLA:** seller B cannot read or change seller A's
+  campaign, product (update/delete), order status or variant stock by passing
+  A's id; each paired with an A-owns-A control, and a check that A's rows are
+  left untouched.
+- **Listing isolation:** B's product, order and inventory lists never contain
+  A's rows.
+- **Unauthenticated + no leak:** protected actions refuse missing and garbage
+  tokens and leak no sheet/stack/exception text.
+- **Brute force:** repeated wrong customer passwords lock out without revealing
+  whether the email exists; the code path is rate-capped.
+- **Replay:** a used sign-in code cannot be reused; a logged-out session token
+  is dead at once.
+- **Formula injection end to end:** a seller naming a product `=HYPERLINK(...)`
+  has it stored as text.
+
+Result: 36/36. No access-control hole found. The sweep is the valuable part —
+it fails if a missing `isOwnerAdmin` check ever lands on any admin action.

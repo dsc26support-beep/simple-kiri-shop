@@ -514,7 +514,7 @@ function resolveChatRequest(body, opts) {
     try {
       owner = requireAuth(body.token);
     } catch (e) {
-      return { ok: false, error: e.message || 'Not authenticated' };
+      return { ok: false, error: publicErrorMessage(e, 'auth') };
     }
     if (!body.conversationId) return { ok: false, error: 'conversationId is required' };
     var conversation = getConversationById(body.conversationId);
@@ -610,7 +610,7 @@ function notifyCustomerOfReply(conversation, previewText) {
  */
 function actionClaimCustomerChats(body) {
   var customer;
-  try { customer = requireCustomerAuth(body && body.customerSession); } catch (e) { return fail(e.message || 'Please sign in.'); }
+  try { customer = requireCustomerAuth(body && body.customerSession); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
   var out = sheetToObjects(getSheet('Conversations')).filter(function (c) {
     return c.CustomerId && c.CustomerId === customer.CustomerId && c.Status !== 'deleted';
   }).map(function (c) { return { storeSlug: c.StoreSlug, customerToken: c.CustomerToken }; });

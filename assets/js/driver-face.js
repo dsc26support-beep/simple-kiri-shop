@@ -19,6 +19,12 @@
  */
 const DriverFace = (() => {
   const LIB = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js';
+  // Subresource Integrity (security hardening, Nov 2026): the browser runs the
+  // library only if it is byte-for-byte this exact 1.7.13 file, so a changed
+  // or compromised copy on the CDN is refused instead of run. Hash taken from
+  // the npm package (dist/face-api.js), checked against the registry's signed
+  // integrity. Change it together with the version above, never on its own.
+  const LIB_INTEGRITY = 'sha384-5SEinnOIOK1Nl6bzEIWwfXWMg4EaJhN2bXKgrjYC0Bq+fYNZHwhD3ntM92lTHnfL';
   const MODELS = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model';
   const TICKS = 36;
   const TURN = 0.28;            // how far the head must turn (nose offset / eye distance)
@@ -32,6 +38,7 @@ const DriverFace = (() => {
       if (window.faceapi) return resolve();
       const s = document.createElement('script');
       s.src = src; s.async = true; s.crossOrigin = 'anonymous';
+      if (src === LIB) s.integrity = LIB_INTEGRITY;
       s.onload = () => resolve(); s.onerror = () => reject(new Error('script'));
       document.head.appendChild(s);
     });

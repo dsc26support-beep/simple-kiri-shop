@@ -95,6 +95,7 @@ function makeSandbox() {
     SHEETS, writes, headers
   };
   vm.createContext(sandbox);
+  vm.runInContext(require('./lib/public-error.js'), sandbox);
   for (const f of ['Bookings.gs', 'Customers.gs']) {
     let src = fs.readFileSync(REPO + 'apps-script/' + f, 'utf8');
     if (f === 'Bookings.gs') {

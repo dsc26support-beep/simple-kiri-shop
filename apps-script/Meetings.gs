@@ -303,7 +303,7 @@ function resolveActorForMeeting(body) {
     try {
       owner = requireAuth(body.token);
     } catch (e) {
-      return { ok: false, error: e.message || 'Not authenticated' };
+      return { ok: false, error: publicErrorMessage(e, 'auth') };
     }
     if (owner.OwnerId !== conversation.OwnerId) return { ok: false, error: 'Meeting not found' };
     return { ok: true, meeting: meeting, conversation: conversation, actorType: 'vendor', actorId: owner.OwnerId };

@@ -171,7 +171,7 @@ const DriverPage = (() => {
       ${j.detailsLocked ? `<p class="tx-warn" role="status">The pickup place and the buyer’s details appear here once Mwakete confirms the seller’s payment${j.chat && j.chat.payment ? ' (' + esc(j.chat.payment.label.toLowerCase()) + ')' : ''}.</p>
         <dl class="dash-facts"><div><dt>Deliver to</dt><dd>${esc(j.dropoff)}</dd></div></dl>` : `<dl class="dash-facts">
         <div><dt>Collect from</dt><dd>${esc(j.storeName)} - ${esc(j.pickup)}${j.storePhone ? ` · <a href="tel:${esc(j.storePhone)}">${esc(j.storePhone)}</a>` : ''}</dd></div>
-        <div><dt>Deliver to</dt><dd>${esc(j.buyerName)}, ${esc(j.dropoff)} · <a href="tel:${esc(j.buyerPhone)}">${esc(j.buyerPhone)}</a> · <a href="${esc(j.mapSearch)}" target="_blank" rel="noopener">Map</a></dd></div>
+        <div><dt>Deliver to</dt><dd>${esc(j.buyerName)}, ${esc(j.dropoff)} · <a href="tel:${esc(j.buyerPhone)}">${esc(j.buyerPhone)}</a> · <a href="${esc(safeUrl(j.mapSearch))}" target="_blank" rel="noopener">Map</a></dd></div>
         <div><dt>Items</dt><dd>${j.items.map(esc).join(', ')}</dd></div>
         ${j.notes ? `<div><dt>Notes</dt><dd>${esc(j.notes)}</dd></div>` : ''}
       </dl>`}

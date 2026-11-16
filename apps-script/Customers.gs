@@ -310,7 +310,7 @@ function requireCustomerAuth(token, opts) {
 function signedInCustomer(token) {
   LAST_CUSTOMER_AUTH_REFUSAL = '';
   if (!token) return null;
-  try { return requireCustomerAuth(token); } catch (e) { LAST_CUSTOMER_AUTH_REFUSAL = e.message || ''; return null; }
+  try { return requireCustomerAuth(token); } catch (e) { LAST_CUSTOMER_AUTH_REFUSAL = publicErrorMessage(e, 'auth'); return null; }
 }
 
 /** The refusal a guest gets; signInRequired lets the page send them to sign in. */
@@ -492,7 +492,7 @@ function actionVerifyCustomerEmail(body) {
  */
 function actionRequestCustomerEmailVerification(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
   var email = normalizeEmail(body.email || customer.PendingEmail || customer.Email);
   if (!EMAIL_FORMAT_RE.test(email) || email.length > 254) return fail('Enter a valid email address');
   if (customerEmailVerified(customer) && normalizeEmail(customer.Email) === email) return fail('That email is already confirmed on your account.');
@@ -663,7 +663,7 @@ function revokeAllCustomerSessions(customerId) {
 /** "Sign out of all devices" from the account page. */
 function actionLogoutAllCustomerSessions(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
   revokeAllCustomerSessions(customer.CustomerId);
   logAuthEvent('signout-all', customer.CustomerId, '');
   return ok({});
@@ -702,7 +702,7 @@ function logAuthEvent(event, subjectId, detail) {
  */
 function actionGetCustomerStore(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
 
   var email = normalizeEmail(customer.Email);
   if (!email) return ok({ hasStore: false });
@@ -726,7 +726,7 @@ function actionGetCustomerProfile(body) {
     var customer = requireCustomerAuth(body.token, { allowUnverified: true });
     return ok({ customer: publicCustomerFields(customer), signInMethods: customerSignInMethods(customer) });
   } catch (e) {
-    return fail(e.message || 'Not signed in');
+    return fail(publicErrorMessage(e, 'auth'));
   }
 }
 
@@ -837,7 +837,7 @@ function customerOwnsBooking(b, email, phone) {
  */
 function findOwnRow(body, sheetName, idField, idValue) {
   var customer;
-  try { customer = requireCustomerAuth(body.token); } catch (e) { return { error: e.message || 'Not signed in' }; }
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return { error: publicErrorMessage(e, 'auth') }; }
   if (!idValue) return { error: 'Missing id' };
 
   var sheet = getSheet(sheetName);
@@ -1049,7 +1049,7 @@ var CUSTOMER_LIST_CACHE_TTL_SECONDS = 30;
 
 function actionListCustomerOrders(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
 
   var cacheKey = 'v1:custorders:' + customer.CustomerId + ':' + (body.includeArchived === true ? 'all' : 'live');
   var res = getCached(cacheKey, CUSTOMER_LIST_CACHE_TTL_SECONDS, function () {
@@ -1110,7 +1110,7 @@ function buildCustomerOrders(customer, body) {
 
 function actionListCustomerBookings(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
 
   var cacheKey = 'v1:custbookings:' + customer.CustomerId + ':' + (body.includeArchived === true ? 'all' : 'live');
   return getCached(cacheKey, CUSTOMER_LIST_CACHE_TTL_SECONDS, function () {
@@ -1153,7 +1153,7 @@ function buildCustomerBookings(customer, body) {
 
 function actionUpdateCustomerProfile(body) {
   var customer;
-  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(e.message || 'Not signed in'); }
+  try { customer = requireCustomerAuth(body.token, { allowUnverified: true }); } catch (e) { return fail(publicErrorMessage(e, 'auth')); }
 
   var name = String(body.name || '').trim();
   var phone = String(body.phone || '').trim();
