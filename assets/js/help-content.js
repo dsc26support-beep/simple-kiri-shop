@@ -278,6 +278,14 @@ const HELP_FAQS = [
     keywords: ['islands', 'ship', 'outer islands', 'send', 'deliver', 'shipping'],
     related: ['delivery-islands', 'delivery-who-pays']
   },
+  {
+    id: 'selling-messaging', category: 'selling',
+    title: 'Can I message my customers?',
+    subtitle: 'Only people who agreed, from your own SIM',
+    description: 'Yes. Mwakete has contacts and SMS tools so you can keep a contact list and draft text campaigns. You may message only people who agreed to hear from you, and you record how they agreed - an order is not permission to add someone to a promotional list. Messages are sent from your own phone and SIM through the Mwakete SMS app, so your network\'s normal charges apply, and you must follow Kiribati law and your network\'s terms. Stop messaging anyone who asks you to. You can also work from a Google Sheet with the Mwakete add-on.',
+    keywords: ['sms', 'text', 'message customers', 'contacts', 'campaign', 'bulk sms', 'consent', 'google sheet', 'add-on'],
+    related: ['selling-how', 'business-store']
+  },
 
   /* ---------- Services ---------- */
   {
