@@ -45,10 +45,72 @@
     <div class="container">
       <p class="helper-text">Your chats with stores on this device. Tap one to continue the conversation.</p>
 
-      <section class="dash-section">
-        <p id="messages-status" class="helper-text" aria-live="polite"></p>
-        <div id="messages-list"></div>
-      </section>
+      <div class="msgr has-empty" id="cmsg-layout">
+        <section class="msgr-list" aria-label="Conversation list">
+          <div class="msgr-toolbar">
+            <div class="msgr-filter" role="tablist" aria-label="Filter conversations">
+              <button type="button" id="cmsg-filter-all" class="msgr-filter-btn is-active" role="tab" aria-selected="true">All</button>
+              <button type="button" id="cmsg-filter-unread" class="msgr-filter-btn" role="tab" aria-selected="false">Unread</button>
+            </div>
+            <input type="search" id="cmsg-search" class="msgr-search" placeholder="Search store or message…" aria-label="Search conversations by store or message">
+          </div>
+          <p id="messages-status" class="helper-text msgr-status" aria-live="polite"></p>
+          <div id="messages-list" class="msgr-threads"></div>
+        </section>
+
+        <section class="msgr-detail" aria-label="Conversation">
+          <div id="cmsg-empty" class="msgr-empty">
+            <p>Select a conversation to read and reply.</p>
+          </div>
+
+          <div id="cmsg-detail" class="msgr-thread-view hidden">
+            <div class="msgr-detail-header">
+              <button type="button" id="cmsg-back" class="msgr-back" aria-label="Back to conversation list">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+              </button>
+              <span class="msgr-avatar"><span id="cmsg-avatar" class="msgr-avatar-initials" aria-hidden="true"></span></span>
+              <div class="msgr-detail-id">
+                <div class="msgr-detail-idtext">
+                  <span id="cmsg-store-name" class="msgr-detail-name">Store</span>
+                  <span id="cmsg-store-sub" class="msgr-detail-sub">Store</span>
+                </div>
+              </div>
+              <div class="msgr-detail-actions">
+                <a id="cmsg-visit-store" class="btn btn-small" href="#">Visit store</a>
+              </div>
+            </div>
+
+            <button type="button" id="cmsg-load-earlier" class="chat-load-earlier-btn btn btn-small hidden">Load earlier messages</button>
+            <div id="cmsg-messages" class="msgr-messages"></div>
+            <div id="cmsg-typing" class="chat-typing hidden" aria-live="polite">
+              <span class="chat-typing-dot"></span>
+              <span class="chat-typing-dot"></span>
+              <span class="chat-typing-dot"></span>
+            </div>
+
+            <div id="cmsg-image-preview" class="chat-image-preview hidden">
+              <img id="cmsg-image-preview-img" alt="Selected photo preview">
+              <button type="button" id="cmsg-image-preview-remove" class="chat-image-preview-remove" aria-label="Remove selected photo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="M6 6l12 12"></path></svg>
+              </button>
+            </div>
+
+            <form id="cmsg-reply-form" class="msgr-reply">
+              <button type="button" id="cmsg-attach-btn" class="msgr-icon-btn" aria-label="Attach a photo">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              </button>
+              <input type="file" id="cmsg-image-input" accept="image/*" class="hidden" aria-hidden="true">
+              <textarea id="cmsg-input" class="msgr-reply-input" placeholder="Type a message…" rows="1" aria-label="Type a message"></textarea>
+              <button type="submit" id="cmsg-send-btn" class="msgr-send" aria-label="Send message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4 20-7z"></path></svg>
+              </button>
+            </form>
+            <p id="cmsg-signin-gate" class="msgr-signin-gate hidden">
+              <a id="cmsg-signin-link" href="customer-login.html">Sign in to reply</a>
+            </p>
+          </div>
+        </section>
+      </div>
     </div>
   </main>
 

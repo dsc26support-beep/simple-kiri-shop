@@ -60,7 +60,7 @@ const SEED = {
   {
     lastInboxPost = null;
     const { ctx, page } = await open(browser, 'customer-messages.html', CONVS, SEED);
-    await page.waitForSelector('.inbox-thread');
+    await page.waitForSelector('.msgr-thread');
 
     ok('this device\'s read-marks are sent to the backend',
       !!lastInboxPost && lastInboxPost.stores.some((s) => s.storeSlug === 'bong' && s.seenAt === '2026-09-01T00:00:00Z'),
@@ -69,15 +69,15 @@ const SEED = {
       !!lastInboxPost && lastInboxPost.stores.every((s) => 'seenAt' in s),
       JSON.stringify(lastInboxPost && lastInboxPost.stores));
 
-    const rows = await page.evaluate(() => [...document.querySelectorAll('.inbox-thread')].map((t) => {
-      const badge = t.querySelector('.inbox-unread-badge');
-      const img = t.querySelector('.inbox-avatar-img');
-      const ini = t.querySelector('.inbox-avatar-initials');
-      const name = t.querySelector('.inbox-thread-name');
-      const prev = t.querySelector('.inbox-thread-preview');
-      const date = t.querySelector('.inbox-thread-date');
+    const rows = await page.evaluate(() => [...document.querySelectorAll('.msgr-thread')].map((t) => {
+      const badge = t.querySelector('.msgr-avatar-badge');
+      const img = t.querySelector('.msgr-avatar-img');
+      const ini = t.querySelector('.msgr-avatar-initials');
+      const name = t.querySelector('.msgr-thread-name');
+      const prev = t.querySelector('.msgr-thread-preview');
+      const date = t.querySelector('.msgr-thread-time');
       const r = t.getBoundingClientRect();
-      const av = t.querySelector('.inbox-avatar').getBoundingClientRect();
+      const av = t.querySelector('.msgr-avatar').getBoundingClientRect();
       const bb = badge ? badge.getBoundingClientRect() : null;
       return {
         slug: t.dataset.slug,
@@ -90,8 +90,8 @@ const SEED = {
         date: date ? date.textContent : '',
         rowW: Math.round(r.width), rowH: Math.round(r.height),
         avatarW: Math.round(av.width), avatarH: Math.round(av.height),
-        // Badge must overlap the avatar's top-left corner, not float beside it.
-        badgeOnAvatar: bb ? (bb.left < av.left + av.width / 2 && bb.top < av.top + av.height / 2) : null,
+        // Badge must overlap the avatar's top-right corner, not float beside it.
+        badgeOnAvatar: bb ? (bb.right > av.left + av.width / 2 && bb.top < av.top + av.height / 2) : null,
         srUnread: t.textContent.indexOf('unread') !== -1
       };
     }));
@@ -117,17 +117,22 @@ const SEED = {
       rows[0].prevScrollW > rows[0].prevW && rows[0].prevW < rows[0].rowW,
       JSON.stringify({ w: rows[0].prevW, scroll: rows[0].prevScrollW, row: rows[0].rowW }));
     ok('the date sits on the row', rows[0].date.length > 0, rows[0].date);
-    ok('rows stay one row tall on a 390px phone', rows.every((r) => r.rowH <= 96),
+    // The row now carries a third line (the store/role sub-label) under the
+    // name and preview, so it is a touch taller than the old two-line row.
+    ok('rows stay compact on a 390px phone', rows.every((r) => r.rowH <= 104),
       JSON.stringify(rows.map((r) => r.rowH)));
     ok('nothing overflows the viewport',
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
 
-    // Opening a thread marks it seen, which is what the next count is measured from.
-    await page.click('.inbox-thread[data-slug="bong"]');
+    // Opening a thread marks it seen, which is what the next count is measured
+    // from, and opens the conversation in-page (phone: full-screen pane).
+    await page.click('.msgr-thread[data-slug="bong"]');
     await page.waitForTimeout(600);
     const seen = await page.evaluate(() => localStorage.getItem('skiri_inbox_seen_bong'));
     ok('opening a thread advances this device\'s read-mark', seen === CONVS[0].lastMessageAt, `${seen}`);
-    ok('and lands in that store\'s chat', /store\.html\?store=bong&chat=open/.test(page.url()), page.url());
+    ok('and opens the conversation in-page (no navigation away)',
+      /customer-messages\.html/.test(page.url()) &&
+      await page.evaluate(() => document.getElementById('cmsg-layout').classList.contains('has-open')), page.url());
     await ctx.close();
   }
 
@@ -173,10 +178,10 @@ const SEED = {
   {
     const legacy = CONVS.map((c) => { const x = Object.assign({}, c); delete x.unreadCount; return x; });
     const { ctx, page } = await open(browser, 'customer-messages.html', legacy, SEED);
-    await page.waitForSelector('.inbox-thread');
+    await page.waitForSelector('.msgr-thread');
     const badges = await page.evaluate(() =>
-      [...document.querySelectorAll('.inbox-thread')].map((t) => {
-        const b = t.querySelector('.inbox-unread-badge');
+      [...document.querySelectorAll('.msgr-thread')].map((t) => {
+        const b = t.querySelector('.msgr-avatar-badge');
         return b ? b.textContent : null;
       }));
     ok('old backend falls back to 1-per-unread-thread, never a wrong number',

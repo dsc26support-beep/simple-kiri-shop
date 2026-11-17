@@ -3150,110 +3150,6 @@ footer.site-footer .copyright {
   margin-top: var(--space-2);
 }
 
-/* Customer Messages inbox (customer-messages.html) */
-.inbox-thread {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  /* Two text lines plus a 48px avatar, so the row has a real height even
-     before the logo loads - the initials stand-in is the same size. */
-  min-height: 64px;
-  width: 100%;
-  padding: var(--space-2) 0;
-  text-align: left;
-  background: transparent;
-  border: none;
-  border-top: 1px solid var(--color-border);
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.inbox-thread:first-child {
-  border-top: none;
-}
-
-/* Inbox rows: avatar with its unread count, store name over the last message,
-   date on the right. Replaced a bare unread dot and a shared .dash-item-main,
-   which is still used by the dashboard and admin lists and so was left alone. */
-.inbox-avatar {
-  position: relative;
-  flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
-}
-
-.inbox-avatar-img,
-.inbox-avatar-initials {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--color-bg-alt);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: var(--color-muted);
-}
-
-/* Sits ON the avatar, as in the reference. Translated by half its own size
-   rather than a fixed offset, so a "99+" pill and a "1" pill both stay
-   pinned to the same corner instead of drifting as the text widens. */
-.inbox-unread-badge {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform: translate(-35%, -35%);
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--color-red);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 18px;
-  text-align: center;
-  box-sizing: border-box;
-}
-
-/* min-width:0 is what lets the two lines below actually truncate. Without it
-   a flex item refuses to shrink past its content and a long message pushes
-   the date off the row instead of ellipsing. */
-.inbox-thread-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.inbox-thread-name,
-.inbox-thread-preview {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.inbox-thread-name {
-  font-weight: 700;
-}
-
-.inbox-thread-preview {
-  color: var(--color-muted);
-  font-size: 0.85rem;
-}
-
-.inbox-thread-date {
-  flex: 0 0 auto;
-  align-self: flex-start;
-  color: var(--color-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
 /* Mobile bottom navigation (§7) - injected by bottom-nav.js, mobile only. */
 :root { --bottom-nav-h: 56px; }
 
@@ -8812,4 +8708,478 @@ form.search-box.is-pinned::before {
   .sp-cover .sp-home { display: inline-flex; right: calc(var(--space-2) + 88px); }
   .sp-cover .header-cart { display: inline-flex; right: calc(var(--space-2) + 44px); }
   .sp-photos:not([hidden]) { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ==========================================================================
+   Messenger (customer-messages.html + owner/messages.html)
+
+   One shared two-pane inbox for both sides of Mwakete chat, so the seller's
+   inbox and the shopper's inbox read as the same product. Phone: a single
+   column that swaps to the open conversation full-screen (.msgr.has-open +
+   the back arrow). Tablet and up (>=768px): list on the left, the open
+   conversation on the right, side by side. Built from the site's own tokens
+   (purple theme) - no new colours, no outside branding.
+   ========================================================================== */
+.msgr {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 66vh;
+  background: var(--color-bg);
+}
+
+@media (min-width: 768px) {
+  .msgr {
+    flex-direction: row;
+    height: 72vh;
+  }
+}
+
+/* ---- List pane ---- */
+.msgr-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .msgr-list {
+    width: 340px;
+    flex: 0 0 340px;
+    border-right: 1px solid var(--color-border);
+  }
+}
+
+/* Phone: once a conversation is open the list steps aside for the full-screen
+   thread. Desktop keeps both panes regardless. */
+.msgr.has-open .msgr-list { display: none; }
+@media (min-width: 768px) {
+  .msgr.has-open .msgr-list { display: flex; }
+}
+
+.msgr-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Segmented All / Unread filter - a radio group styled as a pill toggle. */
+.msgr-filter {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--color-bg-alt);
+}
+
+.msgr-filter-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.3em 0.9em;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.msgr-filter-btn.is-active {
+  background: var(--color-purple);
+  color: #fff;
+}
+
+.msgr-filter-btn:focus-visible {
+  outline: 2px solid var(--color-focus-soft);
+  outline-offset: 2px;
+}
+
+.msgr-search {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.msgr-status {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.msgr-threads {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.msgr-load-more {
+  flex: 0 0 auto;
+  margin: var(--space-2);
+}
+
+/* ---- A conversation row ---- */
+.msgr-thread {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 68px;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--color-border);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.msgr-thread:hover,
+.msgr-thread:focus-visible {
+  background: var(--color-bg-alt);
+  outline: none;
+}
+
+.msgr-thread.is-active {
+  background: var(--color-bg-alt);
+  border-left-color: var(--color-purple);
+}
+
+.msgr-avatar {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+}
+
+.msgr-avatar-img,
+.msgr-avatar-initials {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  background: var(--color-purple);
+}
+
+.msgr-avatar-img { background: var(--color-bg-alt); }
+
+/* Unread count/dot sitting on the avatar corner. */
+.msgr-avatar-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(35%, -35%);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-red);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.msgr-thread-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.msgr-thread-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.msgr-thread-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgr-thread-time {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.msgr-thread-sub {
+  font-size: 0.74rem;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgr-thread-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Small photo tile shown when the last message is an image. */
+.msgr-thread-photo {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--color-muted);
+}
+
+.msgr-thread-preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.84rem;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgr-thread.is-unread .msgr-thread-name,
+.msgr-thread.is-unread .msgr-thread-preview {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+/* ---- Detail pane ---- */
+.msgr-detail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Phone: the detail pane is hidden until a conversation is open. */
+.msgr-detail { display: none; }
+.msgr.has-open .msgr-detail { display: flex; }
+@media (min-width: 768px) {
+  .msgr-detail { display: flex; }
+}
+
+.msgr-empty {
+  margin: auto;
+  padding: var(--space-4);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+/* On phone the empty prompt is pointless (there is no second pane to fill), so
+   it only shows on the wide two-pane layout. */
+.msgr-empty { display: none; }
+@media (min-width: 768px) {
+  .msgr.has-empty .msgr-empty { display: block; }
+}
+
+.msgr-thread-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.msgr-thread-view.hidden { display: none; }
+
+.msgr-detail-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.msgr-back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.msgr-back:focus-visible {
+  outline: 2px solid var(--color-focus-soft);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+@media (min-width: 768px) {
+  .msgr-back { display: none; }
+}
+
+.msgr-detail-id {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.msgr-detail-id .msgr-avatar,
+.msgr-detail-id .msgr-avatar-img,
+.msgr-detail-id .msgr-avatar-initials {
+  width: 38px;
+  height: 38px;
+  font-size: 0.9rem;
+}
+
+.msgr-detail-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgr-detail-sub {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msgr-detail-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.msgr-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-bg-alt);
+}
+
+/* Message bubbles reuse the existing .chat-message base plus each page's own
+   sender modifiers: the shopper page uses .chat-message--customer/--vendor
+   (styles.css), the seller page .chat-message--mine/--theirs (owner.css). */
+.msgr-reply {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.msgr-reply-input {
+  flex: 1 1 auto;
+  resize: none;
+  max-height: 100px;
+  padding: 0.6em 0.9em;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--color-ink);
+  background: var(--color-bg);
+}
+
+.msgr-reply-input:focus-visible {
+  outline: 2px solid var(--color-focus-soft);
+  outline-offset: 1px;
+}
+
+.msgr-icon-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.msgr-icon-btn:hover { color: var(--color-ink); }
+.msgr-icon-btn:focus-visible {
+  outline: 2px solid var(--color-focus-soft);
+  outline-offset: 2px;
+}
+
+.msgr-send {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-purple);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+
+.msgr-send:hover { background: var(--color-ink); }
+.msgr-send:active { transform: scale(0.9); }
+.msgr-send:focus-visible {
+  outline: 3px solid var(--color-focus-soft);
+  outline-offset: 2px;
+}
+
+/* Guest sign-in gate on the shopper side: read the thread, sign in to reply. */
+.msgr-signin-gate {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.msgr-signin-gate.hidden,
+.msgr-reply.hidden { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .msgr-send { transition: none; }
+  .msgr-send:active { transform: none; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .msgr-reply-input {
+    background: #2a2c30;
+    border-color: #3a3d42;
+    color: #f0f0f0;
+  }
 }
