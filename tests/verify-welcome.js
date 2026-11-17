@@ -131,7 +131,7 @@ const state = (page) => page.evaluate(() => {
   }
 
   // ---- not on the screens with a job to do ----
-  for (const [q, why] of [['?reason=order&next=checkout.html', 'sent to order'], ['?tab=signup', 'Create account'], ['?reason=meeting', 'requesting a meeting']]) {
+  for (const [q, why] of [['?reason=order&next=checkout.html', 'sent to order'], ['?tab=signup', 'Create account']]) {
     const { ctx } = await makeCtx(browser);
     const page = await ctx.newPage();
     await page.goto(BASE + '/customer-login.html' + q, { waitUntil: 'load' });

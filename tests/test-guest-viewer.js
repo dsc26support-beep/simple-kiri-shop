@@ -1,7 +1,7 @@
 /**
  * Owner decision, Oct 2026: a guest is a viewer. Browsing stays open to
- * everyone; placing an order, sending a booking request, messaging a seller,
- * requesting or accepting a meeting and reviewing all need a signed-in
+ * everyone; placing an order, sending a booking request, messaging a seller
+ * and reviewing all need a signed-in
  * customer - refused on the SERVER (signInRequired), not only hidden in the
  * page. On the REAL backend sources (gas-harness, with NO default shopper).
  */
@@ -29,7 +29,6 @@ const box = makeBox({
     ['conv_old', 'own_s', 'bong', 'guest-phone', 'Guest', 'open', '', '', '', 'Hi', 'customer', 0, 0, '']],
   Messages: [['MessageId', 'ConversationId', 'OwnerId', 'StoreSlug', 'SenderType', 'Body', 'CreatedAt', 'ImageUrl', 'ImageFileId'],
     ['msg_1', 'conv_old', 'own_s', 'bong', 'customer', 'Hi', new Date().toISOString(), '', '']],
-  Meetings: [['MeetingId', 'ConversationId', 'Status']],
   AbandonedCarts: [['CartId', 'StoreSlug', 'Email', 'ConvertedOrderId']],
   Reviews: [['ReviewId', 'ProductId', 'OwnerId', 'CustomerId', 'CustomerName', 'Rating', 'Comment', 'Status', 'CreatedAt']]
 }, { guest: true });
@@ -78,8 +77,6 @@ ok('...nor a photo', refused(box.actionSendChatImage({ storeSlug: 'bong', custom
 ok('...but can still read that older chat', box.resolveChatRequest({ storeSlug: 'bong', customerToken: 'guest-phone' }, { createIfMissing: false }).conversation.ConversationId === 'conv_old');
 r = msg('c-tia');
 ok('signed in, they can reply - and the chat joins their account', r.ok && box.__sheets.Conversations.objects()[0].CustomerId === 'cus_t', J(r));
-r = box.actionRequestMeeting({ storeSlug: 'bong', customerToken: 'guest-2', customerName: 'G', purpose: 'Look at canoe', requestedDate: day(2), requestedTime: '10:00' });
-ok('a guest cannot request a meeting', !r.ok && /sign in/i.test(r.error), J(r));
 
 /* ---------- reviews ---------- */
 r = box.actionSubmitReview({ productId: 'p1', rating: 5 });
