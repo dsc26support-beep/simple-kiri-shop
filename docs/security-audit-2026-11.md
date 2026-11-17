@@ -237,3 +237,92 @@ Owner check on a phone (ideally a returning visitor, to confirm the SW update):
 4. Place/track an order — chat, meetings and backend calls work.
 5. DevTools console shows **no CSP violation** in normal use. (The audit's
    mitigations for clickjacking/HSTS still await the Cloudflare proxy.)
+
+## Stage 4 — automation and documentation (17 Nov 2026)
+
+Closes finding 7 ("No automated secret / code scanning; no SECURITY.md,
+incident-response or backup/restore guide", Process). All of Stage 4 is repo
+configuration and documentation: **no site or backend code changes, so no
+`APP_VERSION` bump, no Apps Script deploy, and no service-worker cache bump.**
+
+### Automation (CI — in the repo, runs itself)
+
+| What | File | Runs | Notes |
+|---|---|---|---|
+| **CodeQL** static analysis (SAST) | `.github/workflows/codeql.yml` + `.github/codeql/codeql-config.yml` | PRs & pushes to `main` touching JS, weekly, manual | Scans the site's own source JS (`assets/js`, `tools`, `sw.js`); excludes generated `*.min.js` and the vendored qrcode lib. Results land in the **Security** tab. Free on public repos. |
+| **Secret scanning** (CI) | `.github/workflows/secret-scan.yml` + `.gitleaks.toml` | every PR & push, weekly full-history sweep | gitleaks over the whole history; `.gitleaks.toml` allowlists only the two **public** identifiers in `config.js` (the Apps Script `/exec` URL and the Google OAuth *client ID*) so a real secret can never hide. |
+
+**CodeQL and `.gs`:** CodeQL's JavaScript extractor keys off the `.js`
+extension and does not read Apps Script `.gs` files, so the backend is **not**
+SAST-scanned. It is covered instead by the gas-harness unit suites and the
+Stage 3 access-control suite — stated plainly here rather than implied.
+
+**Still owner-only (repo Settings, Claude cannot toggle):** native GitHub
+**secret scanning + push protection**, **private vulnerability reporting**,
+**Dependabot alerts**, and **branch protection on `main`**. Exact steps:
+`docs/secure-deployment-checklist.md` §A.
+
+### Documentation (new)
+
+- `SECURITY.md` — vulnerability disclosure policy. Reports go through **GitHub
+  private vulnerability reporting** (no personal email is published); scope,
+  response targets and safe-harbour stated honestly for a small team.
+- `docs/incident-response.md` — six-step runbook (detect → review) with concrete
+  containment steps per incident type (leaked secret, compromised account,
+  malicious code served, over-shared Sheet, spam, outage).
+- `docs/backup-restore.md` — what to back up (the Sheet is the irreplaceable
+  part), how (version history + dated independent copies), the Script-Properties
+  secret list, and how to restore and verify.
+- `docs/secure-deployment-checklist.md` — the security gate around `DEPLOY.md`:
+  one-time GitHub/Google settings, pre-deploy checks, and the mandatory
+  `getVersion` / `checkSetup` post-deploy verification.
+
+### Final status — the 19 security requirements
+
+Consolidated from the August 2026 audit (`docs/security-audit.md`, 8 findings
+fixed), this November audit (7 findings), the approved four-stage plan and the
+extras. Status keys: **✅ Met** · **✅ By design** (the architecture removes the
+risk) · **◑ Platform-limited** (needs the Cloudflare proxy; documented, not
+faked) · **☐ Owner action** (a Google/GitHub setting or manual step only the
+owner can do).
+
+| # | Requirement | Status | Evidence / where |
+|---|---|---|---|
+| 1 | Output encoding / XSS-safe links & previews | ✅ Met | Stage 1 `safeUrl`/`safeDataUrl` (`helpers.js`); `verify-security-stage1.js` |
+| 2 | Formula / CSV injection prevention on sheet writes | ✅ Met | `sanitizeForSheetCell` (all writes), extended Stage 1 |
+| 3 | Length caps & input validation on free-text | ✅ Met | Aug audit findings 6–7, fixed |
+| 4 | Strong password storage (hash + pepper) | ✅ Met | PBKDF2-HMAC-SHA256 + pepper (`Passwords.gs`); 4k-round platform limit documented (finding 6) |
+| 5 | Brute-force / rate limiting (sign-in, codes) | ✅ Met | lockout + rate caps; Stage 3 brute-force & replay checks |
+| 6 | Session management (expiring, revocable, hashed tokens) | ✅ Met | tokens hashed at rest; Stage 3 replay/logout checks |
+| 7 | Authorization & admin gating (BOLA/IDOR) | ✅ Met | Stage 3 suite: 53-action admin sweep + IDOR, 36/36 |
+| 8 | Vendor / customer data isolation | ✅ Met | Stage 3 listing-isolation checks |
+| 9 | File-upload validation (type + size) | ✅ Met | magic-byte type check + 5 MB cap (`Images.gs`) |
+| 10 | No internal error-detail leakage | ✅ Met | Stage 1 `publicErrorMessage` (`Utils.gs`); Stage 3 no-leak checks |
+| 11 | Secrets never in frontend or git history | ✅ Met | Script Properties only; history scan; Stage 4 CI secret scanning |
+| 12 | Transport security (HTTPS) | ☐ Owner action (done) | GitHub Pages "Enforce HTTPS" ON (owner-confirmed) |
+| 13 | HSTS (strict transport) | ◑ Platform-limited | header-only; needs the Cloudflare proxy (extras) |
+| 14 | Content Security Policy | ✅ Met | Stage 2 strict CSP on all 45 pages; `verify-csp.js` 35/35 |
+| 15 | Clickjacking protection (frame-ancestors / XFO) | ◑ Platform-limited | header-only; needs the Cloudflare proxy (extras) |
+| 16 | CSRF protection | ✅ By design | no cookies/ambient creds; token travels in the request body |
+| 17 | Supply-chain integrity (SRI, dependency hygiene) | ✅ Met | face-api SRI (Stage 1); `npm audit` 0; CDN libs pinned |
+| 18 | Automated code + secret scanning in CI | ✅ Met | Stage 4 CodeQL + gitleaks workflows (+ ☐ owner enables native secret scanning / push protection) |
+| 19 | Backup, restore, incident response & secure deploy process | ✅ Met (docs) | Stage 4 `SECURITY.md`, `incident-response.md`, `backup-restore.md`, `secure-deployment-checklist.md` (+ ☐ owner runs backups) |
+
+**Net:** 14 fully met, 2 met by design, 2 platform-limited (clickjacking + HSTS —
+both waiting on the approved Cloudflare proxy), and a short, explicit list of
+owner-only settings/steps (HTTPS already on; native scanning toggles; running
+backups). The only residual *technical* gaps are the two header-only protections
+a GitHub Pages `<meta>` tag genuinely cannot provide.
+
+### Remaining after Stage 4 (owner / future)
+
+- **Owner, one-time:** enable the GitHub settings in the checklist §A (secret
+  scanning + push protection, private vuln reporting, Dependabot, branch
+  protection); start a weekly Sheet backup.
+- **Owner, pending from Stage 1:** the Apps Script backend deploy
+  (`getVersion = secure1-2026-11-16`) is still owed.
+- **Approved extras, owner-gated:** the **Cloudflare proxy** (unlocks HSTS +
+  frame-ancestors — the two remaining items above) and the **admin sign-in
+  code**. Both need the owner to sign up / approve; the Cloudflare connector also
+  needs authorising in claude.ai connector settings before Claude can help
+  configure it.
