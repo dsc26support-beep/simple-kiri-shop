@@ -28,16 +28,20 @@ bump owed.
 Per CLAUDE.md (smallest safe change; present changes for approval) and V2's
 Tier-0 rule (measure before building the expensive items):
 
-### Candidate 1 — reserve the trending-stores carousel height *(low risk, ready)*
+### Candidate 1 — reserve the trending-stores carousel height — ✅ SHIPPED (17 Nov 2026)
 - **Why:** `index` CLS regressed to **0.0385** — a single shift where
   `#trending-stores-list` grows 8→94 px and pushes `.trending-products` down 52 px
   (PERFORMANCE_BASELINE, attributed).
-- **Change:** a `min-height` on `#trending-stores-list` sized to the loaded
-  carousel (the exact V2 Phase 1 pattern for the product carousel).
-- **Risk:** very low — one CSS rule. **Effort:** < 1 hour.
-- **Status:** awaiting owner go-ahead as the next small PR (not bundled into this
-  system phase, which deliberately changed no site behaviour). It is under the
-  0.10 "good" bar today, so it is improvement, not breakage.
+- **Change shipped:** `#trending-stores-list { min-height: 94px }` in `styles.css`
+  (sw cache v235→v236, styles.min.css is precached).
+- **Result:** index CLS **0.0385 → 0.0249** (both inside the 0.10 "good" bar).
+  The `min-height` removes the dominant carousel-*growth* shift. A small residual
+  stays because the one-line "Loading" status line above the carousel collapses
+  when it clears, which moves the (reserved) carousel up ~20 px — a size
+  reservation cannot fix that; it would need the status taken **out of flow**
+  (an absolutely-positioned overlay) or a ~20 px visual gap. Not worth that
+  complexity/visual change for a metric already comfortably "good"; left as a
+  possible future tweak if true-zero is ever wanted.
 
 ### Candidate 2 — split / trim `styles.min.css` *(medium risk, needs data first)*
 - **Why:** 25.4 KB gzip, the only render-blocking file, grew 2.5× since Phase 2.

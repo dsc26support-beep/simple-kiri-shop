@@ -153,9 +153,16 @@ The homepage "trending stores" logo carousel has no reserved height; when store
 logos arrive it grows 8 → 94 px and pushes the products shelf below it down
 52 px. This is the **exact pattern** V2 Phase 1 fixed for the product carousel,
 and the fix is the same one-line kind: reserve `min-height` on
-`#trending-stores-list`. It is still under the 0.1 "good" threshold, so it is
-**documented as the top deferred candidate**, not silently fixed in this
+`#trending-stores-list`. It is still under the 0.1 "good" threshold, so it was
+**documented as the top deferred candidate**, not bundled into the
 system-building phase. See [`PERFORMANCE_IMPLEMENTATION_PLAN.md`](PERFORMANCE_IMPLEMENTATION_PLAN.md).
+
+> **Update (17 Nov 2026):** shipped — `#trending-stores-list { min-height: 94px }`
+> (sw cache v235→v236). Index CLS **0.0385 → 0.0249**. The reservation removes the
+> carousel-growth shift; the small residual (the "Loading" status line above
+> collapsing) is left, since removing it needs the status out of flow rather than
+> a size reservation. This baseline table still reflects the pre-fix `546b3cd`
+> measurement.
 
 ---
 
