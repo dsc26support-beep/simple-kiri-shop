@@ -1,0 +1,33 @@
+{
+  "_about": "Performance budgets for Mwakete — the single source of truth for the CI gate (performance-audit/scripts/check-budgets.js). All byte values are GZIPPED size (level 9), the way GitHub Pages serves text assets. Budgets = the measured value at the commit noted below + small headroom, NOT arbitrary limits. See PERFORMANCE_BUDGETS.md for the rationale and how to change a budget.",
+  "_baselineCommit": "546b3cd (post #168 speed fixes, #171 CSP)",
+  "_baselineDate": "2026-11-16",
+  "_headroom": "~12% on per-page total & initial-JS gzip; ~15% on individual shared assets (they grow as features land); +3 on static request counts; web fonts hard-zero.",
+  "fontsMustBeZero": true,
+  "assets": {
+    "assets/css/styles.min.css": 29000,
+    "assets/css/owner.min.css": 15000,
+    "assets/js/helpers.min.js": 16000
+  },
+  "pages": {
+    "index.html":              { "maxTotalGzip": 74000, "maxInitialJsGzip": 40000, "maxRequests": 21 },
+    "store.html":              { "maxTotalGzip": 88000, "maxInitialJsGzip": 52000, "maxRequests": 24 },
+    "product.html":            { "maxTotalGzip": 90000, "maxInitialJsGzip": 56000, "maxRequests": 24 },
+    "categories.html":         { "maxTotalGzip": 71000, "maxInitialJsGzip": 39000, "maxRequests": 17 },
+    "stores.html":             { "maxTotalGzip": 66000, "maxInitialJsGzip": 34000, "maxRequests": 17 },
+    "cart.html":               { "maxTotalGzip": 71000, "maxInitialJsGzip": 38000, "maxRequests": 18 },
+    "checkout.html":           { "maxTotalGzip": 82000, "maxInitialJsGzip": 47000, "maxRequests": 21 },
+    "customer-dashboard.html": { "maxTotalGzip": 75000, "maxInitialJsGzip": 41000, "maxRequests": 20 }
+  },
+  "cwv": {
+    "_about": "Secondary gate thresholds (performance-audit/scripts/ci-cwv.js), median of repeats on headless Chromium vs a local gzip server. Ceilings sit WELL above measured lab values so normal lab noise never flaps them — they catch gross regressions only. Lab, not field.",
+    "repeats": 3,
+    "profile": "mobile-4g",
+    "apiLatencyMs": 600,
+    "pages": {
+      "index.html":   { "maxLcpMs": 1500, "maxCls": 0.10 },
+      "store.html":   { "maxLcpMs": 1500, "maxCls": 0.10 },
+      "product.html": { "maxLcpMs": 2000, "maxCls": 0.10 }
+    }
+  }
+}
