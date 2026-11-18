@@ -322,7 +322,30 @@ a GitHub Pages `<meta>` tag genuinely cannot provide.
 - **Owner, pending from Stage 1:** the Apps Script backend deploy
   (`getVersion = secure1-2026-11-16`) is still owed.
 - **Approved extras, owner-gated:** the **Cloudflare proxy** (unlocks HSTS +
-  frame-ancestors — the two remaining items above) and the **admin sign-in
-  code**. Both need the owner to sign up / approve; the Cloudflare connector also
-  needs authorising in claude.ai connector settings before Claude can help
-  configure it.
+  frame-ancestors — the two remaining items above) needs the owner to sign up /
+  approve, and the Cloudflare connector also needs authorising in claude.ai
+  connector settings before Claude can help configure it.
+
+## Extra — admin sign-in code (18 Nov 2026)
+
+Done. Admins now always get an emailed one-time code at sign-in, whether or not
+they turned 2FA on — a second factor on the accounts that can reach the 53
+admin-only actions.
+
+- **One surgical change:** `actionOwnerFromCustomer` (`Auth.gs`) now also triggers
+  the existing login-code path when `isOwnerAdmin(owner)`, not only when the
+  vendor opted into 2FA. It reuses the whole opt-in 2FA machinery unchanged —
+  `issueTwoFACode` → `actionVerifyLoginCode` → `issueSession`, the `TwoFACodes`
+  sheet, 10-minute expiry, 5-attempt cap, constant-time compare — and the
+  owner-login page already renders the code step, so **no frontend change**. An
+  admin always has a confirmed email (that is how `isOwnerAdmin` resolves), so no
+  admin is ever stranded without a destination for the code.
+- **Scope:** store creation (`actionRegisterOwner`) is left as-is — it is a
+  one-time event that already requires live account auth, not a "sign-in", and
+  admin actions stay gated by `isOwnerAdmin` on every call regardless (Stage 3).
+- **Tests:** `tests/test-admin-signin-code.js` (10 checks: admin forced to a
+  code with 2FA off, non-admin not, wrong code refused, right code signs in,
+  single-use, and the gate following ADMIN_EMAILS). Stage 3's sign-in helper
+  updated to complete the admin code; full auth suite still green.
+- **Backend deploy owed** (owner): this is a `.gs` change — `APP_VERSION` bumped
+  to `admincode1-2026-11-18`; deploy per `docs/secure-deployment-checklist.md`.
