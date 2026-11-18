@@ -1,0 +1,4698 @@
+[
+  {
+    "ttfbLocal": 6,
+    "domContentLoaded": 601,
+    "loadEvent": 634,
+    "fcp": 536,
+    "lcp": 536,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 2,
+    "longTaskMs": 140,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1838
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 203.19999999998254
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 114.69999999998254
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 3450.000000000029
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 78.89999999999418
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 628,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 605,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 332,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 311,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 272,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 266,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 263,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 259,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 257,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 241,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 203,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 198,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 186,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 183,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 177,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 169,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 127,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 112,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 97,
+        "transfer": 579,
+        "decoded": 301
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2843,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 62,
+    "layoutDurationMs": 87,
+    "recalcStyleMs": 87,
+    "taskDurationMs": 718
+  },
+  {
+    "ttfbLocal": 2,
+    "domContentLoaded": 550,
+    "loadEvent": 582,
+    "fcp": 468,
+    "lcp": 468,
+    "lcpElement": null,
+    "cls": 0.0134,
+    "longTasks": 2,
+    "longTaskMs": 142,
+    "requests": 28,
+    "transferred": 79154,
+    "decoded": 290889,
+    "byType": {
+      "fetch": {
+        "n": 4,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 2428.8000000000175
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 203.10000000000582
+      },
+      "script": {
+        "n": 19,
+        "transfer": 52654,
+        "decoded": 147742,
+        "dur": 4289.999999999913
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 77.79999999998836
+      },
+      "img": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 25.599999999976717
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&category=pantry",
+        "type": "fetch",
+        "dur": 609,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=listProducts&storeSlug=bong",
+        "type": "fetch",
+        "dur": 608,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 607,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 349,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 341,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 332,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 316,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/store.min.js",
+        "type": "script",
+        "dur": 284,
+        "transfer": 5932,
+        "decoded": 18399
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 279,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 273,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/store-cover.min.js",
+        "type": "script",
+        "dur": 267,
+        "transfer": 1478,
+        "decoded": 2309
+      },
+      {
+        "name": "/assets/js/recent-views.min.js",
+        "type": "script",
+        "dur": 254,
+        "transfer": 909,
+        "decoded": 1559
+      },
+      {
+        "name": "/assets/js/product-card.min.js",
+        "type": "script",
+        "dur": 242,
+        "transfer": 2215,
+        "decoded": 7571
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 203,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 203,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 197,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/chat-window.min.js",
+        "type": "script",
+        "dur": 191,
+        "transfer": 5574,
+        "decoded": 20073
+      },
+      {
+        "name": "/assets/js/fab-drag.min.js",
+        "type": "script",
+        "dur": 180,
+        "transfer": 1574,
+        "decoded": 3390
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 164,
+        "transfer": 14050,
+        "decoded": 45288
+      }
+    ],
+    "page": "/store.html?store=bong",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2790,
+    "apiCalls": 4,
+    "apiBytes": 23345,
+    "scriptDurationMs": 79,
+    "layoutDurationMs": 86,
+    "recalcStyleMs": 64,
+    "taskDurationMs": 597
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 556,
+    "loadEvent": 576,
+    "fcp": 420,
+    "lcp": 852,
+    "lcpElement": "span.reviews-toggle-title",
+    "cls": 0,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 26,
+    "transferred": 82364,
+    "decoded": 301061,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1821.1999999999825
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 186.39999999999418
+      },
+      "script": {
+        "n": 19,
+        "transfer": 55864,
+        "decoded": 157914,
+        "dur": 4173.800000000047
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 79
+      },
+      "img": {
+        "n": 2,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 11.5
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getProduct&storeSlug=bong&productId=p0",
+        "type": "fetch",
+        "dur": 608,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=listProductReviews&productId=p0",
+        "type": "fetch",
+        "dur": 607,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&q=&category=food&type=product",
+        "type": "fetch",
+        "dur": 605,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/product-page.min.js",
+        "type": "script",
+        "dur": 346,
+        "transfer": 5749,
+        "decoded": 17063
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 340,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/recent-views.min.js",
+        "type": "script",
+        "dur": 321,
+        "transfer": 909,
+        "decoded": 1559
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 317,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 274,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/product-card.min.js",
+        "type": "script",
+        "dur": 262,
+        "transfer": 2215,
+        "decoded": 7571
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 260,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 257,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/product-options-ui.min.js",
+        "type": "script",
+        "dur": 246,
+        "transfer": 2406,
+        "decoded": 5782
+      },
+      {
+        "name": "/assets/js/product-options.min.js",
+        "type": "script",
+        "dur": 238,
+        "transfer": 3402,
+        "decoded": 9275
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 197,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 186,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 185,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/chat-window.min.js",
+        "type": "script",
+        "dur": 179,
+        "transfer": 5574,
+        "decoded": 20073
+      },
+      {
+        "name": "/assets/js/fab-drag.min.js",
+        "type": "script",
+        "dur": 176,
+        "transfer": 1574,
+        "decoded": 3390
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 161,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 121,
+        "transfer": 3148,
+        "decoded": 8986
+      }
+    ],
+    "page": "/product.html?store=bong&product=p0",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2784,
+    "apiCalls": 3,
+    "apiBytes": 11651,
+    "scriptDurationMs": 46,
+    "layoutDurationMs": 69,
+    "recalcStyleMs": 37,
+    "taskDurationMs": 478
+  },
+  {
+    "ttfbLocal": 3,
+    "domContentLoaded": 546,
+    "loadEvent": 585,
+    "fcp": 344,
+    "lcp": 344,
+    "lcpElement": null,
+    "cls": 0.0001,
+    "longTasks": 1,
+    "longTaskMs": 93,
+    "requests": 16,
+    "transferred": 59675,
+    "decoded": 233627,
+    "byType": {
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 128.09999999997672
+      },
+      "script": {
+        "n": 12,
+        "transfer": 33175,
+        "decoded": 90480,
+        "dur": 1702.999999999971
+      },
+      "fetch": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 626.6000000000058
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 86.10000000000582
+      },
+      "img": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 8.299999999988358
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=listStores&limit=20&q=",
+        "type": "fetch",
+        "dur": 627,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 211,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 187,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 183,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 178,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 166,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 154,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 134,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 128,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 113,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/directory.min.js",
+        "type": "script",
+        "dur": 107,
+        "transfer": 2023,
+        "decoded": 4649
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 98,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 92,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "other",
+        "dur": 86,
+        "transfer": 602,
+        "decoded": 549
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 81,
+        "transfer": 579,
+        "decoded": 301
+      },
+      {
+        "name": "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_160/sample.jpg",
+        "type": "img",
+        "dur": 8,
+        "transfer": 0,
+        "decoded": 0
+      }
+    ],
+    "page": "/stores.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2792,
+    "apiCalls": 1,
+    "apiBytes": 2863,
+    "scriptDurationMs": 80,
+    "layoutDurationMs": 57,
+    "recalcStyleMs": 73,
+    "taskDurationMs": 538
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 455,
+    "loadEvent": 473,
+    "fcp": 420,
+    "lcp": 420,
+    "lcpElement": null,
+    "cls": 0.0001,
+    "longTasks": 1,
+    "longTaskMs": 55,
+    "requests": 18,
+    "transferred": 64272,
+    "decoded": 248963,
+    "byType": {
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 210.70000000001164
+      },
+      "script": {
+        "n": 12,
+        "transfer": 37772,
+        "decoded": 105816,
+        "dur": 2022.2999999999884
+      },
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1834.8000000000175
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 79.80000000001746
+      },
+      "img": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 7.600000000005821
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getTips",
+        "type": "fetch",
+        "dur": 624,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 606,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&category=food&type=",
+        "type": "fetch",
+        "dur": 605,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 252,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 248,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 230,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 211,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/categories.min.js",
+        "type": "script",
+        "dur": 191,
+        "transfer": 4045,
+        "decoded": 13029
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 188,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 180,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/search-intent.min.js",
+        "type": "script",
+        "dur": 173,
+        "transfer": 3512,
+        "decoded": 8196
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 160,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 117,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 103,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 94,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 87,
+        "transfer": 579,
+        "decoded": 301
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "other",
+        "dur": 80,
+        "transfer": 602,
+        "decoded": 549
+      },
+      {
+        "name": "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_200/sample.jpg",
+        "type": "img",
+        "dur": 8,
+        "transfer": 0,
+        "decoded": 0
+      }
+    ],
+    "page": "/categories.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2679,
+    "apiCalls": 3,
+    "apiBytes": 11597,
+    "scriptDurationMs": 37,
+    "layoutDurationMs": 52,
+    "recalcStyleMs": 82,
+    "taskDurationMs": 545
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 453,
+    "loadEvent": 476,
+    "fcp": 416,
+    "lcp": 416,
+    "lcpElement": "h2.category-pane-heading",
+    "cls": 0,
+    "longTasks": 1,
+    "longTaskMs": 64,
+    "requests": 18,
+    "transferred": 64272,
+    "decoded": 248963,
+    "byType": {
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 211.29999999998836
+      },
+      "script": {
+        "n": 12,
+        "transfer": 37772,
+        "decoded": 105816,
+        "dur": 2134.100000000035
+      },
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1852.999999999971
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 78.70000000001164
+      },
+      "img": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 7.300000000017462
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getTips",
+        "type": "fetch",
+        "dur": 631,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&q=rice&type=",
+        "type": "fetch",
+        "dur": 615,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 607,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 269,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 266,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 242,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 211,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 201,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/categories.min.js",
+        "type": "script",
+        "dur": 197,
+        "transfer": 4045,
+        "decoded": 13029
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 188,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/search-intent.min.js",
+        "type": "script",
+        "dur": 186,
+        "transfer": 3512,
+        "decoded": 8196
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 164,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 122,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 108,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 102,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 91,
+        "transfer": 579,
+        "decoded": 301
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "other",
+        "dur": 79,
+        "transfer": 602,
+        "decoded": 549
+      },
+      {
+        "name": "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_200/sample.jpg",
+        "type": "img",
+        "dur": 7,
+        "transfer": 0,
+        "decoded": 0
+      }
+    ],
+    "page": "/categories.html?q=rice",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2687,
+    "apiCalls": 3,
+    "apiBytes": 11597,
+    "scriptDurationMs": 36,
+    "layoutDurationMs": 36,
+    "recalcStyleMs": 46,
+    "taskDurationMs": 376
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 411,
+    "loadEvent": 426,
+    "fcp": 380,
+    "lcp": 380,
+    "lcpElement": "h1",
+    "cls": 0,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 15,
+    "transferred": 63927,
+    "decoded": 248600,
+    "byType": {
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 203.89999999999418
+      },
+      "script": {
+        "n": 13,
+        "transfer": 37427,
+        "decoded": 105453,
+        "dur": 2284.500000000029
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 81.89999999999418
+      }
+    },
+    "slowest": [
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 259,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/store-cover.min.js",
+        "type": "script",
+        "dur": 251,
+        "transfer": 1478,
+        "decoded": 2309
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 238,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 234,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 204,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 197,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/cart-page.min.js",
+        "type": "script",
+        "dur": 182,
+        "transfer": 2175,
+        "decoded": 5676
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 177,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 172,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/fab-drag.min.js",
+        "type": "script",
+        "dur": 160,
+        "transfer": 1574,
+        "decoded": 3390
+      },
+      {
+        "name": "/assets/js/chat-window.min.js",
+        "type": "script",
+        "dur": 124,
+        "transfer": 5574,
+        "decoded": 20073
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 105,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 99,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 88,
+        "transfer": 579,
+        "decoded": 301
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "other",
+        "dur": 82,
+        "transfer": 602,
+        "decoded": 549
+      }
+    ],
+    "page": "/cart.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2632,
+    "apiCalls": 0,
+    "apiBytes": 0,
+    "scriptDurationMs": 24,
+    "layoutDurationMs": 27,
+    "recalcStyleMs": 20,
+    "taskDurationMs": 215
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 562,
+    "loadEvent": 1993,
+    "fcp": 320,
+    "lcp": 508,
+    "lcpElement": "img",
+    "cls": 0.0077,
+    "longTasks": 1,
+    "longTaskMs": 98,
+    "requests": 19,
+    "transferred": 86176,
+    "decoded": 258679,
+    "byType": {
+      "link": {
+        "n": 2,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 125.70000000001164
+      },
+      "img": {
+        "n": 2,
+        "transfer": 28637,
+        "decoded": 28284,
+        "dur": 275.19999999998254
+      },
+      "script": {
+        "n": 12,
+        "transfer": 31039,
+        "decoded": 87248,
+        "dur": 2305.8000000000175
+      },
+      "fetch": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 604.0999999999767
+      },
+      "iframe": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 728.3999999999942
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 78.5
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://accounts.google.com/gsi/button?theme=outline&size=large&text=continue_with&shape=rectangular&width=358&is_fedcm_supported=true&client_id=777287788123-6e77qgq38m2bu46pmtril0687qiccit1.apps.googleusercontent.com&iframe_id=gsi_653473_379373&cas=osvDrHYinDJQLOhIOcRSQtgtzhLYy0J5c4FHicqVxtY",
+        "type": "iframe",
+        "dur": 728,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=siteStats",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://accounts.google.com/gsi/client",
+        "type": "script",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 233,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/welcome.min.js",
+        "type": "script",
+        "dur": 225,
+        "transfer": 867,
+        "decoded": 1112
+      },
+      {
+        "name": "/assets/js/facebook-signin.min.js",
+        "type": "script",
+        "dur": 202,
+        "transfer": 1181,
+        "decoded": 1915
+      },
+      {
+        "name": "/assets/img/welcome-phone.jpg",
+        "type": "img",
+        "dur": 190,
+        "transfer": 28035,
+        "decoded": 27735
+      },
+      {
+        "name": "/assets/js/google-signin.min.js",
+        "type": "script",
+        "dur": 177,
+        "transfer": 1736,
+        "decoded": 3648
+      },
+      {
+        "name": "/assets/js/store-cover.min.js",
+        "type": "script",
+        "dur": 162,
+        "transfer": 1478,
+        "decoded": 2309
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 160,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/customer-login.min.js",
+        "type": "script",
+        "dur": 150,
+        "transfer": 4577,
+        "decoded": 18779
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 128,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 126,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 96,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 91,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "img",
+        "dur": 85,
+        "transfer": 602,
+        "decoded": 549
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 80,
+        "transfer": 579,
+        "decoded": 301
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "other",
+        "dur": 79,
+        "transfer": 602,
+        "decoded": 549
+      },
+      {
+        "name": "https://accounts.google.com/gsi/style",
+        "type": "link",
+        "dur": 0,
+        "transfer": 0,
+        "decoded": 0
+      }
+    ],
+    "page": "/customer-dashboard.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 4711,
+    "apiCalls": 1,
+    "apiBytes": 7383,
+    "scriptDurationMs": 123,
+    "layoutDurationMs": 22,
+    "recalcStyleMs": 22,
+    "taskDurationMs": 362
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 74,
+    "loadEvent": 77,
+    "fcp": 76,
+    "lcp": 76,
+    "lcpElement": "h2",
+    "cls": 0.0252,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1821.7000000000407
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 12.89999999999418
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 50.39999999999418
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 431.9000000000524
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 9.599999999976717
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 609,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 607,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 606,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 36,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 36,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 36,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 34,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 32,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 30,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 30,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 27,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 27,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 27,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 24,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 21,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 19,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 19,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 18,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 18,
+        "transfer": 579,
+        "decoded": 301
+      },
+      {
+        "name": "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_160/sample.jpg",
+        "type": "img",
+        "dur": 17,
+        "transfer": 0,
+        "decoded": 0
+      }
+    ],
+    "page": "/index.html",
+    "profile": "desktop-fast",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2281,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 12,
+    "layoutDurationMs": 17,
+    "recalcStyleMs": 25,
+    "taskDurationMs": 172
+  },
+  {
+    "ttfbLocal": 2,
+    "domContentLoaded": 112,
+    "loadEvent": 116,
+    "fcp": 124,
+    "lcp": 124,
+    "lcpElement": null,
+    "cls": 0.0189,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 27,
+    "transferred": 79154,
+    "decoded": 290889,
+    "byType": {
+      "fetch": {
+        "n": 4,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 2432.1999999999825
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 31.79999999998836
+      },
+      "script": {
+        "n": 19,
+        "transfer": 52654,
+        "decoded": 147742,
+        "dur": 922.8000000000175
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 8.39999999999418
+      },
+      "img": {
+        "n": 2,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 18.199999999982538
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=listProducts&storeSlug=bong",
+        "type": "fetch",
+        "dur": 612,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 608,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 608,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&category=pantry",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 71,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 68,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/store.min.js",
+        "type": "script",
+        "dur": 61,
+        "transfer": 5932,
+        "decoded": 18399
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 60,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 59,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 59,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 58,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/store-cover.min.js",
+        "type": "script",
+        "dur": 53,
+        "transfer": 1478,
+        "decoded": 2309
+      },
+      {
+        "name": "/assets/js/recent-views.min.js",
+        "type": "script",
+        "dur": 48,
+        "transfer": 909,
+        "decoded": 1559
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 46,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/chat-window.min.js",
+        "type": "script",
+        "dur": 46,
+        "transfer": 5574,
+        "decoded": 20073
+      },
+      {
+        "name": "/assets/js/product-card.min.js",
+        "type": "script",
+        "dur": 46,
+        "transfer": 2215,
+        "decoded": 7571
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 45,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/fab-drag.min.js",
+        "type": "script",
+        "dur": 45,
+        "transfer": 1574,
+        "decoded": 3390
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 33,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 32,
+        "transfer": 797,
+        "decoded": 874
+      }
+    ],
+    "page": "/store.html?store=bong",
+    "profile": "desktop-fast",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2326,
+    "apiCalls": 4,
+    "apiBytes": 23345,
+    "scriptDurationMs": 11,
+    "layoutDurationMs": 21,
+    "recalcStyleMs": 18,
+    "taskDurationMs": 140
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 906,
+    "loadEvent": 909,
+    "fcp": 660,
+    "lcp": 660,
+    "lcpElement": "h2",
+    "cls": 0.0252,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1825.6999999999825
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 463.1000000000058
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 183.39999999996508
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 7404.400000000052
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 163.89999999999418
+      }
+    },
+    "slowest": [
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 711,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 683,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 621,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 609,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 609,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 607,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 585,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 569,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 563,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 547,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 526,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 463,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 421,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 397,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 389,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 382,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 367,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 255,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 217,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 174,
+        "transfer": 579,
+        "decoded": 301
+      }
+    ],
+    "page": "/index.html",
+    "profile": "desktop-slow",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 3117,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 13,
+    "layoutDurationMs": 16,
+    "recalcStyleMs": 17,
+    "taskDurationMs": 146
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 982,
+    "loadEvent": 991,
+    "fcp": 696,
+    "lcp": 696,
+    "lcpElement": null,
+    "cls": 0.0189,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 27,
+    "transferred": 79154,
+    "decoded": 290889,
+    "byType": {
+      "fetch": {
+        "n": 4,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 2421.100000000006
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 484.69999999998254
+      },
+      "script": {
+        "n": 19,
+        "transfer": 52654,
+        "decoded": 147742,
+        "dur": 9311.099999999948
+      },
+      "img": {
+        "n": 2,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 6.5
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 159.70000000001164
+      }
+    },
+    "slowest": [
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 771,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 726,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 718,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 703,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 629,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 614,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/store.min.js",
+        "type": "script",
+        "dur": 606,
+        "transfer": 5932,
+        "decoded": 18399
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&category=pantry",
+        "type": "fetch",
+        "dur": 606,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 606,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 606,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=listProducts&storeSlug=bong",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/store-cover.min.js",
+        "type": "script",
+        "dur": 569,
+        "transfer": 1478,
+        "decoded": 2309
+      },
+      {
+        "name": "/assets/js/recent-views.min.js",
+        "type": "script",
+        "dur": 548,
+        "transfer": 909,
+        "decoded": 1559
+      },
+      {
+        "name": "/assets/js/product-card.min.js",
+        "type": "script",
+        "dur": 540,
+        "transfer": 2215,
+        "decoded": 7571
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 485,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 450,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 427,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/chat-window.min.js",
+        "type": "script",
+        "dur": 412,
+        "transfer": 5574,
+        "decoded": 20073
+      },
+      {
+        "name": "/assets/js/fab-drag.min.js",
+        "type": "script",
+        "dur": 383,
+        "transfer": 1574,
+        "decoded": 3390
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 375,
+        "transfer": 14050,
+        "decoded": 45288
+      }
+    ],
+    "page": "/store.html?store=bong",
+    "profile": "desktop-slow",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 3200,
+    "apiCalls": 4,
+    "apiBytes": 23345,
+    "scriptDurationMs": 12,
+    "layoutDurationMs": 15,
+    "recalcStyleMs": 10,
+    "taskDurationMs": 107
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 505,
+    "loadEvent": 534,
+    "fcp": 404,
+    "lcp": 404,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 1,
+    "longTaskMs": 59,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1816.399999999965
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 197.20000000001164
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 91.39999999999418
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 3355.6999999999825
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 82.19999999998254
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 608,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 606,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 602,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 325,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 315,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 272,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 268,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 255,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 252,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 249,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 241,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 197,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 192,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 178,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 171,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 169,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 165,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 117,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 103,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "img",
+        "dur": 83,
+        "transfer": 602,
+        "decoded": 549
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2741,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 63,
+    "layoutDurationMs": 56,
+    "recalcStyleMs": 69,
+    "taskDurationMs": 536
+  },
+  {
+    "ttfbLocal": 2,
+    "domContentLoaded": 509,
+    "loadEvent": 526,
+    "fcp": 412,
+    "lcp": 412,
+    "lcpElement": null,
+    "cls": 0.0134,
+    "longTasks": 1,
+    "longTaskMs": 51,
+    "requests": 28,
+    "transferred": 79154,
+    "decoded": 290889,
+    "byType": {
+      "fetch": {
+        "n": 4,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 2427.7000000000116
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 221.80000000001746
+      },
+      "script": {
+        "n": 19,
+        "transfer": 52654,
+        "decoded": 147742,
+        "dur": 4325.600000000006
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 77.80000000001746
+      },
+      "img": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 16.60000000000582
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=listProducts&storeSlug=bong",
+        "type": "fetch",
+        "dur": 614,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 605,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&category=pantry",
+        "type": "fetch",
+        "dur": 605,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 355,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 333,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 327,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 318,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 286,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/store.min.js",
+        "type": "script",
+        "dur": 284,
+        "transfer": 5932,
+        "decoded": 18399
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 280,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/store-cover.min.js",
+        "type": "script",
+        "dur": 262,
+        "transfer": 1478,
+        "decoded": 2309
+      },
+      {
+        "name": "/assets/js/recent-views.min.js",
+        "type": "script",
+        "dur": 253,
+        "transfer": 909,
+        "decoded": 1559
+      },
+      {
+        "name": "/assets/js/product-card.min.js",
+        "type": "script",
+        "dur": 240,
+        "transfer": 2215,
+        "decoded": 7571
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 222,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 204,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/chat-window.min.js",
+        "type": "script",
+        "dur": 196,
+        "transfer": 5574,
+        "decoded": 20073
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 195,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/fab-drag.min.js",
+        "type": "script",
+        "dur": 182,
+        "transfer": 1574,
+        "decoded": 3390
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 169,
+        "transfer": 14050,
+        "decoded": 45288
+      }
+    ],
+    "page": "/store.html?store=bong",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2733,
+    "apiCalls": 4,
+    "apiBytes": 23345,
+    "scriptDurationMs": 53,
+    "layoutDurationMs": 69,
+    "recalcStyleMs": 35,
+    "taskDurationMs": 417
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 2818,
+    "loadEvent": 2846,
+    "fcp": 2392,
+    "lcp": 2392,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 1,
+    "longTaskMs": 180,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1816.8999999999942
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 1787.5
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 484.3999999999942
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 22295.70000000004
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 437.5
+      }
+    },
+    "slowest": [
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 2150,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 2031,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 1940,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 1820,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 1788,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 1733,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 1703,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 1613,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 1493,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 1375,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 1254,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 1163,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 1103,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 1042,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 775,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 624,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 606,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 606,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 477,
+        "transfer": 579,
+        "decoded": 301
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-slow3g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 5052,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 84,
+    "layoutDurationMs": 92,
+    "recalcStyleMs": 94,
+    "taskDurationMs": 813
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 3055,
+    "loadEvent": 3198,
+    "fcp": 2520,
+    "lcp": 2520,
+    "lcpElement": null,
+    "cls": 0.0134,
+    "longTasks": 1,
+    "longTaskMs": 181,
+    "requests": 27,
+    "transferred": 79154,
+    "decoded": 290889,
+    "byType": {
+      "fetch": {
+        "n": 4,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 2442.3000000000175
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 1841.6000000000058
+      },
+      "script": {
+        "n": 19,
+        "transfer": 52654,
+        "decoded": 147742,
+        "dur": 28788.20000000007
+      },
+      "img": {
+        "n": 2,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 23.39999999999418
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 410.19999999998254
+      }
+    },
+    "slowest": [
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 2352,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 2232,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 2210,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 2150,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 2003,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/store.min.js",
+        "type": "script",
+        "dur": 1972,
+        "transfer": 5932,
+        "decoded": 18399
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 1913,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 1842,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/store-cover.min.js",
+        "type": "script",
+        "dur": 1762,
+        "transfer": 1478,
+        "decoded": 2309
+      },
+      {
+        "name": "/assets/js/recent-views.min.js",
+        "type": "script",
+        "dur": 1704,
+        "transfer": 909,
+        "decoded": 1559
+      },
+      {
+        "name": "/assets/js/product-card.min.js",
+        "type": "script",
+        "dur": 1584,
+        "transfer": 2215,
+        "decoded": 7571
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 1468,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 1404,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 1284,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/chat-window.min.js",
+        "type": "script",
+        "dur": 1256,
+        "transfer": 5574,
+        "decoded": 20073
+      },
+      {
+        "name": "/assets/js/fab-drag.min.js",
+        "type": "script",
+        "dur": 1075,
+        "transfer": 1574,
+        "decoded": 3390
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 776,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 628,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&category=pantry",
+        "type": "fetch",
+        "dur": 619,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 610,
+        "transfer": 0,
+        "decoded": 0
+      }
+    ],
+    "page": "/store.html?store=bong",
+    "profile": "mobile-slow3g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 5402,
+    "apiCalls": 4,
+    "apiBytes": 23345,
+    "scriptDurationMs": 111,
+    "layoutDurationMs": 95,
+    "recalcStyleMs": 100,
+    "taskDurationMs": 931
+  },
+  {
+    "ttfbLocal": 2,
+    "domContentLoaded": 538,
+    "loadEvent": 554,
+    "fcp": 404,
+    "lcp": 404,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 1,
+    "longTaskMs": 79,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 17.800000000017462
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 201.89999999999418
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 94.20000000001164
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 3379.2000000000407
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 85.80000000001746
+      }
+    },
+    "slowest": [
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 332,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 309,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 277,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 268,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 261,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 257,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 254,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 234,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 202,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 192,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 182,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 176,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 173,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 159,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 116,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 102,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 87,
+        "transfer": 579,
+        "decoded": 301
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "other",
+        "dur": 86,
+        "transfer": 602,
+        "decoded": 549
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "img",
+        "dur": 85,
+        "transfer": 602,
+        "decoded": 549
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 9,
+        "transfer": 0,
+        "decoded": 0
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 0,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2762,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 43,
+    "layoutDurationMs": 43,
+    "recalcStyleMs": 44,
+    "taskDurationMs": 422
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 570,
+    "loadEvent": 591,
+    "fcp": 408,
+    "lcp": 408,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 1,
+    "longTaskMs": 119,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 918.1000000000058
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 207.79999999998836
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 104.59999999997672
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 3447.9000000000815
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 80.5
+      }
+    },
+    "slowest": [
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 323,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 315,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 310,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 306,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 303,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 279,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 279,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 264,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 261,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 249,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 244,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 208,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 198,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 187,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 183,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 172,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 168,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 123,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 109,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 94,
+        "transfer": 579,
+        "decoded": 301
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 300,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2797,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 47,
+    "layoutDurationMs": 55,
+    "recalcStyleMs": 56,
+    "taskDurationMs": 468
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 491,
+    "loadEvent": 512,
+    "fcp": 396,
+    "lcp": 396,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 1,
+    "longTaskMs": 65,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1815.2000000000116
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 188.39999999999418
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 93.70000000001164
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 3249.9000000000815
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 80.20000000001164
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 607,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 605,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 603,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 319,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 299,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 259,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 253,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 248,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 245,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 243,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 226,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 188,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 185,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 174,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 171,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 168,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 157,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 115,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 102,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 87,
+        "transfer": 579,
+        "decoded": 301
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2721,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 44,
+    "layoutDurationMs": 70,
+    "recalcStyleMs": 68,
+    "taskDurationMs": 533
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 503,
+    "loadEvent": 526,
+    "fcp": 404,
+    "lcp": 404,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 3613.2999999999884
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 190.19999999995343
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 105.70000000006985
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 3310.499999999942
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 80
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 1206,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 1204,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 1203,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 322,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 302,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 262,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 260,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 252,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 250,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 249,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 233,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 190,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 188,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 179,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 173,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 171,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 163,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 117,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 104,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "img",
+        "dur": 87,
+        "transfer": 602,
+        "decoded": 549
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 1200,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2734,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 50,
+    "layoutDurationMs": 50,
+    "recalcStyleMs": 109,
+    "taskDurationMs": 614
+  },
+  {
+    "ttfbLocal": 2,
+    "domContentLoaded": 487,
+    "loadEvent": 507,
+    "fcp": 404,
+    "lcp": 404,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 1,
+    "longTaskMs": 68,
+    "requests": 22,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 2516.5
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 198.90000000002328
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 110.29999999998836
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 3418.0999999999767
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 83.70000000001164
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 2517,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 328,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 311,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 274,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 273,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 264,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 258,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 251,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 237,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 199,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 195,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 187,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 181,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 178,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 163,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 121,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 106,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 92,
+        "transfer": 579,
+        "decoded": 301
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "img",
+        "dur": 89,
+        "transfer": 602,
+        "decoded": 549
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "other",
+        "dur": 84,
+        "transfer": 602,
+        "decoded": 549
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 2500,
+    "warm": false,
+    "loggedIn": false,
+    "wallMs": 2713,
+    "apiCalls": 1,
+    "apiBytes": 6991,
+    "scriptDurationMs": 38,
+    "layoutDurationMs": 53,
+    "recalcStyleMs": 174,
+    "taskDurationMs": 743
+  },
+  {
+    "ttfbLocal": 3,
+    "domContentLoaded": 223,
+    "loadEvent": 231,
+    "fcp": 164,
+    "lcp": 164,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 23,
+    "transferred": 0,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 2,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1211.5999999999767
+      },
+      "link": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 142598,
+        "dur": 4.7999999999883585
+      },
+      "img": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 549,
+        "dur": 14.699999999953434
+      },
+      "script": {
+        "n": 16,
+        "transfer": 0,
+        "decoded": 105604,
+        "dur": 539.7000000000698
+      },
+      "other": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 549,
+        "dur": 2.900000000023283
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 608,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 70,
+        "transfer": 0,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 36,
+        "transfer": 0,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 36,
+        "transfer": 0,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 34,
+        "transfer": 0,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 32,
+        "transfer": 0,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 32,
+        "transfer": 0,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 32,
+        "transfer": 0,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 32,
+        "transfer": 0,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 31,
+        "transfer": 0,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 30,
+        "transfer": 0,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 30,
+        "transfer": 0,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 30,
+        "transfer": 0,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 30,
+        "transfer": 0,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 30,
+        "transfer": 0,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 29,
+        "transfer": 0,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 23,
+        "transfer": 0,
+        "decoded": 301
+      },
+      {
+        "name": "/assets/img/favicon.svg",
+        "type": "img",
+        "dur": 6,
+        "transfer": 0,
+        "decoded": 549
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 5,
+        "transfer": 0,
+        "decoded": 142598
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": true,
+    "loggedIn": false,
+    "wallMs": 2437,
+    "apiCalls": 5,
+    "apiBytes": 36131,
+    "scriptDurationMs": 32,
+    "layoutDurationMs": 17,
+    "recalcStyleMs": 64,
+    "taskDurationMs": 461
+  },
+  {
+    "ttfbLocal": 7,
+    "domContentLoaded": 212,
+    "loadEvent": 230,
+    "fcp": 180,
+    "lcp": 180,
+    "lcpElement": null,
+    "cls": 0.0134,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "requests": 25,
+    "transferred": 0,
+    "decoded": 290889,
+    "byType": {
+      "fetch": {
+        "n": 2,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1216.7000000000116
+      },
+      "link": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 142598,
+        "dur": 2.2000000000116415
+      },
+      "script": {
+        "n": 19,
+        "transfer": 0,
+        "decoded": 147742,
+        "dur": 302.69999999995343
+      },
+      "other": {
+        "n": 1,
+        "transfer": 0,
+        "decoded": 549,
+        "dur": 2.3999999999650754
+      },
+      "img": {
+        "n": 2,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 9.400000000023283
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=listProducts&storeSlug=bong",
+        "type": "fetch",
+        "dur": 610,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=searchProducts&category=pantry",
+        "type": "fetch",
+        "dur": 607,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/store-cover.min.js",
+        "type": "script",
+        "dur": 44,
+        "transfer": 0,
+        "decoded": 2309
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 19,
+        "transfer": 0,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 19,
+        "transfer": 0,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 19,
+        "transfer": 0,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 19,
+        "transfer": 0,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 17,
+        "transfer": 0,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 17,
+        "transfer": 0,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 17,
+        "transfer": 0,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/chat-window.min.js",
+        "type": "script",
+        "dur": 17,
+        "transfer": 0,
+        "decoded": 20073
+      },
+      {
+        "name": "/assets/js/fab-drag.min.js",
+        "type": "script",
+        "dur": 17,
+        "transfer": 0,
+        "decoded": 3390
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 17,
+        "transfer": 0,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/product-card.min.js",
+        "type": "script",
+        "dur": 17,
+        "transfer": 0,
+        "decoded": 7571
+      },
+      {
+        "name": "/assets/js/recent-views.min.js",
+        "type": "script",
+        "dur": 16,
+        "transfer": 0,
+        "decoded": 1559
+      },
+      {
+        "name": "/assets/js/store.min.js",
+        "type": "script",
+        "dur": 16,
+        "transfer": 0,
+        "decoded": 18399
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 14,
+        "transfer": 0,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 7,
+        "transfer": 0,
+        "decoded": 8986
+      },
+      {
+        "name": "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit,w_200/sample.jpg",
+        "type": "img",
+        "dur": 7,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 6,
+        "transfer": 0,
+        "decoded": 45288
+      }
+    ],
+    "page": "/store.html?store=bong",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": true,
+    "loggedIn": false,
+    "wallMs": 2436,
+    "apiCalls": 6,
+    "apiBytes": 31924,
+    "scriptDurationMs": 21,
+    "layoutDurationMs": 29,
+    "recalcStyleMs": 56,
+    "taskDurationMs": 448
+  },
+  {
+    "ttfbLocal": 1,
+    "domContentLoaded": 487,
+    "loadEvent": 514,
+    "fcp": 364,
+    "lcp": 364,
+    "lcpElement": "h2",
+    "cls": 0.0385,
+    "longTasks": 1,
+    "longTaskMs": 56,
+    "requests": 24,
+    "transferred": 67210,
+    "decoded": 249300,
+    "byType": {
+      "fetch": {
+        "n": 3,
+        "transfer": 0,
+        "decoded": 0,
+        "dur": 1813.7999999999884
+      },
+      "link": {
+        "n": 1,
+        "transfer": 25898,
+        "decoded": 142598,
+        "dur": 157.09999999997672
+      },
+      "img": {
+        "n": 3,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 124.10000000009313
+      },
+      "script": {
+        "n": 16,
+        "transfer": 40108,
+        "decoded": 105604,
+        "dur": 3591.5999999999767
+      },
+      "other": {
+        "n": 1,
+        "transfer": 602,
+        "decoded": 549,
+        "dur": 79.70000000001164
+      }
+    },
+    "slowest": [
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHomePageData",
+        "type": "fetch",
+        "dur": 605,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec?action=getHeaderAds",
+        "type": "fetch",
+        "dur": 605,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "https://script.google.com/macros/s/AKfycby70Y4gCJtA5g2-4hKjdKoAxSJG22T0Tm_9bgup4fmPyid8YVdoYr23BbkB6Nh-kaSn/exec",
+        "type": "fetch",
+        "dur": 604,
+        "transfer": 0,
+        "decoded": 0
+      },
+      {
+        "name": "/assets/js/register-sw.min.js",
+        "type": "script",
+        "dur": 320,
+        "transfer": 2924,
+        "decoded": 7487
+      },
+      {
+        "name": "/assets/js/bottom-nav.min.js",
+        "type": "script",
+        "dur": 300,
+        "transfer": 2208,
+        "decoded": 5668
+      },
+      {
+        "name": "/assets/js/sticky-search.min.js",
+        "type": "script",
+        "dur": 298,
+        "transfer": 937,
+        "decoded": 1240
+      },
+      {
+        "name": "/assets/js/header-menu.min.js",
+        "type": "script",
+        "dur": 282,
+        "transfer": 2757,
+        "decoded": 9261
+      },
+      {
+        "name": "/assets/js/header-ads.min.js",
+        "type": "script",
+        "dur": 274,
+        "transfer": 1688,
+        "decoded": 3347
+      },
+      {
+        "name": "/assets/js/header-cart.min.js",
+        "type": "script",
+        "dur": 271,
+        "transfer": 902,
+        "decoded": 1191
+      },
+      {
+        "name": "/assets/js/home.min.js",
+        "type": "script",
+        "dur": 244,
+        "transfer": 2085,
+        "decoded": 5108
+      },
+      {
+        "name": "/assets/js/customer-auth.min.js",
+        "type": "script",
+        "dur": 223,
+        "transfer": 1094,
+        "decoded": 2164
+      },
+      {
+        "name": "/assets/js/auth.min.js",
+        "type": "script",
+        "dur": 221,
+        "transfer": 1363,
+        "decoded": 2708
+      },
+      {
+        "name": "/assets/js/cookie-consent.min.js",
+        "type": "script",
+        "dur": 206,
+        "transfer": 797,
+        "decoded": 874
+      },
+      {
+        "name": "/assets/js/card-cart.min.js",
+        "type": "script",
+        "dur": 197,
+        "transfer": 2053,
+        "decoded": 4542
+      },
+      {
+        "name": "/assets/js/cart.min.js",
+        "type": "script",
+        "dur": 194,
+        "transfer": 1767,
+        "decoded": 4068
+      },
+      {
+        "name": "/assets/js/helpers.min.js",
+        "type": "script",
+        "dur": 169,
+        "transfer": 14050,
+        "decoded": 45288
+      },
+      {
+        "name": "/assets/css/styles.min.css",
+        "type": "link",
+        "dur": 157,
+        "transfer": 25898,
+        "decoded": 142598
+      },
+      {
+        "name": "/assets/js/badges.min.js",
+        "type": "script",
+        "dur": 145,
+        "transfer": 3148,
+        "decoded": 8986
+      },
+      {
+        "name": "/assets/js/api.min.js",
+        "type": "script",
+        "dur": 131,
+        "transfer": 1756,
+        "decoded": 3371
+      },
+      {
+        "name": "/assets/js/config.min.js",
+        "type": "script",
+        "dur": 117,
+        "transfer": 579,
+        "decoded": 301
+      }
+    ],
+    "page": "/index.html",
+    "profile": "mobile-4g",
+    "apiLatency": 600,
+    "warm": false,
+    "loggedIn": true,
+    "wallMs": 2720,
+    "apiCalls": 3,
+    "apiBytes": 21757,
+    "scriptDurationMs": 62,
+    "layoutDurationMs": 60,
+    "recalcStyleMs": 77,
+    "taskDurationMs": 535
+  }
+]

@@ -1,0 +1,67 @@
+# Performance-budget gate. Two gates, both run on pull requests that touch
+# shipped assets or pages:
+#
+#   1. budgets  (primary)  — deterministic, no browser. Verifies the committed
+#      build is fresh (build:check), then measures the gzipped bytes every page
+#      ships and compares to performance-audit/budgets.json. Never flakes.
+#
+#   2. cwv      (backstop) — headless Chromium against a LOCAL gzip server,
+#      median of repeats, generous ceilings that only a gross regression trips.
+#
+# No live-site calls. Every number here is lab, against localhost, with the
+# backend mocked — see PERFORMANCE_MONITORING.md for the owner-run field
+# measurement (PageSpeed / CrUX, 75th percentile) that lab numbers cannot give.
+name: Performance budgets
+
+on:
+  pull_request:
+    paths:
+      - '**/*.html'
+      - 'assets/**'
+      - 'tools/**'
+      - 'performance-audit/**'
+      - 'sw.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/performance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  budgets:
+    name: Byte budgets (deterministic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install build tools
+        run: npm ci
+      - name: Verify committed build is fresh
+        run: npm run build:check
+      - name: Check performance budgets
+        run: node performance-audit/scripts/check-budgets.js
+
+  cwv:
+    name: Core Web Vitals (lab backstop)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install build tools
+        run: npm ci
+      - name: Install Playwright Chromium
+        run: |
+          npm i -D --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+      - name: Verify committed build is fresh
+        run: npm run build:check
+      - name: Core Web Vitals budget (lab, median of repeats)
+        run: node performance-audit/scripts/ci-cwv.js
