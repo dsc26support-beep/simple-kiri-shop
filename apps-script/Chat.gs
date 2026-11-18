@@ -533,7 +533,7 @@ function resolveChatRequest(body, opts) {
     if (!isStoreBrowsable(storeOwner)) return { ok: false, error: 'Store not found' };
     // Guests are viewers (signedInCustomer): they can still READ a chat they
     // started before (the lookup below), but sending needs a sign-in.
-    // customerAuthToken is the meetings flow's name for the same session.
+    // customerAuthToken is an accepted alias for the same customer session.
     body.customerSession = body.customerSession || body.customerAuthToken;
     if (!signedInCustomer(body.customerSession)) return signInRequiredFail('message the seller');
     var conv = findOrCreateConversation(storeOwner, storeSlug, customerToken, body.customerName);
@@ -810,11 +810,7 @@ function actionGetConversation(body) {
     conversation: publicConversationFields(resolved.conversation),
     messages: page.messages.map(publicMessageFields),
     hasMoreBefore: page.hasMoreBefore,
-    otherPartyTyping: otherPartyTyping,
-    // Rides this same poll rather than a separate request - see
-    // activeIncomingCall's header comment in Meetings.gs. senderType here is
-    // the CALLER's own side, so this looks for a ring addressed TO them.
-    incomingCall: activeIncomingCall(resolved.conversation.ConversationId, resolved.senderType)
+    otherPartyTyping: otherPartyTyping
   });
 }
 
@@ -869,14 +865,8 @@ function actionGetVendorConversations(owner, body) {
   var all = listConversationsForOwner(owner.OwnerId).filter(function (c) { return c.Status !== 'deleted'; });
   var limit = clampPageSize(body.limit, DEFAULT_CONVERSATION_PAGE_SIZE, MAX_CONVERSATION_PAGE_SIZE);
   var offset = Math.max(0, Number(body.offset) || 0);
-  // One full scan of Meetings (ringingConversationIdsForVendor), not one per
-  // row - see that function's header comment - so a ring can highlight which
-  // conversation in the list to open even before the vendor has it open.
-  var ringing = ringingConversationIdsForVendor(owner.OwnerId);
   var page = all.slice(offset, offset + limit).map(function (c) {
-    var fields = publicConversationFields(c);
-    fields.hasIncomingCall = !!ringing[c.ConversationId];
-    return fields;
+    return publicConversationFields(c);
   });
   return ok({ conversations: page, total: all.length, hasMore: offset + limit < all.length });
 }

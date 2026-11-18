@@ -32,19 +32,19 @@ const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
       } catch (e) {}
     });
     await page.goto(BASE + '/customer-messages.html', { waitUntil: 'load' });
-    await page.waitForSelector('.inbox-thread');
+    await page.waitForSelector('.msgr-thread');
 
     const st = await page.evaluate(() => {
-      const rows = [...document.querySelectorAll('.inbox-thread')];
+      const rows = [...document.querySelectorAll('.msgr-thread')];
       return {
         count: rows.length,
         order: rows.map(r => r.dataset.slug),
         // The unread dot became a count badge on the avatar. These fixtures
         // send no unreadCount, so this is also the fallback path in situ:
         // a device talking to a backend that has not been redeployed.
-        firstUnread: !!rows[0].querySelector('.inbox-unread-badge'),
-        secondUnread: !!rows[1].querySelector('.inbox-unread-badge'),
-        secondBadgeText: (rows[1].querySelector('.inbox-unread-badge') || {}).textContent,
+        firstUnread: !!rows[0].querySelector('.msgr-avatar-badge'),
+        secondUnread: !!rows[1].querySelector('.msgr-avatar-badge'),
+        secondBadgeText: (rows[1].querySelector('.msgr-avatar-badge') || {}).textContent,
         sentStores: null,
       };
     });
@@ -58,10 +58,14 @@ const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
     ok('vendor-last thread shows an unread badge (no seen)', st.secondUnread === true);
     ok('fallback badge is 1, never an invented number', st.secondBadgeText === '1', st.secondBadgeText);
 
-    // click kv -> sets seen + navigates with chat=open
-    await page.click('.inbox-thread[data-slug="kv"]');
-    await page.waitForURL('**/store.html?store=kv&chat=open', { timeout: 4000 }).catch(() => {});
-    ok('click navigates to store chat deep-link', /store\.html\?store=kv&chat=open/.test(page.url()), page.url());
+    // click kv -> sets seen + opens the conversation in-page (two-pane on wide,
+    // full-screen on phone), replacing the old navigate-to-store deep link.
+    await page.click('.msgr-thread[data-slug="kv"]');
+    await page.waitForSelector('#cmsg-layout.has-open', { timeout: 4000 }).catch(() => {});
+    const opened = await page.evaluate(() => document.getElementById('cmsg-layout').classList.contains('has-open'));
+    const seen = await page.evaluate(() => localStorage.getItem('skiri_inbox_seen_kv'));
+    ok('click opens the conversation in-page', opened === true, page.url());
+    ok('click marks the thread seen on this device', !!seen, String(seen));
     await ctx.close();
   }
 
@@ -84,8 +88,8 @@ const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
       } catch (e) {}
     }, NOW);
     await page.goto(BASE + '/customer-messages.html', { waitUntil: 'load' });
-    await page.waitForSelector('.inbox-thread');
-    const unread = await page.evaluate(() => !!document.querySelector('.inbox-unread-badge'));
+    await page.waitForSelector('.msgr-thread');
+    const unread = await page.evaluate(() => !!document.querySelector('.msgr-avatar-badge'));
     ok('seen timestamp clears the unread badge', unread === false);
     await ctx.close();
   }

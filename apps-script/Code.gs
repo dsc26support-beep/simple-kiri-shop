@@ -22,13 +22,6 @@ var PUBLIC_POST_ACTIONS = [
   // in PROTECTED_POST_ACTIONS - they do their own optional auth internally
   // via resolveChatRequest() in Chat.gs. See that file for why.
   'sendMessage', 'getConversation', 'markAsRead', 'sendChatImage', 'setTyping',
-  // Meetings: same shape as the chat actions just above - both sides call
-  // these from one action each, doing their own internal auth via
-  // resolveMeetingActor() in Meetings.gs (which itself composes
-  // resolveChatRequest, requireAuth and requireCustomerAuth - see that
-  // file's header for the full identity story).
-  'requestMeeting', 'startVideoCallNow', 'respondToMeeting', 'retryMeetingSpace', 'cancelMeeting',
-  'endMeeting', 'listMeetingsForConversation',
   // Customer accounts (passwordless email code) - all public; getProfile/logout
   // validate their own customer token internally via requireCustomerAuth.
   'registerCustomer', 'verifyCustomerEmail', 'loginCustomer', 'verifyCustomerLogin',
@@ -156,7 +149,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'secure1-2026-11-16';
+var APP_VERSION = 'nomeet1-2026-11-17';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -223,13 +216,6 @@ var REQUIRED_TABS = {
   // can never touch a transaction the way it must never touch Orders.
   SellerBadges: ['OwnerId', 'Badges', 'Score', 'MetricsJson', 'ReasonJson', 'UpdatedAt'],
   BadgeConfig: ['Key', 'Value', 'UpdatedAt'],
-  // Meeting requests + Google Meet video calls (Meetings.gs). Every meeting
-  // is anchored to one Conversations row (ConversationId) - see that file's
-  // header for why nothing here duplicates Conversations/Messages data.
-  Meetings: ['MeetingId', 'RequesterId', 'RequesterType', 'RecipientId', 'RecipientType',
-             'ConversationId', 'StoreSlug', 'Purpose', 'Notes', 'RequestedDate', 'RequestedTime',
-             'Timezone', 'Status', 'GoogleMeetSpaceName', 'GoogleMeetUrl', 'MeetFailureReason',
-             'CreatedAt', 'AcceptedAt', 'ReadyAt', 'CancelledAt', 'EndedAt', 'LastUpdatedAt'],
   // Marketing engine (Marketing.gs, MarketingEngine.gs). New tabs only -
   // nothing existing changes. SourceKey makes automatic campaigns one per
   // period; Attempts drives the retry limit; UnsubscribeToken is the one-tap
@@ -302,7 +288,6 @@ function actionCheckSetup() {
   if (typeof prepareVariantSave !== 'function') missingFiles.push('ProductVariants.gs');
   if (typeof actionGetHeaderAds !== 'function') missingFiles.push('HeaderAds.gs');
   if (typeof sellerBadgeIndex !== 'function') missingFiles.push('Badges.gs');
-  if (typeof actionRequestMeeting !== 'function') missingFiles.push('Meetings.gs');
   // createOrder and the Orders page call into it - a missing file stops checkout.
   if (typeof txOnOrderCreated !== 'function') missingFiles.push('Transactions.gs');
   if (typeof actionGetSellerDashboard !== 'function') missingFiles.push('Dashboards.gs');
@@ -500,13 +485,6 @@ function doPost(e) {
         case 'markAsRead': return jsonOut(actionMarkAsRead(body));
         case 'sendChatImage': return jsonOut(actionSendChatImage(body));
         case 'setTyping': return jsonOut(actionSetTyping(body));
-        case 'requestMeeting': return jsonOut(actionRequestMeeting(body));
-        case 'startVideoCallNow': return jsonOut(actionStartVideoCallNow(body));
-        case 'respondToMeeting': return jsonOut(actionRespondToMeeting(body));
-        case 'retryMeetingSpace': return jsonOut(actionRetryMeetingSpace(body));
-        case 'cancelMeeting': return jsonOut(actionCancelMeeting(body));
-        case 'endMeeting': return jsonOut(actionEndMeeting(body));
-        case 'listMeetingsForConversation': return jsonOut(actionListMeetingsForConversation(body));
         case 'registerCustomer': return jsonOut(actionRegisterCustomer(body));
         case 'verifyCustomerEmail': return jsonOut(actionVerifyCustomerEmail(body));
         case 'loginCustomer': return jsonOut(actionLoginCustomer(body));

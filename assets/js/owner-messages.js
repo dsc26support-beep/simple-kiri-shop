@@ -28,6 +28,7 @@ let activeHasMoreBefore = false;
 let renderedMessageIds = new Set();
 let isLoadingEarlierMessages = false;
 let searchQuery = '';
+let listFilter = 'all'; // 'all' | 'unread'
 let conversationPollTimer = null;
 let conversationPollDelayMs = CONVERSATION_POLL_MIN_MS;
 let listPollTimer = null;
@@ -41,10 +42,11 @@ async function init() {
   document.getElementById('store-name-label').textContent = shortStoreName(owner.storeName);
 
   document.getElementById('conversation-search').addEventListener('input', onSearchInput);
+  document.getElementById('msg-filter-all').addEventListener('click', () => setListFilter('all'));
+  document.getElementById('msg-filter-unread').addEventListener('click', () => setListFilter('unread'));
   document.getElementById('conversation-list').addEventListener('click', onConversationClick);
   document.getElementById('conversation-list-load-more').addEventListener('click', onLoadMoreConversations);
   document.getElementById('back-to-list-btn').addEventListener('click', closeConversation);
-  document.getElementById('video-call-btn').addEventListener('click', onMeetingsClick);
   document.getElementById('archive-btn').addEventListener('click', onArchive);
   document.getElementById('delete-btn').addEventListener('click', onDelete);
   document.getElementById('conversation-load-earlier-btn').addEventListener('click', loadEarlierConversationMessages);
@@ -102,27 +104,99 @@ function onSearchInput(e) {
   renderConversationList();
 }
 
+function setListFilter(filter) {
+  listFilter = filter;
+  const allBtn = document.getElementById('msg-filter-all');
+  const unreadBtn = document.getElementById('msg-filter-unread');
+  allBtn.classList.toggle('is-active', filter === 'all');
+  allBtn.setAttribute('aria-selected', String(filter === 'all'));
+  unreadBtn.classList.toggle('is-active', filter === 'unread');
+  unreadBtn.setAttribute('aria-selected', String(filter === 'unread'));
+  renderConversationList();
+}
+
 function renderConversationList() {
   const listEl = document.getElementById('conversation-list');
   const statusEl = document.getElementById('conversations-status');
   const loadMoreBtn = document.getElementById('conversation-list-load-more');
   const q = searchQuery.trim().toLowerCase();
+  const unreadTotal = ownerConversations.filter((c) => c.unreadByVendor).length;
   const filtered = ownerConversations.filter((c) => {
+    if (listFilter === 'unread' && !c.unreadByVendor) return false;
     if (!q) return true;
     const name = (c.customerName || 'Customer').toLowerCase();
     const preview = (c.lastMessagePreview || '').toLowerCase();
     return name.indexOf(q) !== -1 || preview.indexOf(q) !== -1;
   });
 
+  // Live "Unread (N)" count on the filter chip.
+  const unreadBtn = document.getElementById('msg-filter-unread');
+  if (unreadBtn) unreadBtn.textContent = unreadTotal > 0 ? `Unread (${unreadTotal})` : 'Unread';
+
   if (ownerConversations.length === 0) statusEl.textContent = 'No conversations yet.';
-  else if (filtered.length === 0) statusEl.textContent = 'No conversations match your search.';
-  else statusEl.textContent = '';
+  else if (filtered.length === 0) {
+    statusEl.textContent = listFilter === 'unread' && !q
+      ? 'No unread conversations.'
+      : 'No conversations match your search.';
+  } else statusEl.textContent = '';
 
   updateUnreadTitle();
 
+  // Load More only makes sense on the unfiltered "All" view - a filtered or
+  // searched subset is drawn from what's already loaded.
+  const showLoadMore = conversationsHasMore && listFilter === 'all' && !q;
+  loadMoreBtn.classList.toggle('hidden', !showLoadMore);
+
   listEl.innerHTML = filtered.map(renderConversationListItem).join('');
-  if (conversationsHasMore) loadMoreBtn.classList.remove('hidden');
-  else loadMoreBtn.classList.add('hidden');
+}
+
+// Today -> time; within a week -> weekday; older -> date. Same shape the
+// shopper inbox uses, so both sides read a timestamp the same way.
+function relTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const t = d.getTime();
+  if (!t || isNaN(t)) return '';
+  const now = new Date();
+  const DAY = 86400000;
+  if (now - t < DAY && d.getDate() === now.getDate()) {
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+  if (now - t < 7 * DAY) return d.toLocaleDateString([], { weekday: 'short' });
+  return d.toLocaleDateString();
+}
+
+// A small camera glyph stands in when the last message was a photo (the
+// backend sets the preview to "Photo" for an image-only message - the list
+// carries no image URL, so this flags it without claiming a specific picture).
+const PHOTO_GLYPH =
+  '<span class="msgr-thread-photo" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></span>';
+
+function renderConversationListItem(c) {
+  const rawName = c.customerName || 'Customer';
+  const name = escapeHtml(rawName);
+  const time = escapeHtml(relTime(c.lastMessageAt));
+  const isPhoto = c.lastMessagePreview === 'Photo';
+  const preview = escapeHtml(c.lastMessagePreview || 'No messages yet');
+  const isUnread = !!c.unreadByVendor;
+  const isActive = c.conversationId === activeConversationId;
+  const sub = c.status === 'archived' ? 'Customer · Archived' : 'Customer';
+  const badge = isUnread ? '<span class="msgr-avatar-badge" aria-hidden="true"></span>' : '';
+  const unreadLabel = isUnread ? '<span class="sr-only">Unread</span>' : '';
+
+  return `
+    <button type="button" class="msgr-thread${isUnread ? ' is-unread' : ''}${isActive ? ' is-active' : ''}" data-conversation-id="${escapeHtml(c.conversationId)}">
+      <span class="msgr-avatar"><span class="msgr-avatar-initials" aria-hidden="true">${escapeHtml(initials(rawName))}</span>${badge}</span>
+      <span class="msgr-thread-main">
+        <span class="msgr-thread-top">
+          <span class="msgr-thread-name">${name}${unreadLabel}</span>
+          <span class="msgr-thread-time">${time}</span>
+        </span>
+        <span class="msgr-thread-sub">${escapeHtml(sub)}</span>
+        <span class="msgr-thread-preview-row">${isPhoto ? PHOTO_GLYPH : ''}<span class="msgr-thread-preview">${preview}</span></span>
+      </span>
+    </button>
+  `;
 }
 
 /** Notification counter for the browser tab - the conversation-list poll is this page's own "chat is open" signal, so this stays live while the page is open. */
@@ -131,27 +205,8 @@ function updateUnreadTitle() {
   document.title = unreadCount > 0 ? `(${unreadCount}) ${BASE_TITLE}` : BASE_TITLE;
 }
 
-function renderConversationListItem(c) {
-  const name = escapeHtml(c.customerName || 'Customer');
-  const time = c.lastMessageAt ? escapeHtml(new Date(c.lastMessageAt).toLocaleString()) : '';
-  const preview = escapeHtml(c.lastMessagePreview || 'No messages yet');
-  const isUnread = !!c.unreadByVendor;
-  const isActive = c.conversationId === activeConversationId;
-  const archivedTag = c.status === 'archived' ? ' · Archived' : '';
-
-  return `
-    <button type="button" class="conversation-list-item${isUnread ? ' is-unread' : ''}${isActive ? ' is-active' : ''}" data-conversation-id="${escapeHtml(c.conversationId)}">
-      <span class="conversation-item-top-row">
-        <span class="conversation-item-name">${name}${isUnread ? '<span class="conversation-item-unread-dot" aria-label="Unread"></span>' : ''}</span>
-        <span class="conversation-item-time">${time}</span>
-      </span>
-      <span class="conversation-item-preview">${preview}${escapeHtml(archivedTag)}</span>
-    </button>
-  `;
-}
-
 function onConversationClick(e) {
-  const item = e.target.closest('.conversation-list-item');
+  const item = e.target.closest('.msgr-thread');
   if (!item) return;
   openConversation(item.dataset.conversationId);
 }
@@ -166,18 +221,20 @@ async function openConversation(conversationId) {
   activeHasMoreBefore = false;
   renderedMessageIds = new Set();
   updateLoadEarlierMessagesButton();
-  closeMeetingsPanel();
 
-  document.getElementById('messages-layout').classList.add('has-open-conversation');
-  document.getElementById('conversation-empty-state').classList.add('hidden');
+  const layout = document.getElementById('messages-layout');
+  layout.classList.add('has-open');
+  layout.classList.remove('has-empty');
   document.getElementById('conversation-detail').classList.remove('hidden');
 
   const conv = ownerConversations.find((c) => c.conversationId === conversationId);
-  document.getElementById('detail-customer-name').textContent = conv && conv.customerName ? conv.customerName : 'Customer';
+  const customerName = conv && conv.customerName ? conv.customerName : 'Customer';
+  document.getElementById('detail-customer-name').textContent = customerName;
+  document.getElementById('detail-avatar').textContent = initials(customerName);
   const statusBadge = document.getElementById('detail-status-badge');
   const status = conv ? conv.status : 'open';
   statusBadge.textContent = status;
-  statusBadge.className = 'status-badge status-' + status;
+  statusBadge.className = 'status-badge msgr-detail-sub status-' + status;
 
   if (conv) conv.unreadByVendor = false; // opening it is reading it, same as the customer-side chat window
   renderConversationList();
@@ -196,80 +253,11 @@ function closeConversation() {
   updateLoadEarlierMessagesButton();
   showTyping(false);
   stopConversationPolling();
-  closeMeetingsPanel();
-  document.getElementById('messages-layout').classList.remove('has-open-conversation');
-  document.getElementById('conversation-empty-state').classList.remove('hidden');
+  const layout = document.getElementById('messages-layout');
+  layout.classList.remove('has-open');
+  layout.classList.add('has-empty');
   document.getElementById('conversation-detail').classList.add('hidden');
   renderConversationList();
-}
-
-/**
- * Meetings (meeting requests). assets/js/meetings-ui.js is NOT one of this
- * page's <script defer> tags - it is fetched with a plain dynamic <script>
- * element, and only the first time the owner actually opens this panel, so a
- * normal inbox visit never pays for it. See that file's own header comment.
- *
- * The panel is closed (not just left stale) on every conversation switch -
- * see openConversation/closeConversation - so it's never possible to see one
- * conversation's meetings while believing they belong to another.
- */
-function loadMeetingsUi() {
-  if (window.MwaketeMeetings) return Promise.resolve(window.MwaketeMeetings);
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = '../assets/js/meetings-ui.min.js';
-    s.onload = () => resolve(window.MwaketeMeetings);
-    s.onerror = () => reject(new Error('Could not load meetings-ui'));
-    document.body.appendChild(s);
-  });
-}
-
-function meetingsCtx() {
-  return {
-    role: 'vendor',
-    // Read live on every call, not captured once - the vendor can switch to
-    // a different conversation while this panel is open.
-    params: () => ({ token: Auth.getToken(), conversationId: activeConversationId }),
-    canRequest: () => true, // a vendor is always a real, authenticated account - no sign-in gate needed
-    signInUrl: null
-  };
-}
-
-let activeMeetingsUi = null; // the { stop } handle mount() returns
-
-async function openMeetingsPanel() {
-  const host = document.getElementById('meeting-panel-host');
-  host.classList.remove('hidden');
-  try {
-    await loadMeetingsUi(); // no-op after the first call - the script itself stays cached
-  } catch (e) {
-    host.textContent = "Couldn't load Meetings. Please try again.";
-    return;
-  }
-  // Re-mounted fresh on every open, not just refreshed - cheap (one small,
-  // server-side-cached read) and guarantees the vendor never sees a stale
-  // card, or an abandoned request-form draft, left over from a different
-  // conversation.
-  activeMeetingsUi = window.MwaketeMeetings.mount(host, meetingsCtx());
-  host.classList.add('meeting-panel--mounted');
-}
-
-function closeMeetingsPanel() {
-  const host = document.getElementById('meeting-panel-host');
-  host.classList.add('hidden');
-  host.classList.remove('meeting-panel--mounted');
-  if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
-  activeMeetingsUi = null;
-}
-
-function onMeetingsClick() {
-  if (!activeConversationId) return;
-  const host = document.getElementById('meeting-panel-host');
-  const isMounted = host.classList.contains('meeting-panel--mounted');
-  // Not mounted (hidden, or visible only because the lazy load just failed
-  // and left its error text showing) -> open/retry. Mounted -> close.
-  if (!isMounted) openMeetingsPanel();
-  else closeMeetingsPanel();
 }
 
 /**
@@ -598,7 +586,7 @@ async function onArchive() {
   if (conv) conv.status = 'archived';
   const statusBadge = document.getElementById('detail-status-badge');
   statusBadge.textContent = 'archived';
-  statusBadge.className = 'status-badge status-archived';
+  statusBadge.className = 'status-badge msgr-detail-sub status-archived';
   renderConversationList();
 }
 

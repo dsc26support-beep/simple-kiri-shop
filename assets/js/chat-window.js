@@ -40,8 +40,6 @@ function initChatWindow() {
   const form = document.getElementById('chat-window-form');
   const input = document.getElementById('chat-message-input');
   const badge = document.getElementById('chat-unread-badge');
-  const meetingsBtn = document.getElementById('chat-video-call-btn');
-  const meetingPanelHost = document.getElementById('meeting-panel-host');
   const attachBtn = document.getElementById('chat-attach-btn');
   const imageInput = document.getElementById('chat-image-input');
   const previewEl = document.getElementById('chat-image-preview');
@@ -420,103 +418,6 @@ function initChatWindow() {
 
   if (loadEarlierBtn) loadEarlierBtn.addEventListener('click', loadEarlierMessages);
 
-  /**
-   * Meetings (meeting requests). assets/js/meetings-ui.js is NOT one of
-   * this page's <script defer> tags - it is fetched with a plain dynamic
-   * <script> element, and only the first time someone actually opens this
-   * panel, so a chat widget that's never used for a meeting costs a normal
-   * page load nothing extra. See that file's own header comment.
-   */
-  function loadMeetingsUi() {
-    if (window.MwaketeMeetings) return Promise.resolve(window.MwaketeMeetings);
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'assets/js/meetings-ui.min.js';
-      s.onload = () => resolve(window.MwaketeMeetings);
-      s.onerror = () => reject(new Error('Could not load meetings-ui'));
-      document.body.appendChild(s);
-    });
-  }
-
-  function meetingsCtx() {
-    return {
-      role: 'customer',
-      // Read live on every call (not captured once) - CustomerAuth.getToken()
-      // can change between panel opens if the customer signs in mid-visit.
-      params: () => ({
-        storeSlug,
-        customerToken,
-        customerName: getCustomerName(),
-        customerAuthToken: (typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken()) || ''
-      }),
-      // A signed-in-only requirement, one level above chat's own anonymous
-      // trust bar - see Meetings.gs's file header for why. Anonymous
-      // customers can still see and respond to a vendor-initiated meeting;
-      // they just cannot start one themselves.
-      canRequest: () => typeof CustomerAuth !== 'undefined' && CustomerAuth.isLoggedIn(),
-      // A function, read at tap time: the store's name may not have loaded
-      // yet when the panel first opens.
-      signInUrl: meetingSignInUrl
-    };
-  }
-
-  // customer-login.html's own nextDest() only follows same-site relative
-  // ?next= values (open-redirect guard) - chat=open&meetings=1 replays the
-  // exact deep link below so signing in lands the customer straight back in
-  // this panel, not just on the storefront. reason=meeting (+ the store's
-  // name) is what makes the sign-in page say why they were sent there; it's
-  // display-only and changes nothing about sign-in itself.
-  function meetingSignInUrl() {
-    const params = new URLSearchParams(window.location.search);
-    params.set('chat', 'open');
-    params.set('meetings', '1');
-    params.delete('video');
-    const page = window.location.pathname.split('/').pop() || 'store.html';
-    const login = new URLSearchParams({ next: page + '?' + params.toString(), reason: 'meeting' });
-    if (vendorStoreName && vendorStoreName !== 'This Store') login.set('store', vendorStoreName);
-    return 'customer-login.html?' + login.toString();
-  }
-
-  let activeMeetingsUi = null; // the { stop } handle mount() returns
-
-  async function openMeetingsPanel() {
-    meetingPanelHost.classList.remove('hidden');
-    // While Meetings is open it has the chat to itself: the "What's your
-    // name?" prompt is flex: 1 and would otherwise push Request Meeting below
-    // the bottom of a phone screen. Closing the panel brings the prompt back.
-    body.classList.add('chat-window-body--meetings');
-    try {
-      await loadMeetingsUi(); // no-op after the first call - the script itself stays cached
-    } catch (e) {
-      meetingPanelHost.textContent = "Couldn't load Meetings. Please try again.";
-      return;
-    }
-    // Re-mounted fresh on every open, not just refreshed - cheap (one small,
-    // server-side-cached read) and guarantees no stale card or abandoned
-    // request-form draft can ever be left showing from a previous open.
-    activeMeetingsUi = window.MwaketeMeetings.mount(meetingPanelHost, meetingsCtx());
-    meetingPanelHost.classList.add('meeting-panel--mounted');
-  }
-
-  function closeMeetingsPanel() {
-    meetingPanelHost.classList.add('hidden');
-    body.classList.remove('chat-window-body--meetings');
-    meetingPanelHost.classList.remove('meeting-panel--mounted');
-    if (activeMeetingsUi && activeMeetingsUi.stop) activeMeetingsUi.stop();
-    activeMeetingsUi = null;
-  }
-
-  if (meetingsBtn) {
-    meetingsBtn.addEventListener('click', () => {
-      // Not mounted (hidden, or visible only because the lazy load just
-      // failed and left its error text showing) -> open/retry. Mounted ->
-      // close.
-      const isMounted = meetingPanelHost.classList.contains('meeting-panel--mounted');
-      if (!isMounted) openMeetingsPanel();
-      else closeMeetingsPanel();
-    });
-  }
-
   function scheduleNextPoll() {
     pollTimer = setTimeout(pollTick, pollDelayMs);
   }
@@ -826,13 +727,10 @@ function initChatWindow() {
     if (signInGateEl) signInGateEl.classList.add('hidden');
   }
 
-  // Straight back into this chat after signing in (same deep link as
-  // meetingSignInUrl, without the Meetings panel).
+  // Straight back into this chat after signing in.
   function messageSignInUrl() {
     const params = new URLSearchParams(window.location.search);
     params.set('chat', 'open');
-    params.delete('meetings');
-    params.delete('video');
     const page = window.location.pathname.split('/').pop() || 'store.html';
     return CustomerAuth.signInUrl('message', page + '?' + params.toString());
   }
@@ -845,7 +743,6 @@ function initChatWindow() {
     win.style.bottom = '';
     win.style.maxHeight = '';
     stopPolling();
-    if (meetingPanelHost) closeMeetingsPanel();
     fab.focus();
   }
 
@@ -865,13 +762,9 @@ function initChatWindow() {
   });
 
   // Deep-link: store.html?store=<slug>&chat=open jumps straight into the chat -
-  // used by the customer Messages inbox to open a tapped conversation, and by
-  // meetingSignInUrl() above (with &meetings=1 added) so a customer sent to
-  // sign in lands back in the Meetings panel. video=1 is the same thing from
-  // links made before video calls were removed.
+  // used by the customer Messages inbox to open a tapped conversation.
   if (storeSlug && getQueryParam('chat') === 'open') {
     openWindow();
-    if (getQueryParam('meetings') === '1' || getQueryParam('video') === '1') openMeetingsPanel();
   }
 
   closeBtn.addEventListener('click', closeWindow);
