@@ -29,7 +29,8 @@ const box = makeBox({
   CustomerCodes: [['Token', 'Email', 'Code', 'Purpose', 'Name', 'Phone', 'CreatedAt', 'ExpiresAt', 'Attempts', 'LinkHash', 'PasswordHash']],
   Products: [['ProductId', 'OwnerId', 'StoreSlug', 'Name', 'Description', 'Status', 'Category', 'ListingType', 'Views']],
   Variants: [['VariantId', 'ProductId', 'OwnerId', 'Label', 'Price', 'StockQty', 'Status']],
-  Orders: [['OrderId', 'OwnerId', 'StoreSlug', 'CustomerName', 'CustomerPhone', 'CustomerEmail', 'ItemsSummary', 'Total', 'Status', 'CreatedAt', 'UpdatedAt']]
+  Orders: [['OrderId', 'OwnerId', 'StoreSlug', 'CustomerName', 'CustomerPhone', 'CustomerEmail', 'ItemsSummary', 'Total', 'Status', 'CreatedAt', 'UpdatedAt']],
+  TwoFACodes: [['Token', 'OwnerId', 'Code', 'Purpose', 'CreatedAt', 'ExpiresAt', 'Attempts']]
 }, { guest: true });
 box.__props.PEPPER = 'test-pepper';
 box.__props.SITE_BASE_URL = 'https://mwakete.com';
@@ -55,7 +56,12 @@ function openStore(customerToken, storeName) {
   const r = box.actionRegisterOwner({ storeName: storeName, password: 'storepass1', phone: String(++phoneSeq),
     messenger: storeName.toLowerCase().replace(/\W+/g, '.'), about: 'Goods', customerToken: customerToken });
   if (!r.ok) throw new Error('openStore failed: ' + storeName + ' ' + J(r));
-  return box.actionOwnerFromCustomer({ customerToken: customerToken }).token;
+  const s = box.actionOwnerFromCustomer({ customerToken: customerToken });
+  if (!s.twoFactorRequired) return s.token;
+  // Admin accounts now always get an emailed sign-in code (security extra, Nov 2026);
+  // complete it so this helper still returns a usable seller token.
+  const email = owners().find((o) => o.StoreName === storeName).Email;
+  return box.actionVerifyLoginCode({ pendingToken: s.pendingToken, code: codeIn(lastMailTo(email)) }).token;
 }
 
 const custA = makeCustomer('Ana', 'ana@x.test', 'coconut99');
