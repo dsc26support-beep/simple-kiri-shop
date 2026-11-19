@@ -1,0 +1,24 @@
+# gitleaks configuration for Mwakete.
+#
+# Extends gitleaks' default ruleset and allowlists the handful of PUBLIC,
+# non-secret identifiers the static site must ship in the clear. Real secrets
+# never live in this repo - they are stored in Apps Script Script Properties
+# (PEPPER, Cloudinary, Resend, Facebook app secret, Microsoft Graph, ...). See
+# docs/secure-deployment-checklist.md and docs/security-audit-2026-11.md.
+title = "Mwakete gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public, non-secret identifiers that are meant to ship in frontend code"
+# Only inside config.js, so the allowlist cannot hide a real secret elsewhere.
+paths = [
+  '''assets/js/config\.js''',
+]
+regexes = [
+  # Apps Script web-app deployment URL - a public endpoint, not a credential.
+  '''AKfycb[0-9A-Za-z_-]{40,}''',
+  # Google OAuth *client ID* (public by design; the client SECRET is server-side only).
+  '''[0-9]+-[0-9a-z]+\.apps\.googleusercontent\.com''',
+]

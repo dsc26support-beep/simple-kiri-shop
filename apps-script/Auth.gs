@@ -486,7 +486,13 @@ function actionOwnerFromCustomer(body) {
     logAuthEvent('seller-linked', owner.OwnerId, 'customer ' + customer.CustomerId + ' by email');
   }
 
-  if (String(owner.TwoFAEnabled) === 'true' && owner.Email) {
+  // Admins always get an emailed one-time code at sign-in, whether or not they
+  // turned 2FA on (security audit 2026-11, approved extra). isOwnerAdmin keys on
+  // the account's confirmed Email (Admin.gs), which an admin always has, so the
+  // && owner.Email guard never strands one. This reuses the existing opt-in 2FA
+  // path end to end (issue -> verifyLoginCode -> issueSession); the admin pages
+  // stay gated by isOwnerAdmin on every action regardless (Stage 3).
+  if ((String(owner.TwoFAEnabled) === 'true' || isOwnerAdmin(owner)) && owner.Email) {
     var pending = issueTwoFACode(owner.OwnerId, owner.Email, owner.StoreName, 'login', owner);
     return ok({ twoFactorRequired: true, pendingToken: pending.token });
   }

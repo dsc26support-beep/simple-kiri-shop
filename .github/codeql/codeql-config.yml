@@ -1,0 +1,16 @@
+name: "Mwakete CodeQL config"
+
+# Analyse the site's own source JavaScript only. The paths below are the code a
+# human writes and ships; everything else is generated or vendored.
+paths:
+  - assets/js
+  - tools
+  - sw.js
+
+paths-ignore:
+  # Generated build output - a copy of the source above, byte-for-byte minified.
+  # Scanning it would double every finding and point at the wrong file.
+  - '**/*.min.js'
+  # Vendored third-party library (qrcode, MIT). Pinned and SRI-covered where it
+  # matters; not our code to fix, and it floods results with its own patterns.
+  - 'assets/js/qrcode-lib.js'
