@@ -1,0 +1,61 @@
+# CodeQL static analysis (security audit 2026-11, Stage 4 / finding 7).
+#
+# Scans the site's own JavaScript for security bugs (XSS sinks, unsafe DOM,
+# tainted data flow) and uploads results to the repo's Security tab. Code
+# scanning is free on public repositories.
+#
+# SCOPE: the frontend source JS (assets/js, tools, sw.js). The generated
+# *.min.js twins and the vendored qrcode-lib are excluded (see codeql-config.yml)
+# so findings point at real source, not build output. The Apps Script backend
+# (apps-script/*.gs) is NOT analysed here: CodeQL's JS extractor keys off the
+# .js extension and does not pick up .gs files. That backend is covered instead
+# by the gas-harness unit suites and the Stage 3 access-control suite
+# (tests/test-security-stage3.js) - see docs/security-audit-2026-11.md.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.js'
+      - '.github/workflows/codeql.yml'
+      - '.github/codeql/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.js'
+      - '.github/workflows/codeql.yml'
+      - '.github/codeql/**'
+  schedule:
+    # Weekly, so a newly published CodeQL query catches a latent issue even
+    # when nothing changed. Monday 03:27 UTC (off-peak, jittered minute).
+    - cron: '27 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze JavaScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      security-events: write   # upload SARIF to the Security tab
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          config-file: ./.github/codeql/codeql-config.yml
+          queries: security-extended
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
