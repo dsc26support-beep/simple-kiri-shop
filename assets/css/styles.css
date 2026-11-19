@@ -4744,14 +4744,29 @@ legend {
   padding-bottom: var(--space-2);
 }
 
-/* Reserve the trending-stores carousel's height (a viewport-independent 94px:
-   a 64px logo chip + name line + padding) from first paint, so when store
-   logos arrive after getHomePageData the row does not grow from nothing and
-   push the products shelf below it down. This removes the dominant homepage
-   layout shift (CLS 0.0385 -> ~0.025, well inside the 0.1 "good" bar). A small
-   residual remains from the one-line "Loading" status above collapsing as it
-   clears; eliminating that cleanly would need the status taken out of flow,
-   not a size reservation, so it is left rather than risk a visual change. */
+/* Keep the trending-stores section from shifting as it loads (index CLS -> ~0).
+   Two parts working together inside .logo-carousel-frame:
+   1. The carousel's height is reserved at a viewport-independent 94px (a 64px
+      logo chip + name line + padding) from first paint, so arriving store logos
+      do not grow the row from nothing and push the products shelf below down.
+   2. The one-line "Loading" status that precedes the carousel is taken OUT OF
+      FLOW (absolute, overlaying the top of the reserved area). In normal flow it
+      collapsed to nothing when cleared and nudged the reserved carousel up ~20px
+      (the residual the size reservation alone could not remove); out of flow it
+      occupies no layout height, so clearing it moves nothing.
+   The frame's height comes from the 94px list; the heading's own margin-bottom
+   keeps the heading->carousel gap exactly as before (the empty status never
+   contributed to it). */
+.logo-carousel-frame {
+  position: relative;
+}
+
+#trending-stores-status {
+  position: absolute;
+  inset: 0 0 auto 0;
+  margin: 0;
+}
+
 #trending-stores-list {
   min-height: 94px;
 }
