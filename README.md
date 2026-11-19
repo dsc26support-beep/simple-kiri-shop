@@ -183,13 +183,18 @@ Sheet and deploy the Apps Script backend under your own Google account first.
    by `Category` being `rentals` or `services` — see "Booking listings"
    below.)
 
-2. **Extensions → Apps Script.** Create a `.gs` file for each file in
-   `apps-script/` (`Code.gs`, `Db.gs`, `Utils.gs`, `Auth.gs`, `Products.gs`,
-   `Bookings.gs`, `Orders.gs`, `Images.gs`, `Reminders.gs`, `Chat.gs`,
-   `Badges.gs`) and
-   paste in the matching source from this repo. (`Chat.gs` is data-layer
-   helpers only — see the Conversations/Messages note above — safe to
-   include now even though nothing calls it yet.)
+2. **Deploy the backend.** Strongly preferred: use **`clasp`**, which pushes
+   **every** file in `apps-script/` in one command — see
+   [docs/apps-script-deploy.md](docs/apps-script-deploy.md). Hand-pasting files
+   one by one is how a deploy once shipped without `Inventory.gs` and blanked the
+   whole storefront.
+
+   If you must paste by hand: **Extensions → Apps Script**, and create a `.gs`
+   file for **every** file in `apps-script/` (not a subset — the folder has ~49
+   files, including `Inventory.gs`, `Featuring.gs`, `ProductDetails.gs` and more),
+   pasting the matching source from this repo. Then run `?action=checkSetup` and
+   confirm `setupOk:true` with an empty `problems` list **before** calling it
+   done — it now reports any missing core file or tab.
 
 3. **Project Settings → Script Properties**, add:
    - `PEPPER` — a long random string (used to salt+pepper password hashes).
