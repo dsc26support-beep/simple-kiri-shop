@@ -2,3 +2,7 @@
 # GitHub Pages serves this repo as-is, so node_modules must not be committed.
 node_modules/
 npm-debug.log*
+
+# clasp (Apps Script CLI) sign-in credentials - NEVER commit these. The project
+# config (.clasp.json) is safe to commit; the login token (.clasprc.json) is not.
+.clasprc.json

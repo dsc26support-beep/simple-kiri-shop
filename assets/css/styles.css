@@ -1064,10 +1064,6 @@ footer.site-footer .copyright {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.floating-action-btn--left {
-  left: var(--space-3);
-}
-
 .floating-action-btn--right {
   right: max(var(--space-3), env(safe-area-inset-right));
 }
@@ -1269,56 +1265,6 @@ footer.site-footer .copyright {
   font-size: 0.85rem;
   line-height: 1.4;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-}
-
-/* Cart button on store.html: light purple (--color-purple-light, same hue the
-   chat FAB uses), 25%-transparent background, sized at ~100.5%. transform-
-   origin keeps it anchored to the left/bottom edges as it scales, rather
-   than scaling from its center and drifting off position. */
-.floating-action-btn--cart {
-  transform: scale(1.005);
-  transform-origin: left bottom;
-  background: rgba(106, 97, 184, 0.75); /* --color-blue-light */
-}
-
-/* The cart button escalates its look as distinct products are added (see
-   updateCartCount / animateCartOnAdd in store.js). Effects stack and track the
-   current count. Two-class selectors outspecify the base --cart rule above. */
-
-/* 1+ items: solid deep brand purple (over the resting translucent light purple). */
-.floating-action-btn--cart.cart-fab--bold {
-  background: var(--color-purple);
-}
-
-/* 2+ items: relocate from bottom-left to a fixed top-right corner, and stay. */
-.floating-action-btn--cart.cart-fab--corner {
-  left: auto;
-  right: max(var(--space-3), env(safe-area-inset-right));
-  bottom: auto;
-  top: max(var(--space-3), env(safe-area-inset-top));
-  transform-origin: right top;
-}
-
-/* 3rd item added: flash twice; each add after that: one blink. Flashes between
-   the deep purple and light purple so the white label stays readable throughout. */
-@keyframes cart-bg-flash {
-  0%, 100% { background-color: var(--color-purple); }
-  50%      { background-color: var(--color-purple-light); }
-}
-
-.floating-action-btn--cart.cart-fab--flash2 {
-  animation: cart-bg-flash 0.35s ease 2;
-}
-
-.floating-action-btn--cart.cart-fab--blink {
-  animation: cart-bg-flash 0.35s ease 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .floating-action-btn--cart.cart-fab--flash2,
-  .floating-action-btn--cart.cart-fab--blink {
-    animation: none;
-  }
 }
 
 /* "Continue Shopping" button on cart.html: 50% smaller, light purple
@@ -4270,17 +4216,9 @@ body.has-header-menu header.site-header > .container:first-of-type {
     display: none;
   }
 
-  /* Lift existing floating buttons above the bar (only where the bar exists).
-
-     :not(.cart-fab--corner) matters. The cart FAB moves to the TOP-right at 2+
-     items, and that variant sets `bottom: auto` - but this selector is more
-     specific (0,3,1 vs 0,2,0), so it put `bottom` back. With both `top` and
-     `bottom` resolved, a fixed element stretches between them: the pill grew
-     into a 760px-tall blue column down the middle of the phone. Nothing to
-     lift anyway - the corner button is nowhere near the bottom bar. */
+  /* Lift floating buttons above the bar (only where the bar exists). */
   body.has-bottom-nav .chat-fab-btn,
-  body.has-bottom-nav .floating-action-btn--right,
-  body.has-bottom-nav .floating-action-btn--left:not(.cart-fab--corner) {
+  body.has-bottom-nav .floating-action-btn--right {
     bottom: calc(var(--bottom-nav-h) + max(var(--space-3), env(safe-area-inset-bottom)));
   }
 
@@ -8798,8 +8736,7 @@ form.search-box.is-pinned::before {
   body.has-bottom-nav { padding-bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + 4px + env(safe-area-inset-bottom)); }
 
   body.has-bottom-nav .chat-fab-btn,
-  body.has-bottom-nav .floating-action-btn--right,
-  body.has-bottom-nav .floating-action-btn--left:not(.cart-fab--corner) {
+  body.has-bottom-nav .floating-action-btn--right {
     bottom: calc(var(--bottom-nav-h) + var(--bottom-nav-gap) * 2 + max(var(--space-2), env(safe-area-inset-bottom)));
   }
 
