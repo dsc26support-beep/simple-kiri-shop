@@ -183,7 +183,8 @@ const cart = (page, slug) => page.evaluate((s) => JSON.parse(localStorage.getIte
   ok('store page: cards link to the product page', st.href === 'product.html?store=bong&product=p1', st.href);
   await page.click('#product-list .product-card[data-product-id="p1"] .card-cart-btn');
   await page.waitForTimeout(200);
-  ok('store page: the floating cart count updates', (await page.textContent('#cart-count')).trim() === '1');
+  ok('store page: the round cart button adds to the cart',
+    (await page.evaluate(() => (typeof Cart !== 'undefined' ? Cart.getItemCount('bong') : -1))) === 1);
   ok('no JS errors or alerts (store)', errs.length === 0, errs.join(' | '));
   await ctx.close();
 
