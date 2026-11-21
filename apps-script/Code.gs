@@ -156,7 +156,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'admincode1-2026-11-18';
+var APP_VERSION = 'secure1-2026-11-19';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -244,6 +244,13 @@ var REQUIRED_TABS = {
                          'LastPromotionalEmailAt', 'UpdatedAt', 'OptInAt', 'UnsubscribeToken']
 };
 
+// Core data tabs whose absence takes the whole storefront or checkout down, but
+// which are deliberately NOT in REQUIRED_TABS: that list also drives setupSheets,
+// which rewrites header row 1, and these hold live data (many rows) where that
+// would be unsafe. checkSetup therefore only confirms they EXIST - it never
+// touches their headers. A missing one here is reported like any other problem.
+var CRITICAL_TABS = ['Products', 'Variants', 'Owners', 'Orders', 'Conversations', 'Messages'];
+
 /**
  * Public setup self-check: reports which required tabs/headers are wrong and
  * whether the optional pieces are configured. Deliberately returns only tab
@@ -311,6 +318,18 @@ function actionCheckSetup() {
   if (typeof actionPosPush !== 'function') missingFiles.push('IntegrationHub.gs');
   if (typeof runPosOutbox !== 'function') missingFiles.push('IntegrationOutbox.gs');
   if (typeof actionPosCheckout !== 'function') missingFiles.push('Pos.gs');
+  // Storefront / checkout / messaging files whose absence takes a whole public
+  // flow down. Inventory.gs joined after a deploy that omitted it threw
+  // "availableOf is not defined" on every product list and blanked the whole
+  // storefront while this check still read setupOk:true (19 Nov 2026).
+  if (typeof availableOf !== 'function') missingFiles.push('Inventory.gs');
+  if (typeof productGalleryOf !== 'function') missingFiles.push('Images.gs');
+  if (typeof markPaidFeatured !== 'function') missingFiles.push('Featuring.gs');
+  if (typeof productDetailsListOf !== 'function') missingFiles.push('ProductDetails.gs');
+  if (typeof getTopProductsCached !== 'function') missingFiles.push('Products.gs');
+  if (typeof actionGetConversation !== 'function') missingFiles.push('Chat.gs');
+  if (typeof actionCreateOrder !== 'function') missingFiles.push('Orders.gs');
+  if (typeof actionGetInvoiceDocument !== 'function') missingFiles.push('Invoices.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -324,6 +343,12 @@ function actionCheckSetup() {
   if (!adminEmailsSet) {
     problems.push('ADMIN_EMAILS script property is not set (needed only for the admin back-office)');
   }
+
+  // Existence only - getSheet throws when a tab is absent (Db.gs), same as the
+  // REQUIRED_TABS audit above. Never reads or rewrites a header.
+  CRITICAL_TABS.forEach(function (name) {
+    try { getSheet(name); } catch (err) { problems.push('Missing critical tab: ' + name); }
+  });
 
   return ok({
     version: APP_VERSION,
