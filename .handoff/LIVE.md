@@ -1,30 +1,31 @@
-# Handoff: POS Integration Hub + native POS
+# Handoff: merge CLS PR #180 (Mwakete)
 
 ## Goal
-Owner's master prompt: audit, then extend existing inventory sync (no duplicate system) with POS hub (signed push, mappings, outbox), native POS, tests, docs, final report. No deploy/merge/prod changes.
+Owner said "Merge 178" then "Merge the CLS PR" then "Option 1: push the fix and merge 180". Done = PR merged, owner sees it live.
 
 ## Next steps
-0. Draft PR #131 (branch claude/inventory-help-pos-text): rewrote stale help line in owner/inventory-help.html (CSV works; signed-push + native POS exist behind POS_HUB; named providers not available). Owner asked 'import it' (assumed 'update it'). Merge only on explicit OK.
-0. Owner asked for deploy steps+raw links; gave them (branch raw links, claude/pos-integration; swap to main after merge). Owner has NOT yet confirmed deploy: await getVersion=pos1-2026-10-22 + checkSetup.
-1. Owner: review draft PR #127 (dsc26support-beep/simple-kiri-shop). Merge only with explicit OK.
-2. Owner deploy (manual, DEPLOY.md): backup sheet; paste IntegrationHub/IntegrationOutbox/Pos.gs + changed Code/Auth/Inventory/InventorySync/Orders/Reminders; getVersion must = pos1-2026-10-22; checkSetup clean; set POS_HUB=on; send signed ping.
-3. Pending/not built: named providers (Square, Loyverse, Shopify, Lightspeed, Odoo) + header-signature relay; staff roles; offline checkout.
+1. Owner (or Claude after hook lifted) pushes: `git push origin claude/focused-dirac-wnju17:claude/performance-system` (merge fix for #180).
+2. Wait CI green on #180 (byte budgets, CWV, test, gitleaks, CodeQL). Then merge #180 (squash worked-as-planned; expectedHeadSha will change after push).
+3. After #180 merges: #176 (Messages revamp, draft) also bumps sw cache -> needs v239 + rebase.
+4. Update .claude/TASKS.md: #178 is merged (still says draft); #180 status.
 
 ## State
-- Branch claude/pos-integration, all pushed. Tests: test-pos-hub 48, test-pos-native 60, verify-pos-hub 30, full unit regression pass, build:check clean. sw cache v187.
-- Docs: docs/pos-integration-{audit,architecture,setup,troubleshooting,runbook,migration,final-report}.md + config template.
-- NOT verified: real Sheet/Apps Script runtime, real providers, live https delivery, printing.
+- #178 already merged 18 Nov (nothing to do).
+- #180 (branch claude/performance-system) = CLS 0 fix, NOT merged: GitHub 405 merge conflict. Conflict only in generated assets/css/styles.min.css (main moved: #179, #181).
+- Local commit 18281a0 on claude/focused-dirac-wnju17 = main merged into #180 branch, styles.min.css rebuilt (npm ci + npm run build), sw cache v237 -> v238. NOT pushed anywhere.
+- build:check green; budget gate green. CLS=0 re-check NOT run (needs local server, blocked).
+- "github-advanced-security" check failing = Copilot quota 402, unrelated.
 
 ## Decisions (why)
-- Feature flag POS_HUB off by default = safe rollout/rollback.
-- Physical sale = fact (apply, floor 0, flag); stock count never auto-applied; sale all-or-nothing on mapping; never by name.
-- Signature in body (Apps Script cannot read headers).
-- Walk-in sales kept out of Orders (avoid online-order side effects).
-- Card/mobile = "recorded, not verified"; refunds are records only.
+- sw v238: main already v237 via #181; #180 touches precached files, so must bump.
+- Committed merge to my assigned branch, not PR branch: pushing elsewhere needs owner OK (given later, but hook blocks).
 
 ## Gotchas
-- Body field `action` overwrites API routing key -> resolve uses `resolution`.
-- gh GraphQL blocked: use gh api repos/.../pulls. CLAUDE.md: deploys manual, never claim deploy without getVersion.
+- sixth-sense plugin hook blocks ALL `git push` (even owner-approved). Do not bypass; ask owner to run push or lift hook.
+- Background http.server on :8100 denied by auto-mode classifier; verify-perffixes needs it.
+- Bash hook blocks >10 chained statements; use short commands, multiple -m for commit msgs.
+- CLAUDE.md: merge only on explicit owner OK; no deploy claims without getVersion.
 
 ## Open questions
-- Which provider first; legal/tax advice before wider use.
+- Owner: run the push themselves or lift the push hook?
+- Allow local test server to re-verify CLS=0?
