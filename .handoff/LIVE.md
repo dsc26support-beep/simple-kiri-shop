@@ -1,30 +1,31 @@
-# Handoff: POS Integration Hub + native POS
+# Handoff: store.html CLS -> 0 (draft PR #183)
 
 ## Goal
-Owner's master prompt: audit, then extend existing inventory sync (no duplicate system) with POS hub (signed push, mappings, outbox), native POS, tests, docs, final report. No deploy/merge/prod changes.
+Owner chain this session: fix PR #180 merge conflict + merge; verify-perf / verify-perffixes on main; measure homepage CLS; measure store.html CLS; fix store.html CLS to zero.
 
 ## Next steps
-0. Draft PR #131 (branch claude/inventory-help-pos-text): rewrote stale help line in owner/inventory-help.html (CSV works; signed-push + native POS exist behind POS_HUB; named providers not available). Owner asked 'import it' (assumed 'update it'). Merge only on explicit OK.
-0. Owner asked for deploy steps+raw links; gave them (branch raw links, claude/pos-integration; swap to main after merge). Owner has NOT yet confirmed deploy: await getVersion=pos1-2026-10-22 + checkSetup.
-1. Owner: review draft PR #127 (dsc26support-beep/simple-kiri-shop). Merge only with explicit OK.
-2. Owner deploy (manual, DEPLOY.md): backup sheet; paste IntegrationHub/IntegrationOutbox/Pos.gs + changed Code/Auth/Inventory/InventorySync/Orders/Reminders; getVersion must = pos1-2026-10-22; checkSetup clean; set POS_HUB=on; send signed ping.
-3. Pending/not built: named providers (Square, Loyverse, Shopify, Lightspeed, Odoo) + header-signature relay; staff roles; offline checkout.
+1. Owner reviews draft PR #183 (dsc26support-beep/simple-kiri-shop, branch claude/store-cls-zero). Merge ONLY on explicit "Merge 183" (CLAUDE.md: no merge without approval).
+2. After merge: set TASKS.md line to [merged #183]; frontend-only, no backend deploy.
+3. Optional follow-ups (not started): same search-submit collapse shift likely on other pages with .search-box (home, search, store list); real-device CLS check.
 
 ## State
-- Branch claude/pos-integration, all pushed. Tests: test-pos-hub 48, test-pos-native 60, verify-pos-hub 30, full unit regression pass, build:check clean. sw cache v187.
-- Docs: docs/pos-integration-{audit,architecture,setup,troubleshooting,runbook,migration,final-report}.md + config template.
-- NOT verified: real Sheet/Apps Script runtime, real providers, live https delivery, printing.
+- #180 merged to main (squash ff18564). Conflict was only generated styles.min.css -> merged main in, ran npm run build; sw cache bumped v238 (main already v237).
+- main measured: index CLS 0.0000 x3 (control bd1fc92: 0.0249); store.html 0.0134 before.
+- #183: store.html + styles.css(+min) + sw.js v238->v239 + .claude/TASKS.md. store CLS 0.0000, 0 shifts x3.
+- Tests: verify-perffixes 27/27; verify-perf 27/28 (only known offline-nav fail, same on main); build:check green. CI on #183 not yet seen.
+- NOT verified: real backend, real devices, desktop width, stores with many photos/logo.
 
 ## Decisions (why)
-- Feature flag POS_HUB off by default = safe rollout/rollback.
-- Physical sale = fact (apply, floor 0, flag); stock count never auto-applied; sale all-or-nothing on mapping; never by name.
-- Signature in body (Apps Script cannot read headers).
-- Walk-in sales kept out of Orders (avoid online-order side effects).
-- Card/mobile = "recorded, not verified"; refunds are records only.
+- Cause 1: Products/Photos label gained block .sp-act-num count line on data load (+~15px) -> put empty placeholder in markup (no JS change).
+- Stretch+center #sp-count-* labels: mock has 1 photo so "Photos"->"Photo" resized box 3px.
+- Cause 2: search-submit animated 44px->0 when JS added .is-empty post-load -> form starts with is-empty.
+- Squash-merged #180 only after all 6 CI checks green; user asked "merge it" up front.
 
 ## Gotchas
-- Body field `action` overwrites API routing key -> resolve uses `resolution`.
-- gh GraphQL blocked: use gh api repos/.../pulls. CLAUDE.md: deploys manual, never claim deploy without getVersion.
+- Bash hook: max 10 statements/500 chars, no inline python; use Edit tool. PostToolUse formatter reformatted sw.js (229-line diff) -> revert and use sed for 1-char bumps.
+- Local servers needed: verify-perf port 8099, verify-perffixes port 8100 (python3 -m http.server --bind 127.0.0.1, run_in_background). npm ci first.
+- Shallow clone: fetch with explicit refspec to create origin/* refs; stop hook falsely says unpushed (check git ls-remote).
+- Measure scripts: scratchpad home-cls.js, store-cls.js (may vanish).
 
 ## Open questions
-- Which provider first; legal/tax advice before wider use.
+- Merge #183? Apply same is-empty fix to other pages' search boxes?
