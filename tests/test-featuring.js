@@ -1,6 +1,6 @@
 /**
  * Paid featuring's money rules, run against the REAL Featuring.gs source
- * (extracted with vm, same pattern as test-costwrite.js / test-meetings.js):
+ * (extracted with vm, same pattern as test-costwrite.js):
  * the price, and the screenshot decision - approve, hold for a human, or
  * reject - over sample OCR text from a bank receipt.
  */
