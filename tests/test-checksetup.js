@@ -2,12 +2,18 @@ const fs = require('fs'), vm = require('vm');
 const code = fs.readFileSync('/home/user/simple-kiri-shop/apps-script/Code.gs', 'utf8');
 
 function run(sheets, opts) {
+  // Core data tabs (CRITICAL_TABS) are present by default so a clean run stays
+  // clean; opts.dropTabs removes one to prove a missing core tab is reported.
+  const merged = {};
+  CRITICAL_TABS.forEach((t) => { merged[t] = []; });
+  Object.keys(sheets).forEach((k) => { merged[k] = sheets[k]; });
+  ((opts && opts.dropTabs) || []).forEach((t) => { delete merged[t]; });
   const sandbox = {
     ok: (d) => Object.assign({ ok: true }, d),
     fail: (e) => ({ ok: false, error: e }),
     jsonOut: (o) => o,
-    getSheet: (n) => { if (!(n in sheets)) throw new Error('Sheet tab not found: ' + n); return n; },
-    getHeaders: (n) => sheets[n],
+    getSheet: (n) => { if (!(n in merged)) throw new Error('Sheet tab not found: ' + n); return n; },
+    getHeaders: (n) => merged[n],
     getAdminEmails: () => opts.admin ? ['a@b.com'] : [],
   };
   if (opts.files) FILE_PROBES.forEach((fn) => { sandbox[fn] = () => {}; });
@@ -40,7 +46,22 @@ const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitRev
                      'actionGetSellerDashboard',    // + dashboards (Oct 2026)
                      'actionDriverApply',   // + drivers (Oct 2026)
                      'walletBalance',   // + driver wallet (Oct 2026)
-                     'actionPosPush', 'runPosOutbox', 'actionPosCheckout'];   // + POS hub (Oct 2026)
+                     'actionPosPush', 'runPosOutbox', 'actionPosCheckout',   // + POS hub (Oct 2026)
+                     // + storefront/checkout/messaging files (19 Nov 2026, after a
+                     // deploy missing Inventory.gs blanked the whole storefront).
+                     'availableOf', 'productGalleryOf', 'markPaidFeatured', 'productDetailsListOf',
+                     'getTopProductsCached', 'actionGetConversation', 'actionCreateOrder',
+                     'actionGetInvoiceDocument'];
+
+// Derived from Code.gs, like REQUIRED_TABS - core data tabs checked for existence
+// only (not in REQUIRED_TABS). run() marks them present by default; a test drops
+// one via opts.dropTabs to prove a missing one is reported.
+const CRITICAL_TABS = (() => {
+  const box = {};
+  vm.createContext(box);
+  vm.runInContext(code.match(/var CRITICAL_TABS = \[[\s\S]*?\];/)[0] + '\n;__c = CRITICAL_TABS;', box);
+  return box.__c;
+})();
 
 let pass = 0, fail = 0;
 const t = (n, c, extra) => { if (c) { pass++; console.log('PASS  ' + n); } else { fail++; console.log('FAIL  ' + n + (extra ? '  [' + extra + ']' : '')); } };
@@ -82,6 +103,20 @@ t('every empty .gs file detected', r.missingFiles.length === FILE_PROBES.length,
 // 6: ADMIN_EMAILS unset
 r = run(JSON.parse(JSON.stringify(GOOD)), { admin: false, files: true });
 t('ADMIN_EMAILS unset reported', r.adminEmailsSet === false && r.problems.some(p => /ADMIN_EMAILS/.test(p)));
+
+// 7: the 19 Nov 2026 outage - Inventory.gs pasted in empty / left out of the deploy.
+r = run(JSON.parse(JSON.stringify(GOOD)), { admin: true, files: false });
+t('a missing Inventory.gs is now reported', r.missingFiles.indexOf('Inventory.gs') !== -1, r.missingFiles.join(','));
+t('the clean run with every file present still probes all of them', FILE_PROBES.indexOf('availableOf') !== -1);
+r = run(JSON.parse(JSON.stringify(GOOD)), { admin: true, files: true });
+t('with Inventory.gs present it is NOT reported', r.missingFiles.indexOf('Inventory.gs') === -1 && r.setupOk === true, r.problems.join('|'));
+
+// 8: a core data tab (Products) missing - existence only, never in REQUIRED_TABS.
+r = run(JSON.parse(JSON.stringify(GOOD)), { admin: true, files: true, dropTabs: ['Products'] });
+t('a missing critical tab (Products) is reported', r.problems.indexOf('Missing critical tab: Products') !== -1, r.problems.join('|'));
+t('a missing critical tab flips setupOk false', r.setupOk === false);
+t('critical tabs do not leak into the REQUIRED_TABS audit list',
+  r.tabs.length === Object.keys(REQUIRED_TABS).length && !r.tabs.some(x => x.tab === 'Products'), `${r.tabs.length}`);
 
 console.log(`\n${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);
