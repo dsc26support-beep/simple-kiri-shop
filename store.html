@@ -182,11 +182,11 @@
         <div class="sp-actions" role="group" aria-label="Store">
           <button type="button" class="sp-act" id="sp-tab-products" aria-pressed="true" aria-controls="product-list">
             <span class="sp-act-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7 12 3 4 7v10l8 4 8-4z"></path><path d="m4 7 8 4 8-4M12 11v10"></path></svg></span>
-            <span class="sp-act-label" id="sp-count-products">Products</span>
+            <span class="sp-act-label" id="sp-count-products"><span class="sp-act-num">&nbsp;</span>Products</span>
           </button>
           <button type="button" class="sp-act" id="sp-tab-photos" aria-pressed="false" aria-controls="store-photos">
             <span class="sp-act-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 16-5-5-8 9"></path></svg></span>
-            <span class="sp-act-label" id="sp-count-photos">Photos</span>
+            <span class="sp-act-label" id="sp-count-photos"><span class="sp-act-num">&nbsp;</span>Photos</span>
           </button>
           <button type="button" class="sp-act" id="sp-more" aria-haspopup="dialog" aria-controls="sp-sheet">
             <span class="sp-act-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6"></path><path d="M12 7.5v.01"></path></svg></span>
@@ -224,7 +224,7 @@
     <section aria-labelledby="products-heading">
       <div class="container">
         <h1 id="products-heading" class="sr-only">Products</h1>
-        <form id="products-search-form" class="search-box" role="search">
+        <form id="products-search-form" class="search-box is-empty" role="search">
           <label class="sr-only" for="products-search-input">Search products</label>
           <input id="products-search-input" type="search" placeholder="Search Products (e.g. rice, t-shirt)">
           <!-- The label stays in the markup at every width: on the phone it is

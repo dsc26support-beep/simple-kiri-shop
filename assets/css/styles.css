@@ -8983,6 +8983,8 @@ form.search-box.is-pinned::before {
   .sp-act-icon { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-bg); color: var(--color-purple); transition: background 0.15s ease, color 0.15s ease; }
   .sp-act-label { font-size: 0.72rem; font-weight: 600; line-height: 1.15; white-space: nowrap; color: var(--color-muted); }
   .sp-act-num { display: block; font-size: 0.8rem; font-weight: 700; color: var(--color-ink); }
+  /* The count line and "Product"/"Products" arrive after the data. Fill the button's width and centre the text so the box doesn't change size (CLS 0). */
+  #sp-count-products, #sp-count-photos { align-self: stretch; text-align: center; }
   .sp-act[aria-pressed="true"] .sp-act-icon { background: var(--color-purple); border-color: var(--color-purple); color: #fff; }
   .sp-act[aria-pressed="true"] .sp-act-label { color: var(--color-ink); }
   .sp-act:hover .sp-act-icon { border-color: var(--color-purple-pale); }
