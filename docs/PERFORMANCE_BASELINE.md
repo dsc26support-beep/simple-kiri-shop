@@ -157,12 +157,11 @@ and the fix is the same one-line kind: reserve `min-height` on
 **documented as the top deferred candidate**, not bundled into the
 system-building phase. See [`PERFORMANCE_IMPLEMENTATION_PLAN.md`](PERFORMANCE_IMPLEMENTATION_PLAN.md).
 
-> **Update (17 Nov 2026):** shipped — `#trending-stores-list { min-height: 94px }`
-> (sw cache v235→v236). Index CLS **0.0385 → 0.0249**. The reservation removes the
-> carousel-growth shift; the small residual (the "Loading" status line above
-> collapsing) is left, since removing it needs the status out of flow rather than
-> a size reservation. This baseline table still reflects the pre-fix `546b3cd`
-> measurement.
+> **Update (17–18 Nov 2026):** fixed in two steps. #177 reserved the carousel
+> (`min-height: 94px`) — CLS **0.0385 → 0.0249**. Then the overlay (status wrapped
+> in `.logo-carousel-frame` and positioned out of flow) removed the residual —
+> **CLS 0.0249 → 0.0000**. sw cache v235→v237. Homepage CLS is now zero. This
+> baseline table still reflects the pre-fix `546b3cd` measurement.
 
 ---
 

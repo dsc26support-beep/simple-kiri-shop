@@ -28,20 +28,23 @@ bump owed.
 Per CLAUDE.md (smallest safe change; present changes for approval) and V2's
 Tier-0 rule (measure before building the expensive items):
 
-### Candidate 1 — reserve the trending-stores carousel height — ✅ SHIPPED (17 Nov 2026)
+### Candidate 1 — reserve the trending-stores carousel height — ✅ SHIPPED (index CLS → 0)
 - **Why:** `index` CLS regressed to **0.0385** — a single shift where
   `#trending-stores-list` grows 8→94 px and pushes `.trending-products` down 52 px
   (PERFORMANCE_BASELINE, attributed).
 - **Change shipped:** `#trending-stores-list { min-height: 94px }` in `styles.css`
   (sw cache v235→v236, styles.min.css is precached).
-- **Result:** index CLS **0.0385 → 0.0249** (both inside the 0.10 "good" bar).
-  The `min-height` removes the dominant carousel-*growth* shift. A small residual
-  stays because the one-line "Loading" status line above the carousel collapses
-  when it clears, which moves the (reserved) carousel up ~20 px — a size
-  reservation cannot fix that; it would need the status taken **out of flow**
-  (an absolutely-positioned overlay) or a ~20 px visual gap. Not worth that
-  complexity/visual change for a metric already comfortably "good"; left as a
-  possible future tweak if true-zero is ever wanted.
+- **Step 1 (#177, 17 Nov):** `#trending-stores-list { min-height: 94px }` reserved
+  the carousel — index CLS **0.0385 → 0.0249**. Removed the dominant carousel-
+  *growth* shift, but left a ~20 px residual from the "Loading" status line above
+  collapsing as it cleared (a size reservation can't fix that).
+- **Step 2 (18 Nov):** the overlay — the status is wrapped with the carousel in
+  `.logo-carousel-frame` and positioned **out of flow** (absolute over the reserved
+  area), so clearing it moves nothing. **Index CLS 0.0249 → 0.0000** (0 shifts).
+  Loaded-state heading→carousel gap unchanged (20 px); "Loading" shows inside the
+  carousel area during load. sw cache v236→v237 (styles.min.css + index.html are
+  precached). verify-perf 27/28 (known offline-nav), verify-perffixes 27/27, budget
+  gate green. **Homepage CLS is now zero.**
 
 ### Candidate 2 — split / trim `styles.min.css` *(medium risk, needs data first)*
 - **Why:** 25.4 KB gzip, the only render-blocking file, grew 2.5× since Phase 2.
