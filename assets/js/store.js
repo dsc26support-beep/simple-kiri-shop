@@ -465,9 +465,10 @@ function renderStoreProfile(res) {
 
   const tabP = $p('sp-tab-products');
   const tabF = $p('sp-tab-photos');
-  // The count on its own line above the word, so "120 Products" fits a small phone.
-  $p('sp-count-products').innerHTML = `<span class="sp-act-num">${currentProducts.length}</span> Product${currentProducts.length === 1 ? '' : 's'}`;
-  $p('sp-count-photos').innerHTML = `<span class="sp-act-num">${photos.length}</span> Photo${photos.length === 1 ? '' : 's'}`;
+  // The count sits in a badge on the icon's top-right corner (always shown,
+  // even 0); the word under each icon is static in the markup.
+  $p('sp-count-products').textContent = currentProducts.length;
+  $p('sp-count-photos').textContent = photos.length;
   const show = (photosTab) => {
     tabP.setAttribute('aria-pressed', photosTab ? 'false' : 'true');
     tabF.setAttribute('aria-pressed', photosTab ? 'true' : 'false');
