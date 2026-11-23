@@ -13,7 +13,7 @@ never load time.
 | # | Bottleneck | Evidence (lab, `546b3cd`) | Lever | Status |
 |---|---|---|---|---|
 | 1 | **`styles.min.css` is the one render-blocking file**, now **25.4 KB gzip** (was 10.2 KB at V2 Phase 2), on ~every page | PERFORMANCE_BASELINE weight table | First-paint bytes on slow-3G | Watched by the gate; splitting is deferred (needs coverage data — see below) |
-| 2 | **`index` CLS** — trending-stores carousel not height-reserved | single shift @736ms, `#trending-stores-list` 8→94px | One-line `min-height` | ✅ **Fixed (17 Nov)** — `min-height:94px`, CLS 0.0385→0.0249; small status-line residual left (PERFORMANCE_IMPLEMENTATION_PLAN.md) |
+| 2 | **`index` CLS** — trending-stores carousel not height-reserved | single shift @736ms, `#trending-stores-list` 8→94px | `min-height` + out-of-flow status | ✅ **Fixed → CLS 0** (#177 reserve 0.0385→0.0249; overlay 0.0249→0.0000) (PERFORMANCE_IMPLEMENTATION_PLAN.md) |
 | 3 | **Per-page JS is 29–50 KB gzip across 14–21 files** | weight table | Round trips on high-latency links | Watched by the gate; bundling deferred (helps only first visits; SW makes repeats free) |
 | 4 | **`searchProducts` hot path = 4 full sheet scans** (Owners, Products, Variants, Reviews) | API_PERFORMANCE_AUDIT | Backend cost (not load) | Deferred; cached 60 s; scope `productRatingIndex` to matched ids first |
 | 5 | **`store`/`product` are the heaviest pages** (77–80 KB, 26–28 requests) | PERFORMANCE_BASELINE | Metered-data cost | Watched by the gate |

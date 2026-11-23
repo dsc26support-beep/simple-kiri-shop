@@ -36,11 +36,11 @@ const GOOD = JSON.parse(JSON.stringify(REQUIRED_TABS));
 
 // One probe per hand-pasted .gs file, kept in step with actionCheckSetup.
 // One probe per .gs file checkSetup reports on. Badges.gs joined the list when
-// seller badges landed, Meetings.gs when meeting requests did; a file pasted
+// seller badges landed; a file pasted
 // in empty leaves its functions undefined, which is what this catches.
 // ListingRules.gs / ListingReview.gs joined with the listing checks.
 const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitReview',
-                     'sellerBadgeIndex', 'actionRequestMeeting', 'validateListing', 'listingSaveGate',
+                     'sellerBadgeIndex', 'validateListing', 'listingSaveGate',
                      'validateProductOptions', 'prepareVariantSave', 'actionGetHeaderAds',   // + product options (Oct 2026)
                      'txOnOrderCreated',    // + order rooms (Oct 2026)
                      'actionGetSellerDashboard',    // + dashboards (Oct 2026)
