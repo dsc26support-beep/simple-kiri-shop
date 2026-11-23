@@ -104,7 +104,11 @@ const PASSWORD_MIN = 8;
 // With the button hidden until the form is right, a shopper who leaves a
 // field filled in wrongly is told why straight away (the same wording the
 // submit checks use).
-const EMAIL_PROBLEM = 'Please check your email - it should look like name@example.com.';
+// The "Please check your email..." hint was removed (owner, 23 Nov 2026): the
+// sign-in button only appears once the email is valid, so the message was
+// redundant. Kept as an empty string so the existing guards still short-circuit
+// on an invalid email; they just show nothing.
+const EMAIL_PROBLEM = '';
 const PASSWORD_PROBLEM = 'Your password needs at least 8 characters.';
 function explainProblem(e) {
   const el = e.target;

@@ -205,8 +205,10 @@
                 <p class="auth-alt-links"><button type="button" class="linklike" id="login-forgot">Forgot password?</button></p>
               </div>
               <p id="login-error" class="form-error" role="alert"></p>
-              <!-- On the welcome screen it shows from the start (Nov 2026). -->
-              <div class="auth-reveal"><div><button type="submit" id="login-submit" class="btn btn-primary btn-block">Email me a sign-in link</button></div></div>
+              <!-- Hidden until a valid email is typed (.auth-reveal + .is-ready),
+                   on the welcome screen too. Styled like the Google / Guest
+                   buttons: a thin brand-gradient outline (owner, 23 Nov 2026). -->
+              <div class="auth-reveal"><div><button type="submit" id="login-submit" class="auth-provider-btn">Email me a sign-in link</button></div></div>
             </form>
 
             <form id="login-code-form" class="hidden" novalidate>

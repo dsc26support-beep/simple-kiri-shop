@@ -296,6 +296,7 @@ async function makeContext(browser, opts) {
 
     // The one that matters. The guest button is the fallback for exactly the
     // person who cannot use Google, so it must never be hidden along with it.
+    await page.fill('#login-email', 'shopper@example.com'); await page.waitForTimeout(300);
     ok(label + ': the email form works without Google', await page.locator('#login-email').isVisible() && await page.locator('#login-submit').isVisible());
     await ctx.close();
   }

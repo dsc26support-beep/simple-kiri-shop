@@ -8329,20 +8329,39 @@ html.auth-signup .auth-divider {
   min-height: 48px;
   padding: 0 48px;
   margin: 0;
-  border: 2px solid var(--color-purple);
+  border: 0;
   border-radius: 12px;
   background: transparent;
-  color: var(--color-purple);
+  color: var(--color-ink);
   font: inherit;
   font-size: 1rem;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
 }
+/* Thin brand-gradient outline (owner, 23 Nov 2026): the same red -> gold ->
+   purple as the search box, drawn as a 1px ring in a ::before and masked to the
+   border only, so the interior stays transparent and it reads cleanly on both
+   the white card and the purple mobile screen. */
+.auth-card--customer .auth-provider-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(90deg, var(--color-red), var(--color-gold), var(--color-purple));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+/* Tint the interior on hover with an inset shadow, so the gradient border and
+   the --apb-fill layers underneath are left intact. */
 .auth-card--customer .auth-provider-btn:hover,
 .auth-card--customer .auth-provider-btn:focus-visible,
 .auth-card--customer .auth-provider:focus-within .auth-provider-btn {
-  background: var(--color-purple-soft, rgba(51, 45, 99, 0.08));
+  box-shadow: inset 0 0 0 999px rgba(109, 40, 217, 0.07);
 }
 .auth-card--customer .apb-icon {
   position: absolute;
@@ -8385,14 +8404,16 @@ html.auth-signup #auth-create-line { display: none; }
 html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(-1 * var(--space-1)); }
 
 @media (max-width: 899px) {
+  /* On the purple full-screen (mobile/tablet) the label stays white; the masked
+     gradient ring above already sits on a transparent interior, so the purple
+     shows through and only the thin outline is drawn. */
   :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-provider-btn {
-    border-color: #fff;
     color: #fff;
   }
   :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-provider-btn:hover,
   :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-provider-btn:focus-visible,
   :where(html:not(.auth-for-store)) .auth-page .auth-card .auth-provider:focus-within .auth-provider-btn {
-    background: rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.14);
   }
 }
 .auth-card--customer #guest-continue.auth-provider-btn {
@@ -8460,14 +8481,9 @@ html.welcome-on .welcome-photo { display: block; margin: 0 0 var(--space-3); }
   transition: opacity 0.3s ease;
 }
 .welcome-stats.is-ready { opacity: 1; }
-/* Like Billdu, "Email me a sign-in link" is there from the start on the
-   welcome screen (an empty or mistyped email gets the usual message). With a
-   password, Sign in still waits until one is typed. */
-html.welcome-on #login-form:not(.is-password) .auth-reveal {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-}
+/* The "Email me a sign-in link" button stays hidden until a validly-formatted
+   email is typed (via .is-ready on #login-form, refreshReady in
+   customer-login.js) - on the welcome screen too (owner, 23 Nov 2026). */
 
 /* Sign in is the email box, its button, then Google (owner, 9 Nov 2026):
    nothing in between and nothing below. The Terms line stays on Create

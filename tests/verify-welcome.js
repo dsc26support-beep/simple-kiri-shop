@@ -66,7 +66,12 @@ const state = (page) => page.evaluate(() => {
     ok('phone: the welcome shows with its photo', s.hero && s.photo, J(s));
     ok('phone: headline', s.title === 'Shop Kiribati’s stores', J(s.title));
     ok('phone: live counts from siteStats', s.stats === '124 stores · 3,180 products' && hits.some((u) => /action=siteStats/.test(u)), J(s.stats));
-    ok('phone: the email box and "Email me a sign-in link" are there from the start', s.email && s.send && /sign-in link/.test(s.sendText), J(s));
+    ok('phone: the email box shows; the sign-in button is hidden until a valid email', s.email && !s.send, J(s));
+    // A valid email reveals "Email me a sign-in link" (owner, 23 Nov 2026).
+    await page.fill('#login-email', 'shopper@example.com');
+    await page.waitForTimeout(300);
+    const sv = await state(page);
+    ok('phone: a valid email reveals "Email me a sign-in link"', sv.send && /sign-in link/.test(sv.sendText), J(sv));
     const gap = await page.evaluate(() => {
       const send = document.getElementById('login-submit').getBoundingClientRect();
       const g = document.querySelector('#google-signin-wrap .auth-provider-btn').getBoundingClientRect();
@@ -88,11 +93,12 @@ const state = (page) => page.evaluate(() => {
     ok('phone: no close X on a normal visit (the header has Home)', !s.close, J(s));
     ok('phone: no sideways scroll, no page errors', !s.sideways && errs.length === 0, errs.join(' | '));
 
-    // Empty email: a message, not a request.
-    const before = hits.length;
-    await page.click('#login-submit');
+    // Clearing the email hides the button again, and no "check your email"
+    // message is shown any more (owner, 23 Nov 2026).
+    await page.fill('#login-email', '');
     await page.waitForTimeout(300);
-    ok('tapping the link button with no email asks for one', /email/i.test(await page.textContent('#login-error')) && !hits.slice(before).some((u) => /loginCustomer/.test(u)));
+    ok('clearing the email hides the button again, with no error message',
+      !(await state(page)).send && (await page.textContent('#login-error')).trim() === '');
 
     // English only since 11 Nov 2026 (owner): no language switch.
     ok('no English / Kiribati switch', !(await page.$('.welcome-lang')) && !(await page.$('[data-lang]')));
