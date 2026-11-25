@@ -73,11 +73,16 @@ function directives(hashList) {
     "default-src 'self'",
     "base-uri 'self'",
     "object-src 'none'",
-    "script-src 'self' https://accounts.google.com https://connect.facebook.net https://cdn.jsdelivr.net " + hashList.join(' '),
+    // www.gstatic.com: the Firebase Cloud Messaging SDK, loaded only when the
+    // owner has configured Web Push (APP_CONFIG.PUSH_CONFIG) and a shopper opts
+    // in (push-register.js / firebase-messaging-sw.js). Inert otherwise.
+    "script-src 'self' https://accounts.google.com https://connect.facebook.net https://cdn.jsdelivr.net https://www.gstatic.com " + hashList.join(' '),
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://res.cloudinary.com https://*.googleusercontent.com https://drive.google.com",
     "font-src 'self' data:",
-    "connect-src 'self' https://script.google.com https://script.googleusercontent.com https://accounts.google.com https://cdn.jsdelivr.net https://connect.facebook.net https://graph.facebook.com https://www.facebook.com",
+    // *.googleapis.com / firebaseinstallations: FCM token registration during
+    // Web Push opt-in (same owner-gated path as the gstatic script host).
+    "connect-src 'self' https://script.google.com https://script.googleusercontent.com https://accounts.google.com https://cdn.jsdelivr.net https://connect.facebook.net https://graph.facebook.com https://www.facebook.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com",
     "frame-src https://accounts.google.com https://www.facebook.com https://web.facebook.com https://staticxx.facebook.com",
     "worker-src 'self'",
     "manifest-src 'self'",

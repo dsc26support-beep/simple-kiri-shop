@@ -138,10 +138,14 @@ const callGet = (box, url) => { clearCache(box); const u = new URL(url); const p
       notifShown: !document.getElementById('notif-centre').hidden,
       notifItems: document.querySelectorAll('#notif-list .notif-item').length,
       unread: (document.getElementById('notif-unread') || {}).textContent,
-      markAllShown: !document.getElementById('notif-mark-all').hidden
+      markAllShown: !document.getElementById('notif-mark-all').hidden,
+      pushHidden: document.getElementById('notif-enable-push').hidden,
+      pushSupported: (typeof window.MwaketePush !== 'undefined') ? window.MwaketePush.supported() : null
     }));
     ok('dashboard: Favourite Stores shows the followed store', d.favShown && d.favItems === 1 && /Bong Store/.test(d.favName || ''), d);
     ok('dashboard: Notification Centre shows the unread note + mark-all', d.notifShown && d.notifItems === 1 && /1 new/.test(d.unread || '') && d.markAllShown, d);
+    // Push is dormant by default (PUSH_CONFIG null): button hidden, SDK not loaded.
+    ok('dashboard: Web Push stays dormant - button hidden, MwaketePush.supported() false', d.pushHidden === true && d.pushSupported === false, d);
 
     await p.click('#notif-mark-all'); await p.waitForTimeout(300);
     const afterRead = await p.evaluate(() => ({ unreadHidden: document.getElementById('notif-unread').hidden, stillOne: document.querySelectorAll('#notif-list .notif-item').length }));
