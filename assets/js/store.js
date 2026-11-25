@@ -52,6 +52,11 @@ async function init() {
 
   renderStoreBadges(res.sellerBadges);
 
+  // Follow / Like / per-store offers (Engagement.gs). Feature-detected: if the
+  // backend has no engagement actions yet, the row stays hidden and nothing
+  // about the page changes.
+  initEngagement(currentSlug);
+
   currentStorePhone = res.storePhone || null;
   currentStoreMessenger = res.storeMessenger || null;
   currentStoreWhatsapp = res.storeWhatsapp || null;
@@ -613,4 +618,97 @@ function renderStoreClosedState(open) {
     '<span>This store is closed right now. You can still order — they’ll process it when they reopen.</span>';
   const anchor = document.getElementById('store-name-tagline');
   if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(banner, anchor.nextSibling);
+}
+
+/* ---- Follow / Like / per-store offers (Engagement.gs, CESN Stage 2) ---- */
+
+let engageState = { following: false, liked: false, consent: false, signedIn: false };
+
+function engageToken() {
+  return (typeof CustomerAuth !== 'undefined' && CustomerAuth.getToken) ? CustomerAuth.getToken() : null;
+}
+
+function gotoSignIn() {
+  const next = location.pathname.replace(/^\//, '') + location.search;
+  location.href = 'customer-login.html?next=' + encodeURIComponent(next);
+}
+
+async function initEngagement(slug) {
+  const row = document.getElementById('sp-engage');
+  if (!row || !slug || typeof Api === 'undefined') return;
+  const token = engageToken();
+  let res;
+  try { res = await Api.post('getStoreEngagement', token ? { storeSlug: slug, token } : { storeSlug: slug }); } catch (e) { return; }
+  if (!res || !res.ok) return;   // older backend: leave the row hidden
+  engageState = { following: !!res.following, liked: !!res.liked, consent: !!res.consent, signedIn: !!res.signedIn };
+  row.hidden = false;
+  renderEngagement(res.followers || 0, res.likes || 0);
+  wireEngagement(slug);
+}
+
+function renderEngagement(followers, likes) {
+  const followBtn = document.getElementById('sp-follow');
+  const likeBtn = document.getElementById('sp-like');
+  const label = document.getElementById('sp-follow-label');
+  const likeCount = document.getElementById('sp-like-count');
+  const meta = document.getElementById('sp-follow-count');
+  const offers = document.getElementById('sp-offers');
+  const offersBox = document.getElementById('sp-offers-box');
+  if (followBtn) followBtn.setAttribute('aria-pressed', engageState.following ? 'true' : 'false');
+  if (label) label.textContent = engageState.following ? 'Following' : 'Follow';
+  if (likeBtn) likeBtn.setAttribute('aria-pressed', engageState.liked ? 'true' : 'false');
+  if (likeCount) likeCount.textContent = String(likes);
+  if (meta) meta.textContent = followers === 1 ? '1 follower' : followers + ' followers';
+  // The per-store offers opt-in only makes sense for a signed-in shopper.
+  if (offers) offers.hidden = !engageState.signedIn;
+  if (offersBox) offersBox.checked = engageState.consent;
+}
+
+function wireEngagement(slug) {
+  const followBtn = document.getElementById('sp-follow');
+  const likeBtn = document.getElementById('sp-like');
+  const offersBox = document.getElementById('sp-offers-box');
+  if (followBtn && !followBtn.dataset.wired) {
+    followBtn.dataset.wired = '1';
+    followBtn.addEventListener('click', () => toggleEngage(slug, 'follow'));
+  }
+  if (likeBtn && !likeBtn.dataset.wired) {
+    likeBtn.dataset.wired = '1';
+    likeBtn.addEventListener('click', () => toggleEngage(slug, 'like'));
+  }
+  if (offersBox && !offersBox.dataset.wired) {
+    offersBox.dataset.wired = '1';
+    offersBox.addEventListener('change', () => onOffersToggle(slug));
+  }
+}
+
+async function toggleEngage(slug, kind) {
+  const token = engageToken();
+  if (!token) { gotoSignIn(); return; }
+  const isFollow = kind === 'follow';
+  const on = isFollow ? !engageState.following : !engageState.liked;
+  const action = isFollow ? (on ? 'followStore' : 'unfollowStore') : (on ? 'likeStore' : 'unlikeStore');
+  const btn = document.getElementById(isFollow ? 'sp-follow' : 'sp-like');
+  if (btn) btn.disabled = true;
+  let res;
+  try { res = await Api.post(action, { storeSlug: slug, token }); } catch (e) { res = null; }
+  if (btn) btn.disabled = false;
+  if (!res || !res.ok) return;
+  engageState.following = !!res.following;
+  if (typeof res.liked === 'boolean') engageState.liked = res.liked;
+  engageState.signedIn = true;
+  renderEngagement(res.followers || 0, res.likes || 0);
+}
+
+async function onOffersToggle(slug) {
+  const token = engageToken();
+  const box = document.getElementById('sp-offers-box');
+  if (!token) { if (box) box.checked = false; gotoSignIn(); return; }
+  const want = box.checked;
+  box.disabled = true;
+  let res;
+  try { res = await Api.post('setStoreMarketingConsent', { storeSlug: slug, token, optIn: want }); } catch (e) { res = null; }
+  box.disabled = false;
+  if (res && res.ok) engageState.consent = !!res.consent;
+  else box.checked = !want;
 }

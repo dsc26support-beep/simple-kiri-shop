@@ -9202,3 +9202,57 @@ form.search-box.is-pinned::before {
     color: #f0f0f0;
   }
 }
+
+/* ===== Customer engagement (CESN Stage 2) ===== */
+
+/* Store page: Follow / Like row. Two distinct buttons. */
+.sp-engage { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 2px; }
+.sp-follow, .sp-like {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 1.5px solid var(--color-purple); background: var(--color-bg); color: var(--color-purple);
+  border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 0.92rem; line-height: 1;
+}
+.sp-follow[aria-pressed="true"] { background: var(--color-purple); color: #fff; }
+.sp-like { border-color: var(--color-red); color: var(--color-red); padding: 7px 12px; }
+.sp-like[aria-pressed="true"] { background: var(--color-red); color: #fff; }
+.sp-like svg { fill: none; }
+.sp-like[aria-pressed="true"] svg { fill: currentColor; }
+.sp-follow:disabled, .sp-like:disabled { opacity: 0.6; cursor: default; }
+.sp-engage-meta { color: var(--color-muted); font-size: 0.85rem; }
+.sp-offers { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--color-ink); margin: 2px 0 6px; cursor: pointer; }
+.sp-offers input { width: 18px; height: 18px; accent-color: var(--color-purple); flex: none; }
+
+/* Customer dashboard: Favourite stores. */
+.fav-list, .notif-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fav-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  border: 1px solid var(--color-line, #e5e5e5); border-radius: var(--radius); padding: 10px 12px; }
+.fav-open { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--color-ink); min-width: 0; flex: 1 1 auto; }
+.fav-logo { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; }
+.fav-logo--blank { background: var(--color-purple-soft); }
+.fav-text { display: flex; flex-direction: column; min-width: 0; }
+.fav-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fav-loc { color: var(--color-muted); font-size: 0.82rem; }
+.fav-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fav-notify { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--color-muted); cursor: pointer; }
+.fav-notify input { width: 16px; height: 16px; accent-color: var(--color-purple); }
+
+/* Customer dashboard: Notification centre. */
+.notif-unread { display: inline-block; font-size: 0.72rem; font-weight: 700; color: #fff; background: var(--color-red);
+  border-radius: 999px; padding: 2px 8px; vertical-align: middle; margin-left: 6px; }
+.notif-actions { margin: 2px 0 8px; }
+.notif-item { border: 1px solid var(--color-line, #e5e5e5); border-radius: var(--radius); overflow: hidden; }
+.notif-item.is-unread { border-left: 3px solid var(--color-purple); background: var(--color-purple-soft); }
+.notif-item > .notif-link, .notif-item { display: block; }
+.notif-link, .notif-item { color: var(--color-ink); text-decoration: none; }
+.notif-item .notif-text, .notif-link { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; }
+.notif-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex: none; }
+.notif-text { display: flex; flex-direction: column; gap: 2px; }
+.notif-title { font-weight: 600; }
+.notif-body { color: var(--color-muted); font-size: 0.88rem; }
+.notif-time { color: var(--color-muted-light, #9aa0a6); font-size: 0.78rem; }
+
+@media (prefers-color-scheme: dark) {
+  .sp-follow, .sp-like { background: #1f2024; }
+  .fav-item, .notif-item { border-color: #3a3d42; }
+  .notif-item.is-unread { background: rgba(109, 97, 184, 0.18); }
+}

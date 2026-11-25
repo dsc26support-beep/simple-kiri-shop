@@ -128,6 +128,17 @@
           <h2 id="wholesale-heading">Wholesale</h2>
           <dl id="dash-wholesale-facts" class="dash-facts"></dl>
         </section>
+
+        <!-- Customer engagement (Engagement.gs): this store's followers, likers,
+             purchasers and marketing subscribers as distinct audiences. Hidden
+             until the request succeeds, so an older backend shows nothing. Never
+             shows device or push data. -->
+        <section class="dash-panel dash-panel--engagement" id="dash-engagement" aria-labelledby="engagement-heading" hidden>
+          <h2 id="engagement-heading">Customer engagement</h2>
+          <dl id="dash-engagement-counts" class="dash-facts"></dl>
+          <p id="dash-engagement-status" class="helper-text" aria-live="polite"></p>
+          <ul id="dash-engagement-list" class="engage-audience"></ul>
+        </section>
       </div>
     </div>
   </main>
