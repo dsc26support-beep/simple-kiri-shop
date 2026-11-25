@@ -73,6 +73,7 @@ function appendNotification_(customerId, note) {
     ImageUrl: note.imageUrl || '',
     DeepLink: note.deepLink || '',
     CampaignId: note.campaignId || '',
+    SourceKey: note.sourceKey || '',
     ReadAt: '',
     CreatedAt: nowIso()
   });

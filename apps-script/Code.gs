@@ -161,7 +161,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'cesn3-2026-11-25';
+var APP_VERSION = 'cesn4-2026-11-25';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -248,10 +248,16 @@ var REQUIRED_TABS = {
   StoreLikes: ['LikeId', 'CustomerId', 'StoreSlug', 'Status', 'NotifyOn', 'CreatedAt', 'UpdatedAt'],
   StoreMarketingConsents: ['ConsentId', 'CustomerId', 'StoreSlug', 'Status', 'OptInAt', 'WithdrawnAt', 'CreatedAt', 'UpdatedAt'],
   Notifications: ['NotificationId', 'CustomerId', 'StoreSlug', 'Category', 'Title', 'Body',
-                  'ImageUrl', 'DeepLink', 'CampaignId', 'ReadAt', 'CreatedAt'],
+                  'ImageUrl', 'DeepLink', 'CampaignId', 'SourceKey', 'ReadAt', 'CreatedAt'],
   // Web Push device tokens (Push.gs, CESN Stage 3). New tab only; empty until a
   // shopper turns notifications on. Never shown to sellers.
-  PushSubscriptions: ['SubId', 'CustomerId', 'FcmToken', 'UserAgent', 'Platform', 'Status', 'LastSeenAt', 'CreatedAt']
+  PushSubscriptions: ['SubId', 'CustomerId', 'FcmToken', 'UserAgent', 'Platform', 'Status', 'LastSeenAt', 'CreatedAt'],
+  // Smart engine + price-drop intelligence (EngagementEngine.gs, PriceWatch.gs,
+  // CESN Stages 4-6). ProductWatch is the per-variant last-seen state the sweep
+  // compares against (price drop / back in stock / new arrival); CesnAudit logs
+  // every event the engine emits. Both new, both empty to start.
+  ProductWatch: ['WatchId', 'ProductId', 'VariantId', 'StoreSlug', 'PriceType', 'LastPrice', 'PriceSince', 'LastStock', 'LastNotifiedPrice', 'FirstSeenAt', 'UpdatedAt'],
+  CesnAudit: ['EventId', 'StoreSlug', 'Category', 'SourceKey', 'Audience', 'Queued', 'SkippedFreq', 'SkippedDup', 'CreatedAt']
 };
 
 // Core data tabs whose absence takes the whole storefront or checkout down, but
@@ -343,6 +349,8 @@ function actionCheckSetup() {
   // disables the store-page follow/like buttons and the notification centre.
   if (typeof actionFollowStore !== 'function') missingFiles.push('Engagement.gs');
   if (typeof actionRegisterPushSubscription !== 'function') missingFiles.push('Push.gs');
+  if (typeof emitEngagementEvent !== 'function') missingFiles.push('EngagementEngine.gs');
+  if (typeof runEngagementSweep !== 'function') missingFiles.push('PriceWatch.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
