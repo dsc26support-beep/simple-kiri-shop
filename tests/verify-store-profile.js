@@ -105,20 +105,23 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   const acts = await p.evaluate(() => {
     const av = document.getElementById('sp-avatar').getBoundingClientRect();
     return Array.from(document.querySelectorAll('.sp-actions .sp-act')).map((b) => { const r = b.getBoundingClientRect(); const i = b.querySelector('.sp-act-icon').getBoundingClientRect();
-      return { id: b.id, label: b.querySelector('.sp-act-label').textContent.trim(), left: r.left, right: r.right, top: r.top, bottom: r.bottom, round: getComputedStyle(b.querySelector('.sp-act-icon')).borderRadius, iw: i.width, ih: i.height, besideLogo: r.left > av.right - 1 && r.top < av.bottom + 4 }; });
+      const badge = b.querySelector('.sp-act-badge');
+      return { id: b.id, label: b.querySelector('.sp-act-label').textContent.trim(), count: badge ? badge.textContent.trim() : null, left: r.left, right: r.right, top: r.top, bottom: r.bottom, round: getComputedStyle(b.querySelector('.sp-act-icon')).borderRadius, iw: i.width, ih: i.height, besideLogo: r.left > av.right - 1 && r.top < av.bottom + 4 }; });
   });
-  ok('...Products, Photos, Info and Share as round buttons with a word under each, in a row beside the logo', acts.map((a) => a.id).join() === 'sp-tab-products,sp-tab-photos,sp-more,sp-share'
+  ok('...Products, Photos, About and Share as round buttons with a word under each, in a row beside the logo', acts.map((a) => a.id).join() === 'sp-tab-products,sp-tab-photos,sp-more,sp-share'
     && acts.every((a) => a.round === '50%' && a.iw >= 44 && Math.abs(a.iw - a.ih) < 1 && a.besideLogo && a.right <= 390) && acts.every((a, i) => i === 0 || (a.left >= acts[i - 1].right - 1 && Math.abs(a.top - acts[0].top) < 2)), acts);
-  ok('...Products and Photos carry their counts', acts[0].label.replace(/\s+/g, ' ') === '3 Products' && acts[1].label.replace(/\s+/g, ' ') === '3 Photos' && acts[2].label === 'Info' && acts[3].label === 'Share', acts.map((a) => a.label));
+  ok('...Products and Photos carry their counts in a corner badge; labels are the plain word; Info is now About',
+    acts[0].label === 'Products' && acts[1].label === 'Photos' && acts[2].label === 'About' && acts[3].label === 'Share'
+    && acts[0].count === '3' && acts[1].count === '3', acts.map((a) => a.id + ':' + a.label + '/' + a.count));
   ok('...the old tab bar and "More info" link are gone', !(await p.$('.sp-tabs')) && !(await p.$('button.sp-more')));
   ok('...no name / place / "Open now" lines under the logo (owner, 1 Nov): the green dot says open', await p.isHidden('#sp-meta') && await p.evaluate(() => document.getElementById('sp-name').classList.contains('sr-only')) && await p.evaluate(() => !document.getElementById('sp-dot').classList.contains('is-closed')));
   ok('...the verified tick sits by the name on the cover', await p.evaluate(() => !!document.getElementById('sp-verified').closest('#sp-cover') && !document.getElementById('sp-verified').hidden));
-  ok('...the bio shows two lines; the details wait in the Info panel', await p.evaluate(() => { const b = document.getElementById('sp-bio'); return b.scrollHeight > b.clientHeight + 4; }) && await p.isHidden('#sp-info'));
+  ok('...the bio shows two lines; the details wait in the About panel', await p.evaluate(() => { const b = document.getElementById('sp-bio'); return b.scrollHeight > b.clientHeight + 4; }) && await p.isHidden('#sp-info'));
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone.png' });
   await p.click('#sp-more');
   await p.waitForTimeout(350);
   const sh = await p.evaluate(() => { const d = document.getElementById('sp-sheet'); const r = d.getBoundingClientRect(); return { open: d.open, modal: d.matches(':modal'), bottom: Math.round(r.bottom), top: r.top, vh: innerHeight, w: r.width }; });
-  ok('Info: a panel slides up from the bottom with the whole bio, phone, delivery and payment', sh.open && sh.modal && Math.abs(sh.bottom - sh.vh) <= 1 && sh.top > 100 && /deliver to your door/.test(await p.textContent('#sp-bio-full')) && /73001111/.test(await p.textContent('#sp-info')) && /Bong Store/.test(await p.textContent('#sp-sheet-title')), sh);
+  ok('About: a panel slides up from the bottom with the whole bio, phone, delivery and payment', sh.open && sh.modal && Math.abs(sh.bottom - sh.vh) <= 1 && sh.top > 100 && /deliver to your door/.test(await p.textContent('#sp-bio-full')) && /73001111/.test(await p.textContent('#sp-info')) && /Bong Store/.test(await p.textContent('#sp-sheet-title')), sh);
   if (SHOTS) await p.screenshot({ path: SHOTS + '/store-phone-more.png' });
   await p.click('#sp-sheet-close');
   ok('...✕ closes it', await p.evaluate(() => !document.getElementById('sp-sheet').open));

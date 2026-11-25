@@ -22,6 +22,16 @@ Until someone runs it on a real phone with a SIM, treat sending, delivery report
 5. Tap **Keep running in the background** and set the app to *Unrestricted* /
    *Don't optimise*, or Android may delay sending.
 
+**If Play Protect warns or blocks the install.** Because this is a sideloaded
+app that can send SMS, Google Play Protect will warn about it, and on newer
+phones may block the install outright (no "Install anyway"). That is expected
+for any texting app installed outside the Play Store — it is not a sign the app
+is unsafe. To get past a hard block: open the **Play Store** → your **profile
+picture** → **Play Protect** → the **gear / Settings** → turn **off** "Scan apps
+with Play Protect", install the app, then turn Play Protect back on. The
+seller-facing version of these steps is at `owner/sms-app-install.html` (linked
+from the owner SMS page) — send that to store owners.
+
 Debug builds from CI are each signed with a different throwaway key, so a new
 debug build will not install over an old one: uninstall first, then connect again
 with a new code. A release key (below) fixes this.

@@ -112,13 +112,13 @@ const PAGES = ['customer-login.html', 'owner/login.html', 'owner/forgot-password
       return { code: v(document.querySelector('#login-form button[type=submit]')), signupCode: v(document.querySelector('#signup-form button[type=submit]')),
         terms: v(document.querySelector('.auth-terms-note')) }; });
     const a = await vis();
-    // Welcome screen (Nov 2026, like Billdu): "Email me a sign-in link" is there
-    // from the start; the Terms line still waits for a real email.
-    ok('Shopper Sign In: the link button is there from the start; no Terms line yet', a.code && !a.terms, J(a));
+    // The "Email me a sign-in link" button waits for a validly-formatted email,
+    // on the welcome screen too (owner, 23 Nov 2026); the Terms line also waits.
+    ok('Shopper Sign In: the link button is hidden until a valid email; no Terms line yet', !a.code && !a.terms, J(a));
     await openEmail(p);
     await p.fill('#login-email', 'aroita@exam'); await p.waitForTimeout(400);
     const b = await vis();
-    ok('...Terms still waits for an unfinished email', b.code && !b.terms, J(b));
+    ok('...an unfinished email: the button is still hidden, no Terms line', !b.code && !b.terms, J(b));
     await openEmail(p);
     await p.fill('#login-email', 'aroita@example.com'); await p.waitForTimeout(400);
     const c = await vis();
