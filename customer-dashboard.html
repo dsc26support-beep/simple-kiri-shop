@@ -145,6 +145,24 @@
         <div id="bookings-list"></div>
       </section>
 
+      <!-- Favourite stores (Engagement.gs): stores this shopper follows, with a
+           per-store notifications toggle and unfollow. Hidden until a request
+           succeeds, so an older backend shows nothing. -->
+      <section class="dash-section dash-section--favourites" id="fav-stores" aria-labelledby="fav-stores-h" hidden>
+        <h2 id="fav-stores-h">Favourite stores</h2>
+        <p id="fav-stores-status" class="helper-text" aria-live="polite"></p>
+        <ul class="fav-list" id="fav-list"></ul>
+      </section>
+
+      <!-- In-app notification centre (Engagement.gs). Persists even if an OS
+           push later fails to arrive. -->
+      <section class="dash-section dash-section--notifs" id="notif-centre" aria-labelledby="notif-centre-h" hidden>
+        <h2 id="notif-centre-h">Notifications <span class="notif-unread" id="notif-unread" hidden></span></h2>
+        <div class="notif-actions"><button type="button" class="btn btn-outline btn-small" id="notif-mark-all" hidden>Mark all read</button></div>
+        <p id="notif-status" class="helper-text" aria-live="polite"></p>
+        <ul class="notif-list" id="notif-list"></ul>
+      </section>
+
       <!-- Become a Seller (SellerApplications.gs): the status of this
            account's application, if any. At the END with the other settings so
            nothing above the orders moves when it loads. -->

@@ -24,6 +24,8 @@ async function init() {
   loadOrders();
   loadBookings();
   loadMarketingOptIn();
+  loadFavouriteStores();
+  loadNotifications();
   showAppVersion();
 
   // After first paint, and after the two lists that people actually came for.
@@ -673,4 +675,139 @@ async function loadMarketingOptIn() {
       status.textContent = 'Could not save that. Please try again.';
     }
   });
+}
+
+/* ---- Favourite stores + in-app Notification Centre (Engagement.gs) ---- */
+
+function cesnTimeLabel(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + ' min ago';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+  const days = Math.round(hrs / 24);
+  if (days < 7) return days + (days === 1 ? ' day ago' : ' days ago');
+  return d.toLocaleDateString();
+}
+
+async function loadFavouriteStores() {
+  const section = document.getElementById('fav-stores');
+  if (!section) return;
+  let res;
+  try { res = await Api.post('getFavouriteStores', { token: CustomerAuth.getToken() }); } catch (e) { return; }
+  if (!res || !res.ok) return;    // older backend / signed out: stay hidden
+  section.hidden = false;
+  renderFavourites(res.stores || []);
+  const list = document.getElementById('fav-list');
+  if (list && !list.dataset.wired) {
+    list.dataset.wired = '1';
+    list.addEventListener('click', onFavouriteClick);
+    list.addEventListener('change', onFavouriteNotifyToggle);
+  }
+}
+
+function renderFavourites(stores) {
+  const list = document.getElementById('fav-list');
+  const status = document.getElementById('fav-stores-status');
+  if (!list) return;
+  if (!stores.length) {
+    list.innerHTML = '';
+    status.textContent = 'You are not following any stores yet. Open a store and tap Follow.';
+    return;
+  }
+  status.textContent = '';
+  list.innerHTML = stores.map((s) => {
+    const loc = [s.village, s.island].filter(Boolean).map((p) => escapeHtml(p)).join(', ');
+    const logo = s.logoUrl
+      ? `<img class="fav-logo" src="${escapeHtml(optimizedImageUrl(s.logoUrl, 96))}" alt="" loading="lazy">`
+      : '<span class="fav-logo fav-logo--blank" aria-hidden="true"></span>';
+    return `<li class="fav-item" data-slug="${escapeHtml(s.storeSlug)}">
+      <a class="fav-open" href="store.html?store=${encodeURIComponent(s.storeSlug)}">${logo}<span class="fav-text"><span class="fav-name">${escapeHtml(s.storeName)}</span>${loc ? `<span class="fav-loc">${loc}</span>` : ''}</span></a>
+      <div class="fav-controls">
+        <label class="fav-notify"><input type="checkbox" class="fav-notify-box"${s.notifyOn ? ' checked' : ''}> <span>Notify me</span></label>
+        <button type="button" class="btn btn-outline btn-small fav-unfollow">Unfollow</button>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+async function onFavouriteClick(e) {
+  const btn = e.target.closest('.fav-unfollow');
+  if (!btn) return;
+  const li = btn.closest('.fav-item');
+  const slug = li && li.dataset.slug;
+  if (!slug) return;
+  btn.disabled = true;
+  let res;
+  try { res = await Api.post('unfollowStore', { token: CustomerAuth.getToken(), storeSlug: slug }); } catch (err) { res = null; }
+  if (res && res.ok) { li.remove(); if (!document.querySelectorAll('.fav-item').length) renderFavourites([]); }
+  else btn.disabled = false;
+}
+
+async function onFavouriteNotifyToggle(e) {
+  const box = e.target.closest('.fav-notify-box');
+  if (!box) return;
+  const li = box.closest('.fav-item');
+  const slug = li && li.dataset.slug;
+  if (!slug) return;
+  const want = box.checked;
+  box.disabled = true;
+  let res;
+  try { res = await Api.post('setStoreNotifyPreference', { token: CustomerAuth.getToken(), storeSlug: slug, notifyOn: want }); } catch (err) { res = null; }
+  box.disabled = false;
+  if (!res || !res.ok) box.checked = !want;
+}
+
+async function loadNotifications() {
+  const section = document.getElementById('notif-centre');
+  if (!section) return;
+  let res;
+  try { res = await Api.post('getNotifications', { token: CustomerAuth.getToken() }); } catch (e) { return; }
+  if (!res || !res.ok) return;    // older backend / signed out: stay hidden
+  section.hidden = false;
+  renderNotifications(res);
+  const markAll = document.getElementById('notif-mark-all');
+  if (markAll && !markAll.dataset.wired) { markAll.dataset.wired = '1'; markAll.addEventListener('click', onMarkAllNotifications); }
+  const list = document.getElementById('notif-list');
+  if (list && !list.dataset.wired) { list.dataset.wired = '1'; list.addEventListener('click', onNotificationClick); }
+}
+
+function renderNotifications(res) {
+  const list = document.getElementById('notif-list');
+  const status = document.getElementById('notif-status');
+  const unreadEl = document.getElementById('notif-unread');
+  const markAll = document.getElementById('notif-mark-all');
+  if (!list) return;
+  const items = res.notifications || [];
+  const unread = res.unread || 0;
+  if (unreadEl) { unreadEl.hidden = unread === 0; unreadEl.textContent = unread ? unread + ' new' : ''; }
+  if (markAll) markAll.hidden = unread === 0;
+  if (!items.length) { list.innerHTML = ''; status.textContent = 'No notifications yet.'; return; }
+  status.textContent = '';
+  list.innerHTML = items.map((nf) => {
+    const img = nf.imageUrl ? `<img class="notif-img" src="${escapeHtml(optimizedImageUrl(nf.imageUrl, 96))}" alt="" loading="lazy">` : '';
+    const inner = `${img}<span class="notif-text"><span class="notif-title">${escapeHtml(nf.title || '')}</span>${nf.body ? `<span class="notif-body">${escapeHtml(nf.body)}</span>` : ''}<span class="notif-time">${escapeHtml(cesnTimeLabel(nf.createdAt))}</span></span>`;
+    const cls = 'notif-item' + (nf.read ? '' : ' is-unread');
+    return nf.deepLink
+      ? `<li class="${cls}" data-id="${escapeHtml(nf.id)}"><a class="notif-link" href="${escapeHtml(nf.deepLink)}">${inner}</a></li>`
+      : `<li class="${cls}" data-id="${escapeHtml(nf.id)}">${inner}</li>`;
+  }).join('');
+}
+
+async function onMarkAllNotifications() {
+  let res;
+  try { res = await Api.post('markNotificationRead', { token: CustomerAuth.getToken(), all: true }); } catch (e) { res = null; }
+  if (res && res.ok) renderNotifications(res);
+}
+
+// Clicking a notification marks it read (best-effort); navigation, if any,
+// proceeds via the link.
+function onNotificationClick(e) {
+  const li = e.target.closest('.notif-item');
+  if (!li || !li.classList.contains('is-unread')) return;
+  const id = li.dataset.id;
+  li.classList.remove('is-unread');
+  try { Api.post('markNotificationRead', { token: CustomerAuth.getToken(), notificationId: id }); } catch (err) { /* best effort */ }
 }

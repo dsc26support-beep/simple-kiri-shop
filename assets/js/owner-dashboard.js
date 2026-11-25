@@ -22,6 +22,35 @@ async function init() {
 
   document.getElementById('dash-period').addEventListener('change', (e) => loadSummary(Number(e.target.value)));
   await loadSummary(7);
+  loadEngagement();
+}
+
+/**
+ * Customer engagement audiences (Engagement.gs). Followers / likers /
+ * purchasers / marketing subscribers of THIS store, de-duplicated by customer.
+ * Feature-detected: an older backend leaves the panel hidden.
+ */
+async function loadEngagement() {
+  const panel = document.getElementById('dash-engagement');
+  if (!panel) return;
+  let res;
+  try { res = await Api.post('getStoreEngagementAudiences', { token: Auth.getToken() }); } catch (e) { return; }
+  if (!res || !res.ok) return;
+  panel.hidden = false;
+  const c = res.counts || {};
+  const facts = document.getElementById('dash-engagement-counts');
+  const pair = (label, n) => `<div class="dash-fact"><dt>${label}</dt><dd>${Number(n || 0)}</dd></div>`;
+  facts.innerHTML = pair('Followers', c.followers) + pair('Likes', c.likers) + pair('Purchasers', c.purchasers) + pair('Marketing subscribers', c.subscribers);
+  const list = document.getElementById('dash-engagement-list');
+  const status = document.getElementById('dash-engagement-status');
+  const people = res.audience || [];
+  if (!people.length) { list.innerHTML = ''; status.textContent = 'No followers or likes yet. Share your store link to grow your audience.'; return; }
+  status.textContent = (res.total || people.length) + ' customer' + ((res.total || people.length) === 1 ? '' : 's') + ' engaged with your store.';
+  const chip = (on, label) => on ? `<span class="engage-chip engage-chip--${label.toLowerCase()}">${label}</span>` : '';
+  list.innerHTML = people.map((p) => `<li class="engage-row">
+    <span class="engage-name">${escapeHtml(p.name || 'Shopper')}</span>
+    <span class="engage-chips">${chip(p.follower, 'Follower')}${chip(p.liker, 'Liker')}${chip(p.purchaser, 'Buyer')}${chip(p.subscriber, 'Subscriber')}</span>
+  </li>`).join('');
 }
 
 function greeting() {

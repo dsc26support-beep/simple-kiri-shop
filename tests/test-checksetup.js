@@ -51,7 +51,9 @@ const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitRev
                      // deploy missing Inventory.gs blanked the whole storefront).
                      'availableOf', 'productGalleryOf', 'markPaidFeatured', 'productDetailsListOf',
                      'getTopProductsCached', 'actionGetConversation', 'actionCreateOrder',
-                     'actionGetInvoiceDocument'];
+                     'actionGetInvoiceDocument',
+                     // + customer engagement (Engagement.gs, CESN Stage 2).
+                     'actionFollowStore'];
 
 // Derived from Code.gs, like REQUIRED_TABS - core data tabs checked for existence
 // only (not in REQUIRED_TABS). run() marks them present by default; a test drops

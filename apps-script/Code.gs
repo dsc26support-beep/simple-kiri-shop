@@ -45,6 +45,13 @@ var PUBLIC_POST_ACTIONS = [
   // checked inside), the one-tap unsubscribe (random per-customer token), and
   // an email-link click (counted only for a real, sent email).
   'getMarketingPreference', 'setMarketingPreference', 'unsubscribeMarketing', 'recordMarketingClick',
+  // Customer engagement (Engagement.gs): follow/like/consent/notifications each
+  // check the customer session inside (identity from the token only, never the
+  // body). getStoreEngagement is public with an OPTIONAL token - counts for
+  // everyone, personal state only when signed in.
+  'followStore', 'unfollowStore', 'likeStore', 'unlikeStore', 'getStoreEngagement',
+  'setStoreMarketingConsent', 'getFavouriteStores', 'setStoreNotifyPreference',
+  'getNotifications', 'markNotificationRead',
   // Customer-managed orders/bookings. Public in the same sense as the rest of
   // this block: each one calls requireCustomerAuth on body.token internally
   // (via findOwnRow in Customers.gs) and refuses any row that is not the
@@ -95,6 +102,9 @@ var PROTECTED_POST_ACTIONS = [
   'testSheetConnection', 'syncNow', 'listSyncConflicts', 'resolveSyncConflict',
   'listLocations', 'saveLocation', 'archiveLocation', 'transferStock', 'listSuppliers', 'saveSupplier', 'archiveSupplier', 'inventoryReport',
   'adminInventoryOverview',
+  // Seller customer-engagement audiences (Engagement.gs) - owner session, this
+  // store only; never exposes device/push data.
+  'getStoreEngagementAudiences',
   // POS & Integration Hub (IntegrationHub.gs, IntegrationOutbox.gs, Pos.gs). All need the owner session; off unless POS_HUB = on.
   'posHubStatus', 'createPosConnection', 'rotatePosSecret', 'updatePosConnection', 'setPosConnectionState', 'testPosWebhook',
   'listIntegrationMappings', 'saveIntegrationMapping', 'retireIntegrationMapping', 'listIntegrationEvents', 'resolveIntegrationEvent', 'listExternalSales',
@@ -149,7 +159,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'nomeet1-2026-11-22';
+var APP_VERSION = 'cesn2-2026-11-25';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -227,7 +237,16 @@ var REQUIRED_TABS = {
   CampaignEvents: ['EventId', 'CampaignId', 'CustomerId', 'Email', 'EventType', 'Status', 'CreatedAt',
                    'SentAt', 'FailureReason', 'MetadataJson', 'Attempts'],
   MarketingPreferences: ['CustomerId', 'Email', 'PromotionalEmailOptIn', 'FrequencyLimit',
-                         'LastPromotionalEmailAt', 'UpdatedAt', 'OptInAt', 'UnsubscribeToken']
+                         'LastPromotionalEmailAt', 'UpdatedAt', 'OptInAt', 'UnsubscribeToken'],
+  // Customer Engagement (Engagement.gs, CESN Stage 2). New tabs only - nothing
+  // existing changes. Follow / Like / per-store consent and the in-app
+  // notification centre. All start empty, so setupSheets can create and repair
+  // their header rows safely (no live data to disturb).
+  StoreFollows: ['FollowId', 'CustomerId', 'StoreSlug', 'Status', 'NotifyOn', 'CreatedAt', 'UpdatedAt'],
+  StoreLikes: ['LikeId', 'CustomerId', 'StoreSlug', 'Status', 'NotifyOn', 'CreatedAt', 'UpdatedAt'],
+  StoreMarketingConsents: ['ConsentId', 'CustomerId', 'StoreSlug', 'Status', 'OptInAt', 'WithdrawnAt', 'CreatedAt', 'UpdatedAt'],
+  Notifications: ['NotificationId', 'CustomerId', 'StoreSlug', 'Category', 'Title', 'Body',
+                  'ImageUrl', 'DeepLink', 'CampaignId', 'ReadAt', 'CreatedAt']
 };
 
 // Core data tabs whose absence takes the whole storefront or checkout down, but
@@ -315,6 +334,9 @@ function actionCheckSetup() {
   if (typeof actionGetConversation !== 'function') missingFiles.push('Chat.gs');
   if (typeof actionCreateOrder !== 'function') missingFiles.push('Orders.gs');
   if (typeof actionGetInvoiceDocument !== 'function') missingFiles.push('Invoices.gs');
+  // Customer engagement (follow/like/consent/notifications) - a missing file
+  // disables the store-page follow/like buttons and the notification centre.
+  if (typeof actionFollowStore !== 'function') missingFiles.push('Engagement.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -541,6 +563,16 @@ function doPost(e) {
         case 'setMarketingPreference': return jsonOut(actionSetMarketingPreference(body));
         case 'unsubscribeMarketing': return jsonOut(actionUnsubscribeMarketing(body));
         case 'recordMarketingClick': return jsonOut(actionRecordMarketingClick(body));
+        case 'followStore': return jsonOut(actionFollowStore(body));
+        case 'unfollowStore': return jsonOut(actionUnfollowStore(body));
+        case 'likeStore': return jsonOut(actionLikeStore(body));
+        case 'unlikeStore': return jsonOut(actionUnlikeStore(body));
+        case 'getStoreEngagement': return jsonOut(actionGetStoreEngagement(body));
+        case 'setStoreMarketingConsent': return jsonOut(actionSetStoreMarketingConsent(body));
+        case 'getFavouriteStores': return jsonOut(actionGetFavouriteStores(body));
+        case 'setStoreNotifyPreference': return jsonOut(actionSetStoreNotifyPreference(body));
+        case 'getNotifications': return jsonOut(actionGetNotifications(body));
+        case 'markNotificationRead': return jsonOut(actionMarkNotificationRead(body));
         case 'submitReview': return jsonOut(actionSubmitReview(body));
         case 'getTxRoom': return jsonOut(actionGetTxRoom(body));
         case 'sendTxMessage': return jsonOut(actionSendTxMessage(body));
@@ -667,6 +699,7 @@ function doPost(e) {
         case 'setFeatureBankMatched': return jsonOut(actionSetFeatureBankMatched(owner, body));
         case 'adminSearch': return jsonOut(actionAdminSearch(owner, body));
         case 'adminStoreAnalytics': return jsonOut(actionAdminStoreAnalytics(owner, body));
+        case 'getStoreEngagementAudiences': return jsonOut(actionGetStoreEngagementAudiences(owner, body));
         case 'getInventory': return jsonOut(actionGetInventory(owner));
         case 'receiveStock': return jsonOut(actionReceiveStock(owner, body));
         case 'adjustStock': return jsonOut(actionAdjustStock(owner, body));
