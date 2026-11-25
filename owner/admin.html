@@ -59,6 +59,7 @@
             <li><a href="#wholesale-heading">Wholesalers</a></li>
             <li><a href="#inv-admin-heading">Inventory</a></li>
             <li><a href="#mkt-heading">Marketing</a></li>
+            <li><a href="#cesn-heading">Notifications</a></li>
             <li><a href="#badges-heading">Seller badges</a></li>
             <li><a href="#badge-config-heading">Badge settings</a></li>
           </ul>
@@ -371,6 +372,32 @@
           </details>
         </section>
 
+        <!-- CESN customer notifications (admin-engagement.js; backend CesnAdmin.gs).
+             Admins only; hidden unless getCesnAdmin confirms you are one. -->
+        <section class="dash-section" aria-labelledby="cesn-heading" id="engagement-admin" hidden>
+          <h2 id="cesn-heading">Customer notifications</h2>
+          <p class="helper-text">Follow / like / price-drop / campaign notifications. Platform-wide limits and switches &mdash; these are anti-abuse controls, free for every seller.</p>
+          <div class="admin-stats" id="cesn-volumes"></div>
+          <form id="cesn-config" class="cesn-config">
+            <label class="cesn-switch"><input type="checkbox" id="cesn-enabled"> <span>Notifications engine on</span></label>
+            <div class="cesn-grid">
+              <div class="field"><label for="cesn-max-day">Max per customer / day</label><input id="cesn-max-day" type="number" min="0" max="50" inputmode="numeric"></div>
+              <div class="field"><label for="cesn-max-week">Max per customer / week</label><input id="cesn-max-week" type="number" min="0" max="200" inputmode="numeric"></div>
+              <div class="field"><label for="cesn-min-interval">Min minutes between</label><input id="cesn-min-interval" type="number" min="0" max="10080" inputmode="numeric"></div>
+              <div class="field"><label for="cesn-drop-pct">Price-drop trigger (%)</label><input id="cesn-drop-pct" type="number" min="1" max="90" inputmode="numeric"></div>
+              <div class="field"><label for="cesn-dwell">Anti-inflation dwell (hours)</label><input id="cesn-dwell" type="number" min="0" max="720" inputmode="numeric"></div>
+            </div>
+            <fieldset class="cesn-cats"><legend>Categories (untick to disable platform-wide)</legend><div id="cesn-categories"></div></fieldset>
+            <button type="button" class="btn btn-primary" id="cesn-save">Save settings</button>
+            <p id="cesn-admin-msg" class="helper-text" role="status" aria-live="polite"></p>
+          </form>
+          <h3>Recent campaigns</h3>
+          <div class="admin-table-wrap"><table class="admin-table" id="cesn-campaigns">
+            <thead><tr><th scope="col">Store</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Queued</th><th scope="col">When</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </section>
+
         <!-- Contacts & SMS (admin-sms.js; backend SmsDevices.gs). Counts and
              flags only: a store's contacts open only with a written reason,
              which goes in the audit log. -->
@@ -477,6 +504,7 @@
   <script defer src="../assets/js/auth.min.js"></script>
   <script defer src="../assets/js/owner-nav.min.js"></script>
   <script defer src="../assets/js/admin-marketing.min.js"></script>
+  <script defer src="../assets/js/admin-engagement.min.js"></script>
   <script defer src="../assets/js/listing-rules.min.js"></script>
   <script defer src="../assets/js/admin-listing-review.min.js"></script>
   <script defer src="../assets/js/admin-header-ads.min.js"></script>
