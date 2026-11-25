@@ -347,3 +347,64 @@ handling, deep links, unsubscribe/unfollow, large-list dashboard performance.
   is documented as the escape hatch if a tab outgrows a safe size.
 - **Branch/PR**: lands after PR #187 merges (single dev branch) unless the owner asks
   to bundle.
+
+---
+
+# Implementation log & deploy runbook (Stages 2-9 shipped)
+
+CESN was built and merged in staged PRs, each additive and feature-detected so
+the live site was unaffected before the backend was deployed:
+
+- **Stage 2** (#188) — Follow / Like / Favourite Stores / per-store consent /
+  in-app Notification Centre / seller engagement audiences. `Engagement.gs`.
+- **Stage 3** (#189) — Web Push via FCM, **dormant** until configured. `Push.gs`,
+  `push-register.js`, `firebase-messaging-sw.js`, `APP_CONFIG.PUSH_CONFIG`.
+- **Stages 4-6** (#190) — smart engine + price-drop intelligence + the 11
+  categories. `EngagementEngine.gs`, `PriceWatch.gs`.
+- **Stage 7** (#191) — seller campaign management + analytics.
+  `SellerEngagement.gs`, `owner/engagement.html`.
+- **Stage 8** — admin controls. `CesnAdmin.gs`, admin section on `owner/admin.html`.
+
+Current backend build: **`APP_VERSION = cesn8-2026-11-25`**; service worker cache **v244**.
+
+## Tabs the backend now expects (created by `setupSheets`)
+`StoreFollows`, `StoreLikes`, `StoreMarketingConsents`, `Notifications`,
+`PushSubscriptions`, `ProductWatch`, `CesnAudit`, `EngagementCampaigns` — all new
+and empty, plus the `SourceKey` column added to `Notifications`.
+
+## Owner deploy steps (manual — unverifiable from the sandbox)
+1. In the Apps Script editor, run **`setupSheets`** once to create the 8 new tabs.
+2. `clasp push` (or paste every `apps-script/*.gs`), then **redeploy** the web app.
+3. Confirm `?action=getVersion` → `cesn8-2026-11-25` and `?action=checkSetup`
+   → `setupOk:true` (it now probes `Engagement.gs`, `Push.gs`, `EngagementEngine.gs`,
+   `PriceWatch.gs`, `SellerEngagement.gs`, `CesnAdmin.gs`).
+4. **Automatic notifications**: add a time-driven trigger for **`runEngagementSweep`**
+   (e.g. hourly). Until then, follow/like/consent, the Notification Centre and
+   seller campaigns all work; only the automatic price-drop/new-arrival/
+   back-in-stock/scheduled-campaign sweep is idle.
+5. **Web Push (optional)**: follow section 5.1 — create the free Firebase project,
+   set `FCM_SERVICE_ACCOUNT` (Script Property, secret) and `APP_CONFIG.PUSH_CONFIG`
+   (public). Until set, push stays dormant and in-app notifications carry everything.
+6. **Admin tuning** (optional): on `owner/admin.html` → *Customer notifications*,
+   adjust the platform limits / price-drop threshold / category switches. Defaults
+   are safe (3/day, 10/week, 30-min gap, 10% drop, 12-h dwell).
+
+## Rollback
+Redeploy the previous `APP_VERSION`. All schema changes are additive (new tabs,
+one appended column), so old code ignores them; no data migration is needed.
+
+## Verification performed (real results)
+Harness/UI suites, all green: `test-engagement` 39, `test-engagement-engine` 18,
+`test-push` 15, `test-seller-campaigns` 18, `test-cesn-admin` 12, `test-checksetup`
+18, `verify-engagement-ui` 22; plus the 4 SMS backend suites unchanged.
+`npm run build:check` and the byte-budget gate green. No regressions.
+
+## Unresolved / owner-gated / honest limitations
+- Real end-to-end **Web Push** (device delivery) and the **Apps Script deploy**
+  cannot be verified from the sandbox — owner-confirmed via `getVersion`/a device.
+- **Open/click** analytics: only in-app reads are measured; push delivery/opens and
+  link clicks are not server-verifiable and are never claimed as delivered/read.
+- **Scale**: per-sweep and per-emit full-tab scans suit a modest marketplace; a
+  high-volume store would want the per-tab spreadsheet split noted in section 8.
+- **Email channel** for CESN categories is intentionally left to the existing
+  MarketingEngine (global opt-in); CESN's new channels are in-app + push.

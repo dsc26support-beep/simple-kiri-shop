@@ -2152,3 +2152,16 @@ body.has-seller-shell { padding-bottom: calc(56px + env(safe-area-inset-bottom, 
 .ec-stat { font-size: 0.8rem; font-weight: 600; color: #1b7f4b; }
 .ec-stat--muted { color: var(--color-muted); font-weight: 500; }
 .ec-item-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+/* CESN admin controls (owner/admin.html #engagement-admin, CESN Stage 8). */
+#cesn-volumes { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 14px; }
+.cesn-stat { border: 1px solid var(--color-line, #e5e5e5); border-radius: 8px; padding: 8px 12px; min-width: 96px; }
+.cesn-stat-num { display: block; font-size: 1.3rem; font-weight: 700; color: var(--color-purple); }
+.cesn-stat-label { font-size: 0.78rem; color: var(--color-muted); }
+.cesn-switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 10px; }
+.cesn-switch input { width: 18px; height: 18px; accent-color: var(--color-purple); }
+.cesn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.cesn-cats { border: 1px solid var(--color-line, #e5e5e5); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
+.cesn-cats #cesn-categories { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.cesn-cat { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; }
+.cesn-cat input { width: 16px; height: 16px; accent-color: var(--color-purple); }

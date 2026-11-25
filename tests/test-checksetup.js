@@ -59,7 +59,9 @@ const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitRev
                      // + smart engine + price-drop (CESN Stage 4-6).
                      'emitEngagementEvent', 'runEngagementSweep',
                      // + seller campaigns (CESN Stage 7).
-                     'actionCreateEngagementCampaign'];
+                     'actionCreateEngagementCampaign',
+                     // + admin controls (CESN Stage 8).
+                     'actionGetCesnAdmin'];
 
 // Derived from Code.gs, like REQUIRED_TABS - core data tabs checked for existence
 // only (not in REQUIRED_TABS). run() marks them present by default; a test drops

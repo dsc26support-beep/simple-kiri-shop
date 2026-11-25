@@ -110,6 +110,8 @@ var PROTECTED_POST_ACTIONS = [
   // Seller engagement campaigns (SellerEngagement.gs, CESN Stage 7).
   'createEngagementCampaign', 'updateEngagementCampaign', 'previewEngagementCampaign',
   'listEngagementCampaigns', 'sendEngagementCampaign', 'setEngagementCampaignStatus',
+  // CESN admin controls (CesnAdmin.gs, CESN Stage 8) - isOwnerAdmin-gated inside.
+  'getCesnAdmin', 'setCesnConfig',
   // POS & Integration Hub (IntegrationHub.gs, IntegrationOutbox.gs, Pos.gs). All need the owner session; off unless POS_HUB = on.
   'posHubStatus', 'createPosConnection', 'rotatePosSecret', 'updatePosConnection', 'setPosConnectionState', 'testPosWebhook',
   'listIntegrationMappings', 'saveIntegrationMapping', 'retireIntegrationMapping', 'listIntegrationEvents', 'resolveIntegrationEvent', 'listExternalSales',
@@ -164,7 +166,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'cesn7-2026-11-25';
+var APP_VERSION = 'cesn8-2026-11-25';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -358,6 +360,7 @@ function actionCheckSetup() {
   if (typeof emitEngagementEvent !== 'function') missingFiles.push('EngagementEngine.gs');
   if (typeof runEngagementSweep !== 'function') missingFiles.push('PriceWatch.gs');
   if (typeof actionCreateEngagementCampaign !== 'function') missingFiles.push('SellerEngagement.gs');
+  if (typeof actionGetCesnAdmin !== 'function') missingFiles.push('CesnAdmin.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -729,6 +732,8 @@ function doPost(e) {
         case 'listEngagementCampaigns': return jsonOut(actionListEngagementCampaigns(owner));
         case 'sendEngagementCampaign': return jsonOut(actionSendEngagementCampaign(owner, body));
         case 'setEngagementCampaignStatus': return jsonOut(actionSetEngagementCampaignStatus(owner, body));
+        case 'getCesnAdmin': return jsonOut(actionGetCesnAdmin(owner));
+        case 'setCesnConfig': return jsonOut(actionSetCesnConfig(owner, body));
         case 'getInventory': return jsonOut(actionGetInventory(owner));
         case 'receiveStock': return jsonOut(actionReceiveStock(owner, body));
         case 'adjustStock': return jsonOut(actionAdjustStock(owner, body));
