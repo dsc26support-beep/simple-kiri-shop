@@ -27,7 +27,11 @@ function build(seed) {
     StoreFollows: [['FollowId', 'CustomerId', 'StoreSlug', 'Status', 'NotifyOn', 'CreatedAt', 'UpdatedAt']].concat(seed.StoreFollows || []),
     StoreLikes: [['LikeId', 'CustomerId', 'StoreSlug', 'Status', 'NotifyOn', 'CreatedAt', 'UpdatedAt']].concat(seed.StoreLikes || []),
     StoreMarketingConsents: [['ConsentId', 'CustomerId', 'StoreSlug', 'Status', 'OptInAt', 'WithdrawnAt', 'CreatedAt', 'UpdatedAt']].concat(seed.StoreMarketingConsents || []),
-    Notifications: [['NotificationId', 'CustomerId', 'StoreSlug', 'Category', 'Title', 'Body', 'ImageUrl', 'DeepLink', 'CampaignId', 'ReadAt', 'CreatedAt']].concat(seed.Notifications || [])
+    Notifications: [['NotificationId', 'CustomerId', 'StoreSlug', 'Category', 'Title', 'Body', 'ImageUrl', 'DeepLink', 'CampaignId', 'SourceKey', 'ReadAt', 'CreatedAt']].concat(seed.Notifications || []),
+    PushSubscriptions: [['SubId', 'CustomerId', 'FcmToken', 'UserAgent', 'Platform', 'Status', 'LastSeenAt', 'CreatedAt']],
+    ProductWatch: [['WatchId', 'ProductId', 'VariantId', 'StoreSlug', 'PriceType', 'LastPrice', 'PriceSince', 'LastStock', 'LastNotifiedPrice', 'FirstSeenAt', 'UpdatedAt']],
+    CesnAudit: [['EventId', 'StoreSlug', 'Category', 'SourceKey', 'Audience', 'Queued', 'SkippedFreq', 'SkippedDup', 'CreatedAt']],
+    EngagementCampaigns: [['CampaignId', 'OwnerId', 'StoreSlug', 'Category', 'Title', 'Body', 'DeepLink', 'ImageUrl', 'Status', 'ScheduleAt', 'CreatedAt', 'UpdatedAt', 'CreatedBy', 'Audience', 'Queued', 'SkippedFreq', 'SkippedDup', 'SentAt']].concat(seed.EngagementCampaigns || [])
   }, {});   // non-guest: a default shopper (cus_harness / TEST_SHOPPER_TOKEN) is signed in
   box.ContentService = { createTextOutput: (s) => ({ s, setMimeType() { return this; } }), MimeType: { JSON: 'json' } };
   return box;
@@ -127,7 +131,7 @@ const callGet = (box, url) => { clearCache(box); const u = new URL(url); const p
   {
     const box = build({
       StoreFollows: [['flw1', 'cus_harness', 'bong', 'active', 'true', FUT, FUT]],
-      Notifications: [['ntf1', 'cus_harness', 'bong', 'store_follow', 'You’re following Bong Store', 'New arrivals will show here.', '', 'store.html?store=bong', '', '', FUT]]
+      Notifications: [['ntf1', 'cus_harness', 'bong', 'store_follow', 'You’re following Bong Store', 'New arrivals will show here.', '', 'store.html?store=bong', '', '', '', FUT]]
     });
     const { ctx, p } = await open(box, 'customer-dashboard.html', { customer: TEST_SHOPPER_TOKEN });
     await p.waitForTimeout(700);
@@ -181,6 +185,31 @@ const callGet = (box, url) => { clearCache(box); const u = new URL(url); const p
     ok('seller: engagement panel shows with the four audience counts', e.shown && /Followers/.test(e.factsText) && /Marketing subscribers/.test(e.factsText), e);
     ok('seller: the one engaged customer is one row with follower+liker+subscriber chips', e.rowCount === 1 && /Follower/.test(e.chips) && /Liker/.test(e.chips) && /Subscriber/.test(e.chips), e);
     ok('seller: no push token / device data leaked into the audience', e.hasToken === false, e);
+    await ctx.close();
+  }
+
+  /* ---- E. Seller campaign page: compose + preview + send (real backend) ---- */
+  {
+    const box = build({ StoreMarketingConsents: [['c1', 'cus_harness', 'bong', 'active', FUT, '', FUT, FUT]] });
+    const { ctx, p } = await open(box, 'owner/engagement.html', { owner: true, w: 900 });
+    p.on('dialog', (d) => d.accept());   // accept the "send now?" confirm
+    await p.waitForTimeout(600);
+    const cats = await p.evaluate(() => Array.from(document.getElementById('ec-category').options).map((o) => o.value));
+    ok('campaigns: the type picker offers manual categories only (no price_drop)', cats.indexOf('flash_sale') !== -1 && cats.indexOf('price_drop') === -1, cats);
+    await p.selectOption('#ec-category', 'flash_sale');
+    await p.fill('#ec-title', 'Weekend sale');
+    await p.fill('#ec-body', '20% off everything');
+    await p.click('#ec-preview'); await p.waitForTimeout(300);
+    ok('campaigns: preview shows the eligible audience (1 subscriber)', /1 eligible/.test(await p.textContent('#ec-audience-hint') || ''));
+    await p.click('#ec-send'); await p.waitForTimeout(600);
+    const after = await p.evaluate(() => ({
+      items: document.querySelectorAll('#ec-list .ec-item').length,
+      status: (document.querySelector('#ec-list .ec-status') || {}).textContent,
+      delivered: (document.querySelector('#ec-list .ec-stat') || {}).textContent
+    }));
+    ok('campaigns: after Send now it is listed as sent with delivery stats', after.items === 1 && /sent/i.test(after.status || '') && /1 delivered/.test(after.delivered || ''), after);
+    const notes = box.__sheets.Notifications.objects().filter((n) => n.Category === 'flash_sale');
+    ok('campaigns: the engine delivered the in-app notification to the subscriber', notes.length === 1 && notes[0].CustomerId === 'cus_harness', notes.length);
     await ctx.close();
   }
 

@@ -57,7 +57,9 @@ const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitRev
                      // + Web Push (Push.gs, CESN Stage 3).
                      'actionRegisterPushSubscription',
                      // + smart engine + price-drop (CESN Stage 4-6).
-                     'emitEngagementEvent', 'runEngagementSweep'];
+                     'emitEngagementEvent', 'runEngagementSweep',
+                     // + seller campaigns (CESN Stage 7).
+                     'actionCreateEngagementCampaign'];
 
 // Derived from Code.gs, like REQUIRED_TABS - core data tabs checked for existence
 // only (not in REQUIRED_TABS). run() marks them present by default; a test drops

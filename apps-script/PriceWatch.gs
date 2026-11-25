@@ -121,5 +121,10 @@ function runEngagementSweep() {
 
   var queued = 0;
   events.forEach(function (e) { var r = emitEngagementEvent(e); queued += (r.queued || 0); });
-  return { ok: true, events: events.length, queued: queued };
+  // Due scheduled seller campaigns go out in the same sweep (SellerEngagement.gs).
+  var scheduled = 0;
+  if (typeof processDueEngagementCampaigns === 'function') {
+    try { scheduled = (processDueEngagementCampaigns() || {}).processed || 0; } catch (e) { /* never block the sweep */ }
+  }
+  return { ok: true, events: events.length, queued: queued, scheduledCampaigns: scheduled };
 }
