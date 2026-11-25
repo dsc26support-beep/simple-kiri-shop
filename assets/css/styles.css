@@ -8095,6 +8095,28 @@ html:not(.email-open) .auth-card--customer #auth-create-line { margin-top: calc(
   padding: 0 48px;
 }
 
+/* "Email me a sign-in link" only (owner, 25 Nov 2026): a centred white pill,
+   ~40% narrower than the full-width Google/Guest buttons, keeping the same
+   red -> gold -> purple gradient ring (the ::before inherits the pill radius).
+   Scoped by id so it beats the shared .auth-provider-btn rules and the mobile
+   white-text rule. The faint shadow keeps the white fill readable on the white
+   desktop card; on the purple phone screen the white pill already stands out. */
+.auth-card--customer #login-submit {
+  width: 60%;
+  min-width: max-content;
+  margin-inline: auto;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-purple);
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.auth-card--customer #login-submit:hover,
+.auth-card--customer #login-submit:focus-visible {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), inset 0 0 0 999px rgba(109, 40, 217, 0.06);
+}
+
 /* ---- Welcome screen (owner request, Nov 2026, inspired by Billdu) --------
    customer-login.html, html.welcome-on (a plain visit; see its <head>):
    photo, headline, one line, live counts, then the email form first.
