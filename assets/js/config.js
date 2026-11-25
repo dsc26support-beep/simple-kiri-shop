@@ -17,5 +17,16 @@ const APP_CONFIG = {
   // client id - never put the App SECRET here; that lives only in Apps Script
   // Script Properties (FACEBOOK_APP_SECRET). Empty = no Facebook button.
   // See docs/auth-meta-setup.md.
-  FACEBOOK_APP_ID: ''
+  FACEBOOK_APP_ID: '',
+
+  // Web Push (Firebase Cloud Messaging), CESN. Every value here is PUBLIC - the
+  // Firebase web config and the VAPID PUBLIC key. NEVER put a private key here;
+  // the service-account key lives only in Apps Script Script Properties
+  // (FCM_SERVICE_ACCOUNT). Leave this null and the "Turn on notifications"
+  // button never appears and no Firebase code loads - the in-app Notification
+  // Centre still works. To enable, set it to the object the owner gets from the
+  // Firebase console (see docs/cesn-architecture.md section 5.1), e.g.:
+  //   PUSH_CONFIG: { apiKey: '...', projectId: '...', appId: '...',
+  //                  messagingSenderId: '...', vapidKey: '...' }
+  PUSH_CONFIG: null
 };

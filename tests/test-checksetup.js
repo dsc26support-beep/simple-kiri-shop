@@ -53,7 +53,9 @@ const FILE_PROBES = ['actionRegisterCustomer', 'actionGetTips', 'actionSubmitRev
                      'getTopProductsCached', 'actionGetConversation', 'actionCreateOrder',
                      'actionGetInvoiceDocument',
                      // + customer engagement (Engagement.gs, CESN Stage 2).
-                     'actionFollowStore'];
+                     'actionFollowStore',
+                     // + Web Push (Push.gs, CESN Stage 3).
+                     'actionRegisterPushSubscription'];
 
 // Derived from Code.gs, like REQUIRED_TABS - core data tabs checked for existence
 // only (not in REQUIRED_TABS). run() marks them present by default; a test drops

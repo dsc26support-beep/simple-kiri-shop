@@ -768,6 +768,7 @@ async function loadNotifications() {
   if (!res || !res.ok) return;    // older backend / signed out: stay hidden
   section.hidden = false;
   renderNotifications(res);
+  setupPushButton();
   const markAll = document.getElementById('notif-mark-all');
   if (markAll && !markAll.dataset.wired) { markAll.dataset.wired = '1'; markAll.addEventListener('click', onMarkAllNotifications); }
   const list = document.getElementById('notif-list');
@@ -810,4 +811,27 @@ function onNotificationClick(e) {
   const id = li.dataset.id;
   li.classList.remove('is-unread');
   try { Api.post('markNotificationRead', { token: CustomerAuth.getToken(), notificationId: id }); } catch (err) { /* best effort */ }
+}
+
+// Web Push opt-in (push-register.js). Dormant unless the owner configured push
+// (APP_CONFIG.PUSH_CONFIG) and the browser supports it; otherwise the button
+// never shows and no Firebase code loads.
+function setupPushButton() {
+  const btn = document.getElementById('notif-enable-push');
+  const status = document.getElementById('notif-push-status');
+  if (!btn || typeof MwaketePush === 'undefined' || !MwaketePush.supported()) return;
+  const st = MwaketePush.status();
+  if (st === 'granted') { btn.hidden = true; return; }
+  if (st === 'denied') { btn.hidden = true; if (status) status.textContent = 'Notifications are blocked in your browser settings.'; return; }
+  btn.hidden = false;
+  if (btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', async () => {
+    btn.disabled = true; if (status) status.textContent = 'Turning on notifications…';
+    let r; try { r = await MwaketePush.enable(); } catch (e) { r = null; }
+    btn.disabled = false;
+    if (r && r.ok) { btn.hidden = true; if (status) status.textContent = 'Notifications are on for this device.'; }
+    else if (r && (r.reason === 'denied' || r.reason === 'default')) { btn.hidden = true; if (status) status.textContent = 'You chose not to allow notifications.'; }
+    else { if (status) status.textContent = 'Could not turn on notifications. Please try again.'; }
+  });
 }
