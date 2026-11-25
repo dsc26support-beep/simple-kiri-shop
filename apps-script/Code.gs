@@ -107,6 +107,9 @@ var PROTECTED_POST_ACTIONS = [
   // Seller customer-engagement audiences (Engagement.gs) - owner session, this
   // store only; never exposes device/push data.
   'getStoreEngagementAudiences',
+  // Seller engagement campaigns (SellerEngagement.gs, CESN Stage 7).
+  'createEngagementCampaign', 'updateEngagementCampaign', 'previewEngagementCampaign',
+  'listEngagementCampaigns', 'sendEngagementCampaign', 'setEngagementCampaignStatus',
   // POS & Integration Hub (IntegrationHub.gs, IntegrationOutbox.gs, Pos.gs). All need the owner session; off unless POS_HUB = on.
   'posHubStatus', 'createPosConnection', 'rotatePosSecret', 'updatePosConnection', 'setPosConnectionState', 'testPosWebhook',
   'listIntegrationMappings', 'saveIntegrationMapping', 'retireIntegrationMapping', 'listIntegrationEvents', 'resolveIntegrationEvent', 'listExternalSales',
@@ -161,7 +164,7 @@ var CHAT_SUSTAINED_WINDOW_SECONDS = 60;
 // /exec?action=getVersion answers that in one click. Bump this whenever the
 // apps-script/ files change, then confirm the live URL echoes the new value
 // after redeploying (see README.md).
-var APP_VERSION = 'cesn4-2026-11-25';
+var APP_VERSION = 'cesn7-2026-11-25';
 
 /**
  * Identity for chat rate limiting: a vendor calling with a session token is
@@ -257,7 +260,10 @@ var REQUIRED_TABS = {
   // compares against (price drop / back in stock / new arrival); CesnAudit logs
   // every event the engine emits. Both new, both empty to start.
   ProductWatch: ['WatchId', 'ProductId', 'VariantId', 'StoreSlug', 'PriceType', 'LastPrice', 'PriceSince', 'LastStock', 'LastNotifiedPrice', 'FirstSeenAt', 'UpdatedAt'],
-  CesnAudit: ['EventId', 'StoreSlug', 'Category', 'SourceKey', 'Audience', 'Queued', 'SkippedFreq', 'SkippedDup', 'CreatedAt']
+  CesnAudit: ['EventId', 'StoreSlug', 'Category', 'SourceKey', 'Audience', 'Queued', 'SkippedFreq', 'SkippedDup', 'CreatedAt'],
+  // Seller engagement campaigns (SellerEngagement.gs, CESN Stage 7).
+  EngagementCampaigns: ['CampaignId', 'OwnerId', 'StoreSlug', 'Category', 'Title', 'Body', 'DeepLink', 'ImageUrl',
+                        'Status', 'ScheduleAt', 'CreatedAt', 'UpdatedAt', 'CreatedBy', 'Audience', 'Queued', 'SkippedFreq', 'SkippedDup', 'SentAt']
 };
 
 // Core data tabs whose absence takes the whole storefront or checkout down, but
@@ -351,6 +357,7 @@ function actionCheckSetup() {
   if (typeof actionRegisterPushSubscription !== 'function') missingFiles.push('Push.gs');
   if (typeof emitEngagementEvent !== 'function') missingFiles.push('EngagementEngine.gs');
   if (typeof runEngagementSweep !== 'function') missingFiles.push('PriceWatch.gs');
+  if (typeof actionCreateEngagementCampaign !== 'function') missingFiles.push('SellerEngagement.gs');
   if (missingFiles.length) {
     problems.push('Script file(s) missing or empty: ' + missingFiles.join(', '));
   }
@@ -716,6 +723,12 @@ function doPost(e) {
         case 'adminSearch': return jsonOut(actionAdminSearch(owner, body));
         case 'adminStoreAnalytics': return jsonOut(actionAdminStoreAnalytics(owner, body));
         case 'getStoreEngagementAudiences': return jsonOut(actionGetStoreEngagementAudiences(owner, body));
+        case 'createEngagementCampaign': return jsonOut(actionCreateEngagementCampaign(owner, body));
+        case 'updateEngagementCampaign': return jsonOut(actionUpdateEngagementCampaign(owner, body));
+        case 'previewEngagementCampaign': return jsonOut(actionPreviewEngagementCampaign(owner, body));
+        case 'listEngagementCampaigns': return jsonOut(actionListEngagementCampaigns(owner));
+        case 'sendEngagementCampaign': return jsonOut(actionSendEngagementCampaign(owner, body));
+        case 'setEngagementCampaignStatus': return jsonOut(actionSetEngagementCampaignStatus(owner, body));
         case 'getInventory': return jsonOut(actionGetInventory(owner));
         case 'receiveStock': return jsonOut(actionReceiveStock(owner, body));
         case 'adjustStock': return jsonOut(actionAdjustStock(owner, body));
